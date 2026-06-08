@@ -597,8 +597,8 @@ export class Renderer {
     // las proporciones a radio pequeño. Así el bicho se ve IGUAL a cualquier tamaño (mundo == retrato).
     const ds = this._drawScale || 1, fmin = (px) => px / ds;   // fmin(px) = mínimo de px en pantalla, en unidades de dibujo
     const app = 1 + ((morph[mo] * 7 + 0.5) | 0);     // 1..8 apéndices (se permite UNO)
-    const len = r * (0.55 + morph[mo + 1] * 7.3);     // largo: suelo subido (menos muñones) ↔ flagelos larguísimos
-    const lw = Math.max(fmin(0.45), (0.05 + morph[mo + 2] * 1.25) * r * 0.48); // grosor MÁS ESBELTO de media (no dedos gordos); rango fino↔grueso
+    const len = r * (0.6 + morph[mo + 1] * 9.0);      // largo: suelo subido (menos muñones) ↔ flagelos/alas MUY largos
+    const lw = Math.max(fmin(0.4), (0.04 + morph[mo + 2] * morph[mo + 2] * 1.3) * r * 0.48); // grosor con SESGO A FINO (cuadrático): la mayoría finos, los gruesos poco comunes
     const sym = morph[mo + 3];                         // repartido ↔ agrupado atrás
     const elong = 1 + morph[mo + 4] * 1.3;             // elongación de la cabeza: rango MODERADO (de redonda a alargada, sin eels degenerados)
     const wave = morph[mo + 5];                        // amplitud de ondulación
@@ -606,7 +606,7 @@ export class Renderer {
     // Segmentación (complejidad corporal). Solo si el cuerpo es bien grande en pantalla → coste acotado.
     const nSeg = showParts ? 1 + ((morph[mo + 6] * 4 + 0.5) | 0) : 1; // 1..5 segmentos
     const tf = 0.55 + morph[mo + 7] * 0.5;             // factor de tamaño por segmento (cónica)
-    const paddle = morph[mo + 7];                      // (A) reusa el gen de afilado: perfil del apéndice (0 filamento afilado ↔ 1 remo/aleta ancho)
+    const paddle = morph[mo + 7];                      // (A) reusa el gen de afilado: perfil del apéndice (0 filamento ↔ 0.5 aleta/remo ↔ 1 ALA: membrana ancha barrida)
     const spaceF = 0.58 + morph[mo + 8] * 0.72;        // separación REDUCIDA → segmentos SOLAPAN → cuerpo continuo (no cuentas sueltas)
     // SIMETRÍA BILATERAL POR CONSTRUCCIÓN: el cuerpo se dibuja espejado (izq = der) por diseño, como el
     // Bauplan de casi todos los animales. morph[17] (s_asym) SÍ se usa → silueta de cabeza (mejillas/cuello/
@@ -683,9 +683,11 @@ export class Renderer {
       // (A) perfil de grosor: filamento (afila a punta, pow) ↔ remo/aleta (HOJA ancha en el medio), según `paddle`.
       const hwAt = (q) => {
         const f = q / segsN;
-        const filament = Math.pow(1 - f, 0.55);                    // afilado orgánico hasta punta
-        const leaf = Math.sin(f * Math.PI) * 0.95 + (1 - f) * 0.12; // hoja/remo: ancho en el medio, romo
-        return hw0 * (filament * (1 - paddle) + leaf * paddle);
+        const filament = Math.pow(1 - f, 0.55);                              // afilado orgánico hasta punta
+        const blade = Math.sin(Math.pow(f, 0.7) * Math.PI) * 0.95 + (1 - f) * 0.2; // hoja/ala: ancha cerca de la base, barrida a punta
+        const prof = filament * (1 - paddle) + blade * paddle;               // forma: filamento ↔ hoja/ala
+        const broaden = 1 + paddle * paddle * 2.6;                           // a paddle alto la membrana se ENSANCHA → aleta/ALA
+        return hw0 * prof * broaden;
       };
       // (Color) DEGRADADO SUAVE a lo largo: raíz oscura → cuerpo claro → punta (acento ya muy sutil), todo como
       // paradas del MISMO degradado → sin borde duro ni "bandera bicolor"; el color rueda de forma continua.
