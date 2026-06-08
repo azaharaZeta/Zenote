@@ -1,0 +1,124 @@
+# Guía visual — "Primordia"
+
+El objetivo emocional es **fascinación contemplativa**. Debe apetecer mirarlo
+moverse durante minutos, como un acuario o una lámpara de lava. La belleza viene
+del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
+
+## Principios
+- **Calma y oscuridad.** Fondo oscuro (casi negro azulado o tinta) para que los
+  organismos brillen. Estética de microscopio / fondo abisal / placa de Petri.
+- **Color = información.** El tono (hue) es un rasgo **adaptativo**: los organismos
+  evolucionan para sintonizar con el "color de la luz" de su región (mejor absorción;
+  camuflaje en Fase 2). Ver los organismos **igualar el color de su zona** ES ver
+  adaptación local emerger. El fondo dibuja ese campo de luz (regiones de color),
+  para que se lea la sintonía. (El linaje/ascendencia ya no se ve por color: se consulta
+  por `lineageId` en el inspector.) No usar color decorativo que compita con esa lectura.
+- **Movimiento orgánico.** Interpolar posiciones; evitar saltos. Estela/halo suave
+  opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía (los
+  hambrientos se atenúan: la muerte se *ve* venir).
+  *Ojo con el toro:* un agente que cruza un borde envuelto NO debe interpolarse entre
+  los dos lados (daría un latigazo de lado a lado). Detectar el salto > medio mundo y, ese
+  frame, dibujarlo sin interpolar.
+- **El suelo = mapa térmico (bioma).** El fondo es siempre la **temperatura** del mundo,
+  con gradiente de 3 paradas: **nieve blanca (frío)** → **oliva (templado)** → **arena de
+  desierto (calor)**.
+  Es world-space (panea/zoomea con la cámara) y se ve a qué clima se adapta cada organismo
+  (gen `temp_pref`). En modos analíticos el suelo se atenúa para que destaquen los colores.
+- **El recurso como ambiente (hierba).** El campo de recurso se dibuja, sobre el suelo, como
+  un tapiz de **matojos**. Para no penalizar el rendimiento: al arrancar se precalcula un catálogo de
+  ~`render.grassSpriteCount` sprites de matojo (cada uno = varias briznas curvas con longitud,
+  curvatura y grosor aleatorios, verde oliva); a cada posición fija se le asigna un sprite
+  (un byte). Se dibuja en un **búfer del tamaño de la pantalla con la cámara aplicada** (nítida
+  a cualquier zoom), re-renderizado solo cuando la cámara se mueve o cambia el recurso (cada
+  `render.grassRefreshFrames`), y solo los matojos visibles (culling → más zoom = más barato).
+  La hierba se **tinta según el clima** de su celda (3 juegos de sprites precalculados): verde-azul
+  grisáceo en frío, verde vivo en templado, marrón seco en desierto → coste nulo por frame.
+  El suelo fértil conserva rastrojo (no se queda enano al pastar) y crece frondoso cuando se
+  recupera. La forma (briznas) y el tono (oliva mate, sin glow) los distinguen de los organismos.
+- **Sin ruido visual.** Nada de bordes duros, sombras pesadas, ni UI recargada.
+  Tipografía fina, controles discretos en un panel lateral semitransparente que
+  se pueda ocultar para modo "solo contemplación".
+
+## Paleta sugerida (ajustable)
+- Fondo: `#0a0e14` → degradado a `#0d1320`.
+- Recurso: verdes/teal muy desaturados y translúcidos sobre el fondo.
+- Organismos: tono libre por `hue`, saturación media-alta, luminosidad según energía.
+- Texto UI: gris claro `#c7d0dd`; acentos en un cian suave `#5ad1c4`.
+
+## Render
+- Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo
+  más grande y translúcido (más rápido que blur real). Medir FPS antes de abusar.
+- Estelas: dibujar el fondo con una capa negra a baja opacidad cada frame en vez de
+  borrarlo del todo → rastros suaves. Hacerlo opcional (puede reducir claridad).
+- Transiciones suaves al nacer (fade-in + pequeño "pop" de escala) y al morir
+  (fade-out). Esto da el carácter de "vida".
+
+> **Gráficas sin dependencias.** Los histogramas y curvas se dibujan a mano en un
+> Canvas 2D aparte (barras y polilíneas básicas). No se añade ninguna librería de
+> gráficas: el coste de implementarlas es bajo y mantenemos el proyecto en vanilla JS
+> desplegable como estáticos (ver CLAUDE.md, regla 5).
+
+## Responsive y móvil (sin tocar la simulación)
+**Principio rector:** el mundo es lógico y fijo (`world.width`×`world.height`, toro);
+la pantalla solo lo *muestra*. El motor nunca ve píxeles de pantalla. Toda la
+adaptación ocurre en la capa de render/UI. Esto garantiza que ver en móvil **no
+altera ni limita** la genética, la energética ni la dinámica de población: una misma
+`pop.seed` produce idéntica corrida en un portátil y en un teléfono.
+
+- **Escalado, no recorte.** El canvas ocupa el viewport con `width:100%` por CSS, pero
+  su resolución de dibujo se fija en píxeles del dispositivo. Se calcula un factor
+  `scale = min(canvasPx_w / world.width, canvasPx_h / world.height)` y se aplica con
+  `ctx.setTransform` (o `translate`+`scale`) para encajar el mundo completo con letterbox
+  (barras vacías) si la relación de aspecto difiere. Nunca se estira de forma anisotrópica
+  ni se cambia `world.width/height` para "rellenar". El toro se sigue viendo entero.
+- **DevicePixelRatio con tope.** Resolución del canvas = `cssPx * min(devicePixelRatio,
+  render.dprCap)`. El tope (p.ej. 2) evita que una pantalla retina de móvil dispare el
+  número de píxeles a dibujar y hunda los FPS. Reaccionar a `resize` y a cambios de
+  orientación recalculando tamaño y `scale` (con debounce).
+- **Coordenadas de entrada → mundo.** El tap/clic llega en píxeles de pantalla; se
+  invierte la transformación (`scale`, letterbox, DPR) para obtener la coord. lógica y
+  buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
+- **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se bajan
+  efectos visuales (glow, estelas, mostrar campo de recurso) y se puede reducir
+  `sim.ticksPerFrame` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
+  no el resultado—. **No se baja `pop.maxAgents` automáticamente**, porque eso sí cambiaría
+  el ecosistema; si el usuario quiere ese ajuste, que sea un control consciente y avisado.
+  Detección barata por defecto: si el viewport es estrecho (`< 700px`) o los FPS caen,
+  arrancar con `glow:false`, `trails:false`.
+- **Toques de UI.** Áreas táctiles cómodas (mín. ~40px), panel lateral que en pantallas
+  estrechas pasa a hoja inferior (bottom sheet) deslizable u oculta tras un botón. El
+  modo contemplación (ocultar toda la UI) es aún más valioso en móvil. Evitar depender
+  del hover: todo accesible por tap.
+- **Sin scroll/zoom accidental.** `touch-action: none` sobre el canvas y `viewport`
+  meta con `user-scalable=no` para que arrastrar no haga scroll de la página.
+
+## Datos visibles (panel de observación, ocultable)
+- Curva de población total (y por dieta si hay carnívoros).
+- Histograma en vivo de 1–2 genes seleccionables (size, speed, diet...). Ver el
+  histograma deslizarse es la prueba visual de la selección.
+- Contador de "especies" estimadas por clustering simple de `hue`+genes (opcional).
+- Reloj de generaciones / tiempo de simulación y FPS.
+
+## Interacción mínima pero deliciosa
+- Play / pausa. Slider de velocidad de simulación (ticks por frame).
+- Sliders de `mut_rate`, `mut_sigma`, `R_regen` para "jugar a ser el ambiente" y
+  ver cómo responde la evolución en directo.
+- **Cámara con zoom y paneo toroidal:** rueda (o pinza en móvil) para zoom, arrastrar para
+  desplazarse. El mundo es un toro y se renderiza **en mosaico**, así el paneo recorre el
+  ecosistema sin fin y **nunca se ven los bordes** (los matojos del borde se envuelven para
+  que la hierba tesele sin costura). Zoom mínimo = el mundo cubre la pantalla (sin letterbox);
+  doble clic resetea el zoom. El render es solo lectura: la simulación no cambia con la cámara.
+- Click/tap en un organismo (sin arrastrar): muestra su genoma (barras), linaje y generación.
+- **Modos de coloreado** (solo render, no tocan la simulación) para *analizar* la evolución:
+  *Visión real* (pigmento adaptado a la luz), *Dieta* (verde herbívoro → rojo carnívoro),
+  *Linaje* (un color por familia fundadora), *Gen del histograma* (gradiente del rasgo
+  elegido) y *Energía*. En los modos analíticos el fondo pasa a gris para que destaquen.
+  Una leyenda explica el código de color activo.
+- Botón "sembrar de nuevo" (reiniciar con población aleatoria y semilla opcional
+  para reproducibilidad).
+- Modo contemplación (oculta toda la UI con una tecla).
+
+## No hacer
+- No animaciones de "logro", ni gamificación, ni puntuaciones.
+- No emojis ni iconos ruidosos.
+- No sacrificar FPS por efectos: la fluidez es parte de la belleza.

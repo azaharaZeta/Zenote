@@ -1,0 +1,7 @@
+{
+  "name": "primordia",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulador de evolución emergente (estáticos; el type:module permite ejecutar el motor headless en Node para barridos de parámetros)."
+}

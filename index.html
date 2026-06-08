@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Primordia — evolución emergente</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="world"></canvas>
+
+  <!-- Botón para reabrir el panel en modo contemplación -->
+  <button id="show" title="Mostrar panel (H)">☰</button>
+
+  <aside id="panel">
+    <header>
+      <h1>Primordia</h1>
+      <button id="hide" title="Modo contemplación (H)">contemplar ✕</button>
+    </header>
+
+    <div class="readout">
+      <span id="fps">— FPS</span>
+      <span id="stat">—</span>
+    </div>
+
+    <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Cambiar a modo laboratorio</button>
+
+    <div class="row">
+      <button id="reseed">↻ Sembrar</button>
+      <input id="seedInput" type="text" placeholder="semilla" />
+      <label class="div-row" title="Diversidad inicial del sembrado (se aplica al pulsar Sembrar): monótono ↔ variado">
+        Diversidad inicial <output id="divVal">0.50</output>
+        <input id="divSlider" type="range" min="0" max="1" step="0.05" value="0.5" />
+      </label>
+    </div>
+
+    <div class="charts">
+      <div class="chart-pair">
+        <canvas id="popChart" class="chart"></canvas>
+        <canvas id="histChart" class="chart"></canvas>
+      </div>
+      <label class="inline">Histograma de
+        <select id="geneSel"></select>
+      </label>
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-inline" id="colorModeRow">
+        <label for="colorMode">Colorear por</label>
+        <select id="colorMode">
+          <option value="real">Visión real (adaptación a la luz)</option>
+          <option value="diet">Dieta (depredador / presa)</option>
+          <option value="species">Especie</option>
+          <option value="lineage">Linaje</option>
+          <option value="gene">Gen del histograma</option>
+          <option value="energy">Energía</option>
+        </select>
+      </div>
+      <div id="legend" class="legend"></div>
+    </div>
+
+    <div class="ctrl">
+      <label>Velocidad (t/s) <output id="ticksVal"></output></label>
+      <div class="speed-row">
+        <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
+        <input id="ticks" type="range" min="1" max="1000" step="1" value="486" />
+        <button id="maxBtn" class="maxbtn" title="Máxima velocidad posible">max</button>
+      </div>
+      <div id="speedReal" class="speed-real">velocidad real: —</div>
+
+      <label>Zoom <output id="zoomVal"></output></label>
+      <input id="zoomSlider" type="range" min="1" max="20" step="0.1" value="1" />
+    </div>
+
+    <!-- Sección LABORATORIO: inline en el panel, visible solo en modo avanzado (#panel.advanced) -->
+    <div id="labSection" class="lab-section">
+      <p class="lab-note">Ajusta y observa en vivo. Muchos parámetros se aplican a las <b>crías nuevas</b> (se propagan al renovarse la población); los marcados <b>↻</b> requieren volver a <b>Sembrar</b>.</p>
+      <div id="labBody"></div>
+    </div>
+
+    <p class="hint">Click/tap en un organismo para ver su genoma. Tecla H: contemplar · Espacio: pausa.</p>
+  </aside>
+
+  <div id="inspector"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

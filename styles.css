@@ -1,0 +1,220 @@
+/* Primordia — estética contemplativa. Fondo abisal, UI discreta y ocultable. */
+:root {
+  --bg: #0a0e14;
+  --bg2: #0d1320;
+  --text: #c7d0dd;
+  --muted: #7a8595;
+  --accent: #5ad1c4;
+  --panel: rgba(13, 19, 32, 0.82);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  height: 100%; width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 300;
+}
+
+#world {
+  position: fixed;
+  inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: none; /* arrastrar no hace scroll de la página */
+  background: radial-gradient(circle at 50% 40%, var(--bg2), var(--bg));
+}
+
+/* ---- Panel lateral semitransparente ---- */
+#panel {
+  position: fixed;
+  top: 12px; left: 12px;
+  width: 300px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(90, 209, 196, 0.12);
+  border-radius: 14px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 10;
+}
+#panel.hidden { transform: translateX(-340px); opacity: 0; pointer-events: none; }
+
+#panel header { display: flex; align-items: center; justify-content: space-between; }
+#panel h1 { font-size: 15px; font-weight: 400; margin: 0; letter-spacing: 1px; color: var(--accent); }
+
+.readout { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin: 8px 0; }
+
+.row { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+
+button, select, input[type="text"] {
+  background: rgba(90, 209, 196, 0.08);
+  color: var(--text);
+  border: 1px solid rgba(90, 209, 196, 0.2);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 34px;
+}
+button:hover { background: rgba(90, 209, 196, 0.16); }
+input[type="text"] { flex: 1; min-width: 70px; cursor: text; }
+
+.charts { margin: 8px 0; }
+.chart-pair { display: block; }   /* simple: gráficas apiladas. avanzado: lado a lado (ver #panel.advanced) */
+.chart { width: 100%; height: 68px; display: block; background: rgba(0,0,0,0.25); border-radius: 8px; margin-bottom: 6px; }
+.inline { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.inline select { padding: 4px 6px; min-height: 28px; }
+
+/* "Colorear por" (y similares) en UNA línea: etiqueta + combo en fila */
+.ctrl-inline { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
+.ctrl-inline label { display: block; margin: 0; flex: 0 0 auto; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.ctrl-inline select { flex: 1 1 auto; min-width: 0; }
+
+.speed-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.speed-row input[type="range"] { flex: 1; }
+.speed-row #play { min-width: 40px; padding: 7px 8px; text-align: center; }
+.maxbtn { white-space: nowrap; }
+.speed-real { font-size: 10px; color: var(--muted); margin-top: 5px; }
+.maxbtn.active { background: var(--accent); color: #06210f; border-color: var(--accent); font-weight: 500; }
+
+.ctrl label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 3px; }
+.ctrl output { color: var(--accent); }
+input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+.legend { font-size: 10px; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.legend .legend-bar { width: 100%; height: 8px; border-radius: 4px; margin-bottom: 2px; }
+.legend span { flex: 1; }
+.legend span:last-child { text-align: right; }
+.legend em { font-style: normal; line-height: 1.4; }
+
+.toggles { display: flex; gap: 14px; margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
+.toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+.hint { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; opacity: 0.8; }
+
+/* ---- Botón flotante para reabrir ---- */
+#show {
+  position: fixed; top: 12px; left: 12px; z-index: 9;
+  width: 42px; height: 42px; padding: 0; font-size: 18px;
+  display: none; align-items: center; justify-content: center;
+}
+#show.visible { display: flex; }
+
+/* ---- Inspector de genoma ---- */
+#inspector {
+  position: fixed; bottom: 12px; right: 12px; z-index: 10;
+  width: 240px; padding: 12px 14px;
+  background: var(--panel); backdrop-filter: blur(10px);
+  border: 1px solid rgba(90, 209, 196, 0.12); border-radius: 12px;
+  font-size: 11px; display: none;
+  max-height: 78vh; overflow-y: auto;
+}
+#inspector.visible { display: block; }
+.insp-close { position: absolute; top: 6px; right: 8px; z-index: 2; width: 22px; height: 22px; padding: 0; line-height: 1; cursor: pointer; font-size: 12px; border-radius: 6px; background: rgba(255,107,90,0.14); border: 1px solid rgba(255,107,90,0.3); color: #ff8b7a; }
+.insp-close:hover { background: rgba(255,107,90,0.3); }
+.insp-members { font-size: 10px; color: var(--text); text-align: center; margin: -2px 0 6px; opacity: 0.92; }
+.ginfo { margin: 1px 0; }
+.ginfo > summary { cursor: pointer; font-size: 10px; color: var(--accent); padding: 3px 0; user-select: none; list-style: none; }
+.ginfo > summary::-webkit-details-marker { display: none; }
+.ginfo > summary::before { content: '▸  '; opacity: 0.8; }
+.ginfo[open] > summary::before { content: '▾  '; }
+.insp-portrait { display: block; width: 120px; height: 96px; margin: 0 auto 6px; background: rgba(0,0,0,0.22); border-radius: 8px; }
+.insp-card { font-size: 10px; line-height: 1.55; color: var(--text); margin-bottom: 8px; background: rgba(255,255,255,0.04); padding: 5px 8px; border-radius: 6px; }
+.insp-nav { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.insp-nav span { flex: 1 1 auto; min-width: 0; text-align: center; font-size: 10px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insp-nav .spnav { flex: 0 0 auto; background: rgba(90,209,196,0.14); border: 1px solid rgba(90,209,196,0.25); color: var(--accent); border-radius: 6px; width: 26px; height: 22px; cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
+.insp-nav .spnav:hover { background: rgba(90,209,196,0.28); }
+.insp-head { font-size: 12px; margin-bottom: 2px; }
+.insp-sub { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.gbar { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.gbar span { width: 62px; color: var(--muted); }
+.gbar .track { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+.gbar .fill { height: 100%; background: var(--accent); }
+.gbar em { width: 28px; text-align: right; font-style: normal; color: var(--text); }
+
+/* ---- Modo Laboratorio: sección avanzada INLINE en el panel (no popup) ---- */
+/* botón de modo COMPACTO (no a todo el ancho) y sin estado "pulsado" al cambiar de modo */
+.mode-btn { display: inline-block; width: auto; margin: 8px 0 2px; padding: 3px 9px; font-size: 10px; letter-spacing: 0.2px; }
+#seedInput { display: none; }                                  /* campo semilla oculto de momento (no se usa) */
+/* slider de diversidad del sembrado: ocupa su propia línea bajo el botón Sembrar */
+.div-row { display: flex; align-items: center; gap: 6px; flex: 1 1 100%; margin-top: 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.div-row input[type="range"] { flex: 1 1 auto; min-width: 70px; }
+.div-row output { color: var(--text, #cdd5e0); font-variant-numeric: tabular-nums; }
+#panel:not(.advanced) #colorModeRow { display: none; }         /* en modo simple no se muestra "Colorear por" */
+
+.lab-section { display: none; margin-top: 6px; }
+#panel.advanced .lab-section { display: block; }
+@media (min-width: 701px) { #panel.advanced { width: 392px; } }  /* más ancho solo en escritorio */
+
+/* Compactar y EMPEQUEÑECER la vista simple en modo laboratorio (más técnico; hueco para las opciones) */
+#panel.advanced .chart-pair { display: flex; gap: 6px; }                 /* gráficas LADO A LADO (aprovecha el ancho) */
+#panel.advanced .chart-pair .chart { flex: 1 1 0; min-width: 0; height: 44px; margin-bottom: 0; }
+#panel.advanced .charts { margin: 5px 0; }
+#panel.advanced .readout { margin: 4px 0; font-size: 10px; }
+#panel.advanced .ctrl label { margin: 5px 0 2px; font-size: 10px; }
+#panel.advanced .ctrl-inline { margin: 5px 0 0; }
+#panel.advanced .ctrl-inline label, #panel.advanced .inline { font-size: 10px; }
+#panel.advanced .row { margin: 5px 0; }
+/* controles simples (combos, semilla, botones de velocidad) más pequeños */
+#panel.advanced select, #panel.advanced input[type="text"] { min-height: 26px; padding: 3px 7px; font-size: 11px; }
+#panel.advanced #reseed { min-height: 28px; padding: 5px 9px; }
+#panel.advanced .speed-row #play, #panel.advanced .maxbtn { min-height: 26px; padding: 3px 8px; }
+#panel.advanced .legend { display: none; }
+#panel.advanced .hint { display: none; }
+#panel.advanced .speed-real { display: none; }
+
+.lab-note { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 4px 0 8px; }
+.lab-cat { margin: 5px 0; border: 1px solid rgba(90,209,196,0.1); border-radius: 10px; overflow: hidden; }
+.lab-cat > summary { position: relative; cursor: pointer; font-size: 12px; color: var(--accent); padding: 8px 28px 8px 10px;
+       user-select: none; list-style: none; background: rgba(90,209,196,0.05); }
+.lab-cat > summary::-webkit-details-marker { display: none; }
+.lab-cat > summary::before { content: '▸  '; opacity: 0.7; }
+.lab-cat[open] > summary::before { content: '▾  '; }
+.lab-grid { padding: 6px 10px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+.lab-row { display: block; font-size: 11px; color: var(--muted); margin: 5px 0 0; }
+.lab-lab { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 1px; }
+.lab-name { overflow: hidden; text-overflow: ellipsis; }
+.lab-right { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.lab-row output { color: var(--accent); }
+.lab-slider { position: relative; display: block; }
+.lab-notch { position: absolute; top: 50%; width: 2px; height: 11px; background: var(--accent); opacity: 0.5;
+       transform: translate(-50%, -50%); pointer-events: none; border-radius: 1px; }
+.lab-row.toggle { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 9px; grid-column: 1 / -1; }
+.lab-toggle { display: flex; align-items: center; gap: 7px; margin: 0; cursor: pointer; flex: 1 1 auto; }
+.lab-toggle input { width: auto; cursor: pointer; }
+/* Botón ↺ de restaurar por defecto (solo icono) */
+.lab-reset { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 3px; min-height: 0;
+       font-size: 13px; line-height: 1; opacity: 0.5; border-radius: 4px; }
+.lab-reset:hover { opacity: 1; color: var(--accent); background: rgba(90,209,196,0.14); }
+.lab-cat > summary .lab-reset { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+/* Icono ⓘ de ayuda por parámetro (hover con retardo en escritorio; tap en móvil) */
+.lab-info { background: none; border: none; color: var(--muted); cursor: help; padding: 0 2px; min-height: 0;
+       font-size: 12px; line-height: 1; opacity: 0.5; border-radius: 4px; }
+.lab-info:hover { opacity: 1; color: var(--accent); }
+/* Tooltip compartido (un único elemento reposicionable) */
+.lab-tip { position: fixed; z-index: 50; left: 0; top: 0; max-width: 240px; padding: 8px 11px; font-size: 11px;
+       line-height: 1.45; color: var(--text); background: #0f1828; border: 1px solid rgba(90,209,196,0.32);
+       border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,0.55); pointer-events: none;
+       opacity: 0; transform: translateY(-3px); transition: opacity 0.12s ease, transform 0.12s ease; }
+.lab-tip.show { opacity: 1; transform: translateY(0); }
+
+/* ---- Responsive: en pantallas estrechas, panel como hoja inferior ---- */
+@media (max-width: 700px) {
+  #panel {
+    top: auto; bottom: 0; left: 0; right: 0;
+    width: 100%; max-height: 60vh;
+    border-radius: 16px 16px 0 0;
+  }
+  #panel.hidden { transform: translateY(100%); }
+  #inspector { bottom: auto; top: 8px; right: 8px; width: 200px; }
+  .chart-pair { display: flex; gap: 8px; }
+  .chart-pair .chart { flex: 1; min-width: 120px; margin-bottom: 0; }
+}

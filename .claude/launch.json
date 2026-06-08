@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "primordia",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["serve.py", "8731"],
+      "port": 8731
+    }
+  ]
+}
