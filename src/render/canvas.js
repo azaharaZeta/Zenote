@@ -596,9 +596,14 @@ export class Renderer {
     // Escala mundo→pantalla: los mínimos de grosor/tamaño se expresan POR PÍXEL (÷ds) para no engordar
     // las proporciones a radio pequeño. Así el bicho se ve IGUAL a cualquier tamaño (mundo == retrato).
     const ds = this._drawScale || 1, fmin = (px) => px / ds;   // fmin(px) = mínimo de px en pantalla, en unidades de dibujo
-    const app = 1 + ((morph[mo] * 7 + 0.5) | 0);     // 1..8 apéndices (se permite UNO)
-    const len = r * (0.6 + morph[mo + 1] * 9.0);      // largo: suelo subido (menos muñones) ↔ flagelos/alas MUY largos
-    const lw = Math.max(fmin(0.4), (0.04 + morph[mo + 2] * morph[mo + 2] * 1.3) * r * 0.48); // grosor con SESGO A FINO (cuadrático): la mayoría finos, los gruesos poco comunes
+    // ---- APÉNDICES: montaje ORIGINAL — 3 genes LIBRES lineales (nº, largo, grosor) + ramificación libre. ----
+    const app = 1 + ((morph[mo] * 7 + 0.5) | 0);     // nº: 1..8 (libre)
+    const len = r * (0.35 + morph[mo + 1] * 7.5);     // largo: rango amplio (cortos ↔ flagelos largos)
+    // El TECHO de grosor (coef. de m_width) CRECE con el LARGO y BAJA con la RAMIFICACIÓN; el SUELO (m_width=0) no cambia.
+    const lwRange = 1.9 * (0.5 + morph[mo + 1]) * (1 - morph[mo + 20] * 0.85) * (1 - morph[mo] * 0.4); // largo→+ · rama→-- · nº→- (un poco)
+    const lw = Math.max(fmin(0.5), (0.06 + morph[mo + 2] * lwRange) * r * 0.62); // suelo fijo (~0.037r); techo variable
+   
+    
     const sym = morph[mo + 3];                         // repartido ↔ agrupado atrás
     const elong = 1 + morph[mo + 4] * 1.3;             // elongación de la cabeza: rango MODERADO (de redonda a alargada, sin eels degenerados)
     const wave = morph[mo + 5];                        // amplitud de ondulación
@@ -606,13 +611,12 @@ export class Renderer {
     // Segmentación (complejidad corporal). Solo si el cuerpo es bien grande en pantalla → coste acotado.
     const nSeg = showParts ? 1 + ((morph[mo + 6] * 4 + 0.5) | 0) : 1; // 1..5 segmentos
     const tf = 0.55 + morph[mo + 7] * 0.5;             // factor de tamaño por segmento (cónica)
-    const paddle = morph[mo + 7];                      // (A) reusa el gen de afilado: perfil del apéndice (0 filamento ↔ 0.5 aleta/remo ↔ 1 ALA: membrana ancha barrida)
     const spaceF = 0.58 + morph[mo + 8] * 0.72;        // separación REDUCIDA → segmentos SOLAPAN → cuerpo continuo (no cuentas sueltas)
     // SIMETRÍA BILATERAL POR CONSTRUCCIÓN: el cuerpo se dibuja espejado (izq = der) por diseño, como el
     // Bauplan de casi todos los animales. morph[17] (s_asym) SÍ se usa → silueta de cabeza (mejillas/cuello/
     // mandíbula); morph[18] (s_curve) SÍ se usa → patrón de piel. La columna además FLEXIONA articulada al
     // nadar (ver disposición de segmentos). Forma estética NEUTRAL y simétrica: deriva libre → variedad sin colapso.
-    const branch = showParts ? morph[mo + 20] : 0;     // >0.5 ramifica los apéndices (coral/asta)
+    const branch = showParts ? morph[mo + 20] : 0;     // ramificación LIBRE (s_branch): >0.5 → Y · >0.8 → coral
     const coreSh = morph[mo + 21];                     // 0.5 = elipse; ≠ gota/teardrop (afilado frente/detrás)
     const frontF = 1 + (coreSh - 0.5) * 1.7, backF = 1 - (coreSh - 0.5) * 1.7; // (B) gota/dardo más marcado → más variedad de silueta
     // ---- FORMA DE CABEZA (apariencia, todo simétrico). Reaprovecha genes decorativos para dar variedad
@@ -680,15 +684,8 @@ export class Renderer {
         sx[q] = bx + dx * lenA * f + px * w; sy[q] = by + dy * lenA * f + py * w;
       }
       const fk = (segsN * 0.55) | 0, fx = sx[fk], fy = sy[fk];   // punto de bifurcación (~55% del largo)
-      // (A) perfil de grosor: filamento (afila a punta, pow) ↔ remo/aleta (HOJA ancha en el medio), según `paddle`.
-      const hwAt = (q) => {
-        const f = q / segsN;
-        const filament = Math.pow(1 - f, 0.55);                              // afilado orgánico hasta punta
-        const blade = Math.sin(Math.pow(f, 0.7) * Math.PI) * 0.95 + (1 - f) * 0.2; // hoja/ala: ancha cerca de la base, barrida a punta
-        const prof = filament * (1 - paddle) + blade * paddle;               // forma: filamento ↔ hoja/ala
-        const broaden = 1 + paddle * paddle * 2.6;                           // a paddle alto la membrana se ENSANCHA → aleta/ALA
-        return hw0 * prof * broaden;
-      };
+      // perfil de grosor: afilado orgánico (potencia) hasta la punta.
+      const hwAt = (q) => hw0 * Math.pow(1 - q / segsN, 0.55);
       // (Color) DEGRADADO SUAVE a lo largo: raíz oscura → cuerpo claro → punta (acento ya muy sutil), todo como
       // paradas del MISMO degradado → sin borde duro ni "bandera bicolor"; el color rueda de forma continua.
       const gApp = ctx.createLinearGradient(sx[0], sy[0], sx[segsN], sy[segsN]);
@@ -823,8 +820,8 @@ export class Renderer {
       ctx.restore();
     };
 
-    // Disposición de segmentos: columna FLEXIBLE que ONDULA al nadar (onda viajera, no anclajes rígidos) y que
-    // puede BIFURCARSE simétricamente (s_branch alto) → gusanos en Y / coral, no solo cadenas rectas.
+    // Disposición de segmentos: columna FLEXIBLE (cadena ÚNICA) que ONDULA al nadar (onda viajera, no anclajes
+    // rígidos). La ramificación vive SOLO en los apéndices (un único eje `s_branch`); la columna no se bifurca.
     const bodyElong = 1 + (elong - 1) * 0.7;           // segmentos más oblongos → aspecto de gusano
     const segXs = [0], segYs = [0], segAngs = [0], segRs = [r];
     const segParent = [-1];                            // índice del segmento del que "cuelga" cada uno (junturas)
@@ -834,29 +831,12 @@ export class Renderer {
     // que pivota solo en la cabeza). Amplitud por juntura ∝ gen de ondulación; algo de vida en reposo y más al nadar.
     const jointAmp = (0.05 + wave * 0.14) * (0.55 + spd * 0.7);  // flexión POR JUNTURA (rad)
     const waveT = t * (1 + spd * 2.5);                          // fase temporal (oscila/viaja más rápido al nadar)
-    const fork = branch > 0.45 && nSeg >= 3;           // bifurca si es "ramificador" y hay ≥3 segmentos (más visible)
-    const trunk = fork ? Math.max(2, (nSeg / 2) | 0) : nSeg; // longitud del tronco antes de bifurcar
     let cxp = 0, cyp = 0, prevR = r, dir = Math.PI;    // dir = dirección ACUMULADA de la columna (arranca recta hacia atrás)
-    for (let i = 1; i < trunk; i++) {                  // TRONCO: cada juntura flexiona sobre la anterior (onda viajera)
+    for (let i = 1; i < nSeg; i++) {                   // CADENA ÚNICA: cada juntura flexiona sobre la anterior (onda viajera)
       const sr = prevR * tf, gap = (prevR + sr) * 0.5 * spaceF;
       dir += Math.sin(waveT - i * 1.1) * jointAmp;     // giro EN LA JUNTURA i (relativo al segmento previo)
       cxp += Math.cos(dir) * gap; cyp += Math.sin(dir) * gap;
       segXs.push(cxp); segYs.push(cyp); segAngs.push(dir); segRs.push(sr); segParent.push(i - 1); prevR = sr;
-    }
-    if (fork) {                                        // dos RAMAS simétricas desde el final del tronco
-      const rem = nSeg - trunk, perB = Math.max(1, Math.ceil(rem / 2));
-      for (let side = -1; side <= 1; side += 2) {
-        let bx = cxp, by = cyp, brR = prevR, pIdx = trunk - 1, bdir = Math.PI + side * 0.55; // diverge ±0.55, dir propia por rama
-        for (let j = 1; j <= perB; j++) {
-          const sr = brR * tf, gap = (brR + sr) * 0.5 * spaceF;
-          // misma flexión acumulada por juntura, ESPEJADA por lado (× side) → las dos ramas de la Y flexionan en
-          // sentidos opuestos y el fork se mantiene bilateralmente simétrico también en movimiento (no torcido).
-          bdir += side * Math.sin(waveT - (trunk + j) * 1.1) * jointAmp * 1.2;
-          bx += Math.cos(bdir) * gap; by += Math.sin(bdir) * gap;
-          segXs.push(bx); segYs.push(by); segAngs.push(bdir); segRs.push(sr); segParent.push(pIdx); brR = sr;
-          pIdx = segXs.length - 1;
-        }
-      }
     }
     // Módulos opcionales (on/off): partes extra. Se anclan en el arco SUPERIOR [0,π] y se DUPLICAN
     // con su espejo en el inferior → pares simétricos (garras/lóbulos a ambos lados), nunca un bulto suelto.
