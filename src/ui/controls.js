@@ -409,6 +409,25 @@ function setupLab(app, send) {
       modeBtn.blur();   // sin foco retenido → no se queda con aspecto "pulsado"
     });
   }
+
+  // ---- Menú principal (intro): dibuja un bicho "mascota" con el motor de retrato y revela la sim al Entrar ----
+  const intro = $('intro'), enterBtn = $('enterBtn'), introCanvas = $('introCreature');
+  if (intro && enterBtn && introCanvas) {
+    const mascot = new Float32Array(NUM_GENES).fill(0.5);     // genoma a mano para un bicho bonito (señuelo + color)
+    const g = (n, v) => { mascot[G[n]] = v; };
+    g('size', 0.62); g('hue', 0.42); g('sense', 0.5); g('metab', 0.5); g('diet', 0.45); g('aggro', 0.45);
+    g('m_app', 0.4); g('m_len', 0.5); g('m_width', 0.42); g('m_sym', 0.72); g('m_elong', 0.5); g('m_wave', 0.55);
+    g('m_seg', 0.5); g('m_segtaper', 0.5); g('m_segspace', 0.4); g('mod0_on', 0.2); g('mod1_on', 0.2);
+    g('s_asym', 0.2); g('s_curve', 0.6); g('s_place', 0.35); g('s_branch', 0.2); g('s_core', 0.5);
+    g('c_app', 0.42); g('c_tip', 0.62); g('e_fov', 0.3); g('c_eye', 0.5);
+    g('orn', 0.62); g('b_aspect', 0.42); g('c_lum', 0.62); g('c_sat', 0.72);
+    g('o_len', 0.5); g('o_bulb', 0.5); g('o_hue', 0.55); g('o_num', 0.18);
+    const ictx = introCanvas.getContext('2d');
+    let raf = 0, on = true;
+    const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5); } catch (e) {} raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop); // arranca en el primer frame (tras el primer draw) + try/catch → nunca rompe la init
+    enterBtn.addEventListener('click', () => { intro.classList.add('hidden'); on = false; cancelAnimationFrame(raf); });
+  }
 }
 
 // Actualiza el panel inspector cada frame, leyendo el organismo seleccionado (`sel`)
