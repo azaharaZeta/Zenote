@@ -69,12 +69,11 @@ export const config = {
                         // variados en la misma run. El tamaño sigue contando en el combate (depredador > presa).
     k_grazeSize: 0,     // (lever de búsqueda) ingreso de pasto EXTRA ∝ tamaño (alometría). 0 = desactivado.
                         // En aislado infla población; combinado con costes de talla puede abrir abanico herbívoro.
-    k_sizeHerb: 3.5,    // (UI) coste de tamaño EXTRA solo para HERBÍVOROS (∝ size·(1-diet)): frena al herbívoro
-                        // grande sin tocar al carnívoro. CLAVE para la coexistencia: bajo (1.5) la presa ESCAPA de
-                        // la depredación CRECIENDO hasta salirse de la banda de tamaño (ratio>0.90) → comida abundante
-                        // pero incatchable → carnívoros extintos. A 3.5 (medido 5/5, carn ~179) el refugio-por-tamaño
-                        // se encarece → la presa se mantiene cazable → coexistencia robusta. Demasiado alto (≥5) la
-                        // encoge en exceso. 0 = desactivado. Ver organism.js.
+    k_sizeHerb: 1.5,    // (UI) coste de tamaño EXTRA solo para HERBÍVOROS (∝ size·(1-diet)): frena al herbívoro
+                        // grande sin tocar al carnívoro. Va de la mano con preyBandHi: con la banda a 1.0 la presa
+                        // YA NO escapa creciendo (sigue cazable hasta su propio tamaño), así que NO hace falta
+                        // encarecer su talla → se deja bajo (1.5) y emergen HERBÍVOROS GRANDES. Si se subiera la
+                        // banda solo no bastaría; juntos dan herb~carn de tamaño. 0 = desactivado. Ver organism.js.
     k_speed: 1.6,       // (legado; en F-B la velocidad emerge de la morfología, no de este gen)
     k_sense: 0.3,
     k_metab: 0.6,
@@ -253,7 +252,11 @@ export const config = {
     // de presa. Con la banda: distintas tallas de carnívoro cazan distintas tallas de presa (NICHOS) → coexisten varios
     // tamaños en AMBAS dietas, y la talla de presa sin depredador de banda adecuada queda a salvo (refugio por tamaño).
     preyBandLo: 0.30,   // radio_presa / radio_depredador MÍNIMO cazable
-    preyBandHi: 0.90,   // (tune A/T2) MÁXIMO (la presa debe ser claramente menor)
+    preyBandHi: 1.0,    // MÁXIMO ratio presa/depredador ATACABLE. A 1.0 el depredador caza presa HASTA de su propio
+                        // tamaño: cierra el "refugio por tamaño" (la presa no escapa creciendo → no se extinguen los
+                        // carnívoros) Y deja depredador≈presa → emergen CARNÍVOROS y HERBÍVOROS de TAMAÑO SIMILAR
+                        // (medido con k_sizeHerb 1.5: herb≈carn≈4.1, coexist ~4/5). Subirlo (1.8) da carnívoros grandes
+                        // / herbívoros pequeños pero más robusto; bajarlo (<0.9) reabre el refugio → carnívoros extintos.
     // NOTA (experimento descartado): se probó que un ataque fallido NO matara al cazador (riesgo residual
     // ligado al tamaño). Resultado MEDIDO: los carnívoros sobre-disparan → arrasan las presas → colapso
     // y extinción de todos. El riesgo de muerte al fallar es un freno denso-dependiente ESENCIAL para la

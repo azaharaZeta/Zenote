@@ -320,6 +320,7 @@ const LAB_SPEC = [
   { cat: '⚔ Combate y dieta', items: [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación/combate (Fase 2). Desactivado: solo herbívoros pastando.' },
     { k: 'combat.sizeAdvantage', label: 'Ventaja de tamaño', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto pesa el tamaño en quién gana un combate. Más alto = el grande gana casi siempre.' },
+    { k: 'combat.preyBandHi', label: 'Techo de banda de caza', min: 0.5, max: 3, step: 0.05, dec: 2, d: 'Máximo ratio tamaño_presa/tamaño_depredador ATACABLE. Bajo (0.9) = la presa debe ser claramente menor → depredador grande y la presa escapa CRECIENDO (refugio por tamaño → carnívoros extintos). 1.0 = caza hasta su tamaño. >1.0 = puede intentar presa MAYOR que él; la dificultad la pone el combate (gana menos, muere más al fallar) → posible pero caro. Se aplica en vivo.' },
     { k: 'combat.handlingTime', label: 'Tiempo de manejo (digestión)', min: 0, max: 120, step: 4, dec: 0, d: 'Ticks de enfriamiento tras una captura (digestión). Limita la tasa de caza y amortigua las oscilaciones depredador-presa.' },
     { k: 'combat.dietMargin', label: 'Margen de dieta (presa)', min: 0, max: 0.6, step: 0.02, dec: 2, d: 'Diferencia de dieta mínima para considerar a otro "presa" y no un igual. Evita que organismos parecidos se coman entre sí.' },
     { k: 'diet.omniPenalty', label: 'Penalización omnívora', min: 0, max: 1, step: 0.05, dec: 2, d: 'Penalización al omnívoro (dieta intermedia). Alta = especializarse (herbívoro o carnívoro puro) rinde más.' },
