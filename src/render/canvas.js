@@ -537,9 +537,9 @@ export class Renderer {
           const cSat = deco ? deco[i * 7 + 2] : 0.35;   // VIVACIDAD (deriva libre)
           const cLumC = deco ? deco[i * 7 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
           h = (165 + sim.hue[i] * 150) % 360;  // banda ESTRECHA (turquesa→azul→violeta→magenta) → ecosistema armónico, no circo
-          s = 13 + cSat * cSat * 78;           // suelo subido (8→13: menos gris) + techo un pelín más vivo → algo más de color
-          // brillo = energía + LUMINOSIDAD (cuadrática). Base subida (22→26): cuerpos un poco menos oscuros.
-          l = abyssal ? (26 + ef * 24 + cLumC * cLumC * 14) : (26 + ef * 26 + cLumC * cLumC * 10);
+          s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
+          // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
+          l = abyssal ? (31 + ef * 24 + cLumC * cLumC * 14) : (31 + ef * 26 + cLumC * cLumC * 10);
           // Los más CARNÍVOROS tienden a algo más oscuros (lectura visual del gen `diet`, SOLO render). Suavizado 7→5.
           l -= sim.diet[i] * 5;
         }
@@ -560,9 +560,9 @@ export class Renderer {
         // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
         // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
         const cLumG = deco ? deco[i * 7 + 1] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
-        const gr = r * (abyssal ? (1.5 + cLumG * cLumG * 2.8) : (1.35 + cLumG * cLumG * 2.2)); // base subida: halo NORMAL algo mayor
-        const gl = abyssal ? Math.min(80, l + 24) : Math.min(72, l + 10);
-        const a0 = (abyssal ? 0.16 : 0.10) + cLumG * cLumG * (abyssal ? 0.42 : 0.28); // suelo subido (0.11→0.16): glow normal más visible; intenso sigue raro
+        const gr = r * (abyssal ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4)); // halo algo mayor
+        const gl = abyssal ? Math.min(82, l + 26) : Math.min(74, l + 12);
+        const a0 = (abyssal ? 0.21 : 0.13) + cLumG * cLumG * (abyssal ? 0.48 : 0.32); // suelo y empuje subidos → glow más visible
         const gg = ctx.createRadialGradient(x, y, r * 0.25, x, y, gr);
         gg.addColorStop(0, `hsla(${h},${s}%,${gl}%,${a0})`);
         gg.addColorStop(0.45, `hsla(${h},${s}%,${gl}%,${a0 * 0.32})`);
@@ -1168,8 +1168,8 @@ export class Renderer {
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
     const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (banda estrecha + sat/luz bajadas)
-    const h = (165 + genes[G.hue] * 150) % 360, s = 13 + cSat * cSat * 78;
-    const l = 26 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
+    const h = (165 + genes[G.hue] * 150) % 360, s = 18 + cSat * cSat * 82;
+    const l = 31 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
