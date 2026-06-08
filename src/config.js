@@ -62,15 +62,19 @@ export const config = {
   },
   energy: {
     c_base: 0.02,
+    carnUpkeep: 0.15,   // (UI) RESILIENCIA carnívora: descuento de coste basal ∝ dieta (0.15 = −15% al gasto en
+                        // dieta 100% carnívora) → aguantan mejor los valles de presa sin tocar el combate. 0 = off.
     k_size: 0.67,       // coste basal por tamaño (muy bajado 1.8→0.3): el tamaño es CASI NEUTRO energéticamente
                         // → deriva libre por todo el rango (como los genes de apariencia) → coexisten tamaños
                         // variados en la misma run. El tamaño sigue contando en el combate (depredador > presa).
     k_grazeSize: 0,     // (lever de búsqueda) ingreso de pasto EXTRA ∝ tamaño (alometría). 0 = desactivado.
                         // En aislado infla población; combinado con costes de talla puede abrir abanico herbívoro.
-    k_sizeHerb: 1.5,    // coste de tamaño EXTRA solo para HERBÍVOROS (∝ size·(1-diet)): frena al herbívoro
-                        // enorme (que saturaba el mapa) sin tocar al carnívoro. Medido (14k×6 semillas): a 1.5 los
-                        // herbívoros "enormes" (size>0.7) caen del ~8% al ~0.5% y los carnívoros siguen 6/6; la
-                        // población baja un poco (menos hormiguero). 0 = desactivado. Ver organism.js.
+    k_sizeHerb: 3.5,    // (UI) coste de tamaño EXTRA solo para HERBÍVOROS (∝ size·(1-diet)): frena al herbívoro
+                        // grande sin tocar al carnívoro. CLAVE para la coexistencia: bajo (1.5) la presa ESCAPA de
+                        // la depredación CRECIENDO hasta salirse de la banda de tamaño (ratio>0.90) → comida abundante
+                        // pero incatchable → carnívoros extintos. A 3.5 (medido 5/5, carn ~179) el refugio-por-tamaño
+                        // se encarece → la presa se mantiene cazable → coexistencia robusta. Demasiado alto (≥5) la
+                        // encoge en exceso. 0 = desactivado. Ver organism.js.
     k_speed: 1.6,       // (legado; en F-B la velocidad emerge de la morfología, no de este gen)
     k_sense: 0.3,
     k_metab: 0.6,

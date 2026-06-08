@@ -285,7 +285,9 @@ const LAB_SPEC = [
   ]},
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
+    { k: 'energy.carnUpkeep', label: 'Resiliencia carnívora', min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Descuento de coste basal proporcional a la dieta carnívora → los carnívoros gastan menos y aguantan mejor los valles de presa (su principal causa de muerte). No toca el combate. Se aplica a las crías nuevas (se propaga al renovarse la población).' },
     { k: 'energy.k_size', label: 'Coste por tamaño', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto cuesta ser grande. Bajo = el tamaño es casi neutro y coexisten tamaños variados por deriva; alto = ser grande se penaliza fuerte.' },
+    { k: 'energy.k_sizeHerb', label: 'Coste tamaño herbívoro', min: 0, max: 6, step: 0.25, dec: 2, d: 'Coste de tamaño EXTRA solo para herbívoros. CLAVE para la coexistencia: si es bajo, la presa escapa de la depredación CRECIENDO hasta salirse de la banda de tamaño (comida abundante pero incatchable) y los carnívoros se extinguen. Subirlo encarece ese "refugio por tamaño" → la presa sigue cazable. Demasiado alto encoge la presa en exceso. Se aplica a las crías nuevas.' },
     { k: 'energy.k_metab', label: 'Coste por metabolismo', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto encarece el gen de metabolismo el coste basal. Metabolismo alto come y procesa más rápido, pero gasta más.' },
     { k: 'energy.k_sense', label: 'Coste por visión', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste energético de tener buena visión (alcance). Ver lejos cuesta: presiona a invertir en vista solo si compensa.' },
     { k: 'energy.k_body', label: 'Coste por masa corporal', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste extra por masa (segmentos y módulos). Los cuerpos complejos gastan más en mantenerse.' },

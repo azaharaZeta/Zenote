@@ -103,9 +103,13 @@ export function computePhenotype(sim, i) {
   // un gran herbívoro depende de comida de baja densidad (pasto) y le cuesta sostener su masa → penaliza al
   // herbívoro enorme (que saturaba el mapa) sin tocar al depredador. No decide qué tamaño es "bueno": cambia el
   // gradiente coste↔tamaño SOLO en el nicho herbívoro. La selección sigue esculpiendo la talla.
+  // RESILIENCIA CARNÍVORA: descuento de coste basal ∝ dieta (gasta menos → aguanta mejor los VALLES de presa,
+  // que es el cuello de botella real del depredador). No toca el combate (su riesgo de muerte al fallar sigue
+  // siendo el estabilizador). carnUpkeep=0 → sin descuento.
   sim.baseCost[i] =
     en.c_base * (1 + en.k_metab * metab) *
-    (1 + en.k_size * size + (en.k_sizeHerb || 0) * size * (1 - diet) + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure);
+    (1 + en.k_size * size + (en.k_sizeHerb || 0) * size * (1 - diet) + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure) *
+    (1 - (en.carnUpkeep || 0) * diet);
 
   // Alimentación: ritmo escala con metabolismo, con la MASA corporal (segmentos/módulos = más superficie para
   // pastar) y opcionalmente con el TAMAÑO (alometría: gran forrajeador = más ingesta). k_grazeSize por defecto 0
