@@ -597,42 +597,43 @@ export class Renderer {
     // las proporciones a radio pequeño. Así el bicho se ve IGUAL a cualquier tamaño (mundo == retrato).
     const ds = this._drawScale || 1, fmin = (px) => px / ds;   // fmin(px) = mínimo de px en pantalla, en unidades de dibujo
     const app = 1 + ((morph[mo] * 7 + 0.5) | 0);     // 1..8 apéndices (se permite UNO)
-    const len = r * (0.35 + morph[mo + 1] * 7.5);     // largo: rango MUY AMPLIO (cortos ↔ flagelos larguísimos)
-    const lw = Math.max(fmin(0.5), (0.06 + morph[mo + 2] * 1.9) * r * 0.62); // grosor: rango COMPLETO finos↔gruesos (no todos dedos gordos)
+    const len = r * (0.55 + morph[mo + 1] * 7.3);     // largo: suelo subido (menos muñones) ↔ flagelos larguísimos
+    const lw = Math.max(fmin(0.45), (0.05 + morph[mo + 2] * 1.25) * r * 0.48); // grosor MÁS ESBELTO de media (no dedos gordos); rango fino↔grueso
     const sym = morph[mo + 3];                         // repartido ↔ agrupado atrás
-    const elong = 1 + morph[mo + 4] * 2.4;             // elongación de la cabeza (rango ampliado: de redonda a MUY alargada/eel)
+    const elong = 1 + morph[mo + 4] * 1.3;             // elongación de la cabeza: rango MODERADO (de redonda a alargada, sin eels degenerados)
     const wave = morph[mo + 5];                        // amplitud de ondulación
     const segsN = 9;                                   // resolución de la curva del apéndice (más puntos → contorno suave/orgánico)
     // Segmentación (complejidad corporal). Solo si el cuerpo es bien grande en pantalla → coste acotado.
     const nSeg = showParts ? 1 + ((morph[mo + 6] * 4 + 0.5) | 0) : 1; // 1..5 segmentos
     const tf = 0.55 + morph[mo + 7] * 0.5;             // factor de tamaño por segmento (cónica)
+    const paddle = morph[mo + 7];                      // (A) reusa el gen de afilado: perfil del apéndice (0 filamento afilado ↔ 1 remo/aleta ancho)
     const spaceF = 0.58 + morph[mo + 8] * 0.72;        // separación REDUCIDA → segmentos SOLAPAN → cuerpo continuo (no cuentas sueltas)
-    // SIMETRÍA BILATERAL POR CONSTRUCCIÓN: el cuerpo se dibuja espejado (izq = der) por diseño, como
-    // el Bauplan de casi todos los animales. No hay "gen de asimetría" (sería ruido de desarrollo, no
-    // un rasgo) ni curvatura de columna. morph[17] (s_asym) y morph[18] (s_curve) quedan VESTIGIALES.
-    // Forma estética restante (NEUTRAL, simétrica: deriva libre → variedad de siluetas sin colapso).
+    // SIMETRÍA BILATERAL POR CONSTRUCCIÓN: el cuerpo se dibuja espejado (izq = der) por diseño, como el
+    // Bauplan de casi todos los animales. morph[17] (s_asym) SÍ se usa → silueta de cabeza (mejillas/cuello/
+    // mandíbula); morph[18] (s_curve) SÍ se usa → patrón de piel. La columna además FLEXIONA articulada al
+    // nadar (ver disposición de segmentos). Forma estética NEUTRAL y simétrica: deriva libre → variedad sin colapso.
     const branch = showParts ? morph[mo + 20] : 0;     // >0.5 ramifica los apéndices (coral/asta)
     const coreSh = morph[mo + 21];                     // 0.5 = elipse; ≠ gota/teardrop (afilado frente/detrás)
-    const frontF = 1 + (coreSh - 0.5) * 1.5, backF = 1 - (coreSh - 0.5) * 1.5; // gota/dardo más marcado
+    const frontF = 1 + (coreSh - 0.5) * 1.7, backF = 1 - (coreSh - 0.5) * 1.7; // (B) gota/dardo más marcado → más variedad de silueta
     // ---- FORMA DE CABEZA (apariencia, todo simétrico). Reaprovecha genes decorativos para dar variedad
     // sin reindexar el genoma: proporción (m_len), ancho ⟂ largo (m_width), silueta (s_asym=morph[17]). ----
     const headScale = 0.6 + (1 - morph[mo + 1]) * 0.55;   // proporción cabeza/cuerpo: apéndices largos → cabeza menor (anti-cabezón)
-    const headW = 0.38 + bAspect * 1.45;                  // (E) esbeltez corporal: de MUY fino (0.38) a redondo (1.8), DESACOPLADO del grosor
-                                                          // de antenas → del estilizado/hidrodinámico (0.5) al regordete (1.65)
+    const headW = 0.55 + bAspect * 0.95;                  // (E) esbeltez corporal MODERADA: ni aguja (0.55) ni globo (1.5), DESACOPLADO
+                                                          // del grosor de antenas → del estilizado/hidrodinámico al regordete (sin extremos)
     const hr = r * headScale;                             // radio de cabeza efectivo (ojos y abanico se anclan a él)
     const silMode = Math.min(3, (morph[mo + 17] * 4) | 0); // 0 elipse · 1 mejillas/lóbulos · 2 cuello · 3 mandíbula
-    const silAmt = silMode === 0 ? 0 : 0.4 + (morph[mo + 17] * 4 - silMode) * 0.55; // intensidad de la silueta
+    const silAmt = silMode === 0 ? 0 : 0.45 + (morph[mo + 17] * 4 - silMode) * 0.6; // (B) intensidad de silueta algo mayor → más carácter
     // ---- Colores (apéndice, punta, contornos, volumen). En modos de datos: tono único. ----
     const cApp = tint ? tint[to] : 0.5, cTip = tint ? tint[to + 1] : 0.5, orn = tint ? tint[to + 2] : 0;
     const appL = Math.max(14, l - 16);
-    const appHue = ornament ? (((h + (cApp - 0.5) * 240) % 360) + 360) % 360 : h;
+    const appHue = ornament ? (((h + (cApp - 0.5) * 70) % 360) + 360) % 360 : h; // deriva de tono SUTIL (±35°), no chillón
     const appColor = `hsl(${appHue},${s}%,${appL}%)`;
     // Volumen del apéndice (Fase A): oscuro donde se ancla al cuerpo → claro hacia la punta (membrana
     // translúcida/aleta) + un brillo de cresta. Sustituye al relleno PLANO que se veía de cartón en grande.
     const appDark = `hsl(${appHue},${Math.min(100, s + 8)}%,${Math.max(7, appL - 11)}%)`;
     const appLight = `hsl(${appHue},${Math.max(18, s - 8)}%,${Math.min(74, appL + 16)}%)`;
-    const appSheen = `hsla(${appHue},${Math.max(15, s - 12)}%,${Math.min(86, appL + 30)}%,0.5)`;
-    const tipHue = (((appHue + (cTip - 0.5) * 220) % 360) + 360) % 360;
+    const appSheen = `hsla(${appHue},${Math.max(15, s - 12)}%,${Math.min(86, appL + 30)}%,0.3)`; // cresta MÁS tenue (no raya marcada)
+    const tipHue = (((appHue + (cTip - 0.5) * 60) % 360) + 360) % 360; // acento de punta SUTIL (±30°)
     const tipColor = `hsl(${tipHue},${s}%,${Math.min(80, appL + 26)}%)`;
     const tipStart = (segsN * 0.6) | 0;
     const outApp = `hsl(${appHue},${s}%,${Math.max(14, appL - 7)}%)`;
@@ -679,30 +680,45 @@ export class Renderer {
         sx[q] = bx + dx * lenA * f + px * w; sy[q] = by + dy * lenA * f + py * w;
       }
       const fk = (segsN * 0.55) | 0, fx = sx[fk], fy = sy[fk];   // punto de bifurcación (~55% del largo)
-      // perfil de grosor CURVO (potencia) → afilado orgánico hasta punta, sin trapecio ni tip plano
-      const hwAt = (q) => hw0 * Math.pow(1 - q / segsN, 0.55);
-      // Relleno con DEGRADADO a lo largo (raíz oscura → punta clara) en vez de color plano → volumen.
+      // (A) perfil de grosor: filamento (afila a punta, pow) ↔ remo/aleta (HOJA ancha en el medio), según `paddle`.
+      const hwAt = (q) => {
+        const f = q / segsN;
+        const filament = Math.pow(1 - f, 0.55);                    // afilado orgánico hasta punta
+        const leaf = Math.sin(f * Math.PI) * 0.95 + (1 - f) * 0.12; // hoja/remo: ancho en el medio, romo
+        return hw0 * (filament * (1 - paddle) + leaf * paddle);
+      };
+      // (Color) DEGRADADO SUAVE a lo largo: raíz oscura → cuerpo claro → punta (acento ya muy sutil), todo como
+      // paradas del MISMO degradado → sin borde duro ni "bandera bicolor"; el color rueda de forma continua.
       const gApp = ctx.createLinearGradient(sx[0], sy[0], sx[segsN], sy[segsN]);
-      gApp.addColorStop(0, appDark); gApp.addColorStop(1, appLight);
+      gApp.addColorStop(0, appDark); gApp.addColorStop(0.55, appLight);
+      gApp.addColorStop(1, ornament ? tipColor : appLight);
       ctx.fillStyle = gApp; ctx.beginPath();
       ctx.moveTo(sx[0] + px * hw0, sy[0] + py * hw0);
       for (let q = 1; q <= segsN; q++) { const hw = hwAt(q); ctx.lineTo(sx[q] + px * hw, sy[q] + py * hw); }
       for (let q = segsN; q >= 0; q--) { const hw = hwAt(q); ctx.lineTo(sx[q] - px * hw, sy[q] - py * hw); }
       ctx.closePath(); ctx.fill();
       ctx.lineWidth = outW; ctx.strokeStyle = outApp; ctx.stroke();
-      // Brillo de cresta: línea fina y tenue por el centro (raíz→~60%) → apéndice húmedo, con relieve.
-      ctx.lineWidth = Math.max(fmin(0.3), hw0 * 0.45); ctx.strokeStyle = appSheen; ctx.lineCap = 'round';
+      // Brillo de cresta: línea fina y MUY tenue por el centro → apéndice húmedo, con relieve (no una raya marcada).
+      ctx.lineWidth = Math.max(fmin(0.3), hw0 * 0.3); ctx.strokeStyle = appSheen; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(sx[0], sy[0]);
       for (let q = 1; q <= tipStart; q++) ctx.lineTo(sx[q], sy[q]);
-      ctx.stroke(); ctx.lineCap = 'butt';
-      if (ornament) {
-        ctx.fillStyle = tipColor; ctx.beginPath();
-        const hwS = hwAt(tipStart);
-        ctx.moveTo(sx[tipStart] + px * hwS, sy[tipStart] + py * hwS);
-        for (let q = tipStart + 1; q <= segsN; q++) { const hw = hwAt(q); ctx.lineTo(sx[q] + px * hw, sy[q] + py * hw); }
-        for (let q = segsN; q >= tipStart; q--) { const hw = hwAt(q); ctx.lineTo(sx[q] - px * hw, sy[q] - py * hw); }
-        ctx.closePath(); ctx.fill();
+      ctx.stroke();
+      // (C) Textura sutil en apéndices GRANDES: 1-3 nervios longitudinales tenues (aspecto de aleta/membrana, no
+      // cartón plano). Nº según la piel (s_curve/tex2); escalan con el ancho local → no invaden la punta.
+      if (texMode && lenA * ds > 26) {
+        const nr = 1 + (texMode >= 2 ? 1 : 0) + (tex2 > 0.6 ? 1 : 0);
+        ctx.lineWidth = Math.max(fmin(0.25), hw0 * 0.14);
+        for (let rI = 1; rI <= nr; rI++) {
+          const base = (rI / (nr + 1) - 0.5) * 1.3;                // posición lateral del nervio (−0.65..0.65)
+          ctx.beginPath();
+          for (let q = 0; q <= tipStart; q++) {
+            const o = base * hwAt(q), xx = sx[q] + px * o, yy = sy[q] + py * o;
+            if (q === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+          }
+          ctx.stroke();
+        }
       }
+      ctx.lineCap = 'butt';
       if (br > 0.5) {                                  // ramificación: dos sub-apéndices (aspecto coral/asta)
         const sub = br > 0.75 ? br - 0.3 : 0;          // 2º nivel de ramificación si MUY ramificado (coral denso)
         drawApp(fx, fy, ang - 0.65, lenA * 0.5, lwA * 0.72, k + 11, sub);
