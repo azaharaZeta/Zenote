@@ -214,7 +214,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
     border-radius: 16px 16px 0 0;
   }
   #panel.hidden { transform: translateY(100%); }
-  #inspector { bottom: auto; top: 8px; right: 8px; width: 200px; }
+  /* Inspector en móvil: BARRA HORIZONTAL arriba (a lo ancho, baja) → no tapa el centro ni el organismo.
+     Retrato pequeño + especie/navegación en línea 1; nº de individuos + energía en línea 2. Genoma detallado oculto. */
+  #inspector { top: 8px; left: 8px; right: 8px; bottom: auto; width: auto; max-height: none; overflow: visible; padding: 8px 34px 8px 10px; }
+  #inspector.visible { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; row-gap: 3px; }
+  .insp-portrait { width: 60px; height: 48px; margin: 0; flex: 0 0 auto; }
+  .insp-nav { margin: 0; flex: 1 1 150px; min-width: 130px; }
+  .insp-members { margin: 0; text-align: left; flex: 1 1 100%; order: 3; }
+  .insp-head { margin: 0; order: 4; flex: 0 0 auto; }
+  #inspector .insp-sub, #inspector .insp-card, #inspector .ginfo { display: none; } /* genoma detallado: fuera en móvil (cabe la barra) */
   .chart-pair { display: flex; gap: 8px; }
   .chart-pair .chart { flex: 1; min-width: 120px; margin-bottom: 0; }
 }
