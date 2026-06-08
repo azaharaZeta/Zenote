@@ -912,7 +912,6 @@ export class Renderer {
       const np = 1 + ((oNum * oNum * 6) | 0);          // 1..7 señuelos, CUADRÁTICO → casi siempre pocos (1-2); muchos es raro
       const plen = r * (0.5 + oLen * 5.5);             // largo del tallo (o_len): de corto ↔ MUY largo colgante (hasta ~6×radio)
       const ohue = ornament ? appHue : h;
-      const mock = (this._ornMock != null) ? this._ornMock : 1; // por DEFECTO señuelo bioluminiscente (1); 0 actual · 2 ocelo (solo para maquetas)
       ctx.lineCap = 'round';
       const bulbR = Math.max(fmin(0.6), r * (0.06 + oBulb * 0.34)); // tamaño del bulbo (gen propio o_bulb): puntito ↔ orbe grande
       const bulbHue = (((ohue + (oHue - 0.5) * 300) % 360) + 360) % 360; // color del bulbo (gen propio o_hue): a juego ↔ acento contrastado
@@ -926,15 +925,7 @@ export class Renderer {
         const dx = Math.cos(ang), dy = Math.sin(ang);
         const bx = ax0, by = ay0;                                  // base común (illicium) en el morro
         const tx = ax0 + dx * plen, ty = ay0 + dy * plen;          // punta proyectada hacia delante
-        if (mock === 0) {                              // ACTUAL: línea plana + disco plano
-          ctx.lineWidth = Math.max(fmin(0.6), r * 0.09);
-          ctx.strokeStyle = `hsl(${ohue},92%,66%)`;
-          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
-          ctx.fillStyle = `hsl(${(ohue + 40) % 360},95%,72%)`;
-          ctx.beginPath(); ctx.arc(tx, ty, Math.max(fmin(0.8), r * 0.12), 0, 6.2832); ctx.fill();
-          continue;
-        }
-        // --- Tallo CURVADO + AFILADO + DEGRADADO (común a señuelo y ocelo) ---
+        // --- Tallo CURVADO + AFILADO + DEGRADADO ---
         const mx0 = (bx + tx) / 2, my0 = (by + ty) / 2;
         let nx = -(ty - by), ny = (tx - bx); const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
         const curve = plen * 0.16 * Math.sin(p * 1.7 + 0.6);     // arco leve, variable por pluma
@@ -956,28 +947,20 @@ export class Renderer {
         ctx.closePath(); ctx.fill();
         const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;   // latido de exhibición
         const br = bulbR * (0.9 + 0.4 * orn) * pulse;
-        if (mock === 1) {                              // SEÑUELO BIOLUMINISCENTE: halo + esfera + brillo
-          const h2 = bulbHue;                          // color del bulbo (acento, gen o_hue)
-          // HALO: amplio pero TRANSLÚCIDO con caída GRADUAL → resplandor, no disco opaco. El núcleo brillante
-          // de verdad es la esfera del bulbo (abajo); esto es solo el aura suave. Se rellena hasta el radio
-          // completo (alpha→0) para que no quede borde duro. El bloom global lo realza sin volverlo sólido.
-          const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 7);
-          hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`);    // centro luminoso pero translúcido
-          hg.addColorStop(0.18, `hsla(${h2},95%,68%,0.22)`);
-          hg.addColorStop(0.45, `hsla(${h2},95%,64%,0.07)`);
-          hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);      // desvanecido total → alcance gradual
-          ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 7, 0, 6.2832); ctx.fill();
-          const bg = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
-          bg.addColorStop(0, `hsl(${h2},95%,84%)`); bg.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
-          ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(tx - br * 0.3, ty - br * 0.34, br * 0.3, 0, 6.2832); ctx.fill();
-        } else {                                       // OCELO PAVO REAL: anillos concéntricos (mancha ocular)
-          const oR = br * 1.3;
-          ctx.fillStyle = `hsl(${(ohue + 200) % 360},70%,40%)`;  ctx.beginPath(); ctx.arc(tx, ty, oR, 0, 6.2832); ctx.fill();        // anillo externo contrastado
-          ctx.fillStyle = `hsl(${(ohue + 40) % 360},95%,68%)`;   ctx.beginPath(); ctx.arc(tx, ty, oR * 0.68, 0, 6.2832); ctx.fill(); // anillo medio luminoso
-          ctx.fillStyle = `hsl(${ohue},65%,9%)`;                 ctx.beginPath(); ctx.arc(tx, ty, oR * 0.36, 0, 6.2832); ctx.fill();  // centro (pupila)
-          ctx.fillStyle = 'rgba(255,255,255,0.85)';              ctx.beginPath(); ctx.arc(tx - oR * 0.16, ty - oR * 0.18, oR * 0.13, 0, 6.2832); ctx.fill();
-        }
+        // SEÑUELO BIOLUMINISCENTE: halo translúcido + esfera + brillo.
+        const h2 = bulbHue;                            // color del bulbo (acento, gen o_hue)
+        // HALO: amplio pero TRANSLÚCIDO con caída GRADUAL → resplandor, no disco opaco. El núcleo brillante de
+        // verdad es la esfera del bulbo (abajo); esto es el aura. Se rellena hasta alpha→0 (sin borde duro).
+        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 7);
+        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`);    // centro luminoso pero translúcido
+        hg.addColorStop(0.18, `hsla(${h2},95%,68%,0.22)`);
+        hg.addColorStop(0.45, `hsla(${h2},95%,64%,0.07)`);
+        hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);      // desvanecido total → alcance gradual
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 7, 0, 6.2832); ctx.fill();
+        const bg = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
+        bg.addColorStop(0, `hsl(${h2},95%,84%)`); bg.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
+        ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(tx - br * 0.3, ty - br * 0.34, br * 0.3, 0, 6.2832); ctx.fill();
       }
     }
 
@@ -1004,8 +987,6 @@ export class Renderer {
       if (face && face.length) { const gx = face[fo], gy = face[fo + 1]; lgx = gx * ch + gy * sh; lgy = -gx * sh + gy * ch; }
       const atk = (face && face.length) ? face[fo + 2] : 0;
 
-      // Todas las especies usan el ojo ESCLERÓTICA integrado (treat 2). El húmedo (1) queda solo para maquetas.
-      const treat = (this._eyeMock != null) ? this._eyeMock : 2;
       // Iris ligado a la PALETA DEL CUERPO (±35°, no arcoíris) → el ojo pertenece al organismo.
       const iHue = (((h + (cEye - 0.5) * 70) % 360) + 360) % 360;
       const pupilPath = (ix, iy, erx, ery, pr) => {
@@ -1034,54 +1015,6 @@ export class Renderer {
         const tilt = eyeTiltMax * (sideSign || 0);
         const erx = er, ery = er * eyeAspect;
         const ix = cx + lgx * er * 0.3, iy = cy + lgy * ery * 0.3;
-        // LOD: si el ojo es PEQUEÑO en pantalla (vista de ecosistema), la cuenca/esclerótica/párpados se
-        // emborronan en un punto oscuro. Versión limpia y legible: iris claro + pupila + destello + aro fino.
-        // (TEMP) DESACTIVADO para comprobar que mundo == inspector (siempre ojo detallado).
-        if (false && er * (this._drawScale || 1) < 6) {
-          ctx.fillStyle = `hsl(${iHue},58%,52%)`;
-          ctx.beginPath(); ctx.ellipse(cx, cy, erx, ery, 0, 0, 6.2832); ctx.fill();
-          ctx.lineWidth = Math.max(0.25, er * 0.12); ctx.strokeStyle = `hsl(${iHue},45%,20%)`;   // aro fino para definir sobre cuerpos claros
-          ctx.beginPath(); ctx.ellipse(cx, cy, erx, ery, 0, 0, 6.2832); ctx.stroke();
-          ctx.fillStyle = `hsl(${iHue},55%,8%)`;
-          ctx.beginPath(); ctx.arc(ix, iy, er * 0.42, 0, 6.2832); ctx.fill();                    // pupila
-          ctx.fillStyle = 'rgba(255,255,255,0.92)';
-          ctx.beginPath(); ctx.arc(ix - er * 0.22, iy - er * 0.26, er * 0.24, 0, 6.2832); ctx.fill(); // destello
-          return;
-        }
-        if (treat === 3) {                                          // ----- INTEGRADO: párpados + ceja/cuenca, sin aro -----
-          const rx = er * 0.9, ry = er * 0.9 * eyeAspect;           // algo más pequeño (menos googly)
-          const jx = cx + lgx * rx * 0.28, jy = cy + lgy * ry * 0.28;
-          // 1) Relieve en el CUERPO: cuenca (AO) que rodea + ceja luminosa arriba → el ojo se asienta en una cara.
-          const sk = ctx.createRadialGradient(cx, cy - ry * 0.2, rx * 0.5, cx, cy + ry * 0.25, rx * 1.5);
-          sk.addColorStop(0, 'rgba(0,0,0,0.26)'); sk.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = sk; ctx.beginPath(); ctx.ellipse(cx, cy, rx * 1.45, ry * 1.55, 0, 0, 6.2832); ctx.fill();
-          const bh = ctx.createRadialGradient(cx - rx * 0.2, cy - ry * 1.1, rx * 0.1, cx, cy - ry * 1.0, rx * 1.2);
-          bh.addColorStop(0, `hsla(${h},${Math.max(20, s - 10)}%,${Math.min(90, l + 24)}%,0.5)`); bh.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = bh; ctx.beginPath(); ctx.ellipse(cx, cy - ry * 1.05, rx * 1.2, ry * 0.7, 0, 0, 6.2832); ctx.fill();
-          // 2) Globo: esclerótica sombreada (tono cercano al cuerpo) + iris + pupila + brillo. SIN contorno.
-          const sg = ctx.createRadialGradient(cx - rx * 0.3, cy - ry * 0.4, rx * 0.1, cx, cy, rx);
-          sg.addColorStop(0, `hsl(${iHue},16%,74%)`); sg.addColorStop(1, `hsl(${iHue},22%,44%)`);
-          ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832); ctx.fill();
-          const ig = ctx.createRadialGradient(jx - rx * 0.15, jy - rx * 0.18, rx * 0.04, jx, jy, rx * 0.62);
-          ig.addColorStop(0, `hsl(${iHue},60%,48%)`); ig.addColorStop(1, `hsl(${iHue},64%,26%)`);
-          ctx.fillStyle = ig; ctx.beginPath(); ctx.ellipse(jx, jy, rx * 0.6, ry * 0.6, 0, 0, 6.2832); ctx.fill();
-          ctx.fillStyle = `hsl(${iHue},55%,5%)`; pupilPath(jx, jy, rx, ry, rx * 0.34); ctx.fill();
-          const hlx = jx - rx * 0.26, hly = jy - ry * 0.32, hrr = rx * 0.45;
-          const hg = ctx.createRadialGradient(hlx, hly, 0, hlx, hly, hrr);
-          hg.addColorStop(0, 'rgba(255,255,255,0.9)'); hg.addColorStop(0.5, 'rgba(255,255,255,0.22)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
-          ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(hlx, hly, hrr, 0, 6.2832); ctx.fill();
-          // 3) PÁRPADOS de piel del cuerpo, recortados a la forma del ojo → globo engastado (forma de lente).
-          ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832); ctx.clip();
-          const ul = ctx.createLinearGradient(0, cy - ry * 1.3, 0, cy - ry * 0.3);
-          ul.addColorStop(0, coreLight); ul.addColorStop(1, coreDark);
-          ctx.fillStyle = ul; ctx.beginPath(); ctx.ellipse(cx, cy - ry * 1.3, rx * 1.18, ry * 1.0, 0, 0, 6.2832); ctx.fill(); // párpado superior
-          ctx.fillStyle = coreDark; ctx.beginPath(); ctx.ellipse(cx, cy + ry * 1.6, rx * 1.18, ry * 1.0, 0, 0, 6.2832); ctx.fill();  // párpado inferior
-          ctx.restore();
-          // 4) Pliegue del párpado superior (sombra fina curva) → profundidad del engaste.
-          ctx.lineWidth = Math.max(0.3, er * 0.05); ctx.strokeStyle = `hsla(${h},${s}%,${Math.max(6, l - 26)}%,0.45)`;
-          ctx.beginPath(); ctx.ellipse(cx, cy - ry * 0.32, rx * 0.92, ry * 0.55, 0, 0.18 * Math.PI, 0.82 * Math.PI); ctx.stroke();
-          return;
-        }
         // OJO = PERLA HÚMEDA OSCURA engastada en la carne. No esclerótica clara (parecía pegote blanco);
         // una cuenta vidriosa oscura, teñida con la paleta del cuerpo, hundida en una cuenca → pertenece al organismo.
         // 1) CUENCA: la carne se hunde alrededor → anillo de sombra (AO) + labio CLARO arriba (la piel atrapa luz
@@ -1105,7 +1038,7 @@ export class Renderer {
         ig.addColorStop(0, `hsla(${iHue},70%,30%,0)`); ig.addColorStop(0.6, `hsla(${iHue},75%,42%,0.55)`); ig.addColorStop(1, `hsla(${iHue},70%,20%,0)`);
         ctx.fillStyle = ig; ctx.beginPath(); ctx.ellipse(ix, iy, erx * 0.62, ery * 0.62, 0, 0, 6.2832); ctx.fill();
         // 4) PUPILA: negra, pequeña, sigue la mirada (núcleo de la perla).
-        ctx.fillStyle = 'rgba(0,0,0,0.92)'; pupilPath(ix, iy, erx, ery, er * (treat === 1 ? 0.42 : 0.3)); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.92)'; pupilPath(ix, iy, erx, ery, er * 0.3); ctx.fill();
         // 5) BRILLO especular: destello pequeño y nítido arriba-izq (humedad) + chispa secundaria minúscula.
         const hlx = gx, hly = gy, hrr = er * 0.3;
         const hg = ctx.createRadialGradient(hlx, hly, 0, hlx, hly, hrr);
@@ -1152,7 +1085,7 @@ export class Renderer {
     // Fondo claro tipo "ficha de espécimen" (degradado suave) → resaltan los contornos oscuros y los
     // cuerpos terrosos (que sobre fondo negro se camuflaban). El border-radius del canvas lo redondea.
     // El fondo del retrato SIGUE al ambiente: abisal oscuro / pradera arena (claro).
-    const dark = this._portraitDark || this.cfg.render.ambiance === 'abyssal';
+    const dark = this.cfg.render.ambiance === 'abyssal';
     const bg = pctx.createLinearGradient(0, 0, 0, ch);
     if (dark) { bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c'); }              // fondo abisal
     else { bg.addColorStop(0, 'hsl(85,18%,82%)'); bg.addColorStop(1, 'hsl(60,20%,62%)'); }   // ficha clara

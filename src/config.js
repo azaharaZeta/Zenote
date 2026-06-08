@@ -17,8 +17,7 @@ export const config = {
                         // recurso está sobrepastoreado (las celdas rara vez llegan a su techo), así que ESTE es el
                         // lever real de cuánta comida hay (no R_max). Bajado (0.003→0.0024, ~20% menos) para no
                         // sobrealimentar → poblaciones más contenidas y dispersas. Ajustable en vivo desde la UI.
-                        // OJO: este valor debe coincidir con el value= del slider #regen en index.html
-                        // (la UI envía su value al cargar y SOBREESCRIBE este; ver bindSlider).
+                        // (Ajustable en vivo desde el modo Laboratorio.)
     gradient: 'perlin', // 'perlin' | 'center' | 'uniform'
     patchiness: 0,      // (UI) 0 = campo suave (como siempre) … 1 = comida en PARCHES con huecos
                         // baldíos (sin gradiente que seguir) → premia la BÚSQUEDA y la MEMORIA del
@@ -197,7 +196,7 @@ export const config = {
                              // false (def.): sin pareja → no hay cría (mala suerte) → encontrar pareja es una
                              // presión selectiva real (favorece agruparse, dispersarse poco, ornamentos…).
                              // true: si no halla pareja, se clona a sí mismo con mutación (como antes).
-                             // OJO: debe coincidir con el checkbox #asexual de index.html (la UI lo sobreescribe al cargar).
+                             // (Ajustable desde el modo Laboratorio.)
     speciesGenThreshold: 0.15, // distancia genética máx. para cruzarse = misma "especie". Más allá → aislados.
                                // Bajado (0.25→0.15) al incluir la FORMA en la distancia: clusters más finos y
                                // COHESIVOS → los miembros de una especie comparten plan corporal (se parecen).
@@ -294,7 +293,7 @@ export const config = {
     ambiance: 'abyssal',   // (UI) ESCENARIO POR DEFECTO: 'abyssal' = fondo oscuro atmosférico (regiones + comida
                            // fosforescente) + glow reforzado → ecosistema bioluminiscente contemplativo.
                            // 'meadow' = pradera serena (hierba+flores tenues). Solo afecta al render (no a la sim).
-                           // OJO: debe coincidir con el checkbox #abyssal de index.html (la UI lo sobreescribe al cargar).
+                           // (Escenario fijo en config; sin toggle de UI por ahora.)
     dprCap: 2,
     quality: 'high',          // (UI) 'high' | 'low'. BAJA = DPR 1, sin bloom, menos nieve, sustrato simple y LOD agresivo
                               // → mejora mucho el rendimiento en móvil. Se autodetecta a 'low' en táctil/pantalla pequeña.

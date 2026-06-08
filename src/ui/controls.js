@@ -514,13 +514,5 @@ export function updateInspector(app) {
   if (pc) app.renderer.drawPortrait(pc.getContext('2d'), sel.genes, app.renderer._animT * 0.006, ef, sel.heading, sel.spd); // orienta/ondula como en el mundo
 }
 
-function bindSlider(input, label, apply, decimals) {
-  const upd = () => { const v = +input.value; apply(v); label.textContent = v.toFixed(decimals); };
-  input.addEventListener('input', upd);
-  upd();
-}
-function bindToggle(input, apply) {
-  input.addEventListener('change', () => apply(input.checked));
-  apply(input.checked);
-}
+// hashStr: convierte el texto del campo "semilla" en una semilla numérica (cuando se usa).
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
