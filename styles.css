@@ -6,6 +6,9 @@
   --muted: #7a8595;
   --accent: #5ad1c4;
   --panel: rgba(13, 19, 32, 0.82);
+  /* Controles nativos (scrollbars, popup de <select>) en modo OSCURO. Sin esto, en Windows/Chrome salían
+     con fondo blanco y texto gris (en Mac ya se renderizaban oscuros por defecto). */
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -66,6 +69,17 @@ button, select, input[type="text"] {
 }
 button:hover { background: rgba(90, 209, 196, 0.16); }
 input[type="text"] { flex: 1; min-width: 70px; cursor: text; }
+/* Lista desplegada del <select>: fondo oscuro opaco + texto claro (en Windows el popup es nativo y, sin esto,
+   salía gris claro sobre blanco). El color-scheme:dark ya ayuda; esto lo fija de forma explícita y portable. */
+option, optgroup { background-color: #0d1320; color: var(--text); }
+optgroup { font-weight: 500; }
+
+/* Scrollbars con el tema oscuro (Windows/Chrome las pintaba blancas). Webkit + estándar. */
+* { scrollbar-width: thin; scrollbar-color: rgba(90, 209, 196, 0.3) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(90, 209, 196, 0.28); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(90, 209, 196, 0.45); background-clip: padding-box; }
 
 .charts { margin: 8px 0; }
 .chart-pair { display: block; }   /* simple: gráficas apiladas. avanzado: lado a lado (ver #panel.advanced) */
