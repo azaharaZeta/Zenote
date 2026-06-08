@@ -329,7 +329,7 @@ function setupLab(app, send) {
   document.addEventListener('click', () => { if (tipPinned) hideTip(); }); // tocar fuera cierra el tooltip fijado
 
   // Recordar qué categorías quedaron abiertas (localStorage). Por defecto: TODAS abiertas.
-  const LS_OPEN = 'primordia.labOpen';
+  const LS_OPEN = 'zenote.labOpen';
   const allOpen = LAB_SPEC.map((_, i) => i);
   let openSet; try { openSet = new Set(JSON.parse(localStorage.getItem(LS_OPEN) || JSON.stringify(allOpen))); } catch (e) { openSet = new Set(allOpen); }
   const body = $('labBody');
@@ -388,7 +388,7 @@ function setupLab(app, send) {
   // Alternar VISTA SIMPLE ↔ MODO LABORATORIO: añade/quita .advanced al panel (revela la sección del
   // laboratorio y compacta la vista simple). Recuerda el modo entre recargas (localStorage).
   const panel = $('panel'), modeBtn = $('modeBtn');
-  const LS_MODE = 'primordia.advanced';
+  const LS_MODE = 'zenote.advanced';
   const applyMode = (adv) => {
     panel.classList.toggle('advanced', adv);
     modeBtn.textContent = adv ? 'Cambiar a modo simple' : 'Cambiar a modo laboratorio';

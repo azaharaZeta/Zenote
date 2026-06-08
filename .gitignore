@@ -1,0 +1,27 @@
+# --- macOS ---
+.DS_Store
+._*
+
+# --- Editores / IDE ---
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Node (no hay dependencias ahora, pero por si acaso) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Vercel (lo crea la CLI al enlazar el proyecto) ---
+.vercel
+CLAUDE.md
+.claude/
+
+# --- Artefactos de búsquedas de parámetros (sweeps headless), si se regeneran ---
+search_overnight.mjs
+search_results.jsonl
+search_best.json
+search.log
+*.log

@@ -1,4 +1,4 @@
-// Configuración por defecto — "Primordia"
+// Configuración por defecto — "Zenote"
 // Espejo fiel de docs/CONFIG.md. ÚNICO lugar donde viven los parámetros.
 // El motor lee de aquí; nada debe estar hardcodeado disperso.
 // Los marcados *(UI)* se exponen como controles en vivo (ver ui/controls.js).
