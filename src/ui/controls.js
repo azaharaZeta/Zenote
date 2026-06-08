@@ -15,6 +15,7 @@ export function setupControls(app) {
     playBtn.textContent = app.running ? '❚❚' : '▶';
     playBtn.title = app.running ? 'Pausar (Espacio)' : 'Reanudar (Espacio)';
     send({ type: 'running', value: app.running });
+    refreshSpeedState();
   });
 
   // ---- Botón "Máx velocidad" (ignora el slider; simula tanto como quepa por frame) ----
@@ -23,7 +24,22 @@ export function setupControls(app) {
     app.maxSpeed = !app.maxSpeed;
     maxBtn.classList.toggle('active', app.maxSpeed); // el caption se queda en "max"
     send({ type: 'maxSpeed', value: app.maxSpeed });
+    refreshSpeedState();
   });
+
+  // ---- Estado "desactivado" del slider de velocidad ----
+  // El slider de t/s NO aplica si está en PAUSA (no avanza nada) o en MÁX (va a tope ignorando el slider).
+  // En esos casos lo atenuamos + bloqueamos y lo explicamos en el caption, para que quede claro al usuario.
+  function refreshSpeedState() {
+    const tEl = $('ticks'), valEl = $('ticksVal'), row = tEl && tEl.closest('.speed-row');
+    if (!tEl) return;
+    const off = !app.running || app.maxSpeed;
+    tEl.disabled = off;
+    if (row) row.classList.toggle('speed-off', off);
+    if (!app.running)      valEl.textContent = 'en pausa';
+    else if (app.maxSpeed) valEl.textContent = 'al máximo';
+    else                   valEl.textContent = `${posToTps(+tEl.value)} t/s`;
+  }
 
   // ---- Velocidad en ticks/segundo (desacoplada de los fps). Mapeo LOGARÍTMICO sobre la
   // posición del slider (1..1000) → 1..480 t/s, con MUCHA resolución en velocidades bajas
@@ -40,6 +56,7 @@ export function setupControls(app) {
   ticksEl.value = tpsToPos(cfg.sim.targetTPS); // posición inicial coherente con el arranque (20 t/s)
   ticksEl.addEventListener('input', applyTPS);
   applyTPS();
+  refreshSpeedState(); // refleja pausa/máx en el slider desde el inicio
 
   // ---- LABORATORIO: ventana con TODOS los parámetros ajustables, por categorías (data-driven). ----
   // Cada control envía {type:'set', key, value} al worker (setPath en worker.js). Los parámetros de
