@@ -12,6 +12,9 @@
   <!-- Botón para reabrir el panel en modo contemplación -->
   <button id="show" title="Mostrar panel (H)">☰</button>
 
+  <!-- Barra flotante: aloja el control de velocidad en modo contemplación (el nodo #speedBlock se reubica aquí) -->
+  <div id="floatControls"></div>
+
   <aside id="panel">
     <header>
       <h1>Zenote</h1>
@@ -60,7 +63,7 @@
       <div id="legend" class="legend"></div>
     </div>
 
-    <div class="ctrl">
+    <div class="ctrl" id="speedBlock">
       <label>Velocidad (t/s) <output id="ticksVal"></output></label>
       <div class="speed-row">
         <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
@@ -68,7 +71,9 @@
         <button id="maxBtn" class="maxbtn" title="Máxima velocidad posible">max</button>
       </div>
       <div id="speedReal" class="speed-real">velocidad real: —</div>
+    </div>
 
+    <div class="ctrl">
       <label>Zoom <output id="zoomVal"></output></label>
       <input id="zoomSlider" type="range" min="1" max="20" step="0.1" value="1" />
     </div>

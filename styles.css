@@ -110,6 +110,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 }
 #show.visible { display: flex; }
 
+/* ---- Barra flotante de velocidad (modo contemplación) ---- */
+/* Aloja #speedBlock cuando el panel está oculto: solo play + slider + max, sin etiquetas ni "velocidad real". */
+#floatControls {
+  position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 9;
+  display: none;
+  background: var(--panel); backdrop-filter: blur(10px);
+  border: 1px solid rgba(90, 209, 196, 0.18); border-radius: 12px;
+  padding: 8px 12px; width: min(420px, calc(100vw - 24px));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+#floatControls.visible { display: block; }
+#floatControls #speedBlock { margin: 0; }
+#floatControls #speedBlock > label, #floatControls #speedReal { display: none; } /* solo botones + slider */
+#floatControls .speed-row { margin: 0; }
+
 /* ---- Inspector de genoma ---- */
 #inspector {
   position: fixed; bottom: 12px; right: 12px; z-index: 10;

@@ -157,12 +157,26 @@ export function setupControls(app) {
   }
 
   // ---- Modo contemplación (oculta toda la UI) ----
+  // El control de velocidad sigue accesible: reubicamos el nodo #speedBlock a una barra flotante
+  // (#floatControls) mientras el panel está oculto, y lo devolvemos a su sitio al reabrirlo. Los
+  // listeners viajan con el nodo, así que no duplicamos ni la lógica ni el estado (play/slider/max).
   const panel = $('panel');
   const hideBtn = $('hide');
   const showBtn = $('show');
+  const speedBlock = $('speedBlock');
+  const floatHost = $('floatControls');
+  const speedHome = speedBlock.parentNode;        // dónde vive en el panel
+  const speedAnchor = speedBlock.nextSibling;     // para reinsertarlo en su posición exacta
   const setHidden = (h) => {
     panel.classList.toggle('hidden', h);
     showBtn.classList.toggle('visible', h);
+    if (h) {
+      floatHost.appendChild(speedBlock);
+      floatHost.classList.add('visible');
+    } else {
+      speedHome.insertBefore(speedBlock, speedAnchor);
+      floatHost.classList.remove('visible');
+    }
   };
   hideBtn.addEventListener('click', () => setHidden(true));
   showBtn.addEventListener('click', () => setHidden(false));
