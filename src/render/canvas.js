@@ -513,8 +513,10 @@ export class Renderer {
     // LOD (rendimiento): a partir de qué radio EN PANTALLA se dibuja cada nivel de detalle. En calidad BAJA
     // (móvil) los umbrales suben → muchos más bichos se dibujan como punto/simple → gran ahorro. No penaliza
     // escritorio (a tan poco tamaño en pantalla no se aprecia el detalle de todas formas).
-    const lod = this.cfg.render.quality === 'low' ? 1.9 : 1;
-    const dThr = detail * lod, eThr = eyeDetail * lod, pThr = partDetail * lod;
+    const lowQ = this.cfg.render.quality === 'low';
+    const dThr = detail;                        // CUERPO: mismo umbral en alta y baja → siempre se ven bichillos (no solo puntos)
+    const eThr = eyeDetail * (lowQ ? 2.2 : 1);  // OJOS (gradientes+clips, caros) → muy gateados en baja
+    const pThr = partDetail * (lowQ ? 2.4 : 1); // SEGMENTOS/MÓDULOS (AO+textura, lo más caro) → aún más gateados
     for (let a = 0; a < n; a++) {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
@@ -535,12 +537,11 @@ export class Renderer {
           const cSat = deco ? deco[i * 7 + 2] : 0.35;   // VIVACIDAD (deriva libre)
           const cLumC = deco ? deco[i * 7 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
           h = (165 + sim.hue[i] * 150) % 360;  // banda ESTRECHA (turquesa→azul→violeta→magenta) → ecosistema armónico, no circo
-          s = 8 + cSat * cSat * 74;            // CUADRÁTICO (mayoría apagados); techo y suelo algo subidos → un pelín más de color en la deriva
-          // brillo = energía + LUMINOSIDAD (cuadrática). Base BAJADA → cuerpos más oscuros/profundos (no "cartulina clara")
-          l = abyssal ? (22 + ef * 24 + cLumC * cLumC * 14) : (22 + ef * 26 + cLumC * cLumC * 10);
-          // Los más CARNÍVOROS tienden a algo más oscuros (lectura visual del gen `diet`, SOLO render → no toca
-          // selección ni ecología). Magnitud leve (~7 pts) → no rompe la lectura "brillo=energía".
-          l -= sim.diet[i] * 7;
+          s = 13 + cSat * cSat * 78;           // suelo subido (8→13: menos gris) + techo un pelín más vivo → algo más de color
+          // brillo = energía + LUMINOSIDAD (cuadrática). Base subida (22→26): cuerpos un poco menos oscuros.
+          l = abyssal ? (26 + ef * 24 + cLumC * cLumC * 14) : (26 + ef * 26 + cLumC * cLumC * 10);
+          // Los más CARNÍVOROS tienden a algo más oscuros (lectura visual del gen `diet`, SOLO render). Suavizado 7→5.
+          l -= sim.diet[i] * 5;
         }
       }
       const x = sim.x[i], y = sim.y[i];
@@ -1167,8 +1168,8 @@ export class Renderer {
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
     const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (banda estrecha + sat/luz bajadas)
-    const h = (165 + genes[G.hue] * 150) % 360, s = 8 + cSat * cSat * 74;
-    const l = 22 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
+    const h = (165 + genes[G.hue] * 150) % 360, s = 13 + cSat * cSat * 78;
+    const l = 26 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
