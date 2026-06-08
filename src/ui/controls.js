@@ -115,6 +115,30 @@ export function setupControls(app) {
     syncDiv();
   }
 
+  // ---- Calidad gráfica (Alta/Baja): BAJA = DPR 1, sin bloom, menos nieve, sustrato simple, LOD agresivo →
+  // mucho mejor rendimiento en móvil. Autodetecta táctil/pantalla pequeña; el botón permite forzarla. ----
+  const qualityBtn = $('qualityBtn');
+  if (qualityBtn) {
+    const LS_Q = 'zenote.quality';
+    let q; try { q = localStorage.getItem(LS_Q); } catch (e) {}
+    if (q !== 'high' && q !== 'low') {        // sin preferencia → autodetectar
+      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      q = (coarse || window.innerWidth < 820) ? 'low' : 'high';
+    }
+    const applyQuality = (val) => {
+      cfg.render.quality = val;
+      qualityBtn.textContent = 'Calidad: ' + (val === 'low' ? 'Baja' : 'Alta');
+      renderer.resize();                      // recalcula DPR (alta↔baja) y fuerza refresco del fondo
+      try { charts.resize(); } catch (e) {}
+    };
+    applyQuality(q);
+    qualityBtn.addEventListener('click', () => {
+      const val = cfg.render.quality === 'low' ? 'high' : 'low';
+      try { localStorage.setItem(LS_Q, val); } catch (e) {}
+      applyQuality(val); qualityBtn.blur();
+    });
+  }
+
   // ---- Modo contemplación (oculta toda la UI) ----
   const panel = $('panel');
   const hideBtn = $('hide');

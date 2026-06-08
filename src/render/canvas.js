@@ -168,7 +168,7 @@ export class Renderer {
     // temperatura, (A) moteado orgánico por ruido anclado al mundo, y (C) comida fosforescente +
     // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
     if (cfg.render.ambiance === 'abyssal') {             // sustrato abisal: independiente del modo de color
-      const SS = 3, NW = cols * SS, NH = rows * SS;      // 3× la rejilla → moteado fino tras suavizar
+      const SS = cfg.render.quality === 'low' ? 2 : 3, NW = cols * SS, NH = rows * SS; // baja: 2× (menos píxeles que recalcular)
       let cv = this._abyssLow;
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
@@ -285,7 +285,8 @@ export class Renderer {
     const cfg = this.cfg, c = this.canvas;
     const cssW = c.clientWidth || window.innerWidth;
     const cssH = c.clientHeight || window.innerHeight;
-    this.dpr = Math.min(window.devicePixelRatio || 1, cfg.render.dprCap);
+    // Calidad BAJA (móvil): DPR=1 (4× menos píxeles en retina) → gran ahorro en fills/blur. ALTA: hasta dprCap.
+    this.dpr = cfg.render.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, cfg.render.dprCap);
     c.width = Math.round(cssW * this.dpr);
     c.height = Math.round(cssH * this.dpr);
     // Escala "cover": el mundo cubre el viewport (sin letterbox) → con el paneo en mosaico
@@ -358,10 +359,11 @@ export class Renderer {
     // en su búfer; aquí solo se compone. Solo en modo "real"; los analíticos mantienen su suelo atenuado.
     const abyssal = cfg.render.ambiance === 'abyssal';   // el FONDO depende solo del ambiente, NO del modo de color
     this._abyssal = abyssal;
+    const lowQ = cfg.render.quality === 'low';           // calidad baja (móvil): sin blooms, menos partículas, sustrato simple
     const camMoved = this.camX !== this._gx || this.camY !== this._gy || this.zoom !== this._gz;
     if (this._grassTimer <= 0 || camMoved) {
       this._refreshGrass();
-      this._grassTimer = cfg.render.grassRefreshFrames;
+      this._grassTimer = cfg.render.grassRefreshFrames * (lowQ ? 2 : 1); // baja: refresca el fondo la mitad de veces
       this._gx = this.camX; this._gy = this.camY; this._gz = this.zoom;
     }
     this._grassTimer--;
@@ -371,7 +373,7 @@ export class Renderer {
     ctx.globalAlpha = 1;
     // BLOOM de la VEGETACIÓN: copia desenfocada y aditiva → los charcos de comida fosforescente (abisal)
     // y la vegetación irradian luz. Solo donde brilla suma; el fondo oscuro apenas cambia.
-    if (cfg.render.glow && (abyssal || this.colorMode === 'real')) {
+    if (cfg.render.glow && !lowQ && (abyssal || this.colorMode === 'real')) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = abyssal ? 0.5 : 0.25;
@@ -411,10 +413,11 @@ export class Renderer {
         for (let k = 0; k < n; k++) { sn[k * 4] = Math.random() * W; sn[k * 4 + 1] = Math.random() * H; sn[k * 4 + 2] = Math.random() * 6.283; sn[k * 4 + 3] = 0.4 + Math.random() * Math.random() * 2.1;
           hu[k] = Math.random() < 0.05 ? PAL[(Math.random() * PAL.length) | 0] : -1; } } // ~5% con color, resto azul-blanco
       const sn = this._snow, hu = this._snowHue, tt = this._animT * 0.0009;
+      const snEnd = lowQ ? ((sn.length >> 4) << 2) : sn.length; // calidad baja: ~1/4 de las motas
       ctx.globalCompositeOperation = 'lighter';
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        for (let k = 0; k < sn.length; k += 4) {
+        for (let k = 0; k < snEnd; k += 4) {
           const ph = sn[k + 2], sz = sn[k + 3];
           const px2 = sn[k] + Math.sin(tt * 0.8 + ph) * 8 + Math.sin(tt * 0.26 + ph * 2.1) * 5; // deriva en 2 frecuencias → más orgánica
           const py2 = (sn[k + 1] + tt * 6 + Math.cos(tt * 0.6 + ph) * 5) % H;                   // descenso algo más vivo + wrap
@@ -438,7 +441,7 @@ export class Renderer {
     ctx.drawImage(this.fx, 0, 0);
     // BLOOM de ORGANISMOS + BULBOS: copia desenfocada y aditiva → todo lo luminoso (halos, bulbos
     // de los señuelos, puntas) "sangra" luz. Da el aspecto bioluminiscente potente.
-    if (cfg.render.glow && (abyssal || this.colorMode === 'real')) {
+    if (cfg.render.glow && !lowQ && (abyssal || this.colorMode === 'real')) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = abyssal ? 0.4 : 0.28;   // bloom algo menor → los apagados (c_lum bajo) se leen apagados
@@ -507,6 +510,11 @@ export class Renderer {
     // Color por partes (ornamental) solo en modos donde el color NO codifica un dato:
     // "visión real" (default) y "linaje". En dieta/energía/gen se mantiene sólido para leer el dato.
     const ornament = (mode === 'real' || mode === 'default' || mode === 'lineage');
+    // LOD (rendimiento): a partir de qué radio EN PANTALLA se dibuja cada nivel de detalle. En calidad BAJA
+    // (móvil) los umbrales suben → muchos más bichos se dibujan como punto/simple → gran ahorro. No penaliza
+    // escritorio (a tan poco tamaño en pantalla no se aprecia el detalle de todas formas).
+    const lod = this.cfg.render.quality === 'low' ? 1.9 : 1;
+    const dThr = detail * lod, eThr = eyeDetail * lod, pThr = partDetail * lod;
     for (let a = 0; a < n; a++) {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
@@ -536,9 +544,8 @@ export class Renderer {
         }
       }
       const x = sim.x[i], y = sim.y[i];
-      // (TEMP) sin recorte por tamaño: el mundo se dibuja con DETALLE COMPLETO, igual que el inspector,
-      // para comprobar que coinciden. El LOD (rendimiento) se reintroducirá después.
-      const detailed = morph && morph.length;
+      const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
+      const detailed = morph && morph.length && rPx > dThr; // pequeño en pantalla → punto simple (barato)
       // Sombra de contacto (solo cuerpos detallados): despega al organismo del fondo (luz arriba-izq).
       // Se omite con estelas activas (dejaría manchas oscuras al desvanecerse).
       if (detailed && !trails && !abyssal) {     // sombra de contacto inútil sobre fondo oscuro
@@ -567,7 +574,7 @@ export class Renderer {
       // LOD: cuerpo detallado solo si es grande en pantalla (zoom/agente grande); si no, punto.
       if (detailed) {
         this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
-                       eye, i * 4, true, ef, face, i * 3, true, deco, i * 7); // deco + offset (esbeltez + estilo de señuelo)
+                       eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 7); // ojos/segmentos solo si grandes en pantalla
       } else {
         ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
         ctx.beginPath();

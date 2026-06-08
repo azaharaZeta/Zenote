@@ -296,6 +296,8 @@ export const config = {
                            // 'meadow' = pradera serena (hierba+flores tenues). Solo afecta al render (no a la sim).
                            // OJO: debe coincidir con el checkbox #abyssal de index.html (la UI lo sobreescribe al cargar).
     dprCap: 2,
+    quality: 'high',          // (UI) 'high' | 'low'. BAJA = DPR 1, sin bloom, menos nieve, sustrato simple y LOD agresivo
+                              // → mejora mucho el rendimiento en móvil. Se autodetecta a 'low' en táctil/pantalla pequeña.
     narrowBreakpoint: 700,
     grassDensity: 6800,       // nº de matojos de hierba repartidos por el mundo
     grassSpriteCount: 22,     // variedad de formas de matojo precalculadas al arrancar
