@@ -286,6 +286,8 @@ export class Sim {
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown, carnSlow = cfg.repro.carnSlow || 0; // K-estrategia: carnívoros crían más lento
     const neural = cfg.sim.brain === 'neural'; // cerebro neuronal en vez de la regla reactiva
+    // TOPE DE POBLACIÓN VIVA (UI): al alcanzarlo no nacen nuevas crías. 0 = sin límite (solo cap el pool físico).
+    const maxAlive = cfg.pop.maxAlive > 0 ? (cfg.pop.maxAlive < this.cap ? cfg.pop.maxAlive : this.cap) : this.cap;
 
     W.regen();
 
@@ -574,7 +576,7 @@ export class Sim {
       // ---------- REPRODUCCIÓN (asexual) ----------
       if (this.attackCD[i] > 0) this.attackCD[i]--; // enfriamiento de ataque (independiente)
       if (this.cooldown[i] > 0) this.cooldown[i]--; // en cooldown no se reproduce (SPEC §4)
-      else if (this.popCount < this.cap && E[i] >= this.reproNeedE[i]) {
+      else if (this.popCount < maxAlive && E[i] >= this.reproNeedE[i]) {
         // Repro SEXUAL: buscar pareja compatible cercana (distancia genética < umbral). Si no hay
         // ninguna al alcance → fallback ASEXUAL (clon). El "padre" i pone la energía y queda en cooldown.
         const mate = sexual ? this._findMate(i) : -1;

@@ -273,6 +273,9 @@ export function setupControls(app) {
 // Fuente única de verdad: lee los valores iniciales de la config (defaults de config.js) y, al mover un
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
+  { cat: '👥 Población', items: [
+    { k: 'pop.maxAlive', label: 'Tope de organismos vivos', min: 1, max: 1000, step: 1, dec: 0, maxBtn: true, d: 'Máximo de organismos vivos a la vez. Al alcanzarlo NO nacen nuevas crías (el progenitor conserva su energía y reintenta luego). El botón "máx" quita el límite (solo queda el tope físico del motor). No reinicia la simulación.' },
+  ]},
   { cat: '🍃 Comida y recurso', items: [
     { k: 'resource.R_regen', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Ritmo al que rebrota la comida por tick. Es el regulador principal de cuántos organismos sostiene el mundo: más alto = más comida = más población.' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que NO se puede pastar (queda como semilla). Más alto = la vegetación nunca se agota del todo y frena el sobrepastoreo.' },
@@ -430,7 +433,25 @@ function setupLab(app, send) {
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
-          const reset = () => { inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); };
+          // Botón "máx" opcional (p. ej. tope de población): valor 0 = SIN LÍMITE → atenúa y bloquea el slider.
+          let maxBtn = null;
+          const setNoLimit = (on) => {
+            maxBtn.classList.toggle('active', on);
+            inp.disabled = on; slider.classList.toggle('lab-off', on);
+            if (on) { out.textContent = '∞'; send({ type: 'set', key: it.k, value: 0 }); }
+            else { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); }
+          };
+          if (it.maxBtn) {
+            maxBtn = document.createElement('button'); maxBtn.className = 'lab-reset lab-maxbtn'; maxBtn.type = 'button';
+            maxBtn.textContent = 'máx'; maxBtn.title = 'Sin límite de población (solo limita el tope físico del motor)';
+            maxBtn.addEventListener('click', () => setNoLimit(!maxBtn.classList.contains('active')));
+            right.insertBefore(maxBtn, rb);
+            if (+def <= 0) setNoLimit(true); // si el config arranca en 0 → sin límite de partida
+          }
+          const reset = () => {
+            if (maxBtn) { maxBtn.classList.remove('active'); inp.disabled = false; slider.classList.remove('lab-off'); }
+            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def });
+          };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
           grid.appendChild(row);

@@ -44,6 +44,8 @@ export const config = {
   pop: {
     initial: 400,
     maxAgents: 4000,
+    maxAlive: 500,      // (UI) TOPE de organismos vivos: al alcanzarlo no nacen nuevas crías. 0 = sin límite
+                        // (solo limita el pool físico maxAgents). Slider en el laboratorio (1..1000) + botón "máx" (sin límite).
     seed: 123,          // semilla por defecto que muestra coexistencia depredador-presa robusta
                         // (vacía el campo "semilla" y pulsa Sembrar para un mundo aleatorio)
     seedDietLow: false,     // Fase 2: dieta inicial diversa para que emerjan carnívoros

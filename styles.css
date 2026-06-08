@@ -211,6 +211,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .lab-reset { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 3px; min-height: 0;
        font-size: 13px; line-height: 1; opacity: 0.5; border-radius: 4px; }
 .lab-reset:hover { opacity: 1; color: var(--accent); background: rgba(90,209,196,0.14); }
+/* Botón "máx" (sin límite) junto a un slider del laboratorio */
+.lab-maxbtn { font-size: 10px; opacity: 0.8; border: 1px solid rgba(90,209,196,0.25); padding: 1px 5px; letter-spacing: .3px; }
+.lab-maxbtn.active { background: var(--accent); color: #06210f; border-color: var(--accent); opacity: 1; font-weight: 500; }
+/* Slider desactivado (p. ej. tope de población en "sin límite") */
+.lab-slider.lab-off input[type="range"] { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
 .lab-cat > summary .lab-reset { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
 /* Icono ⓘ de ayuda por parámetro (hover con retardo en escritorio; tap en móvil) */
 .lab-info { background: none; border: none; color: var(--muted); cursor: help; padding: 0 2px; min-height: 0;
