@@ -191,7 +191,7 @@ export class Sim {
     // entre la base compartida (div=0 → todos iguales) y la muestra individual (div=1 → variado actual).
     // c_lum (glow + luminosidad) y c_sat (color): sembrado MÁS ALTO (0.3/0.25 + cola) → organismos más
     // luminosos, con glow visible y menos grises. Antes (rng·rng ≈ 0.25) salían oscuros/apagados.
-    const baseSeg = rng.next() * 0.7, baseCurve = rng.next();
+    const baseSeg = rng.next() * 0.7, baseCurve = rng.next(), baseTex2 = rng.next();
     const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
     const blend = (base, sample) => base + (sample - base) * div;
     const jit = (v) => { const x = v + rng.gaussian() * J; return x < 0 ? 0 : x > 1 ? 1 : x; };
@@ -229,6 +229,7 @@ export class Sim {
       // mismo gris. (Igual que c_lum/glow.) Tono ya va en banda estrecha → más vivacidad ≠ circo, son matices.
       this.genes[b + G.b_aspect] = jit(0.32); this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55); // glow/color más altos (menos gris/oscuro), variedad escalada por diversidad
       this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y POCOS de partida
+      this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // escala/densidad de piel: variedad escalada por diversidad
       // Cohorte proto-carnívora: SOLO sesga la ECOLOGÍA (dieta/agresión/caza), el cuerpo sigue sencillo →
       // la morfología cazadora EMERGE. Mantiene la coexistencia depredador-presa sin inyectar complejidad.
       if (n < nCarn) {

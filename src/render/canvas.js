@@ -534,8 +534,8 @@ export class Renderer {
         // VIBRANCIA la dispara el ornamento (`orn`, gen de selección sexual): la mayoría va apagada y solo
         // los muy ornamentados lucen colores vivos (exhibición). La absorción usa el gen crudo (sim.js).
         default: {
-          const cSat = deco ? deco[i * 7 + 2] : 0.35;   // VIVACIDAD (deriva libre)
-          const cLumC = deco ? deco[i * 7 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
+          const cSat = deco ? deco[i * 8 + 2] : 0.35;   // VIVACIDAD (deriva libre)
+          const cLumC = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
           h = (165 + sim.hue[i] * 150) % 360;  // banda ESTRECHA (turquesa→azul→violeta→magenta) → ecosistema armónico, no circo
           s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
           // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
@@ -559,7 +559,7 @@ export class Renderer {
         // Halo con DEGRADADO de transparencia. El RADIO y la INTENSIDAD varían con el ornamento (orn):
         // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
         // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
-        const cLumG = deco ? deco[i * 7 + 1] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
+        const cLumG = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
         const gr = r * (abyssal ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4)); // halo algo mayor
         const gl = abyssal ? Math.min(82, l + 26) : Math.min(74, l + 12);
         const a0 = (abyssal ? 0.21 : 0.13) + cLumG * cLumG * (abyssal ? 0.48 : 0.32); // suelo y empuje subidos → glow más visible
@@ -575,7 +575,7 @@ export class Renderer {
       // LOD: cuerpo detallado solo si es grande en pantalla (zoom/agente grande); si no, punto.
       if (detailed) {
         this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
-                       eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 7); // ojos/segmentos solo si grandes en pantalla
+                       eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 8); // ojos/segmentos solo si grandes en pantalla
       } else {
         ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
         ctx.beginPath();
@@ -592,6 +592,7 @@ export class Renderer {
     const bAspect = hasD ? deco[dco] : 0.45;
     // Estilo de señuelo (genes decorativos): largo, tamaño de bulbo, color (acento) y número.
     const oLen = hasD ? deco[dco + 3] : 0.4, oBulb = hasD ? deco[dco + 4] : 0.3, oHue = hasD ? deco[dco + 5] : 0.5, oNum = hasD ? deco[dco + 6] : 0.3;
+    const tex2 = hasD ? deco[dco + 7] : 0.5;   // 2º eje de piel: escala/densidad del patrón (deriva libre)
     // Escala mundo→pantalla: los mínimos de grosor/tamaño se expresan POR PÍXEL (÷ds) para no engordar
     // las proporciones a radio pequeño. Así el bicho se ve IGUAL a cualquier tamaño (mundo == retrato).
     const ds = this._drawScale || 1, fmin = (px) => px / ds;   // fmin(px) = mínimo de px en pantalla, en unidades de dibujo
@@ -650,8 +651,10 @@ export class Renderer {
     // con intensidad continua. El color de la piel se deriva de la PALETA DEL CUERPO (tinta oscura + reflejo
     // claro) → nunca un circo. Se dibuja recortado por parte y SOLO en partes grandes en pantalla (ver drawPart).
     const texG = morph[mo + 18];
-    const texMode = texG < 0.30 ? 0 : (texG < 0.65 ? 1 : 2);     // 0 lisa · 1 bandas transversales · 2 moteado
-    const texAmt = texMode === 1 ? (texG - 0.30) / 0.35 : (texMode === 2 ? (texG - 0.65) / 0.35 : 0); // 0..1
+    // 5 patrones de piel (s_curve, deriva libre): 0 lisa · 1 bandas transversales · 2 rayas longitudinales ·
+    // 3 moteado · 4 ocelos (manchas-ojo). Bandas de 0.20 en [0,1]; texAmt = intensidad dentro de la banda.
+    const texMode = texG < 0.20 ? 0 : texG < 0.40 ? 1 : texG < 0.60 ? 2 : texG < 0.80 ? 3 : 4;
+    const texAmt = texMode === 0 ? 0 : (texG - texMode * 0.20) / 0.20; // 0..1 (bandLo de la banda m = m·0.20)
     const texInk = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 18)}%,`;   // tinta oscura (falta alpha+')')
     const texLit = `hsla(${h},${Math.max(18, s - 10)}%,${Math.min(86, l + 22)}%,`;  // reflejo claro (idem)
     const outW = Math.max(fmin(0.3), r * 0.03);  // contorno fino (antes 0.05·r): menos "sticker", más integrado
@@ -757,22 +760,44 @@ export class Renderer {
         // pequeños conservan su silueta limpia y el coste queda acotado a los pocos grandes visibles.
         if (texMode && pr * ds > 13) {
           tracePart(rx, ry, frF, bkF, sil, silA); ctx.clip();      // recorta el patrón a la silueta de la parte
-          if (texMode === 1) {                                     // BANDAS transversales (oruga/pez)
-            const nb = 2 + ((texAmt * 4) | 0), inkA = (0.10 + texAmt * 0.20).toFixed(3);
+          // tex2 (gen decorativo): ESCALA/DENSIDAD del patrón → más elementos y más finos cuando sube.
+          const dens = 0.6 + tex2 * 1.7, invS = 1 / Math.sqrt(dens);
+          // hash estable por elemento (h constante por organismo → sin parpadeo entre frames)
+          const hf1 = (k) => Math.abs(Math.sin((k + 1) * 12.9898 + h * 0.13)) % 1;
+          const hf2 = (k) => Math.abs(Math.sin((k + 1) * 78.233 + h * 0.07)) % 1;
+          if (texMode === 1) {                                     // BANDAS transversales (oruga/pez): a lo ANCHO
+            const nb = Math.max(2, ((2 + texAmt * 4) * dens) | 0), inkA = (0.10 + texAmt * 0.20).toFixed(3);
             ctx.fillStyle = texInk + inkA + ')';
             for (let bI = 0; bI < nb; bI++) {
               const bx = -rx + ((bI + 0.5) / nb) * 2 * rx;
-              ctx.beginPath(); ctx.ellipse(bx, 0, rx * 0.10, ry * 1.05, 0, 0, 6.2832); ctx.fill();
+              ctx.beginPath(); ctx.ellipse(bx, 0, rx * 0.10 * invS, ry * 1.05, 0, 0, 6.2832); ctx.fill();
             }
-          } else {                                                 // MOTEADO (manchas claras/oscuras, lattice estable por hash de hue)
-            const ns = 3 + ((texAmt * 5) | 0), inkA = (0.12 + texAmt * 0.18).toFixed(3), litA = (0.08 + texAmt * 0.12).toFixed(3);
+          } else if (texMode === 2) {                              // RAYAS longitudinales (a lo LARGO del eje)
+            const nb = Math.max(2, ((2 + texAmt * 3) * dens) | 0), inkA = (0.10 + texAmt * 0.20).toFixed(3);
+            ctx.fillStyle = texInk + inkA + ')';
+            for (let bI = 0; bI < nb; bI++) {
+              const by = -ry + ((bI + 0.5) / nb) * 2 * ry;
+              ctx.beginPath(); ctx.ellipse(0, by, rx * 1.05, ry * 0.09 * invS, 0, 0, 6.2832); ctx.fill();
+            }
+          } else if (texMode === 3) {                              // MOTEADO (manchas claras/oscuras, lattice estable)
+            const ns = Math.max(3, ((3 + texAmt * 5) * dens) | 0), inkA = (0.12 + texAmt * 0.18).toFixed(3), litA = (0.08 + texAmt * 0.12).toFixed(3);
             for (let sI = 0; sI < ns; sI++) {
-              const f1 = Math.abs(Math.sin((sI + 1) * 12.9898 + h * 0.13)) % 1;     // hash estable (h constante por organismo → sin parpadeo)
-              const f2 = Math.abs(Math.sin((sI + 1) * 78.233 + h * 0.07)) % 1;
+              const f1 = hf1(sI), f2 = hf2(sI);
               const sx2 = (f1 * 2 - 1) * rx * 0.78, sy2 = (f2 * 2 - 1) * ry * 0.78;
-              const sr2 = (0.12 + f1 * 0.13) * Math.min(rx, ry);
+              const sr2 = (0.12 + f1 * 0.13) * Math.min(rx, ry) * invS;
               ctx.fillStyle = (sI & 1) ? texLit + litA + ')' : texInk + inkA + ')';
               ctx.beginPath(); ctx.arc(sx2, sy2, sr2, 0, 6.2832); ctx.fill();
+            }
+          } else {                                                 // OCELOS (manchas-ojo: anillo de tinta + centro claro)
+            const ns = Math.max(2, ((2 + texAmt * 3) * dens) | 0), ringA = (0.16 + texAmt * 0.20).toFixed(3), litA = (0.14 + texAmt * 0.16).toFixed(3);
+            for (let sI = 0; sI < ns; sI++) {
+              const f1 = hf1(sI), f2 = hf2(sI);
+              const ox = (f1 * 2 - 1) * rx * 0.66, oy = (f2 * 2 - 1) * ry * 0.66;
+              const orR = (0.16 + f1 * 0.12) * Math.min(rx, ry) * invS;
+              ctx.fillStyle = texInk + ringA + ')';
+              ctx.beginPath(); ctx.arc(ox, oy, orR, 0, 6.2832); ctx.fill();
+              ctx.fillStyle = texLit + litA + ')';
+              ctx.beginPath(); ctx.arc(ox, oy, orR * 0.5, 0, 6.2832); ctx.fill();
             }
           }
         }
@@ -785,29 +810,32 @@ export class Renderer {
     const bodyElong = 1 + (elong - 1) * 0.7;           // segmentos más oblongos → aspecto de gusano
     const segXs = [0], segYs = [0], segAngs = [0], segRs = [r];
     const segParent = [-1];                            // índice del segmento del que "cuelga" cada uno (junturas)
-    const swayA = (0.025 + wave * 0.08) * (0.3 + spd * 0.5);  // amplitud de oscilación MUY SUTIL (gen ondulación + velocidad)
-    const swayF = t * (1 + spd * 2);                   // fase temporal (oscila más rápido al nadar)
+    // FLEXIÓN ARTICULADA: la dirección de la columna se ACUMULA juntura a juntura — cada segmento gira un poco
+    // respecto a SU anclaje (la cabeza o el segmento previo), no respecto a un "recto hacia atrás" fijo. El desfase
+    // por índice (−i) propaga una ONDA VIAJERA por la columna → la cola oscila más que el cuello (no un bloque rígido
+    // que pivota solo en la cabeza). Amplitud por juntura ∝ gen de ondulación; algo de vida en reposo y más al nadar.
+    const jointAmp = (0.05 + wave * 0.14) * (0.55 + spd * 0.7);  // flexión POR JUNTURA (rad)
+    const waveT = t * (1 + spd * 2.5);                          // fase temporal (oscila/viaja más rápido al nadar)
     const fork = branch > 0.45 && nSeg >= 3;           // bifurca si es "ramificador" y hay ≥3 segmentos (más visible)
     const trunk = fork ? Math.max(2, (nSeg / 2) | 0) : nSeg; // longitud del tronco antes de bifurcar
-    let cxp = 0, cyp = 0, prevR = r;
-    for (let i = 1; i < trunk; i++) {                  // TRONCO ondulante (cada segmento sigue al anterior con un giro que oscila)
+    let cxp = 0, cyp = 0, prevR = r, dir = Math.PI;    // dir = dirección ACUMULADA de la columna (arranca recta hacia atrás)
+    for (let i = 1; i < trunk; i++) {                  // TRONCO: cada juntura flexiona sobre la anterior (onda viajera)
       const sr = prevR * tf, gap = (prevR + sr) * 0.5 * spaceF;
-      const ang = Math.PI + Math.sin(swayF + i * 0.9) * swayA;
-      cxp += Math.cos(ang) * gap; cyp += Math.sin(ang) * gap;
-      segXs.push(cxp); segYs.push(cyp); segAngs.push(ang); segRs.push(sr); segParent.push(i - 1); prevR = sr;
+      dir += Math.sin(waveT - i * 1.1) * jointAmp;     // giro EN LA JUNTURA i (relativo al segmento previo)
+      cxp += Math.cos(dir) * gap; cyp += Math.sin(dir) * gap;
+      segXs.push(cxp); segYs.push(cyp); segAngs.push(dir); segRs.push(sr); segParent.push(i - 1); prevR = sr;
     }
     if (fork) {                                        // dos RAMAS simétricas desde el final del tronco
       const rem = nSeg - trunk, perB = Math.max(1, Math.ceil(rem / 2));
       for (let side = -1; side <= 1; side += 2) {
-        let bx = cxp, by = cyp, brR = prevR, pIdx = trunk - 1;  // la rama cuelga del último segmento del tronco
-        const baseAng = Math.PI + side * 0.55;         // divergen ±0.55 rad (simétrico)
+        let bx = cxp, by = cyp, brR = prevR, pIdx = trunk - 1, bdir = Math.PI + side * 0.55; // diverge ±0.55, dir propia por rama
         for (let j = 1; j <= perB; j++) {
           const sr = brR * tf, gap = (brR + sr) * 0.5 * spaceF;
-          // La ondulación se ESPEJA por lado (× side): así las dos ramas de la Y bending en sentidos
-          // opuestos y el fork se mantiene bilateralmente simétrico también en movimiento (no torcido).
-          const ang = baseAng + side * Math.sin(swayF + (trunk + j) * 0.9) * swayA * 1.3;
-          bx += Math.cos(ang) * gap; by += Math.sin(ang) * gap;
-          segXs.push(bx); segYs.push(by); segAngs.push(ang); segRs.push(sr); segParent.push(pIdx); brR = sr;
+          // misma flexión acumulada por juntura, ESPEJADA por lado (× side) → las dos ramas de la Y flexionan en
+          // sentidos opuestos y el fork se mantiene bilateralmente simétrico también en movimiento (no torcido).
+          bdir += side * Math.sin(waveT - (trunk + j) * 1.1) * jointAmp * 1.2;
+          bx += Math.cos(bdir) * gap; by += Math.sin(bdir) * gap;
+          segXs.push(bx); segYs.push(by); segAngs.push(bdir); segRs.push(sr); segParent.push(pIdx); brR = sr;
           pIdx = segXs.length - 1;
         }
       }
@@ -1092,9 +1120,10 @@ export class Renderer {
     pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
     const tint = this._pTint || (this._pTint = new Float32Array(3));
     tint[0] = genes[G.c_app]; tint[1] = genes[G.c_tip]; tint[2] = genes[G.orn];
-    const pdeco = this._pDeco || (this._pDeco = new Float32Array(7)); // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num]
+    const pdeco = this._pDeco || (this._pDeco = new Float32Array(8)); // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]
     pdeco[0] = genes[G.b_aspect]; pdeco[1] = genes[G.c_lum]; pdeco[2] = genes[G.c_sat];
     pdeco[3] = genes[G.o_len]; pdeco[4] = genes[G.o_bulb]; pdeco[5] = genes[G.o_hue]; pdeco[6] = genes[G.o_num];
+    pdeco[7] = genes[G.tex2];
     const eye = this._pEye || (this._pEye = new Float32Array(4));
     eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = genes[G.c_eye]; eye[3] = genes[G.aggro];
     const heading = (headingArg != null) ? headingArg : -Math.PI / 2; // por defecto mira arriba; si se da, usa el del mundo

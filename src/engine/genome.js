@@ -37,6 +37,10 @@ const BASE_GENES = [
   //     del bulbo (acento), y nº de señuelos. `orn` sigue siendo "cuánto exhibe" (selección sexual); estos
   //     varían el ESTILO independientemente → señuelos muy distintos entre individuos. ---
   'o_len', 'o_bulb', 'o_hue', 'o_num',
+  // --- 2º EJE DE PIEL (decorativo, deriva libre): modula la ESCALA/DENSIDAD del patrón de `s_curve`
+  //     (rayas finas↔gruesas, moteado denso↔disperso, ocelos pequeños↔grandes) de forma independiente
+  //     al patrón en sí → multiplica el espacio de texturas. Va al final para no mover el bloque de forma. ---
+  'tex2',
 ];
 
 // --- CEREBRO NEURONAL (opcional, Fase 4): MLP diminuta cuyos PESOS son genes. Solo se usa si
@@ -102,6 +106,7 @@ export const GENE_LABELS = {
   o_bulb: 'Señuelo: tamaño bulbo',
   o_hue: 'Señuelo: color',
   o_num: 'Señuelo: número',
+  tex2: 'Piel (escala/densidad)',
 };
 
 // Agrupación temática de los genes de FENOTIPO (para la UI: desplegable de histograma e inspector,
@@ -111,7 +116,7 @@ export const GENE_GROUPS = [
   { label: 'Dieta y conducta',     genes: ['diet', 'aggro', 'w_food', 'w_prey', 'w_flee'] },
   { label: 'Locomoción',           genes: ['speed', 'm_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave'] },
   { label: 'Segmentos y módulos',  genes: ['m_seg', 'm_segtaper', 'm_segspace', 'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size', 'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size'] },
-  { label: 'Forma',                genes: ['s_asym', 's_curve', 's_place', 's_branch', 's_core'] },
+  { label: 'Forma',                genes: ['s_asym', 's_curve', 'tex2', 's_place', 's_branch', 's_core'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
   { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'] },
 ];
@@ -130,7 +135,7 @@ GENES.forEach((name, i) => { G[name] = i; });
 // cuentan para la especie y mutan a ritmo NORMAL → los miembros de una especie comparten plan corporal
 // (se parecen físicamente), y la variedad de formas queda ENTRE especies, no dentro. La silueta de
 // cabeza (s_asym) cuenta como forma; el estilo de ojo (s_curve) y los colores siguen libres.
-const DECOR_NAMES = ['s_curve', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
+const DECOR_NAMES = ['s_curve', 'tex2', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
   'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 
@@ -139,7 +144,13 @@ export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // en planes corporales distintos a lo largo del tiempo, mientras la COHESIÓN dentro de cada especie la
 // garantiza el apareamiento (solo se cruzan los parecidos) + el umbral de especie. Sin esto (mutación
 // base) las formas apenas derivan y el mundo se queda uniforme; con esto, radiación morfológica gradual.
-const FORM_NAMES = ['m_app', 'm_len', 'm_width', 'm_seg', 'm_segspace', 's_place', 's_branch', 's_core', 's_asym'];
+const FORM_NAMES = ['m_app', 'm_len', 'm_width', 'm_elong', 'm_seg', 'm_segtaper', 'm_segspace',
+  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_place', 's_branch', 's_core', 's_asym'];
+// NOTA (radiación morfológica): m_elong (1×↔3.4×: blobs↔anguilas), la cónica de segmentos y la
+// PRESENCIA/TAMAÑO de los módulos extra estaban antes en ritmo BASE (mutaban tan lento que nunca
+// radiaban) → ahora son FORM: mutan a ritmo intermedio y cuentan para especie, así distintas runs
+// hacen emerger planes corporales distintos (alargados, modulares, segmentados…). El render ya
+// sabía dibujarlos; solo estaban "congelados" por la tasa de mutación.
 export const FORM = new Set(FORM_NAMES.map((n) => G[n]));
 
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes

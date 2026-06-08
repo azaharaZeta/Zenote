@@ -112,7 +112,7 @@ function snapshot() {
   const tint = new Float32Array(n * 3);                           // color por partes (2) + ornamento (1)/agente
   const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, aggro]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
-  const deco = new Float32Array(n * 7);                           // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num]/agente
+  const deco = new Float32Array(n * 8);                           // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente
   const hT = config.combat.handlingTime || 1;
   const hist = new Float32Array(HIST_BINS);
   const species = new Float32Array(n);                            // especie (id) por agente
@@ -136,9 +136,10 @@ function snapshot() {
     const ib = i * NG, eb = k * 4;
     eye[eb] = s.genes[ib + G_SENSE]; eye[eb + 1] = s.genes[ib + G_FOV];
     eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.genes[ib + G_AGGRO];
-    const db = k * 7;
+    const db = k * 8;
     deco[db] = s.genes[ib + G.b_aspect]; deco[db + 1] = s.genes[ib + G.c_lum]; deco[db + 2] = s.genes[ib + G.c_sat];
     deco[db + 3] = s.genes[ib + G.o_len]; deco[db + 4] = s.genes[ib + G.o_bulb]; deco[db + 5] = s.genes[ib + G.o_hue]; deco[db + 6] = s.genes[ib + G.o_num];
+    deco[db + 7] = s.genes[ib + G.tex2];
     const fb = k * 3;
     face[fb] = s.gazeX[i]; face[fb + 1] = s.gazeY[i];
     let atk = s.attackCD[i] / hT; face[fb + 2] = atk > 1 ? 1 : atk; // recencia de ataque (boca/fogonazo)
