@@ -341,8 +341,11 @@ export class Sim {
         if (!omni) { const im = 1 / Math.sqrt(hmag); headx *= im; heady *= im; }
         const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
         let hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
-        for (let oy = -1; oy <= 1; oy++) {
-          for (let ox = -1; ox <= 1; ox++) {
+        // Radio de escaneo ADAPTATIVO al alcance visual: un ojo estrecho ve más lejos que una celda (~80px).
+        // Cono ancho/corto → 3×3 (R=1, como antes); visión larga → 5×5 (R=2) → ya NO se trunca su percepción.
+        const scanR = Math.min(3, Math.max(1, Math.ceil(sr / hc)));
+        for (let oy = -scanR; oy <= scanR; oy++) {
+          for (let ox = -scanR; ox <= scanR; ox++) {
             let gx = hx + ox, gy = hy + oy;
             if (gx < 0) gx = hCols - 1; else if (gx >= hCols) gx = 0;
             if (gy < 0) gy = hRows - 1; else if (gy >= hRows) gy = 0;
