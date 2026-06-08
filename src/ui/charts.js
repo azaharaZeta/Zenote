@@ -10,7 +10,7 @@ export class Charts {
     this.histCanvas = histCanvas;
     this.popCtx = popCanvas.getContext('2d');
     this.histCtx = histCanvas.getContext('2d');
-    this.histGene = G.diet; // gen a histogramar por defecto: DIETA (cambiable desde UI)
+    this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     this.history = [];      // población total a lo largo del tiempo (de SIMULACIÓN, no de reloj)
     this.histC = [];        // carnívoros (diet > 0.5) a lo largo del tiempo
     this.histT = [];         // tick de simulación de cada muestra → eje X en TICKS (acoplado a la velocidad)

@@ -1,7 +1,7 @@
 // UI: controles en vivo (sliders que afectan la simulación), inspector de genoma,
 // reseed, modo contemplación. Pensado para ratón y táctil (pointer events).
 
-import { GENES, GENE_LABELS, G, NUM_GENES, BRAIN0, GENE_GROUPS } from '../engine/genome.js';
+import { GENES, GENE_LABELS, G, NUM_GENES, BRAIN0, GENE_GROUPS, DECOR } from '../engine/genome.js';
 
 export function setupControls(app) {
   const { sim, renderer, charts, cfg, worker } = app;
@@ -68,17 +68,25 @@ export function setupControls(app) {
 
   // ---- Selector de gen para el histograma ----
   const sel = $('geneSel');
+  // Genes SOLO de apariencia (no afectan a la simulación: su histograma solo refleja deriva, no evolución útil):
+  // los DECOR (colores, piel, ojos, señuelo, ángulo/distancia de módulos) MÁS la morfología render-only
+  // (nº/largo/grosor de apéndices, separación de segmentos, silueta/colocación/ramificación/núcleo) y el color de linaje.
+  const COSMETIC = new Set([...DECOR,
+    G.m_app, G.m_len, G.m_width, G.m_segspace, G.s_asym, G.s_place, G.s_branch, G.s_core, G.hue]);
+  const HIDE_GROUPS = new Set(['Segmentos y módulos', 'Color y ornamento']); // grupos enteros fuera del histograma
   GENE_GROUPS.forEach((grp) => {            // agrupado en <optgroup> → desplegable navegable, no infinito
+    if (HIDE_GROUPS.has(grp.label)) return; // grupos no deseados en el filtro de histograma
     const og = document.createElement('optgroup');
     og.label = grp.label;
     grp.genes.forEach((name) => {
       const i = G[name];
+      if (COSMETIC.has(i)) return;          // fuera lo SOLO cosmético → el histograma muestra solo genes con peso evolutivo
       const o = document.createElement('option');
       o.value = i; o.textContent = GENE_LABELS[name] || name;
       if (i === charts.histGene) o.selected = true;
       og.appendChild(o);
     });
-    sel.appendChild(og);
+    if (og.children.length) sel.appendChild(og); // no añadir grupos que queden vacíos tras el filtro
   });
   renderer.geneIndex = charts.histGene;
   send({ type: 'gene', index: charts.histGene }); // el worker calcula histograma/geneSel de ese gen
