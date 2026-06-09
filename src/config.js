@@ -19,9 +19,9 @@ export const config = {
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
     patchiness: 0,      // (UI) Comida en parches: 0 = repartida suave … 1 = parches ricos con baldíos
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
-    absRate: 0.30,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
-    energyPerUnit: 20,  // Energía obtenida por unidad de recurso comida
-    grazeRefuge: 0.3,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
+    absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
+    energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
+    grazeRefuge: 0.11,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
   },
 
   // ───── Población ─────
@@ -41,15 +41,15 @@ export const config = {
   // ───── Energética y costes (qué cuesta vivir, moverse, crecer, criar) ─────
   energy: {
     c_base: 0.02,       // (UI) Coste basal por tick (existir cuesta)
-    carnUpkeep: 0.15,   // (UI) Descuento de coste basal ∝ dieta carnívora (resiliencia: aguantar valles de presa)
-    k_size: 0.67,       // (UI) Coste basal por TAMAÑO
-    k_sizeHerb: 1.5,    // (UI) Coste de tamaño EXTRA solo para herbívoros (∝ size·(1−diet))
+    carnUpkeep: 0.40,   // (UI) Descuento de coste basal ∝ dieta carnívora (resiliencia: aguantar valles de presa)
+    k_size: 0.45,       // (UI) Coste basal por TAMAÑO
+    k_sizeHerb: 0,    // (UI) Coste de tamaño EXTRA solo para herbívoros (∝ size·(1−diet))
     k_sense: 0.3,       // Coste de la visión (alcance)
     k_metab: 0.6,       // Coste del metabolismo
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
     k_body: 0.10,       // Coste basal extra por MASA corporal (segmentos/módulos)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
-    k_graze: 0.30,      // Pasto EXTRA ∝ masa corporal (ata la complejidad al nicho herbívoro)
+    k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal (ata la complejidad al nicho herbívoro)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
     E_max_base: 71,     // Energía máxima base · E_max = E_max_base · (0.5 + size)
@@ -92,7 +92,7 @@ export const config = {
 
   // ───── Dieta ─────
   diet: {
-    omniPenalty: 0.28,  // Penalización por dieta intermedia (bajo = omnívoros más viables)
+    omniPenalty: 0.0,  // Penalización por dieta intermedia (bajo = omnívoros más viables)
   },
 
   // ───── Carroñeo: red de seguridad carnívora en los valles (comer cadáveres). Off por defecto. ─────
@@ -150,9 +150,9 @@ export const config = {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 0.82, // (UI) Cuánto pesa el tamaño en quién gana el combate
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
-    dietMargin: 0.15,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
-    preyBandLo: 0.30,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
-    preyBandHi: 1.0,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
+    dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
+    preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
+    preyBandHi: 2.0,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
   },
 
