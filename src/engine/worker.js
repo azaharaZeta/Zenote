@@ -10,7 +10,7 @@ import { NUM_GENES, G, BRAIN0, FUNCTIONAL } from './genome.js';
 const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
 
 const M0 = G.m_app; // inicio del bloque de forma corporal (contiguo)
-const NB = 22;      // bloque: 6 morfología + 3 segmentación + 8 módulos + 5 forma (estética)
+const NB = 24;      // bloque de forma: 6 morfología + 3 segmentación + 8 módulos + 5 forma + 2 patas de cuerpo
 const C0 = G.c_app; // índice del primer gen de ornamentación de color (2 consecutivos)
 // Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color, agresividad.
 const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_AGGRO = G.aggro, G_ORN = G.orn;

@@ -507,7 +507,7 @@ export class Renderer {
     const morph = sim.morph, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     const eyeDetail = 9;               // los ojos necesitan algo más de tamaño en pantalla para leerse
     const partDetail = 11;             // segmentos/módulos solo cuando el cuerpo es bien grande (coste)
-    const NB = 22;                     // longitud del bloque de forma corporal/agente
+    const NB = 24;                     // longitud del bloque de forma corporal/agente (incluye leg_len/leg_grad al final)
     // Color por partes (ornamental) solo en modos donde el color NO codifica un dato:
     // "visión real" (default) y "linaje". En dieta/energía/gen se mantiene sólido para leer el dato.
     const ornament = (mode === 'real' || mode === 'default' || mode === 'lineage');
@@ -613,6 +613,7 @@ export class Renderer {
     const elong = 1 + morph[mo + 4] * 1.3;             // elongación de la cabeza: rango MODERADO (de redonda a alargada, sin eels degenerados)
     const wave = morph[mo + 5];                        // amplitud de ondulación
     const segsN = 9;                                   // resolución de la curva del apéndice (más puntos → contorno suave/orgánico)
+    const legLenG = morph[mo + 22], legGradG = morph[mo + 23]; // PATAS del cuerpo: largo base + gradiente delante↔atrás (independientes de la cabeza)
     // Segmentación (complejidad corporal). Solo si el cuerpo es bien grande en pantalla → coste acotado.
     const nSeg = showParts ? 1 + ((morph[mo + 6] * 4 + 0.5) | 0) : 1; // 1..5 segmentos
     const tf = 0.55 + morph[mo + 7] * 0.5;             // factor de tamaño por segmento (cónica)
@@ -883,11 +884,16 @@ export class Renderer {
       drawApp(dx * hr * 0.72, dy * hr * elong * 0.62, ang, Math.max(lk, len * 0.15), lw, pairIdx, branch);
     }
     const legN = Math.max(1, (app * 0.3 + 0.3) | 0), lwSeg = Math.max(fmin(0.8), lw * 0.85); // patas casi tan gruesas como los apéndices
+    const legBaseLen = r * (0.5 + legLenG * 6);         // largo base de las patas del cuerpo (INDEPENDIENTE de la cabeza)
+    const nBody = segXs.length - 1;                     // nº de segmentos con patas
     for (let i = 1; i < segXs.length; i++) {            // segmentos: patas perpendiculares a la columna (toda la cadena → ramas simétricas)
-      const scx = segXs[i], scy = segYs[i], sr = segRs[i], legLen = len * (0.35 + 0.35 * sr / r);
+      const scx = segXs[i], scy = segYs[i], sr = segRs[i];
+      const p = nBody > 1 ? (i - 1) / (nBody - 1) : 0;             // posición delante(0)→cola(1)
+      const grad = Math.max(0.15, 1 + (legGradG - 0.5) * 1.6 * p); // GRADIENTE genético: patas crecen/menguan hacia la cola
+      const legLen = legBaseLen * grad * (0.5 + 0.5 * sr / r);     // × escalado pasivo por el radio del segmento
       for (let side = -1; side <= 1; side += 2) {
         const baseAng = segAngs[i] + side * Math.PI / 2;
-        const ll = Math.max(legLen, len * 0.1);        // patas iguales a ambos lados (espejado)
+        const ll = Math.max(legLen, legBaseLen * 0.12); // patas iguales a ambos lados (espejado)
         for (let k = 0; k < legN; k++) {
           const even = legN > 1 ? (k / (legN - 1) - 0.5) : 0;
           const ang = baseAng + even * 0.7, dx = Math.cos(ang), dy = Math.sin(ang);

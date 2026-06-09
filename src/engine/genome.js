@@ -17,6 +17,8 @@ const BASE_GENES = [
   // selección las colapse). asimetría, curvatura de la columna, colocación de apéndices, ramificación,
   // forma del núcleo.
   's_asym', 's_curve', 's_place', 's_branch', 's_core',
+  // Patas del CUERPO (segmentos), independientes de los apéndices de la cabeza: largo base + gradiente delante↔atrás.
+  'leg_len', 'leg_grad',
   // --- Ornamentación (color por partes). NEUTRAL: deriva por linaje. Base selección sexual F4. ---
   'c_app', 'c_tip',
   // --- Ojos / visión emergente (F-D). `e_fov` FUNCIONAL (campo de visión); `c_eye` neutral. ---
@@ -92,6 +94,8 @@ export const GENE_LABELS = {
   s_place: 'Colocación apéndices',
   s_branch: 'Ramificación',
   s_core: 'Forma del núcleo',
+  leg_len: 'Patas cuerpo: largo',
+  leg_grad: 'Patas cuerpo: gradiente',
   c_app: 'Color apéndices',
   c_tip: 'Color puntas',
   e_fov: 'Campo de visión',
@@ -115,7 +119,7 @@ export const GENE_GROUPS = [
   { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest', 'mut_rate'] },
   { label: 'Dieta y conducta',     genes: ['diet', 'aggro', 'w_food', 'w_prey', 'w_flee'] },
   { label: 'Locomoción',           genes: ['speed', 'm_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave'] },
-  { label: 'Segmentos y módulos',  genes: ['m_seg', 'm_segtaper', 'm_segspace', 'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size', 'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size'] },
+  { label: 'Segmentos y módulos',  genes: ['m_seg', 'm_segtaper', 'm_segspace', 'leg_len', 'leg_grad', 'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size', 'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size'] },
   { label: 'Forma',                genes: ['s_asym', 's_curve', 'tex2', 's_place', 's_branch', 's_core'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
   { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'] },
@@ -145,7 +149,7 @@ export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // garantiza el apareamiento (solo se cruzan los parecidos) + el umbral de especie. Sin esto (mutación
 // base) las formas apenas derivan y el mundo se queda uniforme; con esto, radiación morfológica gradual.
 const FORM_NAMES = ['m_app', 'm_len', 'm_width', 'm_elong', 'm_seg', 'm_segtaper', 'm_segspace',
-  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_place', 's_branch', 's_core', 's_asym'];
+  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_place', 's_branch', 's_core', 's_asym', 'leg_len', 'leg_grad'];
 // NOTA (radiación morfológica): m_elong (1×↔3.4×: blobs↔anguilas), la cónica de segmentos y la
 // PRESENCIA/TAMAÑO de los módulos extra estaban antes en ritmo BASE (mutaban tan lento que nunca
 // radiaban) → ahora son FORM: mutan a ritmo intermedio y cuentan para especie, así distintas runs

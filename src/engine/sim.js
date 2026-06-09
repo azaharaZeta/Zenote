@@ -220,6 +220,7 @@ export class Sim {
       // Apariencia LISA (silueta de cabeza, estilo de ojo, colocación, ramificación, núcleo, colores, cresta)
       this.genes[b + G.s_asym] = jit(0.12); this.genes[b + G.s_curve] = blend(baseCurve, rng.next()); this.genes[b + G.s_place] = jit(0.15); // s_curve = PIEL: variedad de patrones escalada por diversidad
       this.genes[b + G.s_branch] = jit(0.35); this.genes[b + G.s_core] = jit(0.5); // más ramificación de partida (apéndices coral + bifurcación de segmentos)
+      this.genes[b + G.leg_len] = jit(0.4); this.genes[b + G.leg_grad] = jit(0.5); // patas del cuerpo: largo medio, gradiente neutro de partida (evoluciona)
       this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
       this.genes[b + G.mut_rate] = jit(0.5); // mutabilidad neutra de partida (M≈1); evoluciona desde aquí
