@@ -536,7 +536,7 @@ export class Renderer {
         default: {
           const cSat = deco ? deco[i * 8 + 2] : 0.35;   // VIVACIDAD (deriva libre)
           const cLumC = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
-          h = (165 + sim.hue[i] * 150) % 360;  // banda ESTRECHA (turquesa→azul→violeta→magenta) → ecosistema armónico, no circo
+          h = (135 + sim.hue[i] * 330) % 360;  // banda casi completa por linaje, saltándose un hueco (~105-135°) → sin verdes puros
           s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
           // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
           l = abyssal ? (31 + ef * 24 + cLumC * cLumC * 14) : (31 + ef * 26 + cLumC * cLumC * 10);
@@ -1127,8 +1127,8 @@ export class Renderer {
     const heading = (headingArg != null) ? headingArg : -Math.PI / 2; // por defecto mira arriba; si se da, usa el del mundo
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
-    const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (banda estrecha + sat/luz bajadas)
-    const h = (165 + genes[G.hue] * 150) % 360, s = 18 + cSat * cSat * 82;
+    const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (rueda completa de tono + sat/luz)
+    const h = (135 + genes[G.hue] * 330) % 360, s = 18 + cSat * cSat * 82;
     const l = 31 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen

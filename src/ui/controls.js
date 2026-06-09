@@ -500,15 +500,22 @@ function setupLab(app, send) {
   // ---- Menú principal (intro): dibuja un bicho "mascota" con el motor de retrato y revela la sim al Entrar ----
   const intro = $('intro'), enterBtn = $('enterBtn'), introCanvas = $('introCreature');
   if (intro && enterBtn && introCanvas) {
-    const mascot = new Float32Array(NUM_GENES).fill(0.5);     // genoma a mano para un bicho bonito (señuelo + color)
-    const g = (n, v) => { mascot[G[n]] = v; };
-    g('size', 0.62); g('hue', 0.42); g('sense', 0.5); g('metab', 0.5); g('diet', 0.45); g('aggro', 0.45);
-    g('m_app', 0.4); g('m_len', 0.5); g('m_width', 0.42); g('m_sym', 0.72); g('m_elong', 0.5); g('m_wave', 0.55);
-    g('m_seg', 0.5); g('m_segtaper', 0.5); g('m_segspace', 0.4); g('mod0_on', 0.2); g('mod1_on', 0.2);
-    g('s_asym', 0.2); g('s_curve', 0.6); g('s_place', 0.35); g('s_branch', 0.2); g('s_core', 0.5);
-    g('c_app', 0.42); g('c_tip', 0.62); g('e_fov', 0.3); g('c_eye', 0.5);
-    g('orn', 0.62); g('b_aspect', 0.42); g('c_lum', 0.62); g('c_sat', 0.72);
-    g('o_len', 0.5); g('o_bulb', 0.5); g('o_hue', 0.55); g('o_num', 0.18);
+    // Mascota ALEATORIA en cada carga, pero con valores LIGEROS dentro de rangos bonitos: el color es libre
+    // (todos los tonos), y forma/conducta quedan acotadas para que siempre salga un bicho mono (ni monstruoso ni soso).
+    const mascot = new Float32Array(NUM_GENES).fill(0.5);
+    const R = (a, b) => a + Math.random() * (b - a);          // aleatorio en [a,b]
+    const g = (n, v) => { mascot[G[n]] = v < 0 ? 0 : v > 1 ? 1 : v; };
+    // hue acotado a [0.27, 0.36]: con la banda del render (135+hue·330) eso da ~224-254° → entorno al AZUL (algo de azul-violeta).
+    g('size', R(0.58, 0.66)); g('hue', R(0.27, 0.36)); g('sense', 0.5); g('metab', 0.5);
+    g('diet', R(0.38, 0.44)); g('aggro', R(0.38, 0.44));
+    g('m_app', R(0.3, 0.4)); g('m_len', R(0.48, 0.58)); g('m_width', R(0.4, 0.48)); g('m_sym', R(0.72, 0.8));
+    g('m_elong', R(0.42, 0.5)); g('m_wave', R(0.5, 0.6));
+    g('m_seg', R(0.42, 0.52)); g('m_segtaper', R(0.47, 0.53)); g('m_segspace', R(0.4, 0.45));
+    g('mod0_on', R(0.14, 0.24)); g('mod1_on', R(0.1, 0.2));
+    g('s_asym', R(0.17, 0.27)); g('s_curve', R(0.35, 0.6)); g('s_place', R(0.32, 0.4)); g('s_branch', R(0.14, 0.24)); g('s_core', R(0.47, 0.53));
+    g('c_app', R(0.44, 0.56)); g('c_tip', R(0.45, 0.58)); g('e_fov', R(0.32, 0.4)); g('c_eye', R(0.45, 0.55));
+    g('orn', R(0.54, 0.66)); g('b_aspect', R(0.42, 0.48)); g('c_lum', R(0.66, 0.78)); g('c_sat', R(0.68, 0.8));
+    g('o_len', R(0.48, 0.58)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22));
     const ictx = introCanvas.getContext('2d');
     let raf = 0, on = true;
     const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5); } catch (e) {} raf = requestAnimationFrame(loop); };
