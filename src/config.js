@@ -77,6 +77,7 @@ export const config = {
     segDrag: 0.22,      // Arrastre extra por segmento
     modDrag: 0.6,       // Arrastre extra por módulo
     segTurn: 0.03,      // Cada segmento extra empeora el giro
+    bodyThrust: 1.0,    // A2 (Pilar v2.0): escala del empuje del CUERPO (cabeza+segmentos que ondulan); propulsor principal
     // A1 (Pilar v2.0): piezas antes inertes → físicas. limbs = apéndices de cabeza + patas de segmento.
     limbThrust: 0.12,   // Empuje por unidad de área de limbs (ondulan → propulsión secundaria)
     limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente)

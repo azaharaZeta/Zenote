@@ -39,12 +39,11 @@ export function computePhenotype(sim, i) {
   const elong = 1 + g[b + G.m_elong] * 1.3;
   const waveG = g[b + G.m_wave];
 
-  // A1 (Pilar v2.0): los apéndices YA NO son decorativos. Su nº/largo/grosor aportan arrastre y algo de
-  // empuje (más abajo, vía limbArea) → la forma queda bajo selección. El empuje base del cuerpo sigue
-  // emergiendo de la ONDULACIÓN (wave) y la simetría (straight); A1 lo MANTIENE y SUMA los limbs encima.
-  const wave = lo.waveFloor + (1 - lo.waveFloor) * waveG;
-  const straight = lo.symBase + (1 - lo.symBase) * symG;
-  const thrust = wave * straight;                              // empuje = ondulación · simetría
+  // A2 (Pilar v2.0): el empuje EMERGE de las superficies que oscilan (ver abajo, Psum aditivo), no de un
+  // escalar abstracto. `wave` = AMPLITUD de ondulación del CUERPO (la dirige `straight` = simetría); los
+  // apéndices/módulos baten aparte (vía `effort`). Por eso aquí solo se preparan amplitud y direccionalidad.
+  const wave = lo.waveFloor + (1 - lo.waveFloor) * waveG;      // amplitud de ondulación del cuerpo
+  const straight = lo.symBase + (1 - lo.symBase) * symG;       // direccionalidad (asimetría desvía empuje a girar)
   // Hidrodinámica: la elongación reduce el arrastre (cuerpo afilado). La VELOCIDAD es
   // independiente del tamaño (empuje y arrastre escalan igual con el radio → se cancela):
   // encoger ya no regala velocidad; la velocidad emerge solo de la FORMA y el esfuerzo.
@@ -79,11 +78,18 @@ export function computePhenotype(sim, i) {
   bodyArea *= (1 - lo.coreStream * g[b + G.s_core]);           // núcleo afilado recorta el arrastre frontal
 
   const massMul = 1 + segAreaSum + modAreaSum + lo.bodyMass * bodyArea; // limbArea NO entra (masa hidrodinámica, no metabólica)
-  const Pmul = 1 + lo.segThrust * segAreaSum + lo.modThrust * modAreaSum + lo.limbThrust * limbArea; // empuje extra (patas/módulos/limbs)
   const Dmul = 1 + lo.segDrag * (segAreaSum + (nSeg - 1) * 0.08) + lo.modDrag * modAreaSum            // arrastre extra (penaliz. de LONGITUD bajada 0.3→0.08 → gusanos largos viables)
              + lo.limbDrag * limbArea + lo.bodyDrag * bodyArea;
 
-  let v = lo.kThrust * thrust * (Pmul / Dmul) * stream * effort;
+  // A2: EMPUJE ADITIVO por superficies que oscilan (antes thrust·Pmul). El cuerpo (cabeza + cadena de
+  // segmentos) ondula con amplitud `wave`; los apéndices/patas/módulos baten aparte, impulsados por el
+  // ESFUERZO (independiente de m_wave) → un cuerpo rígido con muchos apéndices (remero) también avanza.
+  // Cada fuente = área · amplitud · eficiencia; se SUMAN. Puente a B3 (allí cada nodo tendrá su amplitud/fase).
+  const Pbody = lo.bodyThrust * (1 + lo.segThrust * segAreaSum) * wave; // cuerpo: cabeza + segmentos ondulan juntos
+  const Plimb = lo.limbThrust * limbArea * effort;                      // apéndices/patas reman (∝ esfuerzo)
+  const Pmod  = lo.modThrust * modAreaSum * effort;                     // módulos baten (∝ esfuerzo)
+  const Psum  = Pbody + Plimb + Pmod;                                   // empuje total (aditivo por fuente)
+  let v = lo.kThrust * Psum * straight * (stream / Dmul) * effort;
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento

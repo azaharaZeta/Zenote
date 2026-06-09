@@ -244,7 +244,8 @@ De más fundacional / mayor retorno de realismo a más periférico.
 0. 🔄 **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
    con los pasos siguientes (la alometría #3 y los límites blandos son su lenguaje físico natural).
-   *Progreso: ✅ A1 (apéndices/patas/ancho de cuerpo → empuje/arrastre); pendientes A2, B1, B2, B3.*
+   *Progreso: ✅ A1 (apéndices/patas/ancho → empuje/arrastre), ✅ A2 (empuje aditivo por superficies que
+   oscilan; m_wave = amplitud del cuerpo; apéndices reman vía esfuerzo → nicho remero); pendientes B1, B2, B3.*
 1. ✅ **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
    *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
 2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`
@@ -378,8 +379,9 @@ desacoplado de la física). Así el gait se selecciona y se VE, pero el bucle ca
   metabólica (no contaminan eMax/coste). `wave·sym` se MANTIENE (retirarla es A2). *Render sin cambios.* **Criterio (cuidado: no confundir deriva con selección — hoy ya derivan neutralmente):** un
   gen de forma muestra **respuesta a la selección**, p. ej. correlaciona con el nicho (los cazadores
   convergen a cuerpos hidrodinámicos) o un *knockout* del acoplamiento físico cambia su distribución.
-- **A2 — Empuje desde superficies que oscilan.** Sustituir el gen abstracto `m_wave` por empuje generado
-  por partes que se mueven → puente hacia el gait.
+- ✅ **A2 — Empuje desde superficies que oscilan.** *Hecho:* empuje ADITIVO `Psum = Pbody + Plimb + Pmod`
+  (desaparece `Pmul`). `m_wave` = amplitud de ondulación del cuerpo; apéndices/módulos baten vía `effort`
+  (independiente de m_wave) → el "remero" es viable. Estructura = Σ(área·amplitud), puente directo a B3.
 - **B1 — Geometría única (compatibilidad).** Introducir el pool de nodos por debajo expresando las
   piezas actuales como nodos, de modo que **render y física compartan una sola geometría**.
 - **B2 — Colapsar las categorías.** Eliminar las distinciones hardcodeadas cabeza/segmento/módulo/
