@@ -7,9 +7,10 @@
 // Frontera del proyecto: aquí se define la FÍSICA de la forma; qué forma es buena lo dicta la selección.
 // Todo en unidades del radio de cabeza (r se cancela: empuje y arrastre escalan igual con el tamaño).
 
-import { G } from './genome.js';
+import { G, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 
-const CAP_NODES = 8;                 // 1 cabeza + ≤4 segmentos + ≤2 módulos + holgura
+const CAP_NODES = NODE_COUNT;        // techo de nodos del cuerpo generativo (B2)
+const EPS_AXIS = 0.35;               // banda axial: |ang−eje| < EPS → nodo MEDIAL (1×); fuera → LATERAL (par ×2)
 export const KIND_HEAD = 0, KIND_SEG = 1, KIND_MOD = 2;
 
 // Scratch a nivel de módulo (el worker computa nacimientos en serie, monohilo → reentrada imposible).
@@ -22,44 +23,53 @@ const _kind   = new Uint8Array(CAP_NODES);    // HEAD | SEG | MOD (selecciona co
 const _limbAr = new Float32Array(CAP_NODES);  // área de apéndices/patas colgando del nodo (hidrodinámica, NO masa)
 const _bodyEx = new Float32Array(CAP_NODES);  // ancho de cuerpo (solo cabeza): masa + arrastre reales
 
-// Exponer el scratch (para futuros consumidores como el render; no se copian arrays).
-export const plan = { ar: _ar, axis: _axis, amp: _amp, eff: _eff, kind: _kind, limbAr: _limbAr, bodyEx: _bodyEx };
+// Exponer el scratch + escalares emergentes (para la física y, en B2b, el render). No se copian arrays.
+export const plan = { ar: _ar, axis: _axis, amp: _amp, eff: _eff, kind: _kind, limbAr: _limbAr, bodyEx: _bodyEx,
+  straight: 1, turnAsym: 0 };
 
-// Construye el plan corporal a partir del genoma (g, base b). Devuelve el nº de nodos (≥1).
-// `wave` = amplitud de ondulación del cuerpo, `effort` = batido de remos (ya calculados por el llamante).
+// Construye el plan corporal DESDE EL GENOMA DE NODOS (B2). Un cuerpo = grafo de ≤NODE_COUNT nodos de una sola
+// primitiva; cada nodo es lóbulo redondo (aspect bajo → masa+arrastre) o tentáculo fino (aspect alto → limbAr,
+// sin masa). Un nodo LATERAL (ángulo lejos del eje) se cuenta espejado (par bilateral ×2); uno MEDIAL va solo.
+// La direccionalidad (`straight`) y la asimetría de giro (`turnAsym`) EMERGEN de la simetría del grafo (sustituyen
+// al gen m_sym). Devuelve el nº de nodos. `wave`/`effort` = amplitudes de oscilación de cuerpo/remos (del llamante).
+// NOTA B2a: posición (parent/attach) aún no afecta a la física (massMul/Dmul/Psum no dependen de dónde está el
+// nodo, solo de su área/orientación/amplitud) → parent/attach son andamio para el render (B2b) y B3.
 export function computeBodyPlan(g, b, lo, wave, effort) {
-  let n = 0;
-  // --- CABEZA (nodo 0) ---
-  const headW = 0.55 + g[b + G.b_aspect] * 0.95;            // ancho del cuerpo (igual que el render)
-  let bodyExtra = headW * headW - 1; if (bodyExtra < 0) bodyExtra = 0; // área extra; un cuerpo fino (<1) → 0
-  bodyExtra *= (1 - lo.coreStream * g[b + G.s_core]);       // núcleo afilado recorta el arrastre frontal
-  const nApp = 1 + ((g[b + G.m_app] * 7 + 0.5) | 0);        // 1..8, idéntico al render
-  const branchMul = g[b + G.s_branch] >= 0.5 ? lo.branchArea : 1;
-  _ar[n] = 1; _axis[n] = Math.PI; _amp[n] = wave; _eff[n] = lo.bodyThrust; _kind[n] = KIND_HEAD;
-  _bodyEx[n] = bodyExtra;
-  _limbAr[n] = nApp * g[b + G.m_len] * (lo.appWidFloor + g[b + G.m_width]) * branchMul; // apéndices de cabeza
-  n++;
-  // --- CADENA DE SEGMENTOS (posiciones en reposo colineales con el eje, axis=π) ---
-  const nSeg = 1 + Math.round(g[b + G.m_seg] * 4);          // 1..5
-  const tf = 0.55 + g[b + G.m_segtaper] * 0.5;              // cónica (radio relativo por segmento)
-  const legUnit = g[b + G.leg_len] * 0.5;                   // patas: área agregada por segmento
-  let rr = 1;
-  for (let i = 1; i < nSeg; i++) {
-    rr *= tf;
-    _ar[n] = rr * rr; _axis[n] = Math.PI; _amp[n] = wave; _eff[n] = lo.bodyThrust * lo.segThrust;
-    _kind[n] = KIND_SEG; _bodyEx[n] = 0; _limbAr[n] = legUnit;
+  const nb = b + NODE0;
+  let n = 0, asymAccum = 0, latArea = 0;
+  // --- NODO 0 = RAÍZ (cabeza), siempre presente. Su aspecto define el ancho del cuerpo (redondo = ancho). ---
+  const headW = 1.5 - g[nb + 3] * 0.95;                     // aspect 0 (redondo) → 1.5 ancho; 1 (fino) → 0.55
+  let bodyEx = headW * headW - 1; if (bodyEx < 0) bodyEx = 0; // área extra del cuerpo ancho (drag+masa); fino → 0
+  _ar[0] = 1; _axis[0] = Math.PI; _amp[0] = wave; _eff[0] = lo.bodyThrust; _kind[0] = KIND_HEAD;
+  _bodyEx[0] = bodyEx; _limbAr[0] = 0;
+  n = 1;
+  // --- NODOS 1..NODE_COUNT-1 (opcionales) ---
+  for (let k = 1; k < NODE_COUNT; k++) {
+    const node = nb + k * NODE_STRIDE;
+    if (g[node + 0] < 0.5) continue;                        // present
+    const sz = 0.15 + g[node + 2] * 0.85;                   // radio del nodo / cabeza
+    const asp = g[node + 3];                                // 0 redondo (lóbulo) .. 1 fino-largo (tentáculo)
+    const ang = g[node + 4] * Math.PI;                      // [0,π]
+    const crossR = sz * (1 - 0.85 * asp);                   // sección transversal (fino → pequeña)
+    const length = sz * (1 + 1.5 * asp);                    // longitud (fino → larga)
+    const ar = crossR * crossR;
+    const axialDist = ang < Math.PI - ang ? ang : Math.PI - ang; // min(ang, π−ang)
+    const isLateral = axialDist > EPS_AXIS;
+    const mult = isLateral ? 2 : 1;                         // par bilateral espejado
+    _axis[n] = isLateral ? ang : Math.PI;
+    _amp[n] = isLateral ? effort : wave;                    // laterales reman (effort); mediales ondulan (wave)
+    _eff[n] = isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust;
+    _kind[n] = isLateral ? KIND_MOD : KIND_SEG;
+    if (asp > 0.5) { _ar[n] = 0; _bodyEx[n] = 0; _limbAr[n] = ar * mult * length; } // tentáculo: limbAr, no masa
+    else { _ar[n] = ar * mult; _bodyEx[n] = 0; _limbAr[n] = 0; }                    // lóbulo/segmento: masa+arrastre
+    if (!isLateral) asymAccum += Math.sin(ang) * (ar * mult); // medial desviado del eje → desvía empuje a girar
+    latArea += ar * mult;
     n++;
   }
-  // --- MÓDULOS (≤2, presentes si el gen on ≥ 0.5) ---
-  for (let mk = 0; mk < 2; mk++) {
-    const mb = b + G.mod0_on + mk * 4;
-    if (g[mb] >= 0.5) {
-      const ms = 0.3 + g[mb + 3] * 0.6;                     // radio del módulo / cabeza
-      _ar[n] = ms * ms; _axis[n] = g[mb + 1] * Math.PI; _amp[n] = effort; _eff[n] = lo.modThrust;
-      _kind[n] = KIND_MOD; _bodyEx[n] = 0; _limbAr[n] = 0;
-      n++;
-    }
-  }
+  // Direccionalidad y giro EMERGENTES de la (a)simetría del grafo.
+  const asymFrac = latArea > 0 ? Math.min(1, Math.abs(asymAccum) / latArea) : 0;
+  plan.straight = lo.symBase + (1 - lo.symBase) * (1 - asymFrac); // 1 = recto; <1 desvía empuje a giro
+  plan.turnAsym = asymFrac;                                  // asimetría → mejor giro
   return n;
 }
 

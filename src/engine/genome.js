@@ -40,6 +40,19 @@ const BASE_GENES = [
   'tex2',
 ];
 
+// --- B2 (Pilar v2.0): CUERPO GENERATIVO POR NODOS. Una sola primitiva: el "nodo". Un cuerpo es un GRAFO
+// de hasta NODE_COUNT nodos (present/parent + geometría); cabeza/segmentos/módulos/apéndices dejan de ser
+// categorías y emergen de los parámetros del nodo. El bloque va DESPUÉS del morfológico viejo y ANTES del
+// cerebro → NO mueve los índices viejos (render/snapshot intactos en B2a); solo desplaza el cerebro (que
+// usa offsets relativos). Campos por nodo: present (≥0.5 existe; n0=raíz, forzado), parent (índice del
+// padre), size, aspect (redondo↔fino-largo: lóbulo vs tentáculo), angle (rel. al padre, [0,π]; el espejo
+// bilateral cubre el resto), attach (anclaje base↔punta), osc_amp/osc_phase (reserva B3: oscilación por nodo).
+export const NODE_COUNT = 8;
+export const NODE_FIELDS = ['present', 'parent', 'size', 'aspect', 'angle', 'attach', 'osc_amp', 'osc_phase'];
+export const NODE_STRIDE = NODE_FIELDS.length;   // 8 genes por nodo
+export const NODE0 = BASE_GENES.length;          // índice del primer gen de nodo (n0_present)
+for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.push('n' + k + '_' + f);
+
 // --- CEREBRO NEURONAL (opcional, Fase 4): MLP diminuta cuyos PESOS son genes. Solo se usa si
 // `cfg.sim.brain === 'neural'`; en modo reactivo estos genes derivan neutralmente (y NO cuentan en
 // la distancia genética → no contaminan las especies). Entradas (I) = señales sensoriales; H ocultas
@@ -118,6 +131,8 @@ export const GENE_GROUPS = [
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
   { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'] },
 ];
+// B2: grupo de los genes de nodo (cuerpo generativo). Se añade tras construir el bloque (NODE0/NODE_COUNT).
+GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0 + NODE_COUNT * NODE_STRIDE) });
 
 // Índices (acceso sin strings en el bucle caliente).
 export const G = {};
@@ -134,11 +149,19 @@ GENES.forEach((name, i) => { G[name] = i; });
 const DECOR_NAMES = ['s_curve', 'tex2', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
   'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
+// Reserva B3 (oscilación por nodo): osc_amp/osc_phase aún no afectan a la física → neutrales (no especie).
+for (let k = 0; k < NODE_COUNT; k++) { DECOR.add(G['n' + k + '_osc_amp']); DECOR.add(G['n' + k + '_osc_phase']); }
+
+// B2a: los genes morfológicos VIEJOS ya NO alimentan la física (la forma emerge de los nodos, ver bodyplan.js);
+// siguen vivos solo para el RENDER hasta B2c. Se excluyen de la distancia genética para no contar la forma DOS
+// veces (nodos + viejos). m_elong/m_wave NO están aquí: aún alimentan elongación/amplitud en B2a.
+const LEGACY_MORPH = new Set(['m_app', 'm_len', 'm_width', 'm_sym', 'm_seg', 'm_segtaper', 'm_segspace',
+  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_asym', 's_place', 's_branch', 's_core', 'leg_len', 'leg_grad'].map((n) => G[n]));
 
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes
-// ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría) y la APARIENCIA
-// (decorativa, deriva libre). Las especies se definen por lo que importa para sobrevivir.
-export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i));
+// ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría), la APARIENCIA (decorativa) y
+// la morfología VIEJA (sustituida por los nodos). Las especies se definen por lo que importa para sobrevivir.
+export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i) && !LEGACY_MORPH.has(i));
 
 export function lerp(a, b, t) { return a + (b - a) * t; }
 export function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }

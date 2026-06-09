@@ -3,7 +3,7 @@
 
 import { World } from './world.js';
 import { makeRng } from '../util/rng.js';
-import { NUM_GENES, G, copyMutated, crossover, geneticDistance, BRAIN0, BRAIN, seedBrain } from './genome.js';
+import { NUM_GENES, G, copyMutated, crossover, geneticDistance, BRAIN0, BRAIN, seedBrain, NODE_COUNT } from './genome.js';
 import { computePhenotype } from './organism.js';
 
 export class Sim {
@@ -246,6 +246,23 @@ export class Sim {
         // forma fina de cada cazador (nº de apéndices, segmentos…) EMERGE luego por selección.
         this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
         this.genes[b + G.m_wave] = jit(0.75); this.genes[b + G.m_elong] = jit(0.62); this.genes[b + G.m_sym] = jit(0.7);
+      }
+      // --- NODOS (B2): organismo SIMPLE = 1 nodo raíz (cabeza); nodos 1..7 casi siempre ausentes →
+      //     la complejidad (2º nodo, cadenas, tentáculos, ramas) EMERGE por deriva, como antes m_seg/mod*. ---
+      this.genes[b + G.n0_present] = 1;                        // raíz siempre presente
+      this.genes[b + G.n0_size] = jit(0.5); this.genes[b + G.n0_aspect] = jit(0.35);
+      this.genes[b + G.n0_parent] = 0; this.genes[b + G.n0_angle] = 0; this.genes[b + G.n0_attach] = 0;
+      this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = rng.next();
+      for (let k = 1; k < NODE_COUNT; k++) {
+        const nb = b + G['n' + k + '_present'];                // 8 campos contiguos por nodo
+        this.genes[nb + 0] = jit(0.10);                        // present: <0.5 casi siempre → ausente
+        this.genes[nb + 1] = rng.next();                       // parent
+        this.genes[nb + 2] = jit(0.4);                         // size
+        this.genes[nb + 3] = jit(0.4);                         // aspect (redondo↔fino)
+        this.genes[nb + 4] = rng.next();                       // angle
+        this.genes[nb + 5] = jit(0.7);                         // attach (cerca de punta → cadenas)
+        this.genes[nb + 6] = jit(0.5);                         // osc_amp (reserva B3)
+        this.genes[nb + 7] = rng.next();                       // osc_phase (reserva B3)
       }
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;

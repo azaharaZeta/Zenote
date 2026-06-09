@@ -7,7 +7,7 @@
 // supervivencia (energética en sim.js), no este archivo.
 
 import { G, NUM_GENES, lerp } from './genome.js';
-import { computeBodyPlan, reducePlan } from './bodyplan.js';
+import { computeBodyPlan, reducePlan, plan } from './bodyplan.js';
 
 export function computePhenotype(sim, i) {
   const g = sim.genes, b = i * NUM_GENES, cfg = sim.cfg, e = cfg.expr, en = cfg.energy;
@@ -36,15 +36,13 @@ export function computePhenotype(sim, i) {
   // arrastre). El programador define la física; la selección esculpe la forma. Aquí está
   // la frontera. Mismos parámetros de forma que usa el render (cuerpos coherentes con su física).
   const lo = cfg.loco;
-  const symG  = g[b + G.m_sym];
   const elong = 1 + g[b + G.m_elong] * 1.3;
   const waveG = g[b + G.m_wave];
 
   // A2 (Pilar v2.0): el empuje EMERGE de las superficies que oscilan (ver abajo, Psum aditivo), no de un
-  // escalar abstracto. `wave` = AMPLITUD de ondulación del CUERPO (la dirige `straight` = simetría); los
-  // apéndices/módulos baten aparte (vía `effort`). Por eso aquí solo se preparan amplitud y direccionalidad.
+  // escalar abstracto. `wave` = AMPLITUD de ondulación del CUERPO. La direccionalidad (`plan.straight`) ya
+  // NO viene del gen m_sym: EMERGE de la (a)simetría del grafo de nodos (ver computeBodyPlan, B2).
   const wave = lo.waveFloor + (1 - lo.waveFloor) * waveG;      // amplitud de ondulación del cuerpo
-  const straight = lo.symBase + (1 - lo.symBase) * symG;       // direccionalidad (asimetría desvía empuje a girar)
   // Hidrodinámica: la elongación reduce el arrastre (cuerpo afilado). La VELOCIDAD es
   // independiente del tamaño (empuje y arrastre escalan igual con el radio → se cancela):
   // encoger ya no regala velocidad; la velocidad emerge solo de la FORMA y el esfuerzo.
@@ -60,12 +58,13 @@ export function computePhenotype(sim, i) {
   const nNodes = computeBodyPlan(g, b, lo, wave, effort);
   const R = reducePlan(nNodes, lo, effort);
   const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)
-  let v = lo.kThrust * R.Psum * straight * (stream / R.Dmul) * effort;
+  let v = lo.kThrust * R.Psum * plan.straight * (stream / R.Dmul) * effort; // straight emerge del grafo (B2)
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
-  // Agilidad de giro: pequeños y asimétricos giran mejor; grandes/elongados/segmentados peor.
-  let turn = lo.turnBase + lo.turnAsym * (1 - symG) - lo.turnSize * size - lo.turnElong * (elong - 1)
+  // Agilidad de giro: la asimetría del cuerpo (plan.turnAsym, emergente) mejora el giro; grandes/elongados/
+  // con más nodos-segmento giran peor.
+  let turn = lo.turnBase + lo.turnAsym * plan.turnAsym - lo.turnSize * size - lo.turnElong * (elong - 1)
              - lo.segTurn * R.nSegNodes;
   sim.turnRate[i] = turn < lo.turnMin ? lo.turnMin : turn > 1 ? 1 : turn;
 
