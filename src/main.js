@@ -63,6 +63,7 @@ worker.onmessage = (e) => {
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel;
     simProxy.species = m.species; simProxy.speciesCount = m.speciesCount;
+    simProxy.huntable = m.huntable; simProxy.huntCarn = m.huntCarn; simProxy.huntHerb = m.huntHerb; simProxy.autopsy = m.autopsy;
     simProxy.world.resource = m.resource;
   }
 };
@@ -81,6 +82,8 @@ const TICKS_PER_SAMPLE = 8;             // una muestra cada N ticks de SIMULACI�
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
+const predDiagEl = document.getElementById('predDiag');   // medidor de cazabilidad de presa
+const autopsyEl = document.getElementById('autopsy');     // aviso de autopsia al extinguirse los carnívoros
 
 function frame(now) {
   renderer.paused = !app.running; // congela la animación visual de los organismos al pausar
@@ -108,6 +111,21 @@ function frame(now) {
       `pob ${simProxy.popCount} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
+    // Diagnóstico de depredación: cazabilidad de presa (causa raíz) + autopsia de extinción carnívora.
+    if (predDiagEl) {
+      const h = simProxy.huntable;
+      if (h == null || h < 0) { predDiagEl.className = 'pred-diag'; predDiagEl.innerHTML = ''; }
+      else {
+        const pct = Math.round(h * 100), col = `hsl(${(h * 120) | 0},70%,55%)`;
+        predDiagEl.className = 'pred-diag on';
+        predDiagEl.innerHTML = `cazabilidad de presa <span class="pd-bar"><i style="width:${pct}%;background:${col}"></i></span> <b style="color:${col}">${pct}%</b>`;
+      }
+    }
+    if (autopsyEl) {
+      const a = simProxy.autopsy;
+      if (a) { autopsyEl.className = 'autopsy on'; autopsyEl.innerHTML = `⚠ Carnívoros extintos (tick ${a.tick}) · ${a.herbN} herbívoros, ${a.huntable >= 0 ? Math.round(a.huntable * 100) + '% cazable' : '—'} → <b>${a.cause}</b>`; }
+      else { autopsyEl.className = 'autopsy'; autopsyEl.innerHTML = ''; }
+    }
   }
   requestAnimationFrame(frame);
 }

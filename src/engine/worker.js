@@ -42,6 +42,9 @@ let tickAcc = 0, last = performance.now();
 // umbral, o funda una nueva. Los centroides siguen a sus miembros (k-means con umbral) → ids estables. ---
 let speciesReps = [];                 // [{ id, gene:Float32Array(NG), count, sum }]
 let nextSpeciesId = 1, speciesCount = 0, lastClassify = -1e9;
+// --- DIAGNÓSTICO DE DEPREDACIÓN: cazabilidad (% de presa en banda Y vencible en combate) + autopsia de extinción. ---
+let huntable = -1, huntCarn = 0, huntHerb = 0, lastValidHuntable = -1, lastHunt = -1e9;
+let carnArmed = false, autopsy = null;   // armado: los carnívoros llegaron a establecerse (≥10) → procede autopsia al caer
 const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id estable de agente
 function classifySpecies() {
   const s = sim, act = s.active, n = s.activeCount, NG = NUM_GENES;
@@ -172,8 +175,56 @@ function snapshot() {
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, morph, tint, eye, face, deco, hist, sel,
     species, speciesCount,
+    huntable, huntCarn, huntHerb, autopsy,   // diagnóstico de depredación (cazabilidad + autopsia de extinción)
     resource: s.world.resource.slice(),
   });
+}
+
+// CAZABILIDAD: fracción media (sobre los carnívoros) de herbívoros que están EN BANDA de tamaño Y son
+// VENCIBLES en combate (misma fórmula que sim.js). Muestreo acotado (64×256) → coste fijo aunque haya miles.
+// Es la causa RAÍZ: si cae con presa abundante, la presa ha escapado por tamaño y los carnívoros pasarán hambre.
+function computeHuntability() {
+  const s = sim, act = s.active, n = s.activeCount, NG = NUM_GENES;
+  const lo = config.combat.preyBandLo, hi = config.combat.preyBandHi, sa = config.combat.sizeAdvantage;
+  const carns = [], herbs = [];
+  for (let k = 0; k < n; k++) { const i = act[k]; const d = s.diet[i]; if (d > 0.6) carns.push(i); else if (d < 0.4) herbs.push(i); }
+  huntCarn = carns.length; huntHerb = herbs.length;
+  if (!huntCarn || !huntHerb) { huntable = -1; return; }
+  const csN = Math.min(carns.length, 64), hsN = Math.min(herbs.length, 256);
+  const cStep = carns.length / csN, hStep = herbs.length / hsN;
+  let acc = 0;
+  for (let a = 0; a < csN; a++) {
+    const ci = carns[(a * cStep) | 0], Rc = s.radius[ci];
+    const fi = Math.pow(s.genes[ci * NG + G.size] + 0.1, sa) * (0.5 + s.aggro[ci]);
+    let win = 0;
+    for (let b = 0; b < hsN; b++) {
+      const hj = herbs[(b * hStep) | 0], ra = s.radius[hj] / Rc;
+      if (ra >= lo && ra <= hi) { const fj = Math.pow(s.genes[hj * NG + G.size] + 0.1, sa) * (0.5 + s.aggro[hj]); if (fi / (fi + fj) >= 0.5) win++; }
+    }
+    acc += win / hsN;
+  }
+  huntable = acc / csN;
+  lastValidHuntable = huntable;   // recordar el último valor con carnívoros vivos (para la autopsia)
+}
+
+// AUTOPSIA: al detectar que los carnívoros pasan de presentes (≥10) a casi extintos (<3), clasifica la causa probable:
+//  · poco cazable + presa abundante → refugio de tamaño;  · población al tope + presa cazable → exclusión reproductiva
+//    (los herbívoros copan los nacimientos);  · presa escasa → valle del ciclo;  · resto → mixto.
+function updateDiagnostics() {
+  computeHuntability();
+  const carnN = huntCarn;
+  if (carnN >= 10) { carnArmed = true; autopsy = null; }   // establecidos → armado (y al recuperarse, oculta autopsia vieja)
+  else if (carnArmed && carnN < 3) {                        // ESTUVIERON establecidos y ahora casi extintos → autopsia
+    const maxAlive = config.pop.maxAlive > 0 ? Math.min(config.pop.maxAlive, sim.cap) : sim.cap;
+    const atCap = sim.popCount >= maxAlive * 0.95;   // mundo lleno → la verja de población bloquea casi todo nacimiento
+    let cause;
+    if (huntHerb >= 150 && lastValidHuntable >= 0 && lastValidHuntable < 0.45) cause = 'refugio de tamaño: presa abundante pero poco cazable';
+    else if (atCap && lastValidHuntable >= 0.45) cause = 'tope de población saturado: los herbívoros copan los nacimientos → los carnívoros no se reemplazan';
+    else if (huntHerb < 100) cause = 'valle del ciclo: escasez de presa';
+    else cause = 'mixto (combate / transición)';
+    autopsy = { tick: sim.tick, herbN: huntHerb, huntable: lastValidHuntable, cause };
+    carnArmed = false;   // dispara una vez por episodio; se re-arma si los carnívoros vuelven a establecerse
+  }
 }
 
 function loop() {
@@ -194,6 +245,7 @@ function loop() {
     }
   } else tickAcc = 0;
   if (sim.tick - lastClassify >= 60) { classifySpecies(); lastClassify = sim.tick; } // especies (periódico)
+  if (sim.tick - lastHunt >= 45) { updateDiagnostics(); lastHunt = sim.tick; }       // cazabilidad + autopsia (periódico)
   snapshot();
   setTimeout(loop, 16); // ~60 Hz de fotos (independiente del render del hilo principal)
 }
@@ -233,7 +285,8 @@ onmessage = (e) => {
     case 'deselect': setSelected(-1); break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); break; // navegar por especies (◀ ▶ en el inspector)
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selLineage = selGeneration = selSpeciesId = -1;
-      speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0; postWorld(); break;
+      speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
+      huntable = -1; lastValidHuntable = -1; lastHunt = -1e9; carnArmed = false; autopsy = null; postWorld(); break;
   }
 };
 

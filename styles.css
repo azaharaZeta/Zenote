@@ -53,6 +53,14 @@ html, body {
 #panel h1 { font-size: 15px; font-weight: 400; margin: 0; letter-spacing: 1px; color: var(--accent); }
 
 .readout { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin: 8px 0; }
+/* Diagnóstico de depredación: medidor de cazabilidad + autopsia de extinción (ocultos si no aplican) */
+.pred-diag { display: none; align-items: center; gap: 7px; font-size: 10px; color: var(--muted); margin: 2px 0 6px; }
+#panel.advanced .pred-diag.on { display: flex; }   /* solo en modo laboratorio */
+.pred-diag .pd-bar { flex: 1; min-width: 40px; height: 5px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden; }
+.pred-diag .pd-bar i { display: block; height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.4s ease; }
+.autopsy { display: none; font-size: 10px; line-height: 1.45; color: #ffd5b0; background: rgba(255, 120, 60, 0.12);
+       border: 1px solid rgba(255, 120, 60, 0.3); border-radius: 8px; padding: 5px 8px; margin: 4px 0 6px; }
+#panel.advanced .autopsy.on { display: block; }   /* solo en modo laboratorio */
 
 .row { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
 
