@@ -433,7 +433,8 @@ export class Renderer {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       for (let tx = txMin; tx <= txMax; tx++) {
         fctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        this._drawAgents();
+        // Ventana de MUNDO visible en este mosaico → culling de organismos fuera de vista (ver _drawAgents).
+        this._drawAgents(this.camX - vwHalf - tx * W, this.camX + vwHalf - tx * W, this.camY - vhHalf - ty * H, this.camY + vhHalf - ty * H);
       }
     }
     // Componer la capa de organismos sobre el suelo.
@@ -492,7 +493,7 @@ export class Renderer {
     g.putImageData(img, 0, 0);
   }
 
-  _drawAgents() {
+  _drawAgents(cullX0, cullX1, cullY0, cullY1) {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
     const abyssal = this._abyssal;     // escenario abisal → cuerpos más luminosos + glow reforzado
     const trails = this.cfg.render.trails;
@@ -520,6 +521,11 @@ export class Renderer {
     for (let a = 0; a < n; a++) {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
+      const x = sim.x[i], y = sim.y[i];
+      // CULLING DE VIEWPORT: si toda la extensión del organismo (cuerpo + glow + apéndices ≈ r·11) queda FUERA
+      // de la ventana visible de este mosaico, no se dibuja → gran ahorro con zoom (la mayoría queda fuera de vista).
+      const cm = r * 11;
+      if (x + cm < cullX0 || x - cm > cullX1 || y + cm < cullY0 || y - cm > cullY1) continue;
       const ef = sim.eFrac[i];                 // fracción de energía (precalculada en el worker)
       // El color es una LECTURA del estado, no afecta a la simulación. Cada modo reinterpreta.
       let h, s, l;
@@ -544,7 +550,6 @@ export class Renderer {
           l -= sim.diet[i] * 5;
         }
       }
-      const x = sim.x[i], y = sim.y[i];
       const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
       const detailed = morph && morph.length && rPx > dThr; // pequeño en pantalla → punto simple (barato)
       // Sombra de contacto (solo cuerpos detallados): despega al organismo del fondo (luz arriba-izq).
