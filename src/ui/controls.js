@@ -421,10 +421,12 @@ function setupLab(app, send) {
           const row = document.createElement('div'); row.className = 'lab-row toggle';
           const lab = document.createElement('label'); lab.className = 'lab-toggle';
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
-          inp.addEventListener('change', () => send({ type: 'set', key: it.k, value: inp.checked }));
+          // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
+          const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
+          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); paintT(); });
           lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); } };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); } paintT(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
           grid.appendChild(row);
@@ -440,7 +442,10 @@ function setupLab(app, send) {
           const slider = document.createElement('div'); slider.className = 'lab-slider';
           const inp = document.createElement('input'); inp.type = 'range';
           inp.min = it.min; inp.max = it.max; inp.step = it.step; inp.value = def;
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); });
+          // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
+          // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
+          const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); paint(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
@@ -461,7 +466,7 @@ function setupLab(app, send) {
           }
           const reset = () => {
             if (maxBtn) { maxBtn.classList.remove('active'); inp.disabled = false; slider.classList.remove('lab-off'); }
-            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def });
+            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); paint();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
