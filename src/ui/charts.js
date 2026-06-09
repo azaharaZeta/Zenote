@@ -13,6 +13,7 @@ export class Charts {
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     this.history = [];      // población total a lo largo del tiempo (de SIMULACIÓN, no de reloj)
     this.histC = [];        // carnívoros (diet > 0.5) a lo largo del tiempo
+    this.histV = [];         // vegetación disponible: fracción del recurso sobre su capacidad total [0,1]
     this.histT = [];         // tick de simulación de cada muestra → eje X en TICKS (acoplado a la velocidad)
     this.maxHistory = 600;
     this.windowTicks = 4800; // ventana visible del eje X en ticks (≈ maxHistory · cadencia de muestreo)
@@ -41,14 +42,24 @@ export class Charts {
     const s = this.sim;
     this.history.push(s.popCount);
     this.histC.push(s.carn || 0); // nº de carnívoros (lo calcula el worker)
+    this.histV.push(this._vegFrac()); // vegetación disponible (fracción de capacidad)
     this.histT.push(tick != null ? tick : (this.histT.length ? this.histT[this.histT.length - 1] + 1 : 0));
     // recortar por VENTANA DE TICKS (no de frames) → la escala temporal del eje X es constante con la velocidad
     const t0 = this.histT[this.histT.length - 1] - this.windowTicks;
-    while (this.histT.length > 1 && this.histT[0] < t0) { this.history.shift(); this.histC.shift(); this.histT.shift(); }
-    if (this.history.length > this.maxHistory) { this.history.shift(); this.histC.shift(); this.histT.shift(); }
+    while (this.histT.length > 1 && this.histT[0] < t0) { this.history.shift(); this.histC.shift(); this.histV.shift(); this.histT.shift(); }
+    if (this.history.length > this.maxHistory) { this.history.shift(); this.histC.shift(); this.histV.shift(); this.histT.shift(); }
   }
 
-  clear() { this.history.length = 0; this.histC.length = 0; this.histT.length = 0; }
+  // Fracción de vegetación disponible = Σ recurso / Σ capacidad ∈ [0,1] (1 = todo el pasto a tope, 0 = arrasado).
+  _vegFrac() {
+    const r = this.sim.world && this.sim.world.resource, c = this.sim.world && this.sim.world.capacity;
+    if (!r || !c || !r.length) return 0;
+    let sr = 0, sc = 0;
+    for (let i = 0; i < r.length; i++) { sr += r[i]; sc += c[i]; }
+    return sc > 0 ? sr / sc : 0;
+  }
+
+  clear() { this.history.length = 0; this.histC.length = 0; this.histV.length = 0; this.histT.length = 0; }
 
   draw() {
     this._drawPop();
@@ -68,20 +79,23 @@ export class Charts {
     const tEnd = histT[histT.length - 1], span = this.windowTicks || 1;
     // Banda superior RESERVADA para la etiqueta → la curva se dibuja SOLO debajo (nunca la tapa el texto).
     const TOP = 15, ph = h - TOP - 2;
-    const line = (arr, color) => {
+    const line = (arr, color, norm) => {
+      const m = norm || max;                  // escala propia opcional (la vegetación va en fracción 0-1, no en cuenta)
       ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 0; i < arr.length; i++) {
         const px = (1 - (tEnd - histT[i]) / span) * w;
-        const py = h - (arr[i] / max) * ph - 2;   // pico (=max) llega a y=TOP, justo bajo la banda
+        const py = h - (arr[i] / m) * ph - 2;   // pico (=norm) llega a y=TOP, justo bajo la banda
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.stroke();
     };
+    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN disponible (fracción 0-1, escala propia) en verde, al fondo
     line(hist, '#5ad1c4');                 // población total (teal)
     if (histC.length) line(histC, '#ff6b5a'); // carnívoros (rojo)
     const carnNow = histC.length ? histC[histC.length - 1] : 0;
+    const vegNow = this.histV.length ? this.histV[this.histV.length - 1] : 0;
     ctx.font = '10px system-ui, sans-serif';
-    const label = `total ${this.sim.popCount} · carnív ${carnNow} · especies ${this.sim.speciesCount || 0}`;
+    const label = `total ${this.sim.popCount} · carn ${carnNow} · veg ${(vegNow * 100) | 0}% · esp ${this.sim.speciesCount || 0}`;
     ctx.fillStyle = '#cdd5e0';
     ctx.fillText(label, 4, 11);            // en la banda reservada → ya no se solapa con la curva
   }
