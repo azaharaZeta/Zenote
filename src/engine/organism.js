@@ -98,18 +98,11 @@ export function computePhenotype(sim, i) {
   sim.lure[i] = lure;
 
   // Coste basal/tick: metabolismo · (tamaño, visión, MASA corporal extra, SEÑUELO luminoso). Los apéndices son
-  // decorativos → no cuestan. El coste de NADAR se cobra en el movimiento (sim.js).
-  // k_sizeHerb: coste de tamaño EXTRA que pagan los HERBÍVOROS (∝ size·(1-diet)) y NO los carnívoros. Física:
-  // un gran herbívoro depende de comida de baja densidad (pasto) y le cuesta sostener su masa → penaliza al
-  // herbívoro enorme (que saturaba el mapa) sin tocar al depredador. No decide qué tamaño es "bueno": cambia el
-  // gradiente coste↔tamaño SOLO en el nicho herbívoro. La selección sigue esculpiendo la talla.
-  // RESILIENCIA CARNÍVORA: descuento de coste basal ∝ dieta (gasta menos → aguanta mejor los VALLES de presa,
-  // que es el cuello de botella real del depredador). No toca el combate (su riesgo de muerte al fallar sigue
-  // siendo el estabilizador). carnUpkeep=0 → sin descuento.
+  // decorativos → no cuestan. El coste de NADAR se cobra en el movimiento (sim.js). El coste es el MISMO sea cual
+  // sea la dieta: sin descuentos por categoría (las muletas carnUpkeep/k_sizeHerb se retiraron, auditoría #6).
   sim.baseCost[i] =
     en.c_base * (1 + en.k_metab * metab) *
-    (1 + en.k_size * size + (en.k_sizeHerb || 0) * size * (1 - diet) + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure) *
-    (1 - (en.carnUpkeep || 0) * diet);
+    (1 + en.k_size * size + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure);
 
   // Alimentación: ritmo escala con metabolismo y con la MASA corporal (segmentos/módulos = más superficie para pastar).
   sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *

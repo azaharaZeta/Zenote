@@ -41,9 +41,7 @@ export const config = {
   // ───── Energética y costes (qué cuesta vivir, moverse, crecer, criar) ─────
   energy: {
     c_base: 0.02,       // (UI) Coste basal por tick (existir cuesta)
-    carnUpkeep: 0.40,   // (UI) Descuento de coste basal ∝ dieta carnívora (resiliencia: aguantar valles de presa)
     k_size: 0.45,       // (UI) Coste basal por TAMAÑO
-    k_sizeHerb: 0,    // (UI) Coste de tamaño EXTRA solo para herbívoros (∝ size·(1−diet))
     k_sense: 0.3,       // Coste de la visión (alcance)
     k_metab: 0.6,       // Coste del metabolismo
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
