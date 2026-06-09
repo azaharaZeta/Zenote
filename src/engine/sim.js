@@ -275,6 +275,7 @@ export class Sim {
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
     const handlingTime = cfg.combat.handlingTime;
+    const failDamage = cfg.combat.failDamage != null ? cfg.combat.failDamage : 1; // energía perdida al fallar (×eMax); ≥1 ≈ muerte segura
     const dietMargin = cfg.combat.dietMargin; // mínima diferencia de dieta para considerar presa
     // Banda de tamaño de presa (depredación selectiva → nichos de talla). inPreyBand(depredador, presa).
     const preyLo = cfg.combat.preyBandLo != null ? cfg.combat.preyBandLo : 0;
@@ -406,16 +407,22 @@ export class Sim {
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
           } else {
-            // Gana el defensor j: i muere (sin cadáver) y j come. Un herbívoro (effCarn≈0)
-            // puede matar en defensa pero no aprovechar la energía. NOTA: este riesgo de muerte al
-            // FALLAR es el FRENO denso-dependiente que estabiliza al depredador (medido: bajarlo causa
-            // sobre-disparo → colapso presa-depredador → extinción de todos). No tocar sin re-medir.
-            const g = en.preyGain * E[i] * this.effCarn[j];
+            // Gana el defensor j: el atacante i resulta HERIDO (pierde `failDamage`·eMax de energía) y solo MUERE
+            // si se queda a cero. Riesgo denso-dependiente GRADUADO en vez de muerte súbita: suaviza la extinción
+            // estocástica carnívora (una mala tirada ya no mata) SIN quitar el freno — en esperanza, atacar presa
+            // arriesgada sigue costando energía. `failDamage` ≥ 1 ≈ comportamiento antiguo (muerte casi segura).
+            // (Medido en su día: sin coste alguno al fallar → sobre-disparo → colapso presa-depredador. No anular.)
+            const dmg = failDamage * this.eMax[i];
+            E[i] -= dmg;
+            const g = en.preyGain * dmg * this.effCarn[j]; // j aprovecha SOLO el bocado que dio (herbívoro effCarn≈0 → nada)
             E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
             this.attackCD[j] = handlingTime;
-            if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * this.eMax[i]); // el cuerpo del atacante → carroña
-            this._kill(i, 'combat'); this.kills++;
-            continue; // i ha muerto: no sigue procesándose este tick
+            if (E[i] <= 0) {
+              if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * this.eMax[i]); // el cuerpo del atacante → carroña
+              this._kill(i, 'combat'); this.kills++;
+              continue; // i ha muerto: no sigue procesándose este tick
+            }
+            this.attackCD[i] = handlingTime; // herido: queda en cooldown (no reataca al instante)
           }
         }
 

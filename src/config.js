@@ -146,11 +146,13 @@ export const config = {
   },
 
   // ───── Combate / depredación (física trófica, no conducta) ─────
-  // Importante: al FALLAR un ataque el atacante MUERE (riesgo denso-dependiente). Es el freno ESENCIAL que
-  // estabiliza la depredación (sin él, los carnívoros sobre-disparan y colapsan todo). No quitarlo.
+  // Importante: al FALLAR un ataque el atacante PIERDE energía (failDamage) y solo muere si llega a 0. Es el freno
+  // denso-dependiente que estabiliza la depredación (sin coste al fallar, los carnívoros sobre-disparan y colapsan
+  // todo). failDamage ≥ 1 ≈ muerte casi segura (comportamiento antiguo); bajarlo da resiliencia carnívora.
   combat: {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.4, // (UI) Cuánto pesa el tamaño en quién gana el combate
+    failDamage: 0.45,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
