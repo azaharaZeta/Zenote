@@ -245,7 +245,9 @@ De más fundacional / mayor retorno de realismo a más periférico.
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
    con los pasos siguientes (la alometría #3 y los límites blandos son su lenguaje físico natural).
    *Progreso: ✅ A1 (apéndices/patas/ancho → empuje/arrastre), ✅ A2 (empuje aditivo por superficies que
-   oscilan; m_wave = amplitud del cuerpo; apéndices reman vía esfuerzo → nicho remero); pendientes B1, B2, B3.*
+   oscilan; m_wave = amplitud del cuerpo; apéndices reman vía esfuerzo → nicho remero), ✅ B1-física
+   (capa de geometría por nodos `bodyplan.js`; la física suma sobre nodos; reproduce A2 exacto, verificado
+   a ~1e-7); pendientes: migrar el RENDER a la misma capa, B2, B3.*
 1. ✅ **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
    *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
 2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`
@@ -382,8 +384,11 @@ desacoplado de la física). Así el gait se selecciona y se VE, pero el bucle ca
 - ✅ **A2 — Empuje desde superficies que oscilan.** *Hecho:* empuje ADITIVO `Psum = Pbody + Plimb + Pmod`
   (desaparece `Pmul`). `m_wave` = amplitud de ondulación del cuerpo; apéndices/módulos baten vía `effort`
   (independiente de m_wave) → el "remero" es viable. Estructura = Σ(área·amplitud), puente directo a B3.
-- **B1 — Geometría única (compatibilidad).** Introducir el pool de nodos por debajo expresando las
-  piezas actuales como nodos, de modo que **render y física compartan una sola geometría**.
+- 🔄 **B1 — Geometría única (compatibilidad).** *Hecho (física):* nuevo módulo `bodyplan.js` con
+  `computeBodyPlan`/`reducePlan`; la física de locomoción suma sobre nodos (cabeza+segmentos+módulos,
+  con apéndices/patas agregados). Reproduce A2 **exacto** (verificado a ~1e-7 sobre 200k genomas). El
+  scratch es transitorio (no infla el SoA) y la forma `Σ ar·amp·eff` es el puente a B3. *Pendiente:*
+  migrar el RENDER a `computeBodyPlan` (hoy dibuja con su propia geometría, alineada numéricamente).
 - **B2 — Colapsar las categorías.** Eliminar las distinciones hardcodeadas cabeza/segmento/módulo/
   apéndice; topología por `present` + padre. **Criterio:** runs distintas hacen emerger planes
   corporales cualitativamente distintos sin tipos predefinidos.

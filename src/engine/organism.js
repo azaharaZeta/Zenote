@@ -7,6 +7,7 @@
 // supervivencia (energética en sim.js), no este archivo.
 
 import { G, NUM_GENES, lerp } from './genome.js';
+import { computeBodyPlan, reducePlan } from './bodyplan.js';
 
 export function computePhenotype(sim, i) {
   const g = sim.genes, b = i * NUM_GENES, cfg = sim.cfg, e = cfg.expr, en = cfg.energy;
@@ -50,52 +51,22 @@ export function computePhenotype(sim, i) {
   const stream = lo.streamBase + lo.streamGain * (elong - 1);
   const effort = lo.effortFloor + (1 - lo.effortFloor) * speed;
 
-  // ---- COMPLEJIDAD CORPORAL (segmentos + módulos) → FÍSICA (F-C funcional) -----------
-  // Agregados normalizados que valen 1× / 0 para un cuerpo SIMPLE (1 segmento, sin módulos),
-  // de modo que ese caso reproduce EXACTAMENTE el modelo anterior (coexistencia base intacta).
-  // La selección decide si la complejidad compensa: + energía y + empuje, pero + coste, arrastre
-  // y peor giro. Coherente con lo que se DIBUJA (cadena de segmentos con patas + módulos).
-  const nSeg = 1 + Math.round(g[b + G.m_seg] * 4);             // 1..5 segmentos
-  const tf = 0.55 + g[b + G.m_segtaper] * 0.5;                  // cónica (tamaño relativo por segmento)
-  let segAreaSum = 0, rr = 1;
-  for (let sgi = 1; sgi < nSeg; sgi++) { rr *= tf; segAreaSum += rr * rr; } // Σ(radio_segmento/radio_cabeza)²
-  let modAreaSum = 0;
-  for (let mk = 0; mk < 2; mk++) {                              // módulos presentes (gen on ≥ 0.5)
-    const mb = b + G.mod0_on + mk * 4;
-    if (g[mb] >= 0.5) { const ms = 0.3 + g[mb + 3] * 0.6; modAreaSum += ms * ms; }
-  }
-  // ---- LIMBS: apéndices de cabeza + patas de cuerpo (A1) → empuje/arrastre, NO masa metabólica ----
-  // Su superficie ondula (algo de empuje) pero arrastra más (limbDrag > limbThrust) → la selección
-  // recorta apéndices excesivos pero conserva niveles útiles: coexisten "ondulantes" y "remeros".
-  const nApp = 1 + ((g[b + G.m_app] * 7 + 0.5) | 0);           // 1..8, idéntico al render
-  const branchMul = g[b + G.s_branch] >= 0.5 ? lo.branchArea : 1;
-  let limbArea = nApp * g[b + G.m_len] * (lo.appWidFloor + g[b + G.m_width]) * branchMul;
-  if (nSeg > 1) limbArea += (nSeg - 1) * g[b + G.leg_len] * 0.5; // patas (solo con segmentos, como el render)
-  // ---- ANCHO DE CUERPO (b_aspect) atenuado por el afilado del núcleo (s_core) → arrastre + masa real ----
-  const headW = 0.55 + g[b + G.b_aspect] * 0.95;               // 0.55 (aguja) .. 1.5 (globo); 1.0 = neutro
-  let bodyArea = headW * headW - 1;                            // área extra cuadrática; un cuerpo más fino (<1) → 0
-  if (bodyArea < 0) bodyArea = 0;
-  bodyArea *= (1 - lo.coreStream * g[b + G.s_core]);           // núcleo afilado recorta el arrastre frontal
-
-  const massMul = 1 + segAreaSum + modAreaSum + lo.bodyMass * bodyArea; // limbArea NO entra (masa hidrodinámica, no metabólica)
-  const Dmul = 1 + lo.segDrag * (segAreaSum + (nSeg - 1) * 0.08) + lo.modDrag * modAreaSum            // arrastre extra (penaliz. de LONGITUD bajada 0.3→0.08 → gusanos largos viables)
-             + lo.limbDrag * limbArea + lo.bodyDrag * bodyArea;
-
-  // A2: EMPUJE ADITIVO por superficies que oscilan (antes thrust·Pmul). El cuerpo (cabeza + cadena de
-  // segmentos) ondula con amplitud `wave`; los apéndices/patas/módulos baten aparte, impulsados por el
-  // ESFUERZO (independiente de m_wave) → un cuerpo rígido con muchos apéndices (remero) también avanza.
-  // Cada fuente = área · amplitud · eficiencia; se SUMAN. Puente a B3 (allí cada nodo tendrá su amplitud/fase).
-  const Pbody = lo.bodyThrust * (1 + lo.segThrust * segAreaSum) * wave; // cuerpo: cabeza + segmentos ondulan juntos
-  const Plimb = lo.limbThrust * limbArea * effort;                      // apéndices/patas reman (∝ esfuerzo)
-  const Pmod  = lo.modThrust * modAreaSum * effort;                     // módulos baten (∝ esfuerzo)
-  const Psum  = Pbody + Plimb + Pmod;                                   // empuje total (aditivo por fuente)
-  let v = lo.kThrust * Psum * straight * (stream / Dmul) * effort;
+  // ---- PLAN CORPORAL POR NODOS (Pilar v2.0, B1) → FÍSICA ------------------------------
+  // La forma se expresa como una lista de NODOS (cabeza + cadena de segmentos + módulos, con apéndices/
+  // patas agregados en su nodo de anclaje). La física —masa, arrastre, empuje, giro— EMERGE de sumar
+  // sobre esos nodos (ver bodyplan.js). El plan es transitorio (scratch reutilizable) y se reduce aquí a
+  // los escalares cacheados; no se almacena por agente. En B1 reproduce A2 exacto; B3 añadirá oscilación
+  // y arrastre por orientación POR NODO (gait emergente) reusando esta misma estructura.
+  const nNodes = computeBodyPlan(g, b, lo, wave, effort);
+  const R = reducePlan(nNodes, lo, effort);
+  const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)
+  let v = lo.kThrust * R.Psum * straight * (stream / R.Dmul) * effort;
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
   // Agilidad de giro: pequeños y asimétricos giran mejor; grandes/elongados/segmentados peor.
   let turn = lo.turnBase + lo.turnAsym * (1 - symG) - lo.turnSize * size - lo.turnElong * (elong - 1)
-             - lo.segTurn * (nSeg - 1);
+             - lo.segTurn * R.nSegNodes;
   sim.turnRate[i] = turn < lo.turnMin ? lo.turnMin : turn > 1 ? 1 : turn;
 
   // Capacidad de energía: por TAMAÑO (base) × MASA corporal (depósito extra). La masa añade
