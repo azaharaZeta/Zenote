@@ -184,7 +184,10 @@ export class Sim {
     // PALETA POR EJECUCIÓN: bases aleatorias compartidas por los fundadores → cada run tiene un colorido
     // COHERENTE y distinto. Saturación y luminosidad sesgadas a BAJO (cuadrado) → la mayoría de runs son
     // apagados/neutros; los vivos/luminosos son raros. La diversidad cromática emerge ENTRE runs, no dentro.
-    const baseHue = rng.next();
+    // El tono base del sembrado EVITA el verde (la franja 70-180° del render): se muestrea el arco no-verde
+    // [180°..70° por el lado largo] y se pasa a gen (÷360). En el mundo el render permite TODO color, así que el
+    // verde puede EMERGER por deriva; solo se evita al ARRANCAR (un mundo recién sembrado nunca nace verde).
+    const baseHue = ((180 + rng.next() * 250) % 360) / 360;
     const baseOhue = rng.next();                          // tono base del bulbo del señuelo (acento por run)
     const baseApp = rng.next(), baseTip = rng.next();     // matices base de apéndices/puntas (coherentes por run)
     // Bases per-run de los genes decorativos de DISPERSIÓN (segmentos, piel, glow, color). blend() interpola

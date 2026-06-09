@@ -536,7 +536,7 @@ export class Renderer {
         default: {
           const cSat = deco ? deco[i * 8 + 2] : 0.35;   // VIVACIDAD (deriva libre)
           const cLumC = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
-          h = (135 + sim.hue[i] * 330) % 360;  // banda casi completa por linaje, saltándose un hueco (~105-135°) → sin verdes puros
+          h = sim.hue[i] * 360;                // rueda COMPLETA: cualquier color (incl. verde) es alcanzable por deriva. El verde se EVITA solo en el sembrado.
           s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
           // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
           l = abyssal ? (31 + ef * 24 + cLumC * cLumC * 14) : (31 + ef * 26 + cLumC * cLumC * 10);
@@ -833,7 +833,7 @@ export class Renderer {
     const waveT = t * (1 + spd * 2.5);                          // fase temporal (oscila/viaja más rápido al nadar)
     let cxp = 0, cyp = 0, prevR = r, dir = Math.PI;    // dir = dirección ACUMULADA de la columna (arranca recta hacia atrás)
     for (let i = 1; i < nSeg; i++) {                   // CADENA ÚNICA: cada juntura flexiona sobre la anterior (onda viajera)
-      const sr = prevR * tf, gap = (prevR + sr) * 0.5 * spaceF;
+      const sr = prevR * tf, gap = (prevR + sr) * 0.7 * spaceF; // 0.7 (antes 0.5): menos solape → segmentos más separados/distinguibles
       dir += Math.sin(waveT - i * 1.1) * jointAmp;     // giro EN LA JUNTURA i (relativo al segmento previo)
       cxp += Math.cos(dir) * gap; cyp += Math.sin(dir) * gap;
       segXs.push(cxp); segYs.push(cyp); segAngs.push(dir); segRs.push(sr); segParent.push(i - 1); prevR = sr;
@@ -1128,7 +1128,7 @@ export class Renderer {
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
     const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (rueda completa de tono + sat/luz)
-    const h = (135 + genes[G.hue] * 330) % 360, s = 18 + cSat * cSat * 82;
+    const h = genes[G.hue] * 360, s = 18 + cSat * cSat * 82;
     const l = 31 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen

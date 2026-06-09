@@ -32,8 +32,10 @@ export const config = {
                         // Medido: con A (banda) activa, B fuerte extingue carnívoros (sube K herbívoro). Desactivado
                         // hasta afinar el filo A+B en una búsqueda en equilibrio. El campo grain queda listo en world.js.
     grainSigma: 0.18,   // ancho del nicho: cuánto margen de talla rinde bien en una zona dada
-    absRate: 0.12,      // fracción absorbible/tick antes de escalar por metab
-                        // (bajo: evita el "arrasar la celda de un bocado" → agentes más sanos)
+    absRate: 0.30,      // (UI) fracción absorbible/tick antes de escalar por metab. SUBIDO 0.12→0.30: los herbívoros
+                        // pastan más rápido → dejan zonas PELADAS donde se agolpan (escasez local visible, ~20% de
+                        // celdas a ras del refugio vs 6% antes) → la comida limita de forma visible, manteniendo la
+                        // coexistencia (medido 3/3). Más alto agota más pero empieza a sacrificar carnívoros.
     energyPerUnit: 20,  // conversión recurso→energía (parámetro de equilibrio crítico)
     grazeRefuge: 0.3,   // fracción de cada celda que NO se puede pastar (reserva de rebrote)
                         // → siempre queda vegetación en pie (crece y florece) y frena el sobrepastoreo

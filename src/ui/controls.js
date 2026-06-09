@@ -505,8 +505,8 @@ function setupLab(app, send) {
     const mascot = new Float32Array(NUM_GENES).fill(0.5);
     const R = (a, b) => a + Math.random() * (b - a);          // aleatorio en [a,b]
     const g = (n, v) => { mascot[G[n]] = v < 0 ? 0 : v > 1 ? 1 : v; };
-    // hue acotado a [0.27, 0.36]: con la banda del render (135+hue·330) eso da ~224-254° → entorno al AZUL (algo de azul-violeta).
-    g('size', R(0.58, 0.66)); g('hue', R(0.27, 0.36)); g('sense', 0.5); g('metab', 0.5);
+    // hue acotado a [0.62, 0.68]: con la rueda completa del render (hue·360) eso da ~223-245° → entorno al AZUL.
+    g('size', R(0.58, 0.66)); g('hue', R(0.62, 0.68)); g('sense', 0.5); g('metab', 0.5);
     g('diet', R(0.38, 0.44)); g('aggro', R(0.38, 0.44));
     g('m_app', R(0.3, 0.4)); g('m_len', R(0.48, 0.58)); g('m_width', R(0.4, 0.48)); g('m_sym', R(0.72, 0.8));
     g('m_elong', R(0.42, 0.5)); g('m_wave', R(0.5, 0.6));
