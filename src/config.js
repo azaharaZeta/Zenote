@@ -77,6 +77,14 @@ export const config = {
     segDrag: 0.22,      // Arrastre extra por segmento
     modDrag: 0.6,       // Arrastre extra por módulo
     segTurn: 0.03,      // Cada segmento extra empeora el giro
+    // A1 (Pilar v2.0): piezas antes inertes → físicas. limbs = apéndices de cabeza + patas de segmento.
+    limbThrust: 0.12,   // Empuje por unidad de área de limbs (ondulan → propulsión secundaria)
+    limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente)
+    appWidFloor: 0.25,  // Suelo de grosor: un apéndice fino aún tiene algo de área (no degenera a 0)
+    branchArea: 1.5,    // s_branch ≥ 0.5 ramifica → +50% de superficie de apéndices (coherente con el render)
+    bodyDrag: 0.30,     // Arrastre por unidad de área de cuerpo ancho (b_aspect)
+    bodyMass: 0.30,     // Masa metabólica por área de cuerpo ancho (el ancho SÍ es volumen real)
+    coreStream: 0.5,    // s_core (afilado del núcleo) recorta hasta −50% el arrastre/masa del ancho
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────

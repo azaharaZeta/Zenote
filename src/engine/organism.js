@@ -39,10 +39,9 @@ export function computePhenotype(sim, i) {
   const elong = 1 + g[b + G.m_elong] * 1.3;
   const waveG = g[b + G.m_wave];
 
-  // APÉNDICES DECORATIVOS: su número/largo/grosor NO afectan al nado → quedan LIBRES para derivar
-  // (gran variedad: pocos-largos-finos, muchos-cortos, paletas…). El nado emerge de la ONDULACIÓN del
-  // cuerpo (wave) y la simetría (straight), más la hidrodinámica del cuerpo. Los genes m_app/m_len/
-  // m_width solo se usan en el RENDER (dibujo). Así la selección no uniformiza la silueta de apéndices.
+  // A1 (Pilar v2.0): los apéndices YA NO son decorativos. Su nº/largo/grosor aportan arrastre y algo de
+  // empuje (más abajo, vía limbArea) → la forma queda bajo selección. El empuje base del cuerpo sigue
+  // emergiendo de la ONDULACIÓN (wave) y la simetría (straight); A1 lo MANTIENE y SUMA los limbs encima.
   const wave = lo.waveFloor + (1 - lo.waveFloor) * waveG;
   const straight = lo.symBase + (1 - lo.symBase) * symG;
   const thrust = wave * straight;                              // empuje = ondulación · simetría
@@ -66,9 +65,23 @@ export function computePhenotype(sim, i) {
     const mb = b + G.mod0_on + mk * 4;
     if (g[mb] >= 0.5) { const ms = 0.3 + g[mb + 3] * 0.6; modAreaSum += ms * ms; }
   }
-  const massMul = 1 + segAreaSum + modAreaSum;                 // masa (área) total / cabeza
-  const Pmul = 1 + lo.segThrust * segAreaSum + lo.modThrust * modAreaSum;          // empuje extra (patas/módulos)
-  const Dmul = 1 + lo.segDrag * (segAreaSum + (nSeg - 1) * 0.08) + lo.modDrag * modAreaSum; // arrastre extra (penaliz. de LONGITUD bajada 0.3→0.08 → gusanos largos viables)
+  // ---- LIMBS: apéndices de cabeza + patas de cuerpo (A1) → empuje/arrastre, NO masa metabólica ----
+  // Su superficie ondula (algo de empuje) pero arrastra más (limbDrag > limbThrust) → la selección
+  // recorta apéndices excesivos pero conserva niveles útiles: coexisten "ondulantes" y "remeros".
+  const nApp = 1 + ((g[b + G.m_app] * 7 + 0.5) | 0);           // 1..8, idéntico al render
+  const branchMul = g[b + G.s_branch] >= 0.5 ? lo.branchArea : 1;
+  let limbArea = nApp * g[b + G.m_len] * (lo.appWidFloor + g[b + G.m_width]) * branchMul;
+  if (nSeg > 1) limbArea += (nSeg - 1) * g[b + G.leg_len] * 0.5; // patas (solo con segmentos, como el render)
+  // ---- ANCHO DE CUERPO (b_aspect) atenuado por el afilado del núcleo (s_core) → arrastre + masa real ----
+  const headW = 0.55 + g[b + G.b_aspect] * 0.95;               // 0.55 (aguja) .. 1.5 (globo); 1.0 = neutro
+  let bodyArea = headW * headW - 1;                            // área extra cuadrática; un cuerpo más fino (<1) → 0
+  if (bodyArea < 0) bodyArea = 0;
+  bodyArea *= (1 - lo.coreStream * g[b + G.s_core]);           // núcleo afilado recorta el arrastre frontal
+
+  const massMul = 1 + segAreaSum + modAreaSum + lo.bodyMass * bodyArea; // limbArea NO entra (masa hidrodinámica, no metabólica)
+  const Pmul = 1 + lo.segThrust * segAreaSum + lo.modThrust * modAreaSum + lo.limbThrust * limbArea; // empuje extra (patas/módulos/limbs)
+  const Dmul = 1 + lo.segDrag * (segAreaSum + (nSeg - 1) * 0.08) + lo.modDrag * modAreaSum            // arrastre extra (penaliz. de LONGITUD bajada 0.3→0.08 → gusanos largos viables)
+             + lo.limbDrag * limbArea + lo.bodyDrag * bodyArea;
 
   let v = lo.kThrust * thrust * (Pmul / Dmul) * stream * effort;
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;

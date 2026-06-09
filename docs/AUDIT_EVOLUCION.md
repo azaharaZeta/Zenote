@@ -241,9 +241,10 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 De más fundacional / mayor retorno de realismo a más periférico.
 **Progreso: 6/14 hechos** → ✅ #1, #2, #4, #5, #6, #11.
 
-0. ⬜ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
+0. 🔄 **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
    con los pasos siguientes (la alometría #3 y los límites blandos son su lenguaje físico natural).
+   *Progreso: ✅ A1 (apéndices/patas/ancho de cuerpo → empuje/arrastre); pendientes A2, B1, B2, B3.*
 1. ✅ **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
    *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
 2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`
@@ -371,10 +372,10 @@ desacoplado de la física). Así el gait se selecciona y se VE, pero el bucle ca
 
 ### Plan incremental A → B (cada paso verificable, estilo "fases" del proyecto)
 
-- **A1 — Hacer físicas las piezas actuales.** Enrutar los genes de "forma inerte" (apéndices, patas,
-  módulos, silueta) por la física: cada uno suma arrastre + masa (+ algo de empuje). El empuje/arrastre/
-  giro pasan a sumarse **sobre la geometría real**; se pliega o retira la fórmula `wave·sym`. *Render sin
-  cambios.* **Criterio (cuidado: no confundir deriva con selección — hoy ya derivan neutralmente):** un
+- ✅ **A1 — Hacer físicas las piezas actuales.** *Hecho:* apéndices (`m_app/m_len/m_width/s_branch`),
+  patas (`leg_len`) y ancho de cuerpo (`b_aspect`, atenuado por `s_core`) entran en `Pmul`/`Dmul` (y el
+  ancho en `massMul`). Limbs aportan empuje pero más arrastre (`limbThrust<limbDrag`) y NO suman masa
+  metabólica (no contaminan eMax/coste). `wave·sym` se MANTIENE (retirarla es A2). *Render sin cambios.* **Criterio (cuidado: no confundir deriva con selección — hoy ya derivan neutralmente):** un
   gen de forma muestra **respuesta a la selección**, p. ej. correlaciona con el nicho (los cazadores
   convergen a cuerpos hidrodinámicos) o un *knockout* del acoplamiento físico cambia su distribución.
 - **A2 — Empuje desde superficies que oscilan.** Sustituir el gen abstracto `m_wave` por empuje generado
