@@ -61,6 +61,7 @@ html, body {
 .autopsy { display: none; font-size: 10px; line-height: 1.45; color: #ffd5b0; background: rgba(255, 120, 60, 0.12);
        border: 1px solid rgba(255, 120, 60, 0.3); border-radius: 8px; padding: 5px 8px; margin: 4px 0 6px; }
 #panel.advanced .autopsy.on { display: block; }   /* solo en modo laboratorio */
+.autopsy .ap-death { display: inline-block; margin-top: 3px; color: #ffc7a0; opacity: 0.92; }   /* causa proximal (de la gráfica) */
 
 .row { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
 
@@ -92,6 +93,9 @@ optgroup { font-weight: 500; }
 .charts { margin: 8px 0; }
 .chart-pair { display: block; }   /* simple: gráficas apiladas. avanzado: lado a lado (ver #panel.advanced) */
 .chart { width: 100%; height: 68px; display: block; background: rgba(0,0,0,0.25); border-radius: 8px; margin-bottom: 6px; }
+.death-chart { display: none; margin: 0 0 6px; }            /* causas de muerte carnívora: solo modo laboratorio */
+#panel.advanced .death-chart { display: block; }
+#panel.advanced .death-chart .chart { height: 56px; margin-bottom: 0; }
 .inline { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .inline select { padding: 4px 6px; min-height: 28px; }
 

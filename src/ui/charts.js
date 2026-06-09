@@ -4,22 +4,27 @@
 import { NUM_GENES, G, GENES, GENE_LABELS } from '../engine/genome.js';
 
 export class Charts {
-  constructor(popCanvas, histCanvas, sim) {
+  constructor(popCanvas, histCanvas, sim, deathCanvas) {
     this.sim = sim;
     this.popCanvas = popCanvas;
     this.histCanvas = histCanvas;
+    this.deathCanvas = deathCanvas || null;   // gráfica de causas de muerte carnívora (solo modo laboratorio)
     this.popCtx = popCanvas.getContext('2d');
     this.histCtx = histCanvas.getContext('2d');
+    this.deathCtx = this.deathCanvas ? this.deathCanvas.getContext('2d') : null;
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
-    this.history = [];      // población total a lo largo del tiempo (de SIMULACIÓN, no de reloj)
-    this.histC = [];        // carnívoros (diet > 0.5) a lo largo del tiempo
-    this.histV = [];         // vegetación disponible: fracción del recurso sobre su capacidad total [0,1]
-    this.histT = [];         // tick de simulación de cada muestra → eje X en TICKS (acoplado a la velocidad)
+    // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
+    // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
+    this.history = []; this.histC = []; this.histV = []; this.histT = [];
+    // Muertes carnívoras por ventana, por causa (combate/hambre/vejez/cazado): también del worker.
+    this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
+    this.frozenDeath = null; // foto congelada de la gráfica de muertes en la extinción (la fija el worker)
     this.maxHistory = 600;
-    this.windowTicks = 4800; // ventana visible del eje X en ticks (≈ maxHistory · cadencia de muestreo)
+    this.windowTicks = 4800; // ventana visible del eje X en ticks (debe coincidir con HIST_WINDOW del worker)
     this.bins = new Float32Array(24);
     this._fitDPR(popCanvas, this.popCtx);
     this._fitDPR(histCanvas, this.histCtx);
+    if (this.deathCtx) this._fitDPR(this.deathCanvas, this.deathCtx);
   }
 
   _fitDPR(canvas, ctx) {
@@ -36,34 +41,19 @@ export class Charts {
   resize() {
     this._fitDPR(this.popCanvas, this.popCtx);
     this._fitDPR(this.histCanvas, this.histCtx);
+    if (this.deathCtx) this._fitDPR(this.deathCanvas, this.deathCtx);
   }
 
-  record(tick) {
-    const s = this.sim;
-    this.history.push(s.popCount);
-    this.histC.push(s.carn || 0); // nº de carnívoros (lo calcula el worker)
-    this.histV.push(this._vegFrac()); // vegetación disponible (fracción de capacidad)
-    this.histT.push(tick != null ? tick : (this.histT.length ? this.histT[this.histT.length - 1] + 1 : 0));
-    // recortar por VENTANA DE TICKS (no de frames) → la escala temporal del eje X es constante con la velocidad
-    const t0 = this.histT[this.histT.length - 1] - this.windowTicks;
-    while (this.histT.length > 1 && this.histT[0] < t0) { this.history.shift(); this.histC.shift(); this.histV.shift(); this.histT.shift(); }
-    if (this.history.length > this.maxHistory) { this.history.shift(); this.histC.shift(); this.histV.shift(); this.histT.shift(); }
+  // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
+  clear() {
+    this.history = []; this.histC = []; this.histV = []; this.histT = [];
+    this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
   }
-
-  // Fracción de vegetación disponible = Σ recurso / Σ capacidad ∈ [0,1] (1 = todo el pasto a tope, 0 = arrasado).
-  _vegFrac() {
-    const r = this.sim.world && this.sim.world.resource, c = this.sim.world && this.sim.world.capacity;
-    if (!r || !c || !r.length) return 0;
-    let sr = 0, sc = 0;
-    for (let i = 0; i < r.length; i++) { sr += r[i]; sc += c[i]; }
-    return sc > 0 ? sr / sc : 0;
-  }
-
-  clear() { this.history.length = 0; this.histC.length = 0; this.histV.length = 0; this.histT.length = 0; }
 
   draw() {
     this._drawPop();
     this._drawHist();
+    if (this.deathCtx) this._drawDeaths();
   }
 
   _drawPop() {
@@ -98,6 +88,50 @@ export class Charts {
     const label = `total ${this.sim.popCount} · carn ${carnNow} · veg ${(vegNow * 100) | 0}% · esp ${this.sim.speciesCount || 0}`;
     ctx.fillStyle = '#cdd5e0';
     ctx.fillText(label, 4, 11);            // en la banda reservada → ya no se solapa con la curva
+  }
+
+  // Causas de muerte de los CARNÍVOROS a lo largo del tiempo, una LÍNEA por causa (combate / hambre / vejez /
+  // cazado) → se ven las cuatro a la vez. Cada línea = nº de muertes de esa causa por ventana de muestreo. El
+  // texto de cada causa va de SU color (leyenda). Revela por qué se extinguen (suele dominar el combate).
+  _drawDeaths() {
+    const ctx = this.deathCtx, c = this.deathCanvas, w = c._w, h = c._h;
+    ctx.clearRect(0, 0, w, h);
+    // Si hubo extinción, dibuja la FOTO CONGELADA (la fija el worker en el instante de la extinción) en vez de
+    // la serie en vivo → el usuario la analiza con calma aunque la simulación siga corriendo.
+    const fz = this.frozenDeath;
+    const T = fz ? fz.tick : this.histT, n = T.length;
+    const combat = fz ? fz.combat : this.dCombat, starv = fz ? fz.starv : this.dStarv;
+    const age = fz ? fz.age : this.dAge, eaten = fz ? fz.eaten : this.dEaten;
+    const COL = { combat: '#ff6b5a', starv: '#f0b429', age: '#7a8aa0', eaten: '#b06bff' }; // combate/hambre/vejez/cazado
+    let sc = 0, ss = 0, sa = 0, se = 0;
+    for (let i = 0; i < n; i++) { sc += combat[i]; ss += starv[i]; sa += age[i]; se += eaten[i]; }
+    const TOP = 14, ph = h - TOP - 2;
+    if (n >= 2) {
+      // Líneas INDEPENDIENTES (no apiladas): normaliza por el valor individual MÁXIMO → la línea más alta llega arriba.
+      let maxV = 1;
+      for (let i = 0; i < n; i++) { if (combat[i] > maxV) maxV = combat[i]; if (starv[i] > maxV) maxV = starv[i]; if (age[i] > maxV) maxV = age[i]; if (eaten[i] > maxV) maxV = eaten[i]; }
+      const tEnd = T[n - 1], span = this.windowTicks || 1;
+      const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
+      const yOf = (v) => h - (v / maxV) * ph - 2;
+      const lineOf = (arr, color) => {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.3; ctx.beginPath();
+        for (let i = 0; i < n; i++) { const x = xOf(i), y = yOf(arr[i]); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+        ctx.stroke();
+      };
+      lineOf(age, COL.age); lineOf(eaten, COL.eaten); lineOf(starv, COL.starv); lineOf(combat, COL.combat); // combate al final → encima
+    }
+    // Etiqueta: cada causa de SU color (leyenda). Se dibuja por segmentos avanzando x.
+    ctx.font = '10px system-ui, sans-serif';
+    let x = 4;
+    const seg = (txt, color) => { ctx.fillStyle = color; ctx.fillText(txt, x, 11); x += ctx.measureText(txt).width; };
+    if (fz) {
+      ctx.strokeStyle = 'rgba(255,120,90,0.7)'; ctx.lineWidth = 1.5; ctx.strokeRect(0.75, 0.75, w - 1.5, h - 1.5); // marco: congelada
+      seg(`🔒 ext ${fz.extTick}  `, '#ffb38a');
+    }
+    seg(`combate ${sc}`, COL.combat); seg(' · ', '#7b8494');
+    seg(`hambre ${ss}`, COL.starv); seg(' · ', '#7b8494');
+    seg(`vejez ${sa}`, COL.age); seg(' · ', '#7b8494');
+    seg(`cazado ${se}`, COL.eaten);
   }
 
   _drawHist() {

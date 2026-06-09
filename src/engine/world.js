@@ -13,6 +13,9 @@ export class World {
 
     // Campo de recurso (unidades normalizadas [0, R_max]).
     this.resource = new Float32Array(this.cols * this.rows);
+    // Snapshot del recurso del tick anterior: lo usa regen() para leer vecinos sin orden-dependencia
+    // (rebrote emergente con difusión de semilla). Reutilizable, sin GC en el bucle.
+    this._resPrev = new Float32Array(this.cols * this.rows);
     // Campo de CARROÑA (energía de cadáveres por celda; alimento de los carnívoros, ver sim.js). Se rellena
     // al morir los organismos y se pudre cada tick. Siempre asignado; la lógica se activa con cfg.carrion.enabled.
     this.carrion = new Float32Array(this.cols * this.rows);
@@ -89,29 +92,12 @@ export class World {
         }
       return;
     }
-    // 'perlin': suma de octavas de ruido de valor interpolado → manchas ricas/pobres.
-    // `patchiness` (p) endurece el contraste: umbral (lo) que manda a CERO casi todo + gamma que
-    // realza los picos + baja el suelo base → de campo suave (p=0, idéntico a siempre) a PARCHES
-    // ricos separados por baldíos sin comida (p alto). Los baldíos no dan gradiente → forzar búsqueda.
+    // 'perlin': suma de octavas de ruido de valor interpolado → manchas ricas/pobres (capacidad de
+    // carga FIJA, suelo 0.1·Rmax para que ninguna celda sea baldío permanente). La estructura de PARCHES
+    // ya no se esculpe aquí: EMERGE de la dinámica de rebrote (ver regen() y resource.patchiness).
     const noise = this._valueNoiseField();
-    const N = cols * rows, p = this.cfg.resource.patchiness || 0;
-    if (p <= 0) {                                     // suave: idéntico a siempre
-      for (let i = 0; i < N; i++) this.capacity[i] = Rmax * (0.1 + 0.9 * noise[i]);
-      return;
-    }
-    // Parcheado: umbrales por PERCENTIL del propio ruido (robusto a cualquier seed). Una fracción
-    // `bf` de celdas (la más baja) → BALDÍO sin comida; las altas → PARCHES RICOS; rampa entre medias.
-    // Se mezcla con el campo suave según `p` (p alto = baldíos reales sin gradiente que seguir).
-    const sorted = Float32Array.from(noise).sort();
-    const bf = 0.55 * p;                              // fracción de baldío (crece con p)
-    const lo = sorted[Math.min(N - 1, (bf * N) | 0)];
-    const hi = sorted[Math.min(N - 1, ((bf + 0.22) * N) | 0)] + 1e-6;
-    const base = 0.1 * (1 - p), span = 1 - base;
-    for (let i = 0; i < N; i++) {
-      let r = (noise[i] - lo) / (hi - lo); r = r < 0 ? 0 : r > 1 ? 1 : r;
-      const v = noise[i] * (1 - p) + r * p;           // mezcla suave ↔ parcheado
-      this.capacity[i] = Rmax * (base + span * v);
-    }
+    const N = cols * rows;
+    for (let i = 0; i < N; i++) this.capacity[i] = Rmax * (0.1 + 0.9 * noise[i]);
   }
 
   // Ruido fractal (varias octavas) PERIÓDICO → la capacidad tesela sin costura en el toro.
@@ -162,13 +148,42 @@ export class World {
     }
   }
 
-  // Regeneración por tick: cada celda sube R_regen hasta su capacidad local.
+  // Regeneración por tick. `patchiness` (p) controla CÓMO rebrota el pasto, y de ahí EMERGEN los parches:
+  //  · p=0  → rebrote LINEAL: cada celda sube R_regen hasta su capacidad (comportamiento clásico, sin parches).
+  //  · p>0  → rebrote LOGÍSTICO + DIFUSIÓN DE SEMILLA: una celda crece según la vegetación que YA tiene
+  //           (res/cap) MÁS lo que le siembran los vecinos (media de los 4 vecinos / cap). Una calva total
+  //           rodeada de calva no rebrota; solo coloniza desde los BORDES de los parches. → las zonas
+  //           pastadas tardan en recuperarse y los parches se agotan, se reconquistan y MIGRAN solos
+  //           de la interacción pastoreo↔rebrote. Nadie pinta los parches: son un patrón emergente.
+  // O(celdas·4); lee del snapshot del tick anterior (_resPrev) para ser independiente del orden de barrido.
   regen() {
     const dr = this.cfg.resource.R_regen;
     const cap = this.capacity, res = this.resource;
-    for (let i = 0; i < res.length; i++) {
-      const v = res[i] + dr;
-      res[i] = v > cap[i] ? cap[i] : v;
+    let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
+    if (p <= 0) {
+      for (let i = 0; i < res.length; i++) {                 // camino rápido: rebrote lineal clásico
+        const v = res[i] + dr;
+        res[i] = v > cap[i] ? cap[i] : v;
+      }
+    } else {
+      const cols = this.cols, rows = this.rows, prev = this._resPrev;
+      prev.set(res);                                          // congela el estado del tick anterior
+      for (let y = 0; y < rows; y++) {
+        const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
+        for (let x = 0; x < cols; x++) {
+          const i = row + x, c = cap[i], r = prev[i];
+          const head = c - r;                                 // sitio que queda hasta la capacidad
+          if (head <= 0) { res[i] = r > c ? c : r; continue; }
+          const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
+          const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
+          // Rebrote logístico (necesita biomasa local) + colonización desde vecinos (ambos ∝ cap) + un
+          // SUELO de semilla espontánea (0.04) que da a una calva total aislada un rebrote lentísimo →
+          // evita el estado absorbente (vegetación global a cero del que nunca se sale). Banco de semillas.
+          let logGrow = dr * (0.04 + r / c + meanNb / c); if (logGrow > head) logGrow = head;
+          let linGrow = dr < head ? dr : head;                // el clásico (para mezclar según p)
+          res[i] = r + (1 - p) * linGrow + p * logGrow;
+        }
+      }
     }
     // Pudrición de la carroña (la carne se descompone → no se acumula indefinidamente).
     const cc = this.cfg.carrion;

@@ -17,7 +17,8 @@ export const config = {
     R_max: 1.0,         // Recurso máximo por celda
     R_regen: 0.0016,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
-    patchiness: 0,      // (UI) Comida en parches: 0 = repartida suave … 1 = parches ricos con baldíos
+    patchiness: 0,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
+                        //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
@@ -28,8 +29,9 @@ export const config = {
   pop: {
     initial: 400,            // Nº de fundadores al sembrar
     maxAgents: 4000,         // Tope físico del pool (límite duro de memoria)
-    maxAlive: 500,           // (UI) Tope de organismos vivos: al llegar no nacen crías · 0 = sin tope.
-                             //      Por debajo de la capacidad natural (~800) comprime y fragiliza a los carnívoros.
+    maxAlive: 800,           // (UI) Tope de organismos vivos: al llegar no nacen crías · 0 = sin tope.
+                             //      Medido: con esta config la pob. natural techa en ~635, así que ≥800 ≈ sin tope.
+                             //      A 500 el cap atascaba los picos y ADELANTABA la extinción carnívora (1/6 vs 2/6 a 100k).
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
     carnivoreSeedFrac: 0.14, // Fracción de fundadores sembrados como proto-carnívoros
@@ -148,7 +150,7 @@ export const config = {
   // estabiliza la depredación (sin él, los carnívoros sobre-disparan y colapsan todo). No quitarlo.
   combat: {
     enabled: true,       // (UI) Activar depredación/combate
-    sizeAdvantage: 0.82, // (UI) Cuánto pesa el tamaño en quién gana el combate
+    sizeAdvantage: 1.4, // (UI) Cuánto pesa el tamaño en quién gana el combate
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)

@@ -39,6 +39,7 @@ const charts = new Charts(
   document.getElementById('popChart'),
   document.getElementById('histChart'),
   simProxy,
+  document.getElementById('deathChart'),
 );
 
 const app = { sim: simProxy, worker, renderer, charts, cfg: config, running: true, maxSpeed: false, followSel: false };
@@ -64,6 +65,11 @@ worker.onmessage = (e) => {
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel;
     simProxy.species = m.species; simProxy.speciesCount = m.speciesCount;
     simProxy.huntable = m.huntable; simProxy.huntCarn = m.huntCarn; simProxy.huntHerb = m.huntHerb; simProxy.autopsy = m.autopsy;
+    // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
+    // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
+    charts.history = m.histPop; charts.histC = m.histCarn; charts.histV = m.histVeg; charts.histT = m.histTick;
+    charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
+    charts.frozenDeath = m.frozenDeath; // ≠ null → la gráfica de muertes se congela en la foto de la extinción
     simProxy.world.resource = m.resource;
   }
 };
@@ -77,8 +83,6 @@ window.addEventListener('resize', () => {
 
 // --- Bucle de RENDER (solo dibuja; el worker simula) ---
 let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
-let lastRecordTick = 0;                 // último tick muestreado para la gráfica
-const TICKS_PER_SAMPLE = 8;             // una muestra cada N ticks de SIMULACIÓN → eje X acoplado a la velocidad
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
@@ -93,11 +97,7 @@ function frame(now) {
   else if (app.followSel && app._selSeen && !simProxy.sel) { app.followSel = false; app._selSeen = false; }
   renderer.draw();
   if (simProxy.sel) renderer.highlight(simProxy.sel);
-  // Muestreo de la gráfica por TICKS de simulación (no por frames de reloj) → la curva avanza al ritmo de la
-  // simulación, igual a cualquier velocidad. Si el tick retrocede (Sembrar reinicia a 0), rearranca el contador.
-  if (simProxy.tick < lastRecordTick) { lastRecordTick = simProxy.tick; charts.clear(); }
-  if (simProxy.tick - lastRecordTick >= TICKS_PER_SAMPLE) { charts.record(simProxy.tick); lastRecordTick = simProxy.tick; }
-  charts.draw();
+  charts.draw();   // el histórico ya lo acumula el worker (muestreo por ticks); aquí solo se pinta
   updateInspector(app);
 
   frames++;
@@ -123,7 +123,20 @@ function frame(now) {
     }
     if (autopsyEl) {
       const a = simProxy.autopsy;
-      if (a) { autopsyEl.className = 'autopsy on'; autopsyEl.innerHTML = `⚠ Carnívoros extintos (tick ${a.tick}) · ${a.herbN} herbívoros, ${a.huntable >= 0 ? Math.round(a.huntable * 100) + '% cazable' : '—'} → <b>${a.cause}</b>`; }
+      if (a) {
+        autopsyEl.className = 'autopsy on';
+        let dtxt = '';
+        const d = a.death;
+        if (d && d.total > 0) {
+          const pct = (v) => Math.round((v / d.total) * 100);
+          const parts = [['combate', d.combat], ['hambre', d.starv], ['vejez', d.age], ['cazado', d.eaten]]
+            .filter(p => p[1] > 0).sort((x, y) => y[1] - x[1]);
+          const top = parts[0];
+          const breakdown = parts.map(p => `${p[0]} ${pct(p[1])}%`).join(' · ');
+          dtxt = `<br><span class="ap-death">murieron sobre todo de <b>${top[0]}</b> · ${breakdown}</span>`;
+        }
+        autopsyEl.innerHTML = `⚠ Carnívoros extintos (tick ${a.tick}) · ${a.herbN} herbívoros, ${a.huntable >= 0 ? Math.round(a.huntable * 100) + '% cazable' : '—'} → <b>${a.cause}</b>${dtxt}`;
+      }
       else { autopsyEl.className = 'autopsy'; autopsyEl.innerHTML = ''; }
     }
   }

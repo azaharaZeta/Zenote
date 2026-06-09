@@ -88,6 +88,9 @@ export class Sim {
     this.deaths = 0;
     this.nextLineageId = 0;
     this.kills = 0; // presas abatidas por depredación (instrumentación)
+    // Causas de muerte ACUMULADAS de los carnívoros (diet > 0.5), para el diagnóstico del laboratorio:
+    // 'combat' = murió atacando (ataque fallido), 'starv' = inanición, 'age' = vejez, 'eaten' = lo cazaron.
+    this.carnDeath = { starv: 0, combat: 0, age: 0, eaten: 0 };
 
     this._seedInitial();
     this._rebuildActive();
@@ -101,7 +104,8 @@ export class Sim {
     return i;
   }
 
-  _kill(i) {
+  _kill(i, cause) {
+    if (cause && this.diet[i] > 0.5) this.carnDeath[cause]++; // diagnóstico: causa de muerte carnívora
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
     this.popCount--;
@@ -399,7 +403,7 @@ export class Sim {
             // Gana i: la presa muere SIN depositar cadáver; i come según su eficiencia carnívora.
             const g = en.preyGain * E[j] * this.effCarn[i];
             E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
-            this._kill(j); this.kills++;
+            this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
           } else {
             // Gana el defensor j: i muere (sin cadáver) y j come. Un herbívoro (effCarn≈0)
@@ -410,7 +414,7 @@ export class Sim {
             E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
             this.attackCD[j] = handlingTime;
             if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * this.eMax[i]); // el cuerpo del atacante → carroña
-            this._kill(i); this.kills++;
+            this._kill(i, 'combat'); this.kills++;
             continue; // i ha muerto: no sigue procesándose este tick
           }
         }
@@ -545,7 +549,7 @@ export class Sim {
       // ---------- MUERTE ----------
       if (E[i] <= 0) {
         if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * eMaxI); // el cuerpo queda como carroña
-        this._kill(i); continue;
+        this._kill(i, 'starv'); continue;
       }
       this.age[i]++;
       const over = this.age[i] - age.mature;
@@ -554,7 +558,7 @@ export class Sim {
         if (rng.next() < age.mortality * t * t) {
           this._depositCorpse(x[i], y[i], en.corpseReturn * E[i]);
           if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * eMaxI); // cadáver de vejez → carroña
-          this._kill(i);
+          this._kill(i, 'age');
           continue;
         }
       }

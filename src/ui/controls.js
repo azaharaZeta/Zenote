@@ -289,7 +289,7 @@ const LAB_SPEC = [
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que NO se puede pastar (queda como semilla). Más alto = la vegetación nunca se agota del todo y frena el sobrepastoreo.' },
     { k: 'resource.absRate', label: 'Ritmo de absorción', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Velocidad a la que un organismo absorbe el recurso de su celda. Más alto = comen más rápido (pero arrasan antes la celda).' },
     { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 40, step: 1, dec: 0, d: 'Cuánta energía da cada unidad de recurso consumida. Sube la rentabilidad de pastar (parámetro de equilibrio crítico).' },
-    { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, reseed: true, d: '0 = comida repartida suave. Subir = parches ricos separados por baldíos sin comida → premia buscar y recordar (cerebro). Requiere volver a Sembrar.' },
+    { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = el pasto rebrota lineal y uniforme (sin parches). Subir = rebrote logístico + colonización desde los bordes → las calvas pastadas tardan en recuperarse y los parches se agotan, se reconquistan y migran SOLOS. Premia buscar y recordar (cerebro). Efecto en vivo.' },
   ]},
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
