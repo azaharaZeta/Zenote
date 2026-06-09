@@ -54,8 +54,10 @@ export const config = {
     seed: 123,          // semilla por defecto que muestra coexistencia depredador-presa robusta
                         // (vacía el campo "semilla" y pulsa Sembrar para un mundo aleatorio)
     seedDietLow: false,     // Fase 2: dieta inicial diversa para que emerjan carnívoros
-    carnivoreSeedFrac: 0.32, // (tune A/T2) fracción de fundadores sembrados como proto-carnívoros (Fase 2; subido para que
-                            // la depredación arraigue de forma más fiable desde el arranque sencillo)
+    carnivoreSeedFrac: 0.14, // fracción de fundadores sembrados como proto-carnívoros. BAJADO 0.32→0.14: con menos
+                            // depredadores al inicio, la presa establece base ANTES → el primer ciclo no hace boom-crash
+                            // violento (que extinguía carnívoros en el transitorio ~2k ticks). Medido: coexist 5/8→6/8 y
+                            // más carnívoros (86→108). Demasiado bajo (<0.08) no aporta; 0.22 fue ruido peor.
     simpleStart: true,      // SEMBRAR SENCILLO: los fundadores arrancan como organismos simples (pequeños,
                             // simétricos, 1 segmento, sin módulos/ramas, cabeza/ojos lisos, sin ornamento) con
                             // solo un pequeño jitter. La complejidad y la apariencia EMERGEN por evolución →
