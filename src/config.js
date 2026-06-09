@@ -127,6 +127,8 @@ export const config = {
     sigma: 0.08,        // (UI) Magnitud de la mutación
     bigRate: 0.002,     // Prob. de macromutación (salto grande y raro)
     bigSigmaMult: 5,    // Multiplicador de magnitud de la macromutación
+    recomb: 0.07,       // (UI) Recombinación sexual: prob. de cruce por locus (LIGAMIENTO). 0.5 = uniforme (sin
+                        //      ligamiento); →0 = tramos contiguos largos co-heredados. Vive en `mut` por conveniencia.
   },
 
   // ───── Combate / depredación (física trófica, no conducta) ─────

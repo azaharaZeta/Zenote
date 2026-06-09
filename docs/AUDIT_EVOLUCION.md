@@ -238,31 +238,34 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 
 ## Backlog priorizado (orden de ataque sugerido)
 
-De más fundacional / mayor retorno de realismo a más periférico:
+De más fundacional / mayor retorno de realismo a más periférico.
+**Progreso (2026-06-09): 5/14 hechos** → ✅ #1, #2, #5, #6, #11.
 
-0. **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
+0. ⬜ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
    con los pasos siguientes (la alometría #3 y los límites blandos son su lenguaje físico natural).
-1. **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
-   Riesgo: la variedad visual; medir antes/después. — *Capa 2*
-2. **Crossover con ligamiento** (bloques/puntos de corte en vez de uniforme). — *Capa 2*
-3. **Alometría en el mapa gen→fenotipo** (masa por volumen; coste metabólico ∝ masa^¾; límites blandos
+1. ✅ **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
+   *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
+2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`
+   (0.5 ≡ uniforme); preserva complejos co-adaptados y co-herencia `orn`/`pref`.* — *Capa 2*
+3. ⬜ **Alometría en el mapa gen→fenotipo** (masa por volumen; coste metabólico ∝ masa^¾; límites blandos
    por coste en vez de topes duros). Gran palanca de realismo, coste CPU nulo. — *Capa 1*
-4. **Restaurar el compromiso r/K honesto** (quitar el desacople de `reproRef`) y, si hace falta,
+4. ⬜ **Restaurar el compromiso r/K honesto** (quitar el desacople de `reproRef`) y, si hace falta,
    sustituir el fudge por depredación/coste estructurado por talla. — *Capa 3/6*
-5. **Quitar `maxAlive`**: capacidad de carga emergente del recurso. — *Capa 4*
-6. **Retirar muletas energéticas** (`carnUpkeep`, `k_sizeHerb`) — coordinar con el trabajo futuro de
-   carnívoros. — *Capa 3*
-7. **Repensar el refugio** como estructura de hábitat espacial, no flag "no cazable". — *Capa 4*
-8. **Auditar las constantes de locomoción** por si alguna fija "qué forma es buena". — *Capa 5*
+5. ✅ **Quitar `maxAlive`**: capacidad de carga emergente del recurso. *Hecho: único límite = `maxAgents`
+   (pool físico); retirado también el diagnóstico `atCap` del worker.* — *Capa 4*
+6. ✅ **Retirar muletas energéticas** (`carnUpkeep`, `k_sizeHerb`). *Hecho: coste basal independiente de la
+   dieta.* — *Capa 3*
+7. ⬜ **Repensar el refugio** como estructura de hábitat espacial, no flag "no cazable". — *Capa 4*
+8. ⬜ **Auditar las constantes de locomoción** por si alguna fija "qué forma es buena". — *Capa 5*
 
 **Catálogo de genes (decidido el 2026-06-09, ver sección dedicada):**
 
-9. **Cortar el modo reactivo** y los genes `w_food`/`w_prey`/`w_flee` (cerebro neural-only). — *Catálogo*
-10. **Plegar `aggro` en el cerebro** (nueva salida de ataque, `O: 2→3`). — *Catálogo*
-11. **Eliminar el subsistema de carroña** (código `carrion`). — *Catálogo*
-12. **Añadir genes de historia de vida** (`mature_age`, `senescence`). — *Catálogo*
-13. **Consolidar los genes de color/adorno** casi-redundantes (sin perder identidad visual). — *Catálogo*
+9. ⬜ **Cortar el modo reactivo** y los genes `w_food`/`w_prey`/`w_flee` (cerebro neural-only). — *Catálogo*
+10. ⬜ **Plegar `aggro` en el cerebro** (nueva salida de ataque, `O: 2→3`). — *Catálogo*
+11. ✅ **Eliminar el subsistema de carroña** (código `carrion`). *Hecho: `corpseReturn` se mantiene.* — *Catálogo*
+12. ⬜ **Añadir genes de historia de vida** (`mature_age`, `senescence`). — *Catálogo*
+13. ⬜ **Consolidar los genes de color/adorno** casi-redundantes (sin perder identidad visual). — *Catálogo*
 
 > Cada paso es pequeño y verificable por separado, como pide el flujo del proyecto. Conviene un commit
 > por paso y medir la deriva de algún gen / la dinámica antes de seguir.

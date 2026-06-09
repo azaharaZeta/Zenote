@@ -166,8 +166,8 @@ export function copyMutated(genes, srcIdx, dstIdx, mut, rng) {
   }
 }
 
-// Reproducción SEXUAL (Fase 4): el hijo recombina los genomas de dos padres (crossover uniforme,
-// cada gen viene al azar de uno u otro) + mutación. Base de la especiación: solo se cruzan padres
+// Reproducción SEXUAL (Fase 4): el hijo recombina los genomas de dos padres (recombinación CON LIGAMIENTO:
+// tramos contiguos de cada padre, ver crossover) + mutación. Base de la especiación: solo se cruzan padres
 // genéticamente compatibles (distancia < umbral, ver sim.js) → al divergir más allá del umbral,
 // dos grupos dejan de poder cruzarse → especies aisladas que evolucionan por separado.
 // Siembra el cerebro de un fundador con una conducta COMPETENTE de partida (no pesos aleatorios/ciegos):
@@ -188,8 +188,15 @@ export function seedBrain(genes, idx, rng) {
 
 export function crossover(genes, aIdx, bIdx, dstIdx, mut, rng) {
   const a = aIdx * NUM_GENES, b = bIdx * NUM_GENES, d = dstIdx * NUM_GENES;
+  // RECOMBINACIÓN CON LIGAMIENTO: en vez de elegir cada gen al azar de un padre (uniforme → destruye los
+  // complejos co-adaptados), se parte de un padre y, con prob. `recomb` por locus, se "cruza" cambiando de
+  // padre → se heredan TRAMOS CONTIGUOS (como cromosomas reales). recomb=0.5 ≡ uniforme; →0 = ligamiento fuerte
+  // (los bloques contiguos —cerebro, forma— pasan casi intactos; orn/pref adyacentes co-evolucionan de verdad).
+  const recomb = mut.recomb != null ? mut.recomb : 0.5;
+  let src = rng.next() < 0.5 ? a : b;                 // padre de partida (al azar)
   for (let i = 0; i < NUM_GENES; i++) {
-    let v = rng.next() < 0.5 ? genes[a + i] : genes[b + i];
+    if (rng.next() < recomb) src = src === a ? b : a; // punto de cruce → cambia el padre fuente
+    let v = genes[src + i];
     // Una sola tasa por locus, CIEGA a la función del gen (color/forma/ecología mutan al mismo ritmo).
     if (rng.next() < mut.rate) v += rng.gaussian() * mut.sigma;
     if (rng.next() < mut.bigRate) v += rng.gaussian() * mut.sigma * mut.bigSigmaMult;

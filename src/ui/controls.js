@@ -315,6 +315,7 @@ const LAB_SPEC = [
     { k: 'mut.rate', label: 'Tasa de mutación', min: 0, max: 0.2, step: 0.005, dec: 3, d: 'Probabilidad de que CADA gen mute en la cría (todos por igual: ecología, forma y color). Más alta = más variación y evolución más rápida, pero más crías peores.' },
     { k: 'mut.sigma', label: 'Sigma de mutación', min: 0, max: 0.3, step: 0.005, dec: 3, d: 'Magnitud de cada mutación: cuánto cambia el valor del gen. Más alto = saltos genéticos mayores.' },
     { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto). Permite cambios bruscos ocasionales además de la deriva fina.' },
+    { k: 'mut.recomb', label: 'Recombinación (ligamiento)', min: 0, max: 0.5, step: 0.01, dec: 2, d: 'Recombinación sexual: probabilidad de "cruce" por gen. 0.5 = sin ligamiento (cada gen al azar de un padre); valores bajos = se heredan TRAMOS contiguos de cada padre → los complejos co-adaptados (cerebro, plan corporal) pasan casi intactos.' },
   ]},
   { cat: '⚔ Combate y dieta', items: [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación/combate (Fase 2). Desactivado: solo herbívoros pastando.' },
