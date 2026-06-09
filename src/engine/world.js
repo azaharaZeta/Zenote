@@ -38,12 +38,6 @@ export class World {
     this.temp = new Float32Array(this.cols * this.rows);
     this._buildField(this.temp, cfg.resource.tempFreq); // zonas grandes → especializarse rinde
 
-    // Campo de "grano" del pasto [0,1] por celda (fino→grueso): TERCER eje ambiental. La eficiencia de pasto
-    // depende del ENCAJE entre la talla del herbívoro y el grano local (ver sim.js) → distintas tallas prosperan
-    // en distintas zonas (partición del recurso por talla) → nichos de talla herbívora ESTABLES (Propuesta B).
-    this.grain = new Float32Array(this.cols * this.rows);
-    this._buildField(this.grain, cfg.resource.grainFreq || 3);
-
     // ---- Spatial hash uniforme: celda = mayor radio de visión posible ----
     this.hashCell = cfg.expr.sense.max; // 80px
     this.hCols = Math.ceil(cfg.world.width / this.hashCell);

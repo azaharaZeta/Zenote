@@ -19,9 +19,6 @@ export const config = {
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
     patchiness: 0,      // (UI) Comida en parches: 0 = repartida suave … 1 = parches ricos con baldíos
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
-    grainFreq: 3,       // Frecuencia del campo de "grano" (partición del pasto por talla)
-    grainMatch: 0,      // Fuerza del encaje talla-grano (0 = off; 1 = el ingreso depende del encaje)
-    grainSigma: 0.18,   // Ancho del nicho talla-grano
     absRate: 0.30,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 20,  // Energía obtenida por unidad de recurso comida
     grazeRefuge: 0.3,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
@@ -46,16 +43,10 @@ export const config = {
     c_base: 0.02,       // (UI) Coste basal por tick (existir cuesta)
     carnUpkeep: 0.15,   // (UI) Descuento de coste basal ∝ dieta carnívora (resiliencia: aguantar valles de presa)
     k_size: 0.67,       // (UI) Coste basal por TAMAÑO
-    k_grazeSize: 0,     // Ingreso de pasto EXTRA ∝ tamaño (alometría; 0 = off)
     k_sizeHerb: 1.5,    // (UI) Coste de tamaño EXTRA solo para herbívoros (∝ size·(1−diet))
-    k_speed: 1.6,       // (legado, sin efecto: la velocidad emerge de la morfología)
     k_sense: 0.3,       // Coste de la visión (alcance)
     k_metab: 0.6,       // Coste del metabolismo
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
-    k_sizeTemp: 0,      // Nicho de tamaño por clima (desactivado: los bichos nadan y promedian climas)
-    k_app: 1.0,         // Coste de mantener/arrastrar apéndices grandes (por área)
-    k_appN: 0.02,       // Coste fijo POR apéndice (muy suave → el nº de apéndices es casi neutro)
-    k_appGraze: 0.0,    // Pasto ∝ nº de apéndices (desactivado)
     k_body: 0.10,       // Coste basal extra por MASA corporal (segmentos/módulos)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
     k_graze: 0.30,      // Pasto EXTRA ∝ masa corporal (ata la complejidad al nicho herbívoro)
@@ -89,7 +80,6 @@ export const config = {
     segDrag: 0.22,      // Arrastre extra por segmento
     modDrag: 0.6,       // Arrastre extra por módulo
     segTurn: 0.03,      // Cada segmento extra empeora el giro
-    appTurn: 0.01,      // Cada apéndice mejora un poco el giro
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────
@@ -135,7 +125,6 @@ export const config = {
   // ───── Reproducción ─────
   repro: {
     cooldown: 60,              // Enfriamiento entre crías (ticks)
-    carnSlow: 0,               // (UI) K-estrategia: la dieta carnívora alarga el cooldown (0 = off)
     sexual: true,              // Reproducción sexual (recombinación de dos padres)
     asexual: true,             // (UI) Permitir clon mutado si no hay pareja compatible cerca
     speciesGenThreshold: 0.15, // Distancia genética máxima para cruzarse (= misma especie)
@@ -152,9 +141,6 @@ export const config = {
     decorSigma: 0.10,   // Magnitud de la mutación decorativa
     formRate: 0.08,     // Prob. de mutación de genes de FORMA (cuerpo, apéndices)
     formSigma: 0.11,    // Magnitud de la mutación de forma
-    evolvable: false,   // (UI) Mutabilidad evolutiva (el gen mut_rate escala la mutación; off → M=1)
-    mMin: 0.3,          // Multiplicador mínimo de mutabilidad (>0 → nadie deja de evolucionar)
-    mMax: 3.0,          // Multiplicador máximo de mutabilidad (acota la catástrofe de error)
   },
 
   // ───── Combate / depredación (física trófica, no conducta) ─────
@@ -197,7 +183,6 @@ export const config = {
     ambiance: 'abyssal',      // Escenario: 'abyssal' (abisal oscuro) | 'meadow' (pradera)
     dprCap: 2,                // Tope de densidad de píxeles (DPR)
     quality: 'high',          // (UI) 'high' | 'low' (baja = sin bloom, menos nieve, LOD agresivo → móvil)
-    narrowBreakpoint: 700,    // Ancho (px) bajo el cual la UI se adapta a móvil
     grassDensity: 6800,       // Nº de matojos de hierba repartidos por el mundo
     grassSpriteCount: 22,     // Variedad de formas de matojo precalculadas
     grassRefreshFrames: 15,   // Cada cuántos frames se redibuja la capa de hierba

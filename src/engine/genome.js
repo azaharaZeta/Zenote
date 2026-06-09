@@ -26,11 +26,6 @@ const BASE_GENES = [
   // --- Selección sexual (Fase 4): `orn` = ornamento de exhibición (penacho/cresta visible);
   //     `pref` = ornamento preferido en la pareja. Al heredarse juntos co-evolucionan → runaway. ---
   'orn', 'pref',
-  // --- MUTABILIDAD EVOLUTIVA: la propia tasa de mutación es un gen (evolución de la evolucionabilidad).
-  //     Escala (×mMin..mMax) la probabilidad de mutación que el PROGENITOR aplica al copiar su genoma
-  //     (incluido este gen). Trade-off real: poca → estable pero lento; mucha → adapta rápido pero más
-  //     crías rotas. Va al FINAL para no mover el bloque de forma contiguo que empaqueta el worker. ---
-  'mut_rate',
   // --- APARIENCIA decorativa (deriva libre, NO afecta física ni especie): esbeltez corporal (ancho
   //     independiente del grosor de apéndices) + ejes de EXHIBICIÓN sin runaway: luminosidad (glow) y
   //     vivacidad de color (saturación) → espectro apagado/acromático ↔ brillante/vívido entre individuos. ---
@@ -102,7 +97,6 @@ export const GENE_LABELS = {
   c_eye: 'Color de ojos',
   orn: 'Ornamento (cresta)',
   pref: 'Preferencia de pareja',
-  mut_rate: 'Mutabilidad',
   b_aspect: 'Esbeltez corporal',
   c_lum: 'Luminosidad',
   c_sat: 'Vivacidad de color',
@@ -116,7 +110,7 @@ export const GENE_LABELS = {
 // Agrupación temática de los genes de FENOTIPO (para la UI: desplegable de histograma e inspector,
 // que si no son un listado interminable). No incluye los pesos del cerebro.
 export const GENE_GROUPS = [
-  { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest', 'mut_rate'] },
+  { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest'] },
   { label: 'Dieta y conducta',     genes: ['diet', 'aggro', 'w_food', 'w_prey', 'w_flee'] },
   { label: 'Locomoción',           genes: ['speed', 'm_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave'] },
   { label: 'Segmentos y módulos',  genes: ['m_seg', 'm_segtaper', 'm_segspace', 'leg_len', 'leg_grad', 'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size', 'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size'] },
@@ -160,7 +154,7 @@ export const FORM = new Set(FORM_NAMES.map((n) => G[n]));
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes
 // ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría) y la APARIENCIA
 // (decorativa, deriva libre). Las especies se definen por lo que importa para sobrevivir.
-export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i) && i !== G.mut_rate);
+export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i));
 
 export function lerp(a, b, t) { return a + (b - a) * t; }
 export function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
@@ -179,13 +173,9 @@ export function geneticDistance(genes, ai, bi) {
 // Copia el genoma de `src` a `dst` aplicando mutación. genes es el SoA compartido.
 export function copyMutated(genes, srcIdx, dstIdx, mut, rng) {
   const s = srcIdx * NUM_GENES, d = dstIdx * NUM_GENES;
-  // Mutabilidad EVOLUTIVA: el gen mut_rate del PROGENITOR escala la prob. de mutación de TODA la copia
-  // (incluido el propio mut_rate → la cría puede heredar otra mutabilidad). El canal bigRate NO se escala:
-  // es la escotilla de escape que permite a un linaje "congelado" (M en el suelo) recuperar mutabilidad.
-  const M = mut.evolvable ? lerp(mut.mMin, mut.mMax, genes[s + G.mut_rate]) : 1;
   for (let i = 0; i < NUM_GENES; i++) {
     let v = genes[s + i];
-    const rate = (DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate) * M; // 3 capas × mutabilidad
+    const rate = DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate; // 3 capas de ritmo de mutación
     const sig = DECOR.has(i) ? mut.decorSigma : FORM.has(i) ? mut.formSigma : mut.sigma;
     if (rng.next() < rate) v += rng.gaussian() * sig;
     if (rng.next() < mut.bigRate) v += rng.gaussian() * mut.sigma * mut.bigSigmaMult;
@@ -215,11 +205,9 @@ export function seedBrain(genes, idx, rng) {
 
 export function crossover(genes, aIdx, bIdx, dstIdx, mut, rng) {
   const a = aIdx * NUM_GENES, b = bIdx * NUM_GENES, d = dstIdx * NUM_GENES;
-  // Mutabilidad EVOLUTIVA (sexual): M = promedio de la mutabilidad de los DOS padres (maquinaria mezclada).
-  const M = mut.evolvable ? lerp(mut.mMin, mut.mMax, (genes[a + G.mut_rate] + genes[b + G.mut_rate]) * 0.5) : 1;
   for (let i = 0; i < NUM_GENES; i++) {
     let v = rng.next() < 0.5 ? genes[a + i] : genes[b + i];
-    const rate = (DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate) * M; // 3 capas × mutabilidad
+    const rate = DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate; // 3 capas de ritmo de mutación
     const sig = DECOR.has(i) ? mut.decorSigma : FORM.has(i) ? mut.formSigma : mut.sigma;
     if (rng.next() < rate) v += rng.gaussian() * sig;
     if (rng.next() < mut.bigRate) v += rng.gaussian() * mut.sigma * mut.bigSigmaMult;

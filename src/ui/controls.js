@@ -307,7 +307,6 @@ const LAB_SPEC = [
   ]},
   { cat: '🥚 Reproducción', items: [
     { k: 'repro.cooldown', label: 'Enfriamiento de cría', min: 0, max: 200, step: 5, dec: 0, d: 'Ticks de espera obligatoria entre crías. Más alto = se reproducen más despacio.' },
-    { k: 'repro.carnSlow', label: 'Lentitud cría carnívora (K)', min: 0, max: 4, step: 0.25, dec: 2, d: 'K-estrategia: la dieta carnívora alarga el enfriamiento de cría (cooldown × (1+carnSlow·dieta)). Más alto = los carnívoros crían más lento → no sobre-disparan a la presa → amortigua el boom-bust que los extingue. Imita que los depredadores reales son K-estrategas. (Nota: medido que vía COOLDOWN extingue a los carnívoros; el lever que funcionó fue "Coste de cría por talla".)' },
     { k: 'energy.reproBase', label: 'Coste base de cría', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Energía base para tener una cría (× energía máxima base), independiente del tamaño. Más alto = todos crían más despacio.' },
     { k: 'energy.reproSizeCost', label: 'Coste de cría por talla (r/K)', min: 0, max: 2, step: 0.05, dec: 2, d: '⭐ Cuánto MÁS cuesta criar al ser grande (compromiso r/K). Alto = los grandes (carnívoros) crían lento por energía → no sobre-disparan a la presa → más carnívoros Y más diversidad de tamaño. Óptimo ~1.0; demasiado alto colapsa la talla a pequeño.' },
     { k: 'repro.mateRadius', label: 'Radio de pareja', min: 20, max: 150, step: 5, dec: 0, d: 'Radio (px) en el que se busca pareja compatible al reproducirse. Más alto = más fácil encontrar pareja (compensa baja densidad).' },
@@ -321,9 +320,6 @@ const LAB_SPEC = [
     { k: 'mut.formRate', label: 'Tasa (forma del cuerpo)', min: 0, max: 0.3, step: 0.005, dec: 3, d: 'Tasa de mutación de los genes de FORMA (apéndices, silueta, segmentos). Controla cuánto exploran las formas y se diversifican las especies.' },
     { k: 'mut.decorRate', label: 'Tasa (apariencia)', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Tasa de mutación de los genes de APARIENCIA (colores, ojos). Alta = mucha variedad visual DENTRO de una misma especie (morfos).' },
     { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto). Permite cambios bruscos ocasionales además de la deriva fina.' },
-    { k: 'mut.evolvable', label: 'Mutabilidad evolutiva (gen)', toggle: true, d: 'La tasa de mutación pasa a ser un gen (mut_rate): cada linaje evoluciona su propia mutabilidad. Mira el histograma "Mutabilidad" para verla cambiar.' },
-    { k: 'mut.mMin', label: 'Mutabilidad mín. (×)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Con mutabilidad evolutiva: multiplicador MÍNIMO. Mayor que 0 evita que un linaje se "congele" sin poder volver a adaptarse.' },
-    { k: 'mut.mMax', label: 'Mutabilidad máx. (×)', min: 1, max: 6, step: 0.1, dec: 1, d: 'Con mutabilidad evolutiva: multiplicador MÁXIMO. Acota la "catástrofe de error" (mutar tanto que todas las crías salen rotas).' },
   ]},
   { cat: '⚔ Combate y dieta', items: [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación/combate (Fase 2). Desactivado: solo herbívoros pastando.' },

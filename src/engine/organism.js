@@ -111,12 +111,9 @@ export function computePhenotype(sim, i) {
     (1 + en.k_size * size + (en.k_sizeHerb || 0) * size * (1 - diet) + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure) *
     (1 - (en.carnUpkeep || 0) * diet);
 
-  // Alimentación: ritmo escala con metabolismo, con la MASA corporal (segmentos/módulos = más superficie para
-  // pastar) y opcionalmente con el TAMAÑO (alometría: gran forrajeador = más ingesta). k_grazeSize por defecto 0
-  // (medido en aislado: infla población y baja carnívoros). Se deja como LEVER de búsqueda: combinado con los
-  // costes de tamaño (k_size/k_sizeHerb) podría aplanar la selección de talla herbívora → abanico de tallas.
+  // Alimentación: ritmo escala con metabolismo y con la MASA corporal (segmentos/módulos = más superficie para pastar).
   sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *
-    (1 + en.k_graze * (massMul - 1)) * (1 + (en.k_grazeSize || 0) * size);
+    (1 + en.k_graze * (massMul - 1));
 
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);

@@ -223,7 +223,6 @@ export class Sim {
       this.genes[b + G.leg_len] = jit(0.4); this.genes[b + G.leg_grad] = jit(0.5); // patas del cuerpo: largo medio, gradiente neutro de partida (evoluciona)
       this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
-      this.genes[b + G.mut_rate] = jit(0.5); // mutabilidad neutra de partida (M≈1); evoluciona desde aquí
       // Apariencia decorativa: arranque MODESTO (jit) → la variedad de glow/color/esbeltez/señuelo EMERGE por deriva.
       // c_lum (LUMINOSIDAD/glow): sembrado POR INDIVIDUO con sesgo bajo pero COLA hasta arriba (rng·rng) → la
       // mayoría con glow tenue y ALGUNOS linajes que brillan fuerte (emergente, deriva libre). Antes era un único
@@ -272,11 +271,8 @@ export class Sim {
     const wrap = world.wrap, ww = world.width, wh = world.height;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
-    const grainStrength = cfg.resource.grainMatch || 0;          // partición del recurso por talla (0 = off)
-    const grainSigma = cfg.resource.grainSigma || 0.18;          // ancho del nicho talla-grano
     const matchPenalty = cfg.color.matchPenalty;
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
-    const kSizeTemp = cfg.energy.k_sizeTemp; // nicho de tamaño por clima (Bergmann)
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
     const handlingTime = cfg.combat.handlingTime;
     const dietMargin = cfg.combat.dietMargin; // mínima diferencia de dieta para considerar presa
@@ -288,7 +284,7 @@ export class Sim {
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
-    const baseCD = cfg.repro.cooldown, carnSlow = cfg.repro.carnSlow || 0; // K-estrategia: carnívoros crían más lento
+    const baseCD = cfg.repro.cooldown;
     const neural = cfg.sim.brain === 'neural'; // cerebro neuronal en vez de la regla reactiva
     // TOPE DE POBLACIÓN VIVA (UI): al alcanzarlo no nacen nuevas crías. 0 = sin límite (solo cap el pool físico).
     const maxAlive = cfg.pop.maxAlive > 0 ? (cfg.pop.maxAlive < this.cap ? cfg.pop.maxAlive : this.cap) : this.cap;
@@ -505,14 +501,11 @@ export class Sim {
       // multiplica el coste basal. Crea un segundo eje de nicho (regiones frías/cálidas).
       const tcell = W.cellIndexAt(x[i], y[i]);
       let tmis = this.tempPref[i] - W.temp[tcell]; if (tmis < 0) tmis = -tmis;
-      // NICHO DE TAMAÑO POR CLIMA (Bergmann): grande barato en frío, caro en calor (y al revés). Crea
-      // un óptimo de tamaño DISTINTO por región → emergen tamaños variados en la misma run (no todo al mínimo).
-      const sizeTherm = kSizeTemp * (this.genes[i * NG + G.size] - 0.5) * (W.temp[tcell] - 0.5);
       // Coste de nado ∝ velocidad² · esfuerzo (arrastre hidrodinámico: ir rápido se dispara en
       // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
       // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
       // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      E[i] -= this.baseCost[i] * (1 + kTemp * tmis + sizeTherm) + moveCost * dist * dist * (1 + kEffort * this.effort[i]);
+      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]);
 
       // Alimentación herbívora: absorber del campo de recurso de la celda actual.
       const eMaxI = this.eMax[i], effH = this.effHerb[i];
@@ -527,14 +520,7 @@ export class Sim {
           let hd = Math.abs(this.hue[i] - W.lightHue[cell]);
           if (hd > 0.5) hd = 1 - hd;
           const colorMatch = 1 - matchPenalty * (hd * 2); // [1-penalty .. 1]
-          // PARTICIÓN POR TALLA (Prop. B): el pasto se aprovecha mejor cuanto más ENCAJA la talla del herbívoro
-          // con el "grano" local. Gaussiana de (size - grain) → distintas tallas rinden en distintas zonas → nichos.
-          let gm = 1;
-          if (grainStrength > 0) {
-            const dsg = this.genes[i * NG + G.size] - W.grain[cell];
-            gm = (1 - grainStrength) + grainStrength * Math.exp(-(dsg * dsg) / (2 * grainSigma * grainSigma));
-          }
-          let units = grazable * this.absEff[i] * colorMatch * gm;
+          let units = grazable * this.absEff[i] * colorMatch;
           const maxByNeed = eFalta / (epu * effH);
           if (units > maxByNeed) units = maxByNeed;
           E[i] += units * epu * effH;
@@ -602,12 +588,12 @@ export class Sim {
           this.vx[child] = 0; this.vy[child] = 0;
           this.E[child] = childE;
           this.age[child] = 0;
-          this.cooldown[child] = baseCD * (1 + carnSlow * this.diet[child]); // K-estrategia por dieta
+          this.cooldown[child] = baseCD;
           this.attackCD[child] = 0;
           const hb = child * BRAIN.H; for (let q = 0; q < BRAIN.H; q++) this.brainHid[hb + q] = 0; // memoria a cero
           this.lineage[child] = this.lineage[i];          // hereda linaje sin mutar
           this.generation[child] = this.generation[i] + 1; // un escalón más en el árbol
-          this.cooldown[i] = baseCD * (1 + carnSlow * this.diet[i]); // K-estrategia por dieta
+          this.cooldown[i] = baseCD;
           this.births++;
         }
         // Si no hay slot libre (tope de población): no nace, el progenitor conserva su E.
