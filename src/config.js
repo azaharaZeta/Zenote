@@ -50,9 +50,8 @@ export const config = {
     k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal (ata la complejidad al nicho herbívoro)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
-    E_max_base: 71,     // Energía máxima base · E_max = E_max_base · (0.5 + size)
-    reproBase: 0.9,     // (UI) Coste base de una cría (× E_max_base), independiente del tamaño
-    reproSizeCost: 1.0, // (UI) Coste EXTRA de criar ∝ tamaño del padre (compromiso r/K por talla)
+    E_max_base: 71,     // Energía máxima base · E_max = E_max_base · (0.5 + size). Criar cuesta una fracción de
+                        //      esta energía-por-talla (ver organism.js reproRef): el compromiso r/K emerge de la talla.
     preyGain: 0.90,     // Fracción de energía de la presa aprovechada al cazarla
     corpseReturn: 0.5,  // Fracción de energía que devuelve un cadáver
   },

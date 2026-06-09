@@ -304,8 +304,6 @@ const LAB_SPEC = [
   ]},
   { cat: '🥚 Reproducción', items: [
     { k: 'repro.cooldown', label: 'Enfriamiento de cría', min: 0, max: 200, step: 5, dec: 0, d: 'Ticks de espera obligatoria entre crías. Más alto = se reproducen más despacio.' },
-    { k: 'energy.reproBase', label: 'Coste base de cría', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Energía base para tener una cría (× energía máxima base), independiente del tamaño. Más alto = todos crían más despacio.' },
-    { k: 'energy.reproSizeCost', label: 'Coste de cría por talla (r/K)', min: 0, max: 2, step: 0.05, dec: 2, d: '⭐ Cuánto MÁS cuesta criar al ser grande (compromiso r/K). Alto = los grandes (carnívoros) crían lento por energía → no sobre-disparan a la presa → más carnívoros Y más diversidad de tamaño. Óptimo ~1.0; demasiado alto colapsa la talla a pequeño.' },
     { k: 'repro.mateRadius', label: 'Radio de pareja', min: 20, max: 150, step: 5, dec: 0, d: 'Radio (px) en el que se busca pareja compatible al reproducirse. Más alto = más fácil encontrar pareja (compensa baja densidad).' },
     { k: 'repro.speciesGenThreshold', label: 'Umbral de especie', min: 0.05, max: 0.4, step: 0.01, dec: 2, d: 'Distancia genética máxima para poder cruzarse (= misma especie). Más bajo = especies más finas y cohesivas; al divergir más, quedan aislados.' },
     { k: 'repro.sexual', label: 'Reproducción sexual', toggle: true, d: 'La cría recombina los genomas de dos padres compatibles y cercanos. Es la base de la especiación.' },

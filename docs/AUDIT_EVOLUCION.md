@@ -239,7 +239,7 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso (2026-06-09): 5/14 hechos** → ✅ #1, #2, #5, #6, #11.
+**Progreso: 6/14 hechos** → ✅ #1, #2, #4, #5, #6, #11.
 
 0. ⬜ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
@@ -250,8 +250,9 @@ De más fundacional / mayor retorno de realismo a más periférico.
    (0.5 ≡ uniforme); preserva complejos co-adaptados y co-herencia `orn`/`pref`.* — *Capa 2*
 3. ⬜ **Alometría en el mapa gen→fenotipo** (masa por volumen; coste metabólico ∝ masa^¾; límites blandos
    por coste en vez de topes duros). Gran palanca de realismo, coste CPU nulo. — *Capa 1*
-4. ⬜ **Restaurar el compromiso r/K honesto** (quitar el desacople de `reproRef`) y, si hace falta,
-   sustituir el fudge por depredación/coste estructurado por talla. — *Capa 3/6*
+4. ✅ **Restaurar el compromiso r/K honesto** (quitar el desacople de `reproRef`). *Hecho: `reproRef = eMaxBase`
+   = `E_max_base·(0.5+size)`; fuera `reproBase`/`reproSizeCost`. r/K emerge de la talla. Pendiente observar si
+   colapsa a talla mínima → entonces compensar con depredación/coste estructurado por talla.* — *Capa 3/6*
 5. ✅ **Quitar `maxAlive`**: capacidad de carga emergente del recurso. *Hecho: único límite = `maxAgents`
    (pool físico); retirado también el diagnóstico `atCap` del worker.* — *Capa 4*
 6. ✅ **Retirar muletas energéticas** (`carnUpkeep`, `k_sizeHerb`). *Hecho: coste basal independiente de la

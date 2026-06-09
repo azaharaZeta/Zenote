@@ -116,13 +116,12 @@ export function computePhenotype(sim, i) {
   // Reproducción: umbral de energía = max(repro_thr, invest) para no morir al parir.
   const reproFrac = lerp(e.repro_thr.min, e.repro_thr.max, g[b + G.repro_thr]);
   const investFrac = lerp(e.invest.min, e.invest.max, g[b + G.invest]);
-  // Referencia de reproducción DESACOPLADA del tamaño (comprimida 0.85+0.3·size en vez de 0.5+size):
-  // así el pequeño NO se reproduce ~3× más rápido (solo ~1.35×). Sin esto, el pequeño gana siempre por
-  // velocidad de cría y todos colapsan al mínimo; con esto, el tamaño puede diversificarse por nicho
-  // (clima) sin que el pequeño domine por puro ritmo reproductivo. (No usa la masa: la complejidad no frena la cría.)
-  // reproBase + reproSizeCost·size: cuánto cuesta una cría según el tamaño del PADRE. reproSizeCost alto
-  // = los grandes crían mucho más lento (K-estrategas); los pequeños, rápido (r). Compromiso r/K por talla.
-  const reproRef = en.E_max_base * (en.reproBase + en.reproSizeCost * size);
+  // Referencia de reproducción ACOPLADA al tamaño igual que la energía: reproRef = eMaxBase = E_max_base·(0.5+size).
+  // Criar cuesta una FRACCIÓN constante de tu energía máxima-por-talla → el pequeño (eMax bajo) llena su depósito
+  // antes y se reproduce más rápido (ventaja r natural); el grande es K-estratega. El compromiso r/K EMERGE de la
+  // talla, sin un knob aparte que lo aplane (antes reproBase/reproSizeCost desacoplaban este coste del tamaño para
+  // frenar al pequeño; retirado en auditoría #4). No usa la masa: la complejidad da reserva pero no frena la cría.
+  const reproRef = eMaxBase;
   sim.investE[i] = investFrac * reproRef;
   sim.reproNeedE[i] = Math.max(reproFrac, investFrac) * reproRef;
 
