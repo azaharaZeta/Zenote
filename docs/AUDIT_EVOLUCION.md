@@ -89,7 +89,7 @@ expresión de los genes; nunca qué genes son buenos* (CLAUDE.md regla nº1).
 | Frontera única gen→fenotipo | organism.js | 🟢 | Mantener |
 | Sin función de fitness (emergente) | sim.js | 🟢 | Mantener |
 | Cerebro neural (pesos=genes) | sim/genome | 🟢 | Mantener (modo por defecto) |
-| Cerebro REACTIVO (plantilla de conducta fija, no default) | sim.js | 🟡 | Esqueleto a mano (`w_food·∇ + w_prey − w_flee`); solo los pesos evolucionan. OK como fallback no-default |
+| Cerebro REACTIVO (plantilla de conducta fija, no default) | sim.js | 🟡→✂️ | Esqueleto a mano (`w_food·∇ + w_prey − w_flee`); solo los pesos evolucionan. **DECISIÓN: cortar** (neural-only) — ver Catálogo |
 | Visión: `e_fov` reparte alcance↔ángulo (r²·fov=cte) | organism.js | 🟢 | Buen modelo |
 | Coste de nado ∝ v² (arrastre) | sim.js | 🟢 | Físico |
 | Locomoción: empuje vs arrastre (forma→velocidad) | organism.js | 🟢 con perillas 🟡 | Físico de fondo, muchos coef. a mano |
@@ -199,16 +199,21 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 
 ### Capa 6 — Historia de vida / reproducción
 
-- Madurez y senescencia a edades fijas (perillas) — aceptable.
-- `cooldown` de reproducción fijo, no evolucionable — perilla menor.
+- Madurez y senescencia a edades fijas (perillas). **DECISIÓN: pasan a ser genes** (`mature_age`,
+  `senescence`) → emergen estrategias r/K y vidas cortas-rápidas vs largas-lentas. Ver Catálogo (#12).
+- `cooldown` de reproducción fijo, no evolucionable — perilla menor (candidato a gen junto al #12).
 - El desacople r/K ya tratado en Capa 3 (es el punto caliente de esta capa).
 
 ### Capa 7 — Cosmético / periférico
 
-- Colores por parte, estilo de ojo, señuelo decorativo, piel (`c_*`, `o_*`, `s_curve`, `tex2`):
-  **deriva neutral**, base de selección sexual y reconocimiento. Correcto como está. Pega: hoy mutan
-  más rápido por la regla de 3 tasas (ver Capa 2); si la unificamos, comprobar que la variedad visual
-  aguanta por deriva.
+- Colores por parte, estilo de ojo, piel y estilo de señuelo (`c_*`, `s_curve`, `tex2`, `o_hue`, `o_num`):
+  **deriva neutral**, base de selección sexual y reconocimiento. Correcto como está (a consolidar, ver
+  Catálogo). Pega: hoy mutan más rápido por la regla de 3 tasas (ver Capa 2); si la unificamos, comprobar
+  que la variedad visual aguanta por deriva.
+- ⚠️ **`o_len` y `o_bulb` NO son neutrales** pese a estar en `DECOR`: fijan la **prominencia del señuelo**
+  (`organism.js`), que **cuesta energía** (`k_lure`) y **extiende el alcance de caza** (`lureReach`). Es un
+  diseño deliberado (gen "decorativo" con consecuencia funcional para que la presión de caza lo mueva), pero
+  son FUNCIONALES. En la v2.0 se subsumen en un nodo-señuelo (ver Catálogo y Pilar).
 - ⚠️ **`hue` NO es neutral** (aunque la etiqueta de UI lo llame "Color (linaje)"). El tono **afecta a
   la alimentación**: cuanto mejor sintoniza con la luz local (`lightHue`), más pasto capta (camuflaje
   funcional, `matchPenalty=0.6`); y además **cuenta para la distancia genética/especie**. Es un rasgo
@@ -261,6 +266,25 @@ De más fundacional / mayor retorno de realismo a más periférico:
 
 > Cada paso es pequeño y verificable por separado, como pide el flujo del proyecto. Conviene un commit
 > por paso y medir la deriva de algún gen / la dinámica antes de seguir.
+
+### Orden de ejecución y dependencias (factibilidad)
+
+El orden de arriba es por *retorno de realismo*, no por dependencias. Para ejecutar sin rehacer trabajo:
+
+- **Calentamiento aislado, bajo riesgo (no tocan el layout del genoma):** #11 (quitar carroña) y #5
+  (quitar `maxAlive`) son recortes limpios → buen primer paso para coger ritmo en la rama.
+- **Cambios de LAYOUT del genoma** (#0 Pilar, #9 cortar `w_*`, #10 salida de ataque del cerebro, #12 genes
+  de vida, #13 consolidar color): **todos** mueven `NUM_GENES`/índices y obligan a tocar a la vez distancia
+  genética, sembrado (`_seedSimple`/`_seedInitial`), `GENE_LABELS`/`GENE_GROUPS` y los histogramas de UI.
+  → **agruparlos** (idealmente dentro del rediseño del Pilar #0, que es el que más reescribe) para hacer el
+  bookkeeping de índices **una sola vez**. Nota: cortar `aggro`/`w_*` y `O:2→3` recalculan también `BRAIN_W`.
+- **#1 (mutación) y #2 (crossover)** tocan `genome.js` pero NO el layout → pueden ir cuando sea; hacerlos
+  pronto da una base de variación limpia para medir el resto.
+- **#3 (alometría) y #4 (r/K)** dependen de tener definida la **masa**; #3 encaja junto al Pilar (la masa
+  por nodos es su insumo natural).
+- **Verificación:** cada paso se mide con la instrumentación que **ya existe** (histograma por gen, curvas
+  de población/especies, gráfica de causas de muerte) + runs headless donde haga falta. **Definir la métrica
+  de éxito ANTES** de cada paso (sobre todo el criterio de "la forma está bajo selección", ver A1).
 
 ---
 
@@ -346,8 +370,9 @@ desacoplado de la física). Así el gait se selecciona y se VE, pero el bucle ca
 - **A1 — Hacer físicas las piezas actuales.** Enrutar los genes de "forma inerte" (apéndices, patas,
   módulos, silueta) por la física: cada uno suma arrastre + masa (+ algo de empuje). El empuje/arrastre/
   giro pasan a sumarse **sobre la geometría real**; se pliega o retira la fórmula `wave·sym`. *Render sin
-  cambios.* **Criterio:** la distribución de algún gen de forma deriva de forma medible (deja de ser
-  plana) → la forma ya está bajo selección.
+  cambios.* **Criterio (cuidado: no confundir deriva con selección — hoy ya derivan neutralmente):** un
+  gen de forma muestra **respuesta a la selección**, p. ej. correlaciona con el nicho (los cazadores
+  convergen a cuerpos hidrodinámicos) o un *knockout* del acoplamiento físico cambia su distribución.
 - **A2 — Empuje desde superficies que oscilan.** Sustituir el gen abstracto `m_wave` por empuje generado
   por partes que se mueven → puente hacia el gait.
 - **B1 — Geometría única (compatibilidad).** Introducir el pool de nodos por debajo expresando las
@@ -393,7 +418,10 @@ El pecado a evitar: la **"forma inerte"** (genes de forma que ni son funcionales
 
 1. **Cerebro NEURAL como único modo** → se corta el modo reactivo y con él `w_food`, `w_prey`, `w_flee`.
 2. **Atacar emerge del cerebro** → se corta `aggro`; el cerebro gana una **3ª salida** (impulso de ataque), `O: 2→3`.
-3. **Eliminar el subsistema de carroña** (no hay gen; estaba off; era muleta). Coste 0 genes.
+3. **Eliminar el subsistema de carroña** (no hay gen; estaba off; era muleta). Coste 0 genes. *Ojo:* el
+   reciclaje de nutrientes vía `corpseReturn` (cadáver→campo de recurso) es un mecanismo **distinto** y se
+   mantiene; hoy solo actúa en muertes por **vejez** → oportunidad de extenderlo a TODAS las muertes
+   (inanición, depredación) para un ciclo de nutrientes honesto que sustituya al carroñeo.
 4. **Historia de vida evolucionable** → madurez y senescencia/longevidad pasan de config global a **genes nuevos**.
 
 ### Veredicto por gen
@@ -411,7 +439,7 @@ del cuerpo (Pilar v2.0) · **CUT** se elimina · **ADD** gen nuevo a introducir.
 | `temp_pref` | KEEP | Nicho térmico → zonación espacial visible |
 | `repro_thr` | KEEP | Estrategia r (cuándo criar) |
 | `invest` | KEEP | Inversión parental por cría (r/K) |
-| `speed` | CHANGE | Hoy = "esfuerzo"; recontextualizar como impulso de locomoción / drive de oscilación del gait |
+| `speed` | CHANGE | Hoy = "esfuerzo". **Cuestión abierta:** con `osc_*` por nodo puede solaparse → decidir si queda como un acelerador global (incluso una SALIDA del cerebro) o se subsume en los `osc_*` |
 | `sense` | CHANGE* | *Puede emerger del tamaño/colocación de un nodo-sensor |
 
 **🧠 Conducta:**
