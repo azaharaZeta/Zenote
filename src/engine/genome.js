@@ -124,32 +124,16 @@ export const G = {};
 GENES.forEach((name, i) => { G[name] = i; });
 
 // --- GENES DECORATIVOS LIBRES (solo render): colores por parte, estilo de ojo y colocación de
-// módulos/ojos. NO afectan a la física/energía y, además, los dejamos FUERA de la identidad de especie:
-//   (a) NO cuentan en la distancia genética → dos bichos con misma ecología y forma pero distinto
-//       COLOR/ojos siguen siendo la misma especie (y se cruzan) → morfos de color/ojos intra-especie.
-//   (b) MUTAN MUCHO MÁS (ver mut.decor*) → esa variedad de color/ojos es visible y vivaz.
-// IMPORTANTE: la FORMA DEL CUERPO Y LOS APÉNDICES (nº/largo/grosor de apéndices, separación de
-// segmentos, colocación, ramificación, silueta de cabeza, afilado del núcleo) YA NO están aquí → SÍ
-// cuentan para la especie y mutan a ritmo NORMAL → los miembros de una especie comparten plan corporal
-// (se parecen físicamente), y la variedad de formas queda ENTRE especies, no dentro. La silueta de
-// cabeza (s_asym) cuenta como forma; el estilo de ojo (s_curve) y los colores siguen libres.
+// módulos/ojos. NO afectan a la física/energía y los dejamos FUERA de la identidad de especie:
+// NO cuentan en la distancia genética → dos bichos con misma ecología y forma pero distinto COLOR/ojos
+// siguen siendo la misma especie (y se cruzan) → morfos de color/ojos intra-especie. Su variedad surge
+// por DERIVA NEUTRAL (ya NO por mutar más rápido: ahora todos los genes mutan al mismo ritmo, ver mut).
+// La FORMA del cuerpo y los apéndices SÍ cuenta para la especie (no está aquí) → los miembros de una
+// especie comparten plan corporal y la variedad de formas queda ENTRE especies. La silueta de cabeza
+// (s_asym) cuenta como forma; el estilo de ojo (s_curve) y los colores siguen libres.
 const DECOR_NAMES = ['s_curve', 'tex2', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
   'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
-
-// GENES DE FORMA (cuerpo + apéndices): SÍ cuentan para la especie (no están en DECOR) y mutan a un
-// ritmo INTERMEDIO (mut.form*, > base < decor). Así las formas EXPLORAN y las especies se diversifican
-// en planes corporales distintos a lo largo del tiempo, mientras la COHESIÓN dentro de cada especie la
-// garantiza el apareamiento (solo se cruzan los parecidos) + el umbral de especie. Sin esto (mutación
-// base) las formas apenas derivan y el mundo se queda uniforme; con esto, radiación morfológica gradual.
-const FORM_NAMES = ['m_app', 'm_len', 'm_width', 'm_elong', 'm_seg', 'm_segtaper', 'm_segspace',
-  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_place', 's_branch', 's_core', 's_asym', 'leg_len', 'leg_grad'];
-// NOTA (radiación morfológica): m_elong (1×↔3.4×: blobs↔anguilas), la cónica de segmentos y la
-// PRESENCIA/TAMAÑO de los módulos extra estaban antes en ritmo BASE (mutaban tan lento que nunca
-// radiaban) → ahora son FORM: mutan a ritmo intermedio y cuentan para especie, así distintas runs
-// hacen emerger planes corporales distintos (alargados, modulares, segmentados…). El render ya
-// sabía dibujarlos; solo estaban "congelados" por la tasa de mutación.
-export const FORM = new Set(FORM_NAMES.map((n) => G[n]));
 
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes
 // ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría) y la APARIENCIA
@@ -175,9 +159,8 @@ export function copyMutated(genes, srcIdx, dstIdx, mut, rng) {
   const s = srcIdx * NUM_GENES, d = dstIdx * NUM_GENES;
   for (let i = 0; i < NUM_GENES; i++) {
     let v = genes[s + i];
-    const rate = DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate; // 3 capas de ritmo de mutación
-    const sig = DECOR.has(i) ? mut.decorSigma : FORM.has(i) ? mut.formSigma : mut.sigma;
-    if (rng.next() < rate) v += rng.gaussian() * sig;
+    // Una sola tasa por locus, CIEGA a la función del gen (color/forma/ecología mutan al mismo ritmo).
+    if (rng.next() < mut.rate) v += rng.gaussian() * mut.sigma;
     if (rng.next() < mut.bigRate) v += rng.gaussian() * mut.sigma * mut.bigSigmaMult;
     genes[d + i] = clamp01(v);
   }
@@ -207,9 +190,8 @@ export function crossover(genes, aIdx, bIdx, dstIdx, mut, rng) {
   const a = aIdx * NUM_GENES, b = bIdx * NUM_GENES, d = dstIdx * NUM_GENES;
   for (let i = 0; i < NUM_GENES; i++) {
     let v = rng.next() < 0.5 ? genes[a + i] : genes[b + i];
-    const rate = DECOR.has(i) ? mut.decorRate : FORM.has(i) ? mut.formRate : mut.rate; // 3 capas de ritmo de mutación
-    const sig = DECOR.has(i) ? mut.decorSigma : FORM.has(i) ? mut.formSigma : mut.sigma;
-    if (rng.next() < rate) v += rng.gaussian() * sig;
+    // Una sola tasa por locus, CIEGA a la función del gen (color/forma/ecología mutan al mismo ritmo).
+    if (rng.next() < mut.rate) v += rng.gaussian() * mut.sigma;
     if (rng.next() < mut.bigRate) v += rng.gaussian() * mut.sigma * mut.bigSigmaMult;
     genes[d + i] = clamp01(v);
   }

@@ -16,9 +16,6 @@ export class World {
     // Snapshot del recurso del tick anterior: lo usa regen() para leer vecinos sin orden-dependencia
     // (rebrote emergente con difusión de semilla). Reutilizable, sin GC en el bucle.
     this._resPrev = new Float32Array(this.cols * this.rows);
-    // Campo de CARROÑA (energía de cadáveres por celda; alimento de los carnívoros, ver sim.js). Se rellena
-    // al morir los organismos y se pudre cada tick. Siempre asignado; la lógica se activa con cfg.carrion.enabled.
-    this.carrion = new Float32Array(this.cols * this.rows);
     // Capacidad por celda: gradiente espacial FIJO que crea nichos (más rico = más R_max local).
     this.capacity = new Float32Array(this.cols * this.rows);
     this._buildGradient();
@@ -185,20 +182,6 @@ export class World {
         }
       }
     }
-    // Pudrición de la carroña (la carne se descompone → no se acumula indefinidamente).
-    const cc = this.cfg.carrion;
-    if (cc && cc.enabled && cc.decay > 0) {
-      const keep = 1 - cc.decay, ca = this.carrion;
-      for (let i = 0; i < ca.length; i++) if (ca[i] > 0) ca[i] *= keep;
-    }
-  }
-
-  // Deposita energía de carroña en la celda de (px,py), con tope por celda.
-  depositCarrion(px, py, energy) {
-    if (energy <= 0) return;
-    const cell = this.cellIndexAt(px, py), max = this.cfg.carrion.maxPerCell;
-    const v = this.carrion[cell] + energy;
-    this.carrion[cell] = v > max ? max : v;
   }
 
   cellIndexAt(x, y) {

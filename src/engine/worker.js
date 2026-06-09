@@ -259,12 +259,9 @@ function updateDiagnostics() {
   const carnN = huntCarn;
   if (carnN >= 10) { carnArmed = true; autopsy = null; frozenDeath = null; }   // establecidos → re-armado y descongela
   else if (carnArmed && carnN < 3) {                        // ESTUVIERON establecidos y ahora casi extintos → autopsia
-    const maxAlive = config.pop.maxAlive > 0 ? Math.min(config.pop.maxAlive, sim.cap) : sim.cap;
-    const atCap = sim.popCount >= maxAlive * 0.95;   // mundo lleno → la verja de población bloquea casi todo nacimiento
     let cause;
     if (huntHerb >= 150 && lastValidHuntable >= 0 && lastValidHuntable < 0.45) cause = 'refugio de tamaño: presa abundante pero poco cazable';
     else if (sim.tick < 5000 && huntHerb >= 150) cause = 'transitorio inicial: sobre-disparo de la cohorte sembrada (boom → agota la presa → colapsa; la presa rebota después)';
-    else if (atCap && lastValidHuntable >= 0.45) cause = 'tope de población saturado: los herbívoros copan los nacimientos → los carnívoros no se reemplazan';
     else if (huntHerb < 100) cause = 'valle del ciclo: escasez de presa';
     else cause = 'mixto (combate / transición)';
     autopsy = { tick: sim.tick, herbN: huntHerb, huntable: lastValidHuntable, cause, death: deathBreakdown() };

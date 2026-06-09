@@ -282,7 +282,6 @@ export function setupControls(app) {
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
   { cat: '👥 Población', items: [
-    { k: 'pop.maxAlive', label: 'Tope de organismos vivos', min: 1, max: 1000, step: 1, dec: 0, maxBtn: true, d: 'Máximo de organismos vivos a la vez. Al alcanzarlo NO nacen nuevas crías (el progenitor conserva su energía y reintenta luego). El botón "máx" quita el límite (solo queda el tope físico del motor). No reinicia la simulación.' },
   ]},
   { cat: '🍃 Comida y recurso', items: [
     { k: 'resource.R_regen', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Ritmo al que rebrota la comida por tick. Es el regulador principal de cuántos organismos sostiene el mundo: más alto = más comida = más población.' },
@@ -315,10 +314,8 @@ const LAB_SPEC = [
     { k: 'repro.asexual', label: 'Permitir reproducción asexual', toggle: true, d: 'Si se activa, un organismo sin pareja cerca se clona a sí mismo (con mutación). Si se desactiva, sin pareja no hay cría → encontrar pareja es una presión real.' },
   ]},
   { cat: '🧬 Mutación', items: [
-    { k: 'mut.rate', label: 'Tasa de mutación', min: 0, max: 0.2, step: 0.005, dec: 3, d: 'Probabilidad de que cada gen base mute en la cría. Más alta = más variación y evolución más rápida, pero más crías peores.' },
+    { k: 'mut.rate', label: 'Tasa de mutación', min: 0, max: 0.2, step: 0.005, dec: 3, d: 'Probabilidad de que CADA gen mute en la cría (todos por igual: ecología, forma y color). Más alta = más variación y evolución más rápida, pero más crías peores.' },
     { k: 'mut.sigma', label: 'Sigma de mutación', min: 0, max: 0.3, step: 0.005, dec: 3, d: 'Magnitud de cada mutación: cuánto cambia el valor del gen. Más alto = saltos genéticos mayores.' },
-    { k: 'mut.formRate', label: 'Tasa (forma del cuerpo)', min: 0, max: 0.3, step: 0.005, dec: 3, d: 'Tasa de mutación de los genes de FORMA (apéndices, silueta, segmentos). Controla cuánto exploran las formas y se diversifican las especies.' },
-    { k: 'mut.decorRate', label: 'Tasa (apariencia)', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Tasa de mutación de los genes de APARIENCIA (colores, ojos). Alta = mucha variedad visual DENTRO de una misma especie (morfos).' },
     { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto). Permite cambios bruscos ocasionales además de la deriva fina.' },
   ]},
   { cat: '⚔ Combate y dieta', items: [
@@ -340,13 +337,6 @@ const LAB_SPEC = [
   { cat: '⬡ Edad', items: [
     { k: 'age.mature', label: 'Edad de madurez', min: 0, max: 1000, step: 20, dec: 0, d: 'Edad a partir de la cual empieza la mortalidad por vejez. Más alto = viven más antes de envejecer.' },
     { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
-  ]},
-  { cat: '🦴 Carroñeo', items: [
-    { k: 'carrion.enabled', label: 'Carroñeo (comer cadáveres)', toggle: true, d: 'Los carnívoros pueden comer CADÁVERES (de muertes por hambre/vejez/combate). Red de seguridad en los valles de la oscilación → evita su extinción. Como la diversidad de tamaño emerge de tener carnívoros, sostiene ambos objetivos.' },
-    { k: 'carrion.yield', label: 'Carroña por cadáver (×E_max)', min: 0, max: 0.8, step: 0.05, dec: 2, d: 'Energía de carroña que deja un cadáver, como fracción de la energía máxima del difunto (≈ su biomasa). Más alto = cadáveres más nutritivos.' },
-    { k: 'carrion.decay', label: 'Pudrición de la carroña', min: 0, max: 0.05, step: 0.002, dec: 3, d: 'Ritmo al que la carroña se descompone por tick. Más alto = ventana más corta para aprovecharla (no se acumula).' },
-    { k: 'carrion.absRate', label: 'Ritmo de carroñeo', min: 0, max: 0.8, step: 0.02, dec: 2, d: 'Fracción de la carroña de la celda que un carnívoro absorbe por tick (escala con su eficiencia carnívora).' },
-    { k: 'carrion.maxPerCell', label: 'Tope de carroña/celda', min: 10, max: 200, step: 5, dec: 0, d: 'Carroña máxima acumulable en una celda. Evita "mataderos" con energía infinita en un punto.' },
   ]},
   { cat: '🌿 Refugio de presa', items: [
     { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Las zonas de vegetación más densa son cobertura: la presa que está ahí NO es cazable. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador clásico de Lotka-Volterra). No desacopla al carnívoro de la presa viva, así que preserva la diversidad de tamaño.' },

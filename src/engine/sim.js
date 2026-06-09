@@ -281,14 +281,11 @@ export class Sim {
     const preyLo = cfg.combat.preyBandLo != null ? cfg.combat.preyBandLo : 0;
     const preyHi = cfg.combat.preyBandHi != null ? cfg.combat.preyBandHi : 1;
     const inPreyBand = (predR, preyR) => { const ratio = preyR / predR; return ratio >= preyLo && ratio <= preyHi; };
-    const carrion = cfg.carrion, scavenge = !!(carrion && carrion.enabled); // carroñeo (red de seguridad carnívora)
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
     const neural = cfg.sim.brain === 'neural'; // cerebro neuronal en vez de la regla reactiva
-    // TOPE DE POBLACIÓN VIVA (UI): al alcanzarlo no nacen nuevas crías. 0 = sin límite (solo cap el pool físico).
-    const maxAlive = cfg.pop.maxAlive > 0 ? (cfg.pop.maxAlive < this.cap ? cfg.pop.maxAlive : this.cap) : this.cap;
 
     W.regen();
 
@@ -418,7 +415,6 @@ export class Sim {
             E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
             this.attackCD[j] = handlingTime;
             if (E[i] <= 0) {
-              if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * this.eMax[i]); // el cuerpo del atacante → carroña
               this._kill(i, 'combat'); this.kills++;
               continue; // i ha muerto: no sigue procesándose este tick
             }
@@ -535,27 +531,8 @@ export class Sim {
         }
       }
 
-      // ---------- CARROÑEO (alimento de reserva del carnívoro) ----------
-      // El carnívoro (effCarn alto) absorbe energía de la CARROÑA de su celda. En los valles de la
-      // oscilación (presas vivas hundidas → muchas muertes → carroña abundante) esto lo mantiene vivo →
-      // no se extingue y rebrota cuando vuelven las presas. No afecta a la caza de presas vivas.
-      if (scavenge) {
-        const effC = this.effCarn[i];
-        if (effC > 1e-4 && E[i] < eMaxI) {
-          const ccell = W.cellIndexAt(x[i], y[i]);
-          const avail = W.carrion[ccell];
-          if (avail > 0) {
-            let got = avail * carrion.absRate * effC;
-            const need = eMaxI - E[i];
-            if (got > need) got = need;
-            E[i] += got; W.carrion[ccell] -= got;
-          }
-        }
-      }
-
       // ---------- MUERTE ----------
       if (E[i] <= 0) {
-        if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * eMaxI); // el cuerpo queda como carroña
         this._kill(i, 'starv'); continue;
       }
       this.age[i]++;
@@ -564,7 +541,6 @@ export class Sim {
         const t = over / age.scale;
         if (rng.next() < age.mortality * t * t) {
           this._depositCorpse(x[i], y[i], en.corpseReturn * E[i]);
-          if (scavenge) W.depositCarrion(x[i], y[i], carrion.yield * eMaxI); // cadáver de vejez → carroña
           this._kill(i, 'age');
           continue;
         }
@@ -573,7 +549,7 @@ export class Sim {
       // ---------- REPRODUCCIÓN (asexual) ----------
       if (this.attackCD[i] > 0) this.attackCD[i]--; // enfriamiento de ataque (independiente)
       if (this.cooldown[i] > 0) this.cooldown[i]--; // en cooldown no se reproduce (SPEC §4)
-      else if (this.popCount < maxAlive && E[i] >= this.reproNeedE[i]) {
+      else if (E[i] >= this.reproNeedE[i]) {
         // Repro SEXUAL: buscar pareja compatible cercana (distancia genética < umbral). Si no hay
         // ninguna al alcance → fallback ASEXUAL (clon). El "padre" i pone la energía y queda en cooldown.
         const mate = sexual ? this._findMate(i) : -1;

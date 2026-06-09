@@ -28,10 +28,8 @@ export const config = {
   // ───── Población ─────
   pop: {
     initial: 400,            // Nº de fundadores al sembrar
-    maxAgents: 4000,         // Tope físico del pool (límite duro de memoria)
-    maxAlive: 800,           // (UI) Tope de organismos vivos: al llegar no nacen crías · 0 = sin tope.
-                             //      Medido: con esta config la pob. natural techa en ~635, así que ≥800 ≈ sin tope.
-                             //      A 500 el cap atascaba los picos y ADELANTABA la extinción carnívora (1/6 vs 2/6 a 100k).
+    maxAgents: 4000,         // Tope físico del pool (límite duro de memoria) · ÚNICO límite de población
+                             //      (la capacidad de carga la pone el recurso, no un tope numérico — ver auditoría #5).
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
     carnivoreSeedFrac: 0.14, // Fracción de fundadores sembrados como proto-carnívoros
@@ -97,15 +95,6 @@ export const config = {
     omniPenalty: 0.0,  // Penalización por dieta intermedia (bajo = omnívoros más viables)
   },
 
-  // ───── Carroñeo: red de seguridad carnívora en los valles (comer cadáveres). Off por defecto. ─────
-  carrion: {
-    enabled: false,     // (UI) Activar carroñeo
-    yield: 0.3,         // Energía que deja un cadáver = yield × E_max del difunto
-    decay: 0.01,        // Pudrición de la carroña por tick
-    absRate: 0.3,       // Fracción de carroña de la celda absorbida/tick (× effCarn)
-    maxPerCell: 80,     // Tope de carroña acumulada por celda
-  },
-
   // ───── Refugio de presa: estabilizador Lotka-Volterra. La presa en celda-refugio NO es cazable ─────
   refuge: {
     enabled: true,      // (UI) Activar refugio de presa
@@ -133,16 +122,13 @@ export const config = {
     mateRadius: 70,            // Radio (px) de búsqueda de pareja al reproducirse
   },
 
-  // ───── Mutación: 3 ritmos — base (ecología), decor (apariencia, rápida), form (forma, intermedia) ─────
+  // ───── Mutación: UNA sola tasa por locus, CIEGA a la función del gen (auditoría #1) ─────
+  // (antes había 3 ritmos por categoría base/forma/decor → la mutación no debe conocer la "función" de un gen).
   mut: {
-    rate: 0.034,        // (UI) Prob. de mutación por gen (genes base/ecológicos)
-    sigma: 0.05,        // (UI) Magnitud de la mutación base
+    rate: 0.05,         // (UI) Prob. de mutación por gen (todos los genes por igual)
+    sigma: 0.08,        // (UI) Magnitud de la mutación
     bigRate: 0.002,     // Prob. de macromutación (salto grande y raro)
     bigSigmaMult: 5,    // Multiplicador de magnitud de la macromutación
-    decorRate: 0.05,    // Prob. de mutación de genes de APARIENCIA (color, señuelo, piel…)
-    decorSigma: 0.10,   // Magnitud de la mutación decorativa
-    formRate: 0.08,     // Prob. de mutación de genes de FORMA (cuerpo, apéndices)
-    formSigma: 0.11,    // Magnitud de la mutación de forma
   },
 
   // ───── Combate / depredación (física trófica, no conducta) ─────
