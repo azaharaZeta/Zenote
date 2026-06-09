@@ -39,10 +39,6 @@ export class Sim {
     // tasa de depredación → evita que un cazador limpie una zona y permite coexistencia).
     this.attackCD = new Float32Array(cap);
 
-    // Acumuladores de empuje de separación (no-solape blando): scratch reutilizable, sin GC.
-    this.sepX = new Float32Array(cap);
-    this.sepY = new Float32Array(cap);
-
     // --- Genoma (SoA: cap * NUM_GENES) ---
     this.genes = new Float32Array(cap * NUM_GENES);
 
@@ -600,102 +596,7 @@ export class Sim {
       }
     }
 
-    // ---------- SEPARACIÓN DE CUERPOS (no-solape blando, opcional) ----------
-    // Física post-decisión: empuja suavemente los cuerpos que se solapan (no entra en la percepción
-    // ni en el cerebro → no afecta a la emergencia de conducta). Ver _separate().
-    if (this.cfg.physics.separation.enabled) this._separate();
-
     this.tick++;
-  }
-
-  // Empuje de separación suave: cada cuerpo que se solapa con un vecino corrige su MITAD del solape
-  // (Jacobi: se acumula y se aplica al final → independiente del orden). EXCLUYE pares depredador-presa
-  // (el cazador debe poder solapar a la presa para atacar; si se repeliera, la depredación colapsaría).
-  // Usa el hash fino propio del mundo. O(n·vecinos) sin asignaciones. Es FÍSICA, no estrategia.
-  _separate() {
-    const sep = this.cfg.physics.separation, W = this.world;
-    const x = this.x, y = this.y, sx = this.sepX, sy = this.sepY;
-    const world = this.cfg.world, wrap = world.wrap, ww = world.width, wh = world.height;
-    const active = this.active, count = this.activeCount;
-    const dietMargin = this.cfg.combat.dietMargin;
-    const preyLo = this.cfg.combat.preyBandLo != null ? this.cfg.combat.preyBandLo : 0;
-    const preyHi = this.cfg.combat.preyBandHi != null ? this.cfg.combat.preyBandHi : 1;
-    const inPreyBand = (predR, preyR) => { const r = preyR / predR; return r >= preyLo && r <= preyHi; };
-    const strength = sep.strength, margin = sep.margin || 0, maxPush = sep.maxPush, maxPush2 = maxPush * maxPush;
-
-    // Construir el hash fino con las posiciones YA movidas de este tick.
-    W.sepClear();
-    for (let a = 0; a < count; a++) { const i = active[a]; if (this.alive[i]) W.sepInsert(i, x[i], y[i]); }
-
-    const scCols = W.scCols, scRows = W.scRows, sc = W.sepCell;
-    const head = W.sepHead, next = W.sepNext;
-
-    // 1) Acumular el empuje de cada agente (sin escribir aún las posiciones).
-    for (let a = 0; a < count; a++) {
-      const i = active[a]; if (!this.alive[i]) continue;
-      let pushX = 0, pushY = 0;
-      const myR = this.radius[i], myDiet = this.diet[i];
-      let hx = (x[i] / sc) | 0, hy = (y[i] / sc) | 0;
-      if (hx < 0) hx = 0; else if (hx >= scCols) hx = scCols - 1;
-      if (hy < 0) hy = 0; else if (hy >= scRows) hy = scRows - 1;
-      for (let oy = -1; oy <= 1; oy++) {
-        for (let ox = -1; ox <= 1; ox++) {
-          let gx = hx + ox, gy = hy + oy;
-          if (gx < 0) gx = scCols - 1; else if (gx >= scCols) gx = 0;
-          if (gy < 0) gy = scRows - 1; else if (gy >= scRows) gy = 0;
-          let j = head[gy * scCols + gx];
-          while (j !== -1) {
-            if (j !== i && this.alive[j]) {
-              let ddx = x[i] - x[j], ddy = y[i] - y[j]; // vector j→i (empuja a i lejos de j)
-              if (wrap) {
-                if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww;
-                if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
-              }
-              const rj = this.radius[j];
-              const range = myR + rj + margin;             // radio de repulsión = radios + espacio personal
-              const d2 = ddx * ddx + ddy * ddy;
-              if (d2 < range * range) {
-                // ¿Es un par depredador-presa? (uno puede comerse al otro) → NO se repelen.
-                const dDiff = myDiet - this.diet[j];
-                const eats = (inPreyBand(myR, rj) && dDiff > dietMargin) || (inPreyBand(rj, myR) && -dDiff > dietMargin);
-                if (!eats) {
-                  if (d2 > 1e-6) {
-                    const d = Math.sqrt(d2), inv = 1 / d;
-                    const f = strength * (range - d) * 0.5;    // mi mitad del "solape efectivo", suavizada
-                    pushX += ddx * inv * f; pushY += ddy * inv * f;
-                  } else {
-                    // Centros casi coincidentes (p.ej. recién nacido sobre el padre): empuje en una
-                    // dirección estable por id (ángulo áureo) para descolapsar sin azar en el bucle caliente.
-                    const ang = (i * 2.39996323) % 6.28318531;
-                    pushX += Math.cos(ang) * strength * myR * 0.5;
-                    pushY += Math.sin(ang) * strength * myR * 0.5;
-                  }
-                }
-              }
-            }
-            j = next[j];
-          }
-        }
-      }
-      // Tope por tick (evita desplazamientos enormes en multitudes muy densas).
-      const pm2 = pushX * pushX + pushY * pushY;
-      if (pm2 > maxPush2) { const s = maxPush / Math.sqrt(pm2); pushX *= s; pushY *= s; }
-      sx[i] = pushX; sy[i] = pushY;
-    }
-
-    // 2) Aplicar el empuje (con wrap toroidal), ahora que todos están calculados.
-    for (let a = 0; a < count; a++) {
-      const i = active[a]; if (!this.alive[i]) continue;
-      let nx = x[i] + sx[i], ny = y[i] + sy[i];
-      if (wrap) {
-        if (nx < 0) nx += ww; else if (nx >= ww) nx -= ww;
-        if (ny < 0) ny += wh; else if (ny >= wh) ny -= wh;
-      } else {
-        if (nx < 0) nx = 0; else if (nx >= ww) nx = ww - 0.01;
-        if (ny < 0) ny = 0; else if (ny >= wh) ny = wh - 0.01;
-      }
-      x[i] = nx; y[i] = ny;
-    }
   }
 
   // Busca la pareja compatible más cercana (repro sexual): vecino vivo dentro de `mateRadius` con

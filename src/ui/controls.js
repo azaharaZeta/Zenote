@@ -336,11 +336,7 @@ const LAB_SPEC = [
     { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cómo se reparte el presupuesto visual entre alcance y ángulo. Bajo = conos frontales que ven lejos (cazador); alto = panorámicas cortas (presa).' },
     { k: 'color.matchPenalty', label: 'Penaliz. color/luz', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza tener un color desajustado con la luz local (reduce la absorción de comida). Presiona a "camuflarse" con el ambiente.' },
   ]},
-  { cat: '⬡ Cuerpos y edad', items: [
-    { k: 'physics.separation.enabled', label: 'No solapar cuerpos', toggle: true, d: 'Los cuerpos no se apilan: se empujan suavemente al tocarse (excepto pares depredador-presa, que deben poder solaparse para cazar).' },
-    { k: 'physics.separation.strength', label: 'Fuerza de separación', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Fuerza del empuje de separación por tick. Más alto = se separan más rápido (demasiado puede oscilar en multitudes).' },
-    { k: 'physics.separation.margin', label: 'Espacio personal (px)', min: 0, max: 30, step: 1, dec: 0, d: 'Hueco extra que mantienen sobre la suma de radios: se separan aunque no lleguen a solaparse → más aire entre criaturas.' },
-    { k: 'physics.separation.maxPush', label: 'Empuje máx. (px/tick)', min: 0.5, max: 5, step: 0.1, dec: 1, d: 'Desplazamiento máximo por tick que aplica la separación. Evita "explosiones" en multitudes muy densas.' },
+  { cat: '⬡ Edad', items: [
     { k: 'age.mature', label: 'Edad de madurez', min: 0, max: 1000, step: 20, dec: 0, d: 'Edad a partir de la cual empieza la mortalidad por vejez. Más alto = viven más antes de envejecer.' },
     { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
   ]},

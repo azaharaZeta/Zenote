@@ -44,22 +44,10 @@ export class World {
     this.hRows = Math.ceil(cfg.world.height / this.hashCell);
     this.cellHead = new Int32Array(this.hCols * this.hRows).fill(-1);
     this.cellNext = null; // se dimensiona con el pool (setCapacity)
-
-    // ---- Spatial hash FINO para colisión/separación (celda ≈ 2·radio_max) ----
-    // Separado del de visión (80px): para empujar cuerpos que se TOCAN basta una vecindad pequeña,
-    // y celdas finas reducen drásticamente las comprobaciones en multitudes densas (parches de comida),
-    // donde el hash grueso amontonaría cientos de agentes por celda. Solo se construye/usa si la
-    // separación está activa (ver sim._separate). Mismo patrón toroidal que el hash de visión.
-    this.sepCell = cfg.physics.separation.cell;
-    this.scCols = Math.ceil(cfg.world.width / this.sepCell);
-    this.scRows = Math.ceil(cfg.world.height / this.sepCell);
-    this.sepHead = new Int32Array(this.scCols * this.scRows).fill(-1);
-    this.sepNext = null; // se dimensiona con el pool (setCapacity)
   }
 
   setCapacity(maxAgents) {
     this.cellNext = new Int32Array(maxAgents);
-    this.sepNext = new Int32Array(maxAgents);
   }
 
   // Refugio = las celdas con MÁS capacidad (vegetación densa = cobertura). Umbral por percentil → exactamente
@@ -217,19 +205,6 @@ export class World {
     const c = cy * this.hCols + cx;
     this.cellNext[i] = this.cellHead[c];
     this.cellHead[c] = i;
-  }
-
-  // ---- Hash fino de colisión (mismas reglas que el de visión, otra rejilla) ----
-  sepClear() { this.sepHead.fill(-1); }
-
-  sepInsert(i, x, y) {
-    let cx = (x / this.sepCell) | 0;
-    let cy = (y / this.sepCell) | 0;
-    if (cx < 0) cx = 0; else if (cx >= this.scCols) cx = this.scCols - 1;
-    if (cy < 0) cy = 0; else if (cy >= this.scRows) cy = this.scRows - 1;
-    const c = cy * this.scCols + cx;
-    this.sepNext[i] = this.sepHead[c];
-    this.sepHead[c] = i;
   }
 }
 

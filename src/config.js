@@ -156,16 +156,6 @@ export const config = {
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
   },
 
-  // ───── Física de cuerpos: separación blanda (no-solape). Excluye pares depredador-presa (deben solapar para cazar) ─────
-  physics: {
-    separation: {
-      enabled: true,    // (UI) Evitar que los cuerpos se apilen
-      strength: 0.6,    // Fracción del solape que se corrige por tick (suave; <1 = no rígido)
-      margin: 10,       // Espacio personal extra (px) sobre la suma de radios
-      cell: 40,         // Tamaño de celda del hash de colisión (≥ 2·radio_max + margin)
-      maxPush: 2.0,     // Tope de desplazamiento por tick (px)
-    },
-  },
 
   // ───── Motor / tiempo ─────
   sim: {
