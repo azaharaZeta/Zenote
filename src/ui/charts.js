@@ -19,6 +19,9 @@ export class Charts {
     // Muertes carnívoras por ventana, por causa (combate/hambre/vejez/cazado): también del worker.
     this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
     this.frozenDeath = null; // foto congelada de la gráfica de muertes en la extinción (la fija el worker)
+    // Suavizado de la gráfica de muertes: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks del worker).
+    // Muestra la TENDENCIA del último ratito en vez de picos puntuales. 5 ≈ ventana de ~440 ticks. Subir = más liso.
+    this.deathSmooth = 5;
     this.maxHistory = 600;
     this.windowTicks = 4800; // ventana visible del eje X en ticks (debe coincidir con HIST_WINDOW del worker)
     this.bins = new Float32Array(24);
@@ -107,15 +110,18 @@ export class Charts {
     for (let i = 0; i < n; i++) { sc += combat[i]; ss += starv[i]; sa += age[i]; se += eaten[i]; }
     const TOP = 14, ph = h - TOP - 2;
     if (n >= 2) {
-      // Líneas INDEPENDIENTES (no apiladas): normaliza por el valor individual MÁXIMO → la línea más alta llega arriba.
-      let maxV = 1;
-      for (let i = 0; i < n; i++) { if (combat[i] > maxV) maxV = combat[i]; if (starv[i] > maxV) maxV = starv[i]; if (age[i] > maxV) maxV = age[i]; if (eaten[i] > maxV) maxV = eaten[i]; }
+      // Media móvil CENTRADA de ±half muestras → suaviza el ruido y muestra la TENDENCIA (no picos puntuales).
+      const half = this.deathSmooth | 0;
+      const sm = (arr, i) => { const a = i - half < 0 ? 0 : i - half, b = i + half >= n ? n - 1 : i + half; let s = 0; for (let j = a; j <= b; j++) s += arr[j]; return s / (b - a + 1); };
+      // Líneas INDEPENDIENTES (no apiladas): normaliza por el valor (suavizado) máximo → la línea más alta llega arriba.
+      let maxV = 0.5;
+      for (let i = 0; i < n; i++) { const a = sm(combat, i), b = sm(starv, i), d = sm(age, i), e = sm(eaten, i); if (a > maxV) maxV = a; if (b > maxV) maxV = b; if (d > maxV) maxV = d; if (e > maxV) maxV = e; }
       const tEnd = T[n - 1], span = this.windowTicks || 1;
       const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
       const yOf = (v) => h - (v / maxV) * ph - 2;
       const lineOf = (arr, color) => {
         ctx.strokeStyle = color; ctx.lineWidth = 1.3; ctx.beginPath();
-        for (let i = 0; i < n; i++) { const x = xOf(i), y = yOf(arr[i]); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+        for (let i = 0; i < n; i++) { const x = xOf(i), y = yOf(sm(arr, i)); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
         ctx.stroke();
       };
       lineOf(age, COL.age); lineOf(eaten, COL.eaten); lineOf(starv, COL.starv); lineOf(combat, COL.combat); // combate al final → encima
