@@ -583,7 +583,7 @@ export class Renderer {
           // B2b (EN PRUEBAS): dibuja el cuerpo desde el GRAFO DE NODOS (forma nueva). Incompleto:
           // lóbulos + tentáculos coloreados, sin ojos/textura/señuelo todavía. Bandera off por defecto.
           this._drawBodyGraph(ctx, x, y, r, h, s, l, sim.nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                              eye, i * 4, face, i * 3, rPx > eThr);
+                              eye, i * 4, face, i * 3, rPx > eThr, tint, i * 3, deco, i * 8);
         } else {
           this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
                        eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 8); // ojos/segmentos solo si grandes en pantalla
@@ -602,7 +602,7 @@ export class Renderer {
   // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
   // PRIMER INCREMENTO: sin ojos/textura/señuelo/contorno fino aún (llegan en incrementos siguientes). El
   // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
-  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes) {
+  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // buffers reutilizables (sin GC por frame)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
@@ -639,6 +639,57 @@ export class Renderer {
         ctx.fill(); ctx.stroke(); ctx.restore();
       }
     }
+    // ---- SEÑUELO / ORNAMENTO (B2b incremento 3): tallo curvo afilado + bulbo bioluminiscente, naciendo del
+    // morro y proyectado al frente (illicium de rape). Gateado por `orn`; estilo por o_len/o_bulb/o_hue/o_num. ----
+    const orn = tint ? tint[to + 2] : 0;
+    if (orn > 0.12 && deco) {
+      const oLen = deco[dco + 3], oBulb = deco[dco + 4], oHue = deco[dco + 5], oNum = deco[dco + 6], cApp = tint[to];
+      const ds = this._drawScale || 1, fmin = (px) => px / ds;
+      const hr = pr[0], elong = pl[0] / pr[0];
+      const np = 1 + ((oNum * oNum * 6) | 0);
+      const plen = r * (0.5 + oLen * 5.5);
+      const ohue = (((h + (cApp - 0.5) * 70) % 360) + 360) % 360;
+      ctx.lineCap = 'round';
+      const bulbR = Math.max(fmin(0.6), r * (0.06 + oBulb * 0.34));
+      const bulbHue = (((ohue + (oHue - 0.5) * 300) % 360) + 360) % 360;
+      const ax0 = hr * elong * 0.85, ay0 = 0;
+      for (let p = 0; p < np; p++) {
+        const spread = np > 1 ? (p / (np - 1) - 0.5) : 0;
+        const ang = spread * 1.1 + Math.sin(t * 1.4 + p) * 0.1 * orn;
+        const dx = Math.cos(ang), dy = Math.sin(ang);
+        const bx = ax0, by = ay0, tx = ax0 + dx * plen, ty = ay0 + dy * plen;
+        const mx0 = (bx + tx) / 2, my0 = (by + ty) / 2;
+        let nx = -(ty - by), ny = (tx - bx); const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+        const curve = plen * 0.16 * Math.sin(p * 1.7 + 0.6);
+        const cx2 = mx0 + nx * curve, cy2 = my0 + ny * curve;
+        const wB = Math.max(fmin(0.8), r * 0.11), wT = Math.max(fmin(0.25), r * 0.03);
+        const N = 6, sgL = [], sgR = [];
+        for (let i = 0; i <= N; i++) {
+          const u = i / N, iu = 1 - u;
+          const xx = iu * iu * bx + 2 * iu * u * cx2 + u * u * tx, yy = iu * iu * by + 2 * iu * u * cy2 + u * u * ty;
+          const tgx = 2 * iu * (cx2 - bx) + 2 * u * (tx - cx2), tgy = 2 * iu * (cy2 - by) + 2 * u * (ty - cy2);
+          const tl = Math.hypot(tgx, tgy) || 1, lx = -tgy / tl, ly = tgx / tl, w = (wB * iu + wT * u) / 2;
+          sgL.push([xx + lx * w, yy + ly * w]); sgR.push([xx - lx * w, yy - ly * w]);
+        }
+        const sg = ctx.createLinearGradient(bx, by, tx, ty);
+        sg.addColorStop(0, `hsl(${ohue},55%,26%)`); sg.addColorStop(1, `hsl(${ohue},92%,64%)`);
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(sgL[0][0], sgL[0][1]);
+        for (let i = 1; i <= N; i++) ctx.lineTo(sgL[i][0], sgL[i][1]);
+        for (let i = N; i >= 0; i--) ctx.lineTo(sgR[i][0], sgR[i][1]);
+        ctx.closePath(); ctx.fill();
+        const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
+        const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
+        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 7);
+        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.18, `hsla(${h2},95%,68%,0.22)`);
+        hg.addColorStop(0.45, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 7, 0, 6.2832); ctx.fill();
+        const bg2 = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
+        bg2.addColorStop(0, `hsl(${h2},95%,84%)`); bg2.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
+        ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(tx - br * 0.3, ty - br * 0.34, br * 0.3, 0, 6.2832); ctx.fill();
+      }
+    }
+
     // ---- OJOS en la raíz (B2b incremento 2): perla vidriosa oscura + pupila que sigue la MIRADA. Conteo
     // (cíclope/par/racimo) desde `sense`; iris ligado a la paleta del cuerpo (c_eye); entornado por `aggro`
     // (depredador). Versión sencilla (sin formas de pupila ni almendra rasgada todavía). ----
@@ -1234,7 +1285,7 @@ export class Renderer {
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
     if (this.cfg.render.bodyGraph) {                     // B2b: el retrato sigue al mundo (render por nodos)
-      this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true);
+      this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
     } else {
       this._drawBody(pctx, px, py, r, h, s, l, genes, G.m_app, heading, pspd, t,
                    tint, 0, true, eye, 0, true, ef || 0.5, face, 0, true, pdeco, 0);
