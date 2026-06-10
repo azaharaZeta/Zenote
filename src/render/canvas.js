@@ -627,16 +627,46 @@ export class Renderer {
       pr[k] = cr; pl[k] = ln; pa[k] = emit;
     }
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
-    const fill = `hsl(${h},${s}%,${l}%)`, edge = `hsl(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 20)}%)`;
-    ctx.lineWidth = Math.max(0.6, r * 0.06); ctx.strokeStyle = edge; ctx.fillStyle = fill;
-    for (let k = NS - 1; k >= 0; k--) {                           // de atrás (hojas) hacia delante (raíz encima)
-      if (!pres[k]) continue;
-      const lateral = k > 0 && Math.abs(Math.sin(pa[k])) > 0.25;  // lejos del eje → par bilateral espejado
-      for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {
-        const wob = k > 0 ? Math.sin(t * (1 + spd * 2) + k) * 0.12 : 0; // leve ondulación
-        ctx.save(); ctx.translate(px[k], py[k] * sgn); ctx.rotate(pa[k] * sgn + wob);
-        ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), 0, 0, 6.2832);
-        ctx.fill(); ctx.stroke(); ctx.restore();
+    // VOLUMEN (B2b incremento 4): colores de relieve del render clásico + luz desde arriba-izq del MUNDO,
+    // pasada a este frame local (rota −heading) para que el brillo sea coherente sea cual sea el rumbo.
+    const coreLight = `hsl(${h},${Math.max(22, s - 16)}%,${Math.min(82, l + 18)}%)`;
+    const coreMid = `hsl(${h},${s}%,${Math.max(12, l - 3)}%)`;
+    const coreDark = `hsl(${h},${Math.min(100, s + 12)}%,${Math.max(4, l - 26)}%)`;
+    const coreOut = `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`;
+    const chh = Math.cos(heading), shh = Math.sin(heading);
+    const llx = -0.7 * chh + -0.7 * shh, lly = 0.7 * chh + -0.7 * shh; // dir de luz (mundo -0.7,-0.7) → local
+    const tex2 = deco ? deco[dco + 7] : 0.5;
+    const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
+    const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
+    const drawNode = (cx, cy, rot, rxx, ryy, mode) => {
+      if (mode === 0) {                                          // PASADA contorno: silueta oscura agrandada
+        ctx.fillStyle = coreOut;
+        ctx.beginPath(); ctx.ellipse(cx, cy, rxx + outW, ryy + outW, rot, 0, 6.2832); ctx.fill();
+      } else {                                                   // PASADA cuerpo: degradado de volumen + textura
+        const rad = (rxx > ryy ? rxx : ryy);
+        const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
+        g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rxx, ryy, rot, 0, 6.2832); ctx.fill();
+        if (rxx * ds > 10) {                                     // TEXTURA: bandas transversales sutiles (clip a la elipse)
+          ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, rxx, ryy, rot, 0, 6.2832); ctx.clip();
+          const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot);
+          ctx.strokeStyle = inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
+          for (let bI = 1; bI < nb2; bI++) {
+            const u = bI / nb2 - 0.5, ox = cr2 * u * 2 * rxx, oy = sr2 * u * 2 * rxx;
+            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, ryy * 0.95, ryy * 0.55, rot + 1.5708, 0, 6.2832); ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+    };
+    for (let mode = 0; mode <= 1; mode++) {                       // pasada 0 = contornos (todos), pasada 1 = cuerpos
+      for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
+        if (!pres[k]) continue;
+        const lateral = k > 0 && Math.abs(Math.sin(pa[k])) > 0.25; // lejos del eje → par bilateral espejado
+        for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {
+          const wob = k > 0 ? Math.sin(t * (1 + spd * 2) + k) * 0.12 : 0; // leve ondulación
+          drawNode(px[k], py[k] * sgn, pa[k] * sgn + wob, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode);
+        }
       }
     }
     // ---- SEÑUELO / ORNAMENTO (B2b incremento 3): tallo curvo afilado + bulbo bioluminiscente, naciendo del

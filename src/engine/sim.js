@@ -247,19 +247,21 @@ export class Sim {
         this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
         this.genes[b + G.m_wave] = jit(0.75); this.genes[b + G.m_elong] = jit(0.62); this.genes[b + G.m_sym] = jit(0.7);
       }
-      // --- NODOS (B2): organismo SIMPLE = 1 nodo raíz (cabeza); nodos 1..7 casi siempre ausentes →
-      //     la complejidad (2º nodo, cadenas, tentáculos, ramas) EMERGE por deriva, como antes m_seg/mod*. ---
+      // --- NODOS (B2): cuerpo generativo. La RAÍZ (cabeza) siempre; los nodos 1..7 con presencia DECRECIENTE
+      //     (≈50% el 1º, ≈29% el 2º-3º, ≈9% el resto) → variedad inmediata (cabezas, cadenas y tentáculos)
+      //     pero la mayoría sencillos. La complejidad sigue evolucionando; esto solo da materia prima al arranque. ---
       this.genes[b + G.n0_present] = 1;                        // raíz siempre presente
       this.genes[b + G.n0_size] = jit(0.5); this.genes[b + G.n0_aspect] = jit(0.35);
       this.genes[b + G.n0_parent] = 0; this.genes[b + G.n0_angle] = 0; this.genes[b + G.n0_attach] = 0;
       this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = rng.next();
       for (let k = 1; k < NODE_COUNT; k++) {
         const nb = b + G['n' + k + '_present'];                // 8 campos contiguos por nodo
-        this.genes[nb + 0] = jit(0.10);                        // present: <0.5 casi siempre → ausente
+        const pScale = k === 1 ? 1.0 : k <= 3 ? 0.7 : 0.55;    // presencia decreciente por profundidad de nodo
+        this.genes[nb + 0] = rng.next() * pScale;              // present (umbral 0.5): ≈50% nodo1, ≈29% nodo2-3, ≈9% resto
         this.genes[nb + 1] = rng.next();                       // parent
-        this.genes[nb + 2] = jit(0.4);                         // size
-        this.genes[nb + 3] = jit(0.4);                         // aspect (redondo↔fino)
-        this.genes[nb + 4] = rng.next();                       // angle
+        this.genes[nb + 2] = 0.3 + rng.next() * 0.5;           // size (moderado)
+        this.genes[nb + 3] = rng.next();                       // aspect: mezcla lóbulos (segmento) ↔ tentáculos
+        this.genes[nb + 4] = rng.next();                       // angle: mezcla medial (cadena) ↔ lateral (par)
         this.genes[nb + 5] = jit(0.7);                         // attach (cerca de punta → cadenas)
         this.genes[nb + 6] = jit(0.5);                         // osc_amp (reserva B3)
         this.genes[nb + 7] = rng.next();                       // osc_phase (reserva B3)
