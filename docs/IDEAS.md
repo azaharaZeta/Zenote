@@ -105,14 +105,19 @@ Medir que no desestabilice (parches escasos → hambrunas locales más duras).
 
 ## Mejorar el DIBUJADO de la vegetación (legibilidad)
 
-**Estado:** mejora visual pendiente (2026-06-10).
+**Estado: FASE 1 HECHA** (2026-06-10) · Fase 2 pendiente.
 
-**Problema:** ahora mismo apenas se distingue dónde hay vegetación y dónde no — solo una diferencia sutil de
-color/tinte. Con #7 la cobertura importa **a nivel jugable/observable** (la presa se esconde en lo tupido), así
-que el jugador debería **ver claramente** los parches densos vs los claros pastados.
+**Problema (resuelto en Fase 1):** la vegetación apenas se distinguía del fondo abisal. 
 
-**Idea:** reforzar el render del campo de recurso (`render/canvas.js`, capa de hierba/matojos) para que la
-densidad de vegetación se lea de un vistazo — p. ej. densidad/tamaño/opacidad de matojos ∝ `res[cell]`, o un
-sutil realce de las zonas lush (las que de hecho son refugio). Respetar la estética abisal (sin saturar) y el
-rendimiento (la hierba ya se dibuja en búfer con culling). Ojo: el render NO debe tocar la simulación (regla 3
-de VISUAL.md); es solo lectura. Bonus: que se "vean" los claros abrirse al pastar = ver el Huffaker emerger.
+**FASE 1 — hecha** (`render/canvas.js`, abisal, render puro): fondo casi negro donde no hay vegetación → la
+vegetación se lee por **contraste** (tinte teal/algas tenue, con techo por debajo del brillo de los bichos);
+el "plancton" pasó de discos blancos planos a **chispas pequeñas con glow y color** (5 tonos verde→cian,
+sprites pre-renderizados, **densidad por cantidad**: lush = muchas, claros = casi ninguna). Ya se ven los
+parches densos vs los claros pastados. (Ajustes a ojo afinados en preview con la usuaria.)
+
+**FASE 2 — pendiente: organismos escondidos tras el dosel.** La idea que más gustó: vegetación translúcida
+dibujada DELANTE de los organismos en zonas densas → se *ve* que se esconden (liga directo con el refugio #7)
+y da profundidad por capas. Enfoques: (A) velo de dosel (segundo buffer sobre los agentes), (B) fundido del
+agente según su cobertura, (C) ambas. La usuaria eligió "solo Fase 1 de momento" → la Fase 2 queda aquí para
+retomar. Recordar: el render NO toca la simulación (regla 3 de VISUAL.md). Bonus: ver los claros abrirse al
+pastar = ver el Huffaker emerger.
