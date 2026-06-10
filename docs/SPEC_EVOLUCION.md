@@ -135,8 +135,7 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   - Un nodo **lateral** (`min(emit, π−emit) > EPS_AXIS`, 0.35) se cuenta **espejado** (par bilateral ×2);
     uno **medial** va solo. La **simetría bilateral EMERGE** del ángulo, no se impone.
   - `parent`/`attach` definen la topología (de quién cuelga y dónde). `osc_amp` = cuánto ondula este
-    nodo. `osc_phase` = fase de su onda (**andamio**: la coordinación de fase / onda viajera eficiente
-    aún no se premia — neutral por ahora, ver `ESTADO.md` huecos).
+    nodo. `osc_phase` = fase de su oscilación (**funcional**: coordinación de marcha, ver más abajo).
 
 ### Física emergente (`bodyplan.js`)
 - **Empuje DIRECCIONAL por nodo:** `gait = −cos(emit) + paddleEff·sin²(emit)`.
@@ -144,8 +143,14 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   (rema). Un cuerpo "ilógico" (mucha superficie frontal) tiene empuje **neto negativo**.
 - **Amplitud de oscilación por nodo:** `amp = (oscFloor + (1−oscFloor)·osc_amp) · effort`, con
   `effort = effortFloor + (1−effortFloor)·speed` (el throttle global, gen `speed`).
-- **Empuje total:** `Psum = Σ_nodo (ar·eff + limbAr·limbThrust) · amp · gait` (puede ser negativo).
-  `PsumEff = max(0, Psum)`.
+- **Empuje total con COHERENCIA DE FASE:** cada nodo propulsor aporta un **fasor** `c_k·e^{iφ_k}`, con
+  `c_k = (ar·eff + limbAr·limbThrust)·amp·gait` y `φ_k = osc_phase·2π`. Las contribuciones **hacia delante**
+  (`c_k>0`) se suman como vectores: en fase → refuerzan; dispersas (aleteo descoordinado) → se cancelan
+  parcialmente. Las de **freno** (`c_k<0`, p. ej. nodo frontal) penalizan a pleno.
+  `coh = |Σ_{c>0} c_k·e^{iφ_k}| / Σ_{c>0} c_k ∈ [0,1]` (1 = todos en fase, o un solo propulsor → **cabeza
+  sola = base intacta**). `Psum = (1 − phaseGain·(1−coh))·P_fwd − P_brake`; `PsumEff = max(0, Psum)`.
+  Solo **reduce** el empuje de los cuerpos descoordinados (nunca supera la suma en fase → acotado;
+  `phaseGain=0` recupera el modelo previo). Así **nadar coordinado EMERGE** por selección, sin reglas.
 - **Streamlining EMERGENTE:** se acumula extensión axial vs. lateral de los nodos →
   `elongN ∈ [1, elongMax]`; `stream = streamBase + streamGain·(elongN−1)` (cuerpo largo/fino =
   menos arrastre). Sustituye al viejo gen `m_elong`.
@@ -302,7 +307,9 @@ Métrica única (compatibilidad sexual + clústeres de especie): **euclídea nor
 FUNCIONALES** → `dist = sqrt( Σ_func (g1ᵢ − g2ᵢ)² / n_func ) ∈ [0,1]`.
 - **FUNCIONALES** = ecología + `e_fov` + `orn`/`pref` + **forma de nodos** (incl. `osc_amp`).
 - **EXCLUIDOS:** el **cerebro** (77 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
-  (colores, `c_eye`, `c_lum`, `c_sat`, estilo de señuelo `o_*`, `tex2`, y `osc_phase` por nodo).
+  (colores, `c_eye`, `c_lum`, `c_sat`, estilo de señuelo `o_*`, `tex2`). **`osc_phase`** también se excluye
+  aunque afecta a la física: solo importa su **dispersión dentro de un cuerpo**, no el valor absoluto (dos
+  bichos igual de coordinados con fase global distinta nadan idéntico) → contarlo daría especiación espuria.
 
 Así las especies se definen por lo que importa para sobrevivir (ecología + forma), no por el color:
 dos bichos con misma ecología y forma pero **distinto color son la misma especie** → morfos de color

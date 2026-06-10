@@ -61,6 +61,8 @@ export const config = {
     kThrust: 3.2,       // Calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, effort una vez)
     paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
     oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
+    phaseGain: 0.5,     // (UI) B3+: cuánto penaliza la marcha DESCOORDINADA (fases dispersas) el empuje. 0 = sin
+                        //      penalización (modelo previo); 1 = máx. Hace funcional `osc_phase`: nadar coordinado EMERGE.
     elongMax: 3.0,      // B3: techo de la elongación derivada de la geometría de nodos (streamlining)
     symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría del grafo desvía empuje a girar)
     streamBase: 1.0,    // Arrastre base del cuerpo

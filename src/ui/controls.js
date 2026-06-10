@@ -324,6 +324,7 @@ const LAB_SPEC = [
     { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 6, step: 0.1, dec: 1, d: 'Calibra la velocidad-capacidad típica que produce la morfología. Más alto = en general todos nadan más rápido.' },
     { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad. Limita lo rápido que puede llegar a moverse cualquier cuerpo.' },
     { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base. Más alto = giran más rápido hacia donde quieren ir (menos cuerpos "torpes").' },
+    { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar con las partes del cuerpo DESCOORDINADAS (fases dispersas = aleteo ineficiente). 0 = no importa la coordinación; más alto = presiona a evolucionar una natación coordinada (onda limpia).' },
     { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cómo se reparte el presupuesto visual entre alcance y ángulo. Bajo = conos frontales que ven lejos (cazador); alto = panorámicas cortas (presa).' },
     { k: 'color.matchPenalty', label: 'Penaliz. color/luz', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza tener un color desajustado con la luz local (reduce la absorción de comida). Presiona a "camuflarse" con el ambiente.' },
   ]},

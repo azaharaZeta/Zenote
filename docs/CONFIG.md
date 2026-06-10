@@ -65,6 +65,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `loco.kThrust` | 3.2 | calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, `effort` una vez) |
 | `loco.paddleEff` | 0.6 | peso del **remo lateral** en el gait (aleta lateral propulsa, menos que cola trasera) |
 | `loco.oscFloor` | 0.15 | suelo de amplitud de oscilación por nodo |
+| `loco.phaseGain` | 0.5 | *(UI)* cuánto penaliza la marcha **descoordinada** (fases dispersas) el empuje. 0 = sin penalización (modelo previo); 1 = máx. Hace funcional `osc_phase` → nadar coordinado emerge (SPEC §2bis) |
 | `loco.elongMax` | 3.0 | techo de la elongación derivada de la geometría (streamlining) |
 | `loco.symBase` | 0.4 | empuje útil recto mínimo (la asimetría del grafo desvía empuje a girar) |
 | `loco.streamBase` | 1.0 | arrastre base del cuerpo |

@@ -99,8 +99,11 @@ GENES.forEach((name, i) => { G[name] = i; });
 // vive en el bloque de NODOS (funcional, sí cuenta para especie). `osc_amp` por nodo también es funcional.
 const DECOR_NAMES = ['tex2', 'c_app', 'c_tip', 'c_eye', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
-// B3: `osc_amp` por nodo YA afecta a la física (amplitud de oscilación) → FUNCIONAL (define especie).
-// `osc_phase` sigue siendo andamio (la coordinación de fase llega después) → neutral (DECOR).
+// B3: `osc_amp` por nodo afecta a la física (amplitud de oscilación) → FUNCIONAL (define especie).
+// B3+: `osc_phase` también afecta a la física (coherencia de marcha, ver bodyplan.reducePlan), PERO se queda
+// NEUTRAL para la especie. Razón: solo importa la DISPERSIÓN de fases DENTRO de un cuerpo, no su valor
+// absoluto — dos bichos igual de coordinados con fase global 0.2 vs 0.7 nadan idéntico; contarlo en la
+// distancia genética crearía especiación ESPURIA por un offset arbitrario. Por eso vive en DECOR.
 for (let k = 0; k < NODE_COUNT; k++) { DECOR.add(G['n' + k + '_osc_phase']); }
 
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes

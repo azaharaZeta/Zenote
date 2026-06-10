@@ -655,10 +655,14 @@ export class Renderer {
     const wpy = this._ngwy || (this._ngwy = new Float32Array(NS));
     const acc = this._ngac || (this._ngac = new Float32Array(NS));  // flexión acumulada hasta el nodo
     const waveT = t * (1 + spd * 2.5), jointAmp = 0.18 * (0.4 + spd * 0.8);
+    const oscFloor = this.cfg.loco.oscFloor;                      // mismo suelo de amplitud que la física
     wpx[0] = 0; wpy[0] = 0; acc[0] = 0;
     for (let k = 1; k < NS; k++) {
       if (!pres[k]) continue;
-      const p = par[k], bend = Math.sin(waveT - dep[k] * 1.1) * jointAmp;
+      const p = par[k], nb = no + k * ST;
+      const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]); // amplitud por nodo (osc_amp, FUNCIONAL en física)
+      const phK = nodes[nb + 7] * 6.283185307;                   // fase por nodo (osc_phase): coordinada → onda limpia
+      const bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;  // onda viajera por profundidad + offset genético
       acc[k] = acc[p] + bend;                                     // acumula la flexión del padre + la propia
       const rdx = px[k] - px[p], rdy = py[k] - py[p], ca = Math.cos(acc[k]), sa = Math.sin(acc[k]);
       wpx[k] = wpx[p] + rdx * ca - rdy * sa; wpy[k] = wpy[p] + rdx * sa + rdy * ca; // gira el segmento padre→hijo

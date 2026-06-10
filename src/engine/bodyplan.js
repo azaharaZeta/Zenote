@@ -23,6 +23,8 @@ const _kind   = new Uint8Array(CAP_NODES);    // HEAD | SEG | MOD (selecciona co
 const _limbAr = new Float32Array(CAP_NODES);  // área de apéndices/patas colgando del nodo (hidrodinámica, NO masa)
 const _bodyEx = new Float32Array(CAP_NODES);  // ancho de cuerpo (solo cabeza): masa + arrastre reales
 const _gait   = new Float32Array(CAP_NODES);  // B3: factor de empuje DIRECCIONAL: atrás +1, frente −1, lateral +paddle
+const _phase  = new Float32Array(CAP_NODES);  // B3+: fase de oscilación del nodo (osc_phase·2π) → coherencia de marcha
+const TWO_PI  = 6.283185307;
 
 // Exponer el scratch + escalares emergentes (para la física y, en B2b, el render). No se copian arrays.
 export const plan = { ar: _ar, axis: _axis, amp: _amp, eff: _eff, kind: _kind, limbAr: _limbAr, bodyEx: _bodyEx,
@@ -45,6 +47,7 @@ export function computeBodyPlan(g, b, lo, effort) {
   let bodyEx = headW * headW - 1; if (bodyEx < 0) bodyEx = 0; // área extra del cuerpo ancho (drag+masa); fino → 0
   _ar[0] = 1; _axis[0] = Math.PI; _amp[0] = ampOf(g[nb + 6]); _eff[0] = lo.bodyThrust; _kind[0] = KIND_HEAD;
   _bodyEx[0] = bodyEx; _limbAr[0] = 0; _gait[0] = 1;        // emit=π → motor base que propulsa hacia delante
+  _phase[0] = g[nb + 7] * TWO_PI;                           // osc_phase de la cabeza
   n = 1;
   // --- NODOS 1..NODE_COUNT-1 (opcionales) ---
   for (let k = 1; k < NODE_COUNT; k++) {
@@ -65,6 +68,7 @@ export function computeBodyPlan(g, b, lo, effort) {
     _eff[n] = isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust;
     _kind[n] = isLateral ? KIND_MOD : KIND_SEG;
     _gait[n] = -ce + paddleEff * se * se;                   // DIRECCIONAL: atrás +1, frente −1, lateral +paddleEff
+    _phase[n] = g[node + 7] * TWO_PI;                       // osc_phase del nodo (coherencia de marcha, reducePlan)
     let areaForExt;
     if (asp > 0.5) { _ar[n] = 0; _bodyEx[n] = 0; _limbAr[n] = ar * mult * length; areaForExt = _limbAr[n]; } // tentáculo
     else { _ar[n] = ar * mult; _bodyEx[n] = 0; _limbAr[n] = 0; areaForExt = _ar[n]; }                        // lóbulo/segmento
@@ -91,15 +95,27 @@ export function computeBodyPlan(g, b, lo, effort) {
 //   Psum    = Σ_nodo (ar·eff + limbAr·limbThrust) · amp_nodo · gait   (DIRECCIONAL; amp_nodo ya incluye el
 //            throttle `effort` UNA vez → `v` NO debe volver a multiplicar por effort). amp por nodo = `osc_amp`.
 export function reducePlan(n, lo) {
-  let massMul = 0, Dmul = 1, Psum = 0, nSegNodes = 0;
+  let massMul = 0, Dmul = 1, nSegNodes = 0;
+  // Empuje DIRECCIONAL con COHERENCIA DE FASE (B3+): cada nodo propulsor aporta un fasor c·e^{iφ} (φ=osc_phase).
+  // Las contribuciones HACIA DELANTE (c>0) se suman como vectores: en fase → refuerzan; dispersas (aleteo
+  // descoordinado) → se cancelan parcialmente. Las de FRENO (c<0, p. ej. nodo frontal) penalizan a pleno.
+  let cohRe = 0, cohIm = 0, pfwd = 0, pback = 0;
   for (let k = 0; k < n; k++) {
     const ar = _ar[k], limbAr = _limbAr[k], bodyEx = _bodyEx[k];
     massMul += ar + lo.bodyMass * bodyEx;
-    Psum += (ar * _eff[k] + limbAr * lo.limbThrust) * _amp[k] * _gait[k]; // direccional; amp del nodo (incl. effort)
+    const c = (ar * _eff[k] + limbAr * lo.limbThrust) * _amp[k] * _gait[k]; // contribución propulsora (con signo)
+    if (c > 0) { cohRe += c * Math.cos(_phase[k]); cohIm += c * Math.sin(_phase[k]); pfwd += c; }
+    else { pback -= c; }
     Dmul += lo.limbDrag * limbAr + lo.bodyDrag * bodyEx;
     const kind = _kind[k];
     if (kind === KIND_SEG) { Dmul += lo.segDrag * (ar + 0.08); nSegNodes++; }
     else if (kind === KIND_MOD) { Dmul += lo.modDrag * ar; }
   }
+  // Coherencia ∈ [0,1]: 1 = todos los propulsores en fase (o uno solo → cabeza sola = base B3 intacta);
+  // <1 = fases dispersas. `phaseGain` modula la penalización (0 = modelo previo). Solo REDUCE el empuje hacia
+  // delante → nunca supera la suma en fase → acotado. Así nadar COORDINADO emerge sin reglas.
+  const coh = pfwd > 0 ? Math.sqrt(cohRe * cohRe + cohIm * cohIm) / pfwd : 1;
+  const cohEff = 1 - lo.phaseGain * (1 - coh);
+  const Psum = cohEff * pfwd - pback;
   return { massMul, Dmul, Psum, nSegNodes };
 }

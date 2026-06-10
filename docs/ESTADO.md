@@ -28,12 +28,12 @@ Genoma de **167 genes/agente** (SoA, typed arrays):
 
 ## Qué EMERGE (no cableado)
 Especiación · conducta (cerebro neuronal: cazar/huir/pastar/atacar) · **morfología generativa** y **gait
-direccional** (colas atrás propulsan, frentes penalizan; ondulantes vs remeros) · nichos de dieta/talla(r-K)/
+direccional** (colas atrás propulsan, frentes penalizan; ondulantes vs remeros) · **coordinación de marcha**
+(la natación coordinada se premia vía coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/
 térmico (camuflaje color↔luz) · depredación estructurada por talla · selección sexual (orn/pref) · identidad
 visual por linaje.
 
 ## Huecos principales (detalle y prioridad → [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md) §Backlog · ideas → [IDEAS.md](IDEAS.md))
-- **Coordinación de fase del gait** (`osc_phase` inerte): la onda viajera eficiente aún no se premia.
 - **"Cabeza nadadora"**: poca presión para evolucionar colas (idea en IDEAS).
 - **Ataque/dirección no 100% del cerebro** (`aggro`/`w_*` siguen siendo genes-atajo → backlog #9/#10).
 - **Sin alometría** (#3), **sin genes de historia de vida** (#12), **refugio** aún flag binario (#7).
