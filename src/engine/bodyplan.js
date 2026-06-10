@@ -11,6 +11,12 @@ import { G, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 
 const CAP_NODES = NODE_COUNT;        // techo de nodos del cuerpo generativo (B2)
 export const EPS_AXIS = 0.35;        // banda axial: |ang−eje| < EPS → nodo MEDIAL (1×); fuera → LATERAL (par ×2). Exportado: el render usa el mismo umbral.
+// PRESENCIA GRADUADA del nodo (no un on/off duro): present < LO → ausente; en [LO,HI] el nodo APARECE de forma
+// continua (peso 0→1 que escala su área → masa/arrastre/empuje); ≥ HI → pleno. Convierte el "acantilado" de
+// añadir un nodo en una RAMPA → la morfología puede evolucionar gradualmente. El render usa la misma banda
+// (el nodo crece visualmente al aparecer). Exportado para que física y render coincidan.
+export const PRES_LO = 0.4, PRES_HI = 0.6;
+export const presWeight = (p) => p < PRES_LO ? 0 : p >= PRES_HI ? 1 : (p - PRES_LO) / (PRES_HI - PRES_LO);
 export const KIND_HEAD = 0, KIND_SEG = 1, KIND_MOD = 2;
 
 // Scratch a nivel de módulo (el worker computa nacimientos en serie, monohilo → reentrada imposible).
@@ -53,14 +59,15 @@ export function computeBodyPlan(g, b, lo, effort) {
   // --- NODOS 1..NODE_COUNT-1 (opcionales) ---
   for (let k = 1; k < NODE_COUNT; k++) {
     const node = nb + k * NODE_STRIDE;
-    if (g[node + 0] < 0.5) continue;                        // present
+    const w = presWeight(g[node + 0]);                      // presencia GRADUADA: <LO ausente, [LO,HI] rampa, ≥HI pleno
+    if (w <= 0) continue;                                   // por debajo de la banda → el nodo no existe
     const sz = 0.15 + g[node + 2] * 0.85;                   // radio del nodo / cabeza
     const asp = g[node + 3];                                // 0 redondo (lóbulo) .. 1 fino-largo (tentáculo)
     const emit = g[node + 4] * Math.PI;                     // orientación REAL (0=frente .. π=atrás del eje)
     const ce = Math.cos(emit), se = Math.sin(emit);
     const crossR = sz * (1 - 0.85 * asp);                   // sección transversal (fino → pequeña)
     const length = sz * (1 + 1.5 * asp);                    // longitud (fino → larga)
-    const ar = crossR * crossR;
+    const ar = crossR * crossR * w;                         // ÁREA escalada por presencia → un nodo que aparece pesa/arrastra/empuja en proporción
     const axialDist = emit < Math.PI - emit ? emit : Math.PI - emit; // min(emit, π−emit)
     const isLateral = axialDist > EPS_AXIS;
     const mult = isLateral ? 2 : 1;                         // par bilateral espejado

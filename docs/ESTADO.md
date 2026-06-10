@@ -39,7 +39,7 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 ## Huecos / pendientes (ideas → [IDEAS.md](IDEAS.md))
 - **Backlog de auditoría CERRADO (14/14).** Lo que queda son IDEAS futuras (no backlog): uso táctico del
   refugio + caza en manada (entradas del cerebro), selección de presa por talla, Fase 2 del dibujado
-  (organismos tras el dosel), amplificar refugios móviles.
+  (organismos tras el dosel, reencuadrada en clave abisal). *Refugios móviles: amplificados* (patchiness 0.3).
 - *En pruebas:* **cabezas voladoras** — la cabeza ya no es el motor (`headThrust` bajo + sembrado renacuajo);
   verificar en navegador que no colapsa y que emergen colas/aletas.
 - *Tuning*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
@@ -71,6 +71,13 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 - **ESTADO** no almacena detalle: sintetiza y enlaza. Si algo aparece en dos sitios, sobra en uno.
 
 ## Frescura de la documentación
+**Cenote + limpieza de UI (2026-06-10):** eliminado el escenario `meadow`/pradera → **Cenote abisal único**
+(quitados sprites de hierba/flores, mapa térmico de pradera y los params `ambiance`/`showResourceField`/
+`flower*`/`grassSpriteCount`); quitadas las **estelas** (`render.trails`, código muerto). **Modo simple**
+simplificado (línea de stats fps·tick·pob, sin histograma ni textos de diagnóstico; `pob` en azul). **Gráfica
+de población** ahora por DIETA (herbívoros/omnívoros/carnívoros + vegetación), sin la curva de total. `CONFIG.md`
+y `VISUAL.md` actualizados a la par.
+
 **Saldada la deuda v2.0 (2026-06-10):** `SPEC_EVOLUCION.md` y `CONFIG.md` reescritos al modelo de nodos
 (genoma por nodos, física direccional, crossover con ligamiento, distancia sobre genes funcionales,
 combate con `failDamage`/banda de talla, r/K honesto); `VISUAL.md` actualizado para el render por nodos.

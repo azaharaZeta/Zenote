@@ -2,7 +2,7 @@
 // (zoom + paneo toroidal en mosaico). Nada de esto toca la simulación.
 
 import { NUM_GENES, G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
-import { EPS_AXIS } from '../engine/bodyplan.js';
+import { EPS_AXIS, PRES_LO, presWeight } from '../engine/bodyplan.js';
 import { makeRng } from '../util/rng.js';
 
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
@@ -472,14 +472,15 @@ export class Renderer {
     px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0;
     for (let k = 1; k < NS; k++) {
       const nb = no + k * ST;
-      if (nodes[nb] < 0.5) { pres[k] = 0; continue; }
+      const w = presWeight(nodes[nb]);                            // presencia GRADUADA (misma banda que la física)
+      if (w <= 0) { pres[k] = 0; continue; }                      // por debajo de la banda → no se dibuja
       let p = (nodes[nb + 1] * k) | 0; if (p > k - 1) p = k - 1; if (!pres[p]) p = 0; // padre < k; reanclar huérfano
       pres[k] = 1; par[k] = p; dep[k] = dep[p] + 1;
-      const sz = 0.15 + nodes[nb + 2] * 0.85, asp = nodes[nb + 3];
+      const sz = (0.15 + nodes[nb + 2] * 0.85) * w, asp = nodes[nb + 3]; // tamaño ESCALADO por presencia → el nodo CRECE al aparecer
       const cr = r * sz * (1 - 0.6 * asp);                        // sección transversal (fino → pequeña)
       const ln = r * sz * (1 + 1.8 * asp);                        // longitud (fino → larga = tentáculo)
       const emit = nodes[nb + 4] * Math.PI;                       // 0 (frente) .. π (atrás) desde el eje del cuerpo
-      const dist = (pr[p] + cr) * (0.4 + nodes[nb + 5] * 0.7);    // anclaje al padre (attach)
+      const dist = (pr[p] + cr) * (0.85 + nodes[nb + 5] * 0.5);   // anclaje al padre: suelo alto (0.85) → el hijo no queda ENTERRADO bajo el padre
       px[k] = px[p] + Math.cos(emit) * dist; py[k] = py[p] + Math.sin(emit) * dist;
       pr[k] = cr; pl[k] = ln; pa[k] = emit;
     }

@@ -258,7 +258,8 @@ export class Sim {
         const nb = b + G['n' + k + '_present'];                // 8 campos contiguos por nodo
         const pPresent = k <= 3 ? 0.29 : 0.09;                 // prob. de presencia a diversidad máxima (≈ previo)
         const present = rng.next() < div * pPresent;           // ∝ diversidad → a div=0, ausente
-        this.genes[nb + 0] = present ? (0.6 + rng.next() * 0.35) : (rng.next() * 0.45);
+        // present sembrado PLENO (≥0.6) o por debajo de la banda graduada (PRES_LO=0.4) → a div=0, renacuajo puro
+        this.genes[nb + 0] = present ? (0.6 + rng.next() * 0.35) : (rng.next() * 0.38);
         this.genes[nb + 1] = rng.next();                       // parent
         this.genes[nb + 2] = 0.3 + rng.next() * 0.5;           // size (moderado)
         this.genes[nb + 3] = rng.next();                       // aspect: mezcla lóbulos (segmento) ↔ tentáculos

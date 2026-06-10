@@ -134,7 +134,11 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   es sobre todo **carga** (masa + arrastre), NO el motor. → nadar bien **exige propulsores** (cola trasera con
   `gait≈+1`, aletas laterales) → las colas/aletas **emergen por selección** (más realista: un blob liso no se
   autopropulsa). `headThrust=1` recupera el régimen "cabeza nadadora" previo.
-- **Nodos 1..7 opcionales** (`present ≥ 0.5`). Cada uno:
+- **Nodos 1..7 opcionales, con PRESENCIA GRADUADA.** `present < 0.4` → ausente; en `[0.4, 0.6]` el nodo
+  **aparece de forma continua** (peso `w = 0→1` que **escala su área** → masa, arrastre y empuje en
+  proporción); `≥ 0.6` → pleno. Convierte el "acantilado" de añadir un nodo (antes umbral duro en 0.5) en una
+  **rampa**: la morfología puede evolucionar y exaptar gradualmente (más diversidad de cuerpos). El render usa
+  la **misma banda** → el nodo **crece visualmente** al aparecer (no es un cambio "oculto"). Cada nodo:
   - `aspect` 0 = **lóbulo/segmento** redondo (aporta **masa + arrastre**, `_ar`); 1 = **tentáculo/aleta**
     fino y largo (aporta **superficie hidrodinámica** `_limbAr`, sin masa). El continuo lóbulo↔tentáculo
     es una sola primitiva — no hay "tipos" de pieza.

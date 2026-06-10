@@ -4,6 +4,28 @@ Ideas estudiadas pero no implementadas (aún). Cada una con su contexto para pod
 
 ---
 
+## Diversidad morfológica — afinar el sistema de nodos
+
+**Contexto:** poca variedad de cuerpos: el sembrado a `startDiversity=0` es renacuajo (cabeza+cola), el
+renacuajo base ya nada bien (**selección estabilizadora**) y añadir un nodo era un **acantilado** (umbral duro
+`present≥0.5` + coste de golpe en masa/arrastre/decoherencia de fase).
+
+**HECHO (2026-06-10) — Presencia GRADUADA (lever 1):** `present` deja de ser on/off. Banda `[0.4,0.6]`: el nodo
+**aparece de forma continua** (peso 0→1 que escala su área → masa/arrastre/empuje en proporción), pleno ≥0.6,
+ausente <0.4. El render usa la misma banda → el nodo **crece visualmente** al aparecer (`bodyplan.js` `presWeight`,
+`canvas.js`, SPEC §2bis). Acantilado → rampa: la morfología puede exaptar gradualmente.
+**HECHO — anclaje:** el suelo del factor de distancia hijo↔padre subió de 0.4 a **0.85** (`canvas.js` `_drawBodyGraph`)
+→ los nodos hijos dejan de quedar **enterrados bajo el padre** (apiñamiento que se veía).
+
+**PENDIENTE (lever 2) — más funciones ecológicas para los nodos** → morfospacio multi-pico (más especies por
+cuerpo). Hoy los nodos casi solo sirven para "nadar más rápido" (un óptimo → un cuerpo). Ideas: tentáculos
+(aspect alto) que **extiendan el alcance de captura** del depredador; superficie corporal que mejore el
+**pastoreo**; maniobra (giro) premiada para cazar/evadir presa ágil.
+**PENDIENTE (menor) — apiñamiento de hermanos:** varios nodos con el mismo `parent` y `emit` parecido se
+solapan. Posible reparto angular sutil entre hermanos (solo render, no toca genética).
+
+---
+
 ## "Cabeza nadadora / cabezas voladoras" — la cabeza ya NO es el motor (HECHO, en pruebas)
 
 **Estado: IMPLEMENTADO** (2026-06-10), pendiente de verificación ecológica en el navegador.
@@ -98,22 +120,23 @@ fragilidad carnívora con mutación baja, memoria `carnivore-extinction-mutation
 
 ---
 
-## Amplificar los refugios MÓVILES (patchiness por defecto)
+## Amplificar los refugios MÓVILES (patchiness por defecto) — HECHO
 
-**Estado:** ajuste/experimento, sin decidir (2026-06-10).
+**Estado: HECHO** (2026-06-10): el default de `resource.patchiness` se subió a **0.3** (antes 0).
 
 Tras #7 (cobertura = vegetación viva), la dinámica de **refugios que migran** (claros pastados ↔ parches que
 rebrotan, Huffaker) es mucho más rica con `resource.patchiness > 0` (rebrote logístico + difusión → parches
-que emergen y migran). Pero el **default es `patchiness: 0`** (rebrote lineal/uniforme) → la dinámica de claros
-es suave. Idea: **subir el default de `patchiness`** (o documentarlo como "el knob para ver el Huffaker en todo
-su esplendor") para que los refugios móviles y el bucle "comer destruye tu escondite" se aprecien de serie.
-Medir que no desestabilice (parches escasos → hambrunas locales más duras).
+que emergen y migran). Con el default a **0.3** ya se aprecia de serie el bucle "comer destruye tu escondite".
+Sigue siendo knob de UI por si se quiere subir más (parches escasos → hambrunas locales más duras).
 
 ---
 
 ## Mejorar el DIBUJADO de la vegetación (legibilidad)
 
 **Estado: FASE 1 HECHA** (2026-06-10) · Fase 2 pendiente.
+**Nota (2026-06-10):** se eliminó el escenario `meadow` (pradera); el Cenote abisal es el ÚNICO escenario.
+La "vegetación" hoy es la fosforescencia teal + plancton del sustrato abisal. La Fase 2 (dosel) habría que
+reinterpretarla en clave abisal (velo de algas/partículas delante de los bichos en zonas densas).
 
 **Problema (resuelto en Fase 1):** la vegetación apenas se distinguía del fondo abisal. 
 
