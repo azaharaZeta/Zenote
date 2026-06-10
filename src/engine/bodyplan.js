@@ -30,6 +30,7 @@ const _limbAr = new Float32Array(CAP_NODES);  // área de apéndices/patas colga
 const _bodyEx = new Float32Array(CAP_NODES);  // ancho de cuerpo (solo cabeza): masa + arrastre reales
 const _gait   = new Float32Array(CAP_NODES);  // B3: factor de empuje DIRECCIONAL: atrás +1, frente −1, lateral +paddle
 const _phase  = new Float32Array(CAP_NODES);  // B3+: fase de oscilación del nodo (osc_phase·2π) → coherencia de marcha
+const _shapeDrag = new Float32Array(CAP_NODES); // Capa 1: multiplicador de arrastre por SILUETA (tipShape): abrir → más, afilar → menos
 const TWO_PI  = 6.283185307;
 
 // Exponer el scratch + escalares emergentes (para la física y, en B2b, el render). No se copian arrays.
@@ -52,7 +53,7 @@ export function computeBodyPlan(g, b, lo, effort) {
   const headW = 1.5 - g[nb + 3] * 0.95;                     // aspect 0 (redondo) → 1.5 ancho; 1 (fino) → 0.55
   let bodyEx = headW * headW - 1; if (bodyEx < 0) bodyEx = 0; // área extra del cuerpo ancho (drag+masa); fino → 0
   _ar[0] = 1; _axis[0] = Math.PI; _amp[0] = ampOf(g[nb + 6]); _eff[0] = lo.headThrust; _kind[0] = KIND_HEAD;
-  _bodyEx[0] = bodyEx; _limbAr[0] = 0; _gait[0] = 1;        // emit=π; propulsa DÉBIL (headThrust): la cabeza es carga,
+  _bodyEx[0] = bodyEx; _limbAr[0] = 0; _gait[0] = 1; _shapeDrag[0] = 1; // emit=π; propulsa DÉBIL (headThrust): la cabeza es carga,
   //  no motor → nadar bien EXIGE cola/aletas (que emergen por selección). Antes era el motor dominante (bodyThrust).
   _phase[0] = g[nb + 7] * TWO_PI;                           // osc_phase de la cabeza
   n = 1;
@@ -63,17 +64,23 @@ export function computeBodyPlan(g, b, lo, effort) {
     if (w <= 0) continue;                                   // por debajo de la banda → el nodo no existe
     const sz = 0.15 + g[node + 2] * 0.85;                   // radio del nodo / cabeza
     const asp = g[node + 3];                                // 0 redondo (lóbulo) .. 1 fino-largo (tentáculo)
+    // FORMA (Capa 1, tipShape): ts<0 AFILA (púa/garra/tentáculo) · ts>0 ABRE (aleta/paleta). Compromiso físico
+    // honesto, NEUTRO en 0.5: abrir → +empuje y +arrastre (paleta); afilar → −empuje, −arrastre y +alcance.
+    const ts = g[node + 8] - 0.5;
+    const effShape = 1 + lo.tipThrust * 2 * ts;             // abrir empuja más; afilar empuja menos
+    const lengthShape = 1 - lo.tipReach * 2 * ts;           // afilar alarga (alcance); abrir acorta
     const emit = g[node + 4] * Math.PI;                     // orientación REAL (0=frente .. π=atrás del eje)
     const ce = Math.cos(emit), se = Math.sin(emit);
     const crossR = sz * (1 - 0.85 * asp);                   // sección transversal (fino → pequeña)
-    const length = sz * (1 + 1.5 * asp);                    // longitud (fino → larga)
+    const length = sz * (1 + 1.5 * asp) * lengthShape;      // longitud (fino → larga; afilar la extiende)
     const ar = crossR * crossR * w;                         // ÁREA escalada por presencia → un nodo que aparece pesa/arrastra/empuja en proporción
     const axialDist = emit < Math.PI - emit ? emit : Math.PI - emit; // min(emit, π−emit)
     const isLateral = axialDist > EPS_AXIS;
     const mult = isLateral ? 2 : 1;                         // par bilateral espejado
     _axis[n] = emit;
     _amp[n] = ampOf(g[node + 6]);
-    _eff[n] = isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust;
+    _eff[n] = (isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust) * effShape;
+    _shapeDrag[n] = 1 + lo.tipDrag * 2 * ts;                // arrastre por silueta (lo aplica reducePlan)
     _kind[n] = isLateral ? KIND_MOD : KIND_SEG;
     _gait[n] = -ce + paddleEff * se * se;                   // DIRECCIONAL: atrás +1, frente −1, lateral +paddleEff
     _phase[n] = g[node + 7] * TWO_PI;                       // osc_phase del nodo (coherencia de marcha, reducePlan)
@@ -114,10 +121,11 @@ export function reducePlan(n, lo) {
     const c = (ar * _eff[k] + limbAr * lo.limbThrust) * _amp[k] * _gait[k]; // contribución propulsora (con signo)
     if (c > 0) { cohRe += c * Math.cos(_phase[k]); cohIm += c * Math.sin(_phase[k]); pfwd += c; }
     else { pback -= c; }
-    Dmul += lo.limbDrag * limbAr + lo.bodyDrag * bodyEx;
+    const sd = _shapeDrag[k];                                // arrastre por silueta (tipShape): abrir → +, afilar → −
+    Dmul += (lo.limbDrag * limbAr + lo.bodyDrag * bodyEx) * sd;
     const kind = _kind[k];
-    if (kind === KIND_SEG) { Dmul += lo.segDrag * (ar + 0.08); nSegNodes++; }
-    else if (kind === KIND_MOD) { Dmul += lo.modDrag * ar; }
+    if (kind === KIND_SEG) { Dmul += lo.segDrag * (ar + 0.08) * sd; nSegNodes++; }
+    else if (kind === KIND_MOD) { Dmul += lo.modDrag * ar * sd; }
   }
   // Coherencia ∈ [0,1]: 1 = todos los propulsores en fase (o uno solo → cabeza sola = base B3 intacta);
   // <1 = fases dispersas. `phaseGain` modula la penalización (0 = modelo previo). Solo REDUCE el empuje hacia

@@ -100,6 +100,10 @@ export const config = {
     limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente)
     bodyDrag: 0.30,     // Arrastre por unidad de área de nodo ancho (cabeza/lóbulo)
     bodyMass: 0.30,     // Masa metabólica por área de nodo ancho (el ancho SÍ es volumen real)
+    // FORMA del nodo (Capa 1, gen `tipShape`, NEUTRO en 0.5). Compromiso físico de la silueta base↔punta:
+    tipThrust: 0.4,     // Abrir la punta (aleta/paleta) → +empuje al oscilar; afilar (púa) → −empuje. ±factor a forma extrema
+    tipDrag: 0.5,       // Abrir → +arrastre; afilar → −arrastre (streamlining). ±factor a forma extrema
+    tipReach: 0.35,     // Afilar → +longitud (alcance: tentáculo/púa); abrir → más corto. ±factor a forma extrema
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────

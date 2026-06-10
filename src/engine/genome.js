@@ -28,10 +28,11 @@ const BASE_GENES = [
 // cerebro → NO mueve los índices viejos (render/snapshot intactos en B2a); solo desplaza el cerebro (que
 // usa offsets relativos). Campos por nodo: present (≥0.5 existe; n0=raíz, forzado), parent (índice del
 // padre), size, aspect (redondo↔fino-largo: lóbulo vs tentáculo), angle (rel. al padre, [0,π]; el espejo
-// bilateral cubre el resto), attach (anclaje base↔punta), osc_amp/osc_phase (reserva B3: oscilación por nodo).
+// bilateral cubre el resto), attach (anclaje base↔punta), osc_amp/osc_phase (oscilación por nodo),
+// tipShape (Capa 1: SILUETA base↔punta — <0.5 afila a púa/garra/tentáculo, ≈0.5 elipse, >0.5 abre a aleta/paleta).
 export const NODE_COUNT = 8;
-export const NODE_FIELDS = ['present', 'parent', 'size', 'aspect', 'angle', 'attach', 'osc_amp', 'osc_phase'];
-export const NODE_STRIDE = NODE_FIELDS.length;   // 8 genes por nodo
+export const NODE_FIELDS = ['present', 'parent', 'size', 'aspect', 'angle', 'attach', 'osc_amp', 'osc_phase', 'tipShape'];
+export const NODE_STRIDE = NODE_FIELDS.length;   // 9 genes por nodo
 export const NODE0 = BASE_GENES.length;          // índice del primer gen de nodo (n0_present)
 for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.push('n' + k + '_' + f);
 

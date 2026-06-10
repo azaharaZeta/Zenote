@@ -17,10 +17,26 @@ ausente <0.4. El render usa la misma banda → el nodo **crece visualmente** al 
 **HECHO — anclaje:** el suelo del factor de distancia hijo↔padre subió de 0.4 a **0.85** (`canvas.js` `_drawBodyGraph`)
 → los nodos hijos dejan de quedar **enterrados bajo el padre** (apiñamiento que se veía).
 
-**PENDIENTE (lever 2) — más funciones ecológicas para los nodos** → morfospacio multi-pico (más especies por
-cuerpo). Hoy los nodos casi solo sirven para "nadar más rápido" (un óptimo → un cuerpo). Ideas: tentáculos
-(aspect alto) que **extiendan el alcance de captura** del depredador; superficie corporal que mejore el
-**pastoreo**; maniobra (giro) premiada para cazar/evadir presa ágil.
+### Hoja de ruta por CAPAS (estudio 2026-06-10) — hacer poco a poco, en este orden
+
+Diagnóstico: hoy cada nodo es **una elipse** (`aspect` solo cambia la elongación) y el movimiento es **una sola
+oscilación** por nodo (el render ya ondula vía onda viajera, pero la física no distingue ondular de aletear). Para
+ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda añadir variedad **por capas**:
+
+- **CAPA 1 — FORMA del nodo (`tipShape`). PRÓXIMO.** Un gen nuevo por nodo: afila hacia la punta (`<0.5`: púa,
+  garra, tentáculo) ↔ elipse (`≈0.5`, actual) ↔ se abre (`>0.5`: aleta, paleta, ala). **Física honesta**: punta
+  abierta = más empuje al oscilar pero más arrastre (paleta); punta afilada = menos arrastre + más alcance
+  (perforación). Render: silueta paramétrica en `drawNode` (base→punta); anclar por la BASE del nodo. Ya añade
+  función ecológica por sí solo (compromiso empuje/arrastre/alcance) → empieza a crear nichos. Esfuerzo MEDIO,
+  payoff ALTO. *Atajo de tanteo:* reutilizar `aspect` (alto = fino y afilado) sin gen nuevo.
+- **CAPA 2 — FUNCIONES ecológicas de los nodos.** Apoyándose en las formas de la capa 1: tentáculos/púas que
+  **extiendan el alcance de captura**; superficie corporal → mejor **pastoreo**; maniobra (giro) premiada para
+  cazar/evadir. → morfospacio multi-pico (más especies por cuerpo).
+- **CAPA 3 — MODOS de movimiento (`gaitMode`). El escalón grande.** Mezclar *ondular* (flexión axial, actual) ↔
+  *aletear* (barrido del ángulo `emit` = batir) — un nodo lateral abierto que ADEMÁS bate = un ala de verdad.
+  Cada modo nuevo = su curva de empuje/arrastre/coste en la física + su animación en el render → es lo más caro;
+  dejarlo para después de las capas 1-2.
+
 **PENDIENTE (menor) — apiñamiento de hermanos:** varios nodos con el mismo `parent` y `emit` parecido se
 solapan. Posible reparto angular sutil entre hermanos (solo render, no toca genética).
 
