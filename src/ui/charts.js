@@ -83,14 +83,24 @@ export class Charts {
       ctx.stroke();
     };
     if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN disponible (fracción 0-1, escala propia) en verde, al fondo
-    line(hist, '#5ad1c4');                 // población total (teal)
+    line(hist, '#5a7cd1');                 // población total (teal)
     if (histC.length) line(histC, '#ff6b5a'); // carnívoros (rojo)
     const carnNow = histC.length ? histC[histC.length - 1] : 0;
     const vegNow = this.histV.length ? this.histV[this.histV.length - 1] : 0;
-    ctx.font = '10px system-ui, sans-serif';
-    const label = `total ${this.sim.popCount} · carn ${carnNow} · veg ${(vegNow * 100) | 0}% · esp ${this.sim.speciesCount || 0}`;
-    ctx.fillStyle = '#cdd5e0';
-    ctx.fillText(label, 4, 11);            // en la banda reservada → ya no se solapa con la curva
+    ctx.font = '10px monospace';
+    // 3 segmentos coloreados (pob/carn/veg). Monospace + padStart ⇒ ancho fijo: las posiciones no bailan
+    // con las cifras. La x avanza por el ancho medido de cada segmento + un hueco fijo.
+    const segs = [
+      [`pob ${String(this.sim.popCount).padStart(5)}`, '#5a7cd1'],         // teal (población)
+      [`carn ${String(carnNow | 0).padStart(5)}`, '#ff6b5a'],             // rojo (carnívoros)
+      [`veg ${String((vegNow * 100) | 0).padStart(3)}%`, '#6fcf6a'],      // verde (vegetación)
+    ];
+    let tx = 4;
+    for (const [text, col] of segs) {
+      ctx.fillStyle = col;
+      ctx.fillText(text, tx, 11);
+      tx += ctx.measureText(text).width + 8;   // hueco fijo entre segmentos
+    }            // en la banda reservada → ya no se solapa con la curva
   }
 
   // Causas de muerte de los CARNÍVOROS a lo largo del tiempo, una LÍNEA por causa (combate / hambre / vejez /
