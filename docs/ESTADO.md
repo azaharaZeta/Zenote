@@ -32,17 +32,18 @@ pesos — sin reglas ni gen `aggro`) · **morfología generativa** y **gait dire
 frentes penalizan; ondulantes vs remeros) · **coordinación de marcha** (la natación coordinada se premia vía
 coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/térmico (camuflaje color↔luz) ·
 **ciclo de vida r/K** (madurez precoz+vida rápida ↔ tardía+longeva, con coste de longevidad) ·
+**energética alométrica** (almacén ∝ masa, metabolismo ∝ masa^¾ Kleiber → economía de escala) ·
 depredación estructurada por talla · selección sexual (orn/pref) · identidad visual por linaje.
 
 ## Huecos principales (detalle y prioridad → [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md) §Backlog · ideas → [IDEAS.md](IDEAS.md))
 - **"Cabeza nadadora"**: poca presión para evolucionar colas (idea en IDEAS).
-- **Sin alometría** (#3), **refugio** aún flag binario (#7), **colores sin consolidar** (#13).
+- **Refugio** aún flag binario (#7), **colores sin consolidar** (#13), **constantes loco** sin auditar (#8).
 - *Tuning pendiente*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
-**10/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #4 r/K honesto, #5 maxAlive,
-#6 muletas energéticas, #9 cerebro neural-only, #10 ataque del cerebro, #11 carroña, #12 historia de vida.
-**Pendientes:** #3 alometría · #7 refugio · #8 constantes loco · #13 consolidar color.
+**11/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #3 alometría, #4 r/K honesto,
+#5 maxAlive, #6 muletas energéticas, #9 cerebro neural-only, #10 ataque del cerebro, #11 carroña, #12 historia de vida.
+**Pendientes:** #7 refugio · #8 constantes loco · #13 consolidar color.
 
 ---
 

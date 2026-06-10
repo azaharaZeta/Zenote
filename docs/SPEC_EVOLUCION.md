@@ -71,7 +71,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Gen | Expresión / efecto |
 |-----|--------------------|
-| `size` | radio = `lerp(expr.size)` px. Mayor tamaño → más `E_max` y ventaja en combate, pero más coste basal (`k_size`) y peor giro. **No afecta a la velocidad** (ver §2bis). |
+| `size` | radio = `lerp(expr.size)` px → **masa alométrica** (§3): mayor tamaño → más `E_max` (almacén ∝ masa) y ventaja en combate, pero más coste metabólico absoluto (∝ masa^¾) y peor giro. **No afecta a la velocidad** (ver §2bis). |
 | `speed` | **ESFUERZO de nado** (acelerador 0..1), NO velocidad. Modula la amplitud de oscilación de los nodos (`effort`) y el coste de moverse. La velocidad EMERGE de la forma (§2bis). |
 | `sense` | inversión visual → alcance base de visión + coste (`k_sense`). El reparto alcance↔ángulo lo hace `e_fov` (§2ter). |
 | `metab` | escala a la vez el ritmo de alimentación y el coste basal (`k_metab`). Alto = come y rinde más pero quema más. Trade-off, sin "mejor". |
@@ -189,19 +189,23 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
 
 ## 3. Energética (el corazón de la selección)
 
-**Capacidad.** `eMaxBase = E_max_base · (0.5 + size)`; `E_max = eMaxBase · massMul`, donde
-`massMul ≥ 1` viene de la masa corporal (nodos lóbulo/segmento). La masa añade **reserva** (buffer
-para hambrunas), pero —clave— la **reproducción NO depende de la masa** (ver §4): así la complejidad
-no frena la cría ni da velocidad. `energyPerUnit` convierte recurso normalizado a energía
+**Capacidad (ALOMÉTRICA, #3).** La talla es una **masa física**: `sizeMass = (radius / refRadius)^massExp`
+(normalizada al radio medio → un organismo medio tiene `sizeMass≈1`; `refRadius` = radio a size=0.5;
+`massExp` ≈ 1.5, tunable). `mass = sizeMass · massMul` (los nodos lóbulo/segmento suman masa real, `massMul ≥ 1`).
+La **capacidad escala con la masa** (almacén ∝ volumen): `E_max = E_max_base · mass`. La masa añade **reserva**
+(buffer para hambrunas), pero —clave— la **reproducción NO depende de la masa de nodos** (ver §4): la complejidad
+da reserva pero no frena la cría. `energyPerUnit` convierte recurso normalizado a energía
 (**parámetro de equilibrio más sensible**: muy bajo → mueren al arranque; muy alto → explota al tope).
 
 Por tick, cada organismo:
 
-- **Coste basal:**
-  `c_base · (1 + k_metab·metab) · (1 + k_lifespan·(1−lifeFast)) · (1 + k_size·size + k_sense·sense + k_body·(massMul−1) + k_lure·lure)`.
-  Más grande, con más visión, más masa, con señuelo luminoso **y más longevo** → más caro de mantener.
-  El término `(1 + k_lifespan·(1−lifeFast))` es el coste de **longevidad** (disposable soma, #12): vivir lento
-  cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
+- **Coste basal (ALOMÉTRICO, #3):**
+  `c_base · mass^kleiber · (1 + k_metab·metab) · (1 + k_lifespan·(1−lifeFast)) · (1 + k_sense·sense + k_lure·lure)`.
+  El mantenimiento del cuerpo escala con `mass^kleiber` (**ley de Kleiber**, `kleiber ≈ 0.75`): los grandes gastan
+  **más en absoluto pero menos por unidad de masa** (economía de escala). Esto subsume el viejo coste lineal por
+  tamaño y por masa de nodos (`k_size`/`k_body`, retirados). Visión y señuelo son **órganos** (coste aparte,
+  multiplicativo). El término `(1 + k_lifespan·(1−lifeFast))` es el coste de **longevidad** (disposable soma, #12):
+  vivir lento cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
 - **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort)`, **cuadrático en la
@@ -244,8 +248,9 @@ de señuelo `lureReach`), cumpla:
 > **Por qué (a) y (b)** (física trófica, no conducta codificada): un depredador no caza a otro de
 > dieta similar (evita canibalismo y la **carrera al gigantismo**); y la banda de talla acopla el
 > tamaño del depredador al de su presa. **Las fugas de la presa quedan cerradas:** hacerse gigante
-> (caro por `k_size`), encoger por debajo de la banda (deja de rentar como presa pero pierde otras
-> ventajas), o subir su propia dieta (paga eficiencia herbívora). Resultado: **coexistencia estable**.
+> (caro: coste metabólico alométrico + cría más lenta, §3), encoger por debajo de la banda (deja de rentar
+> como presa pero pierde otras ventajas), o subir su propia dieta (paga eficiencia herbívora). Resultado:
+> **coexistencia estable**.
 
 - **Tiempo de manejo (`handlingTime`):** tras una captura el ganador no puede atacar durante N ticks
   (digestión). Satura la tasa de depredación → la presa amortigua → coexistencia en vez de colapso.
@@ -271,7 +276,8 @@ puede sembrarse como proto-carnívoros (cruza el "valle de fitness" del arranque
 `E = 0.5·E_max`. Si `pop.seed` es un número, el RNG es **reproducible** (mismo seed → misma corrida).
 
 ### Referencia de reproducción y compromiso r/K (auditoría #4)
-`reproRef = eMaxBase = E_max_base · (0.5 + size)` (acoplada al tamaño igual que la energía).
+`reproRef = E_max_base · sizeMass` (acoplada a la **masa de TALLA**, no a la masa total: la complejidad de nodos
+da reserva en `eMax` pero NO encarece la cría — preserva #4).
 - **Gate de madurez (#12):** además del umbral de energía, no se cría antes de `edad ≥ Tm` (gen `mature_age`).
 - Umbral para criar: `reproNeedE = max(repro_thr, invest) · reproRef` (el `max` garantiza que pagar la
   cría nunca deja al progenitor en negativo).

@@ -47,7 +47,7 @@ export function computePhenotype(sim, i) {
   // oscilación y el streamlining viven ahora en los genes de nodo (osc_amp + geometría axial/lateral).
   const nNodes = computeBodyPlan(g, b, lo, effort);
   const R = reducePlan(nNodes, lo);
-  const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)
+  const massMul = R.massMul;                                   // masa de nodos → alimenta mass (eMax) y k_graze (abajo)
   const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (un cuerpo "ilógico" → 0)
   // `effort` (throttle) NO se multiplica aquí: ya está dentro de la amplitud de cada nodo (Psum). Si no, sería effort².
   let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul);
@@ -60,12 +60,16 @@ export function computePhenotype(sim, i) {
              - lo.segTurn * R.nSegNodes;
   sim.turnRate[i] = turn < lo.turnMin ? lo.turnMin : turn > 1 ? 1 : turn;
 
-  // Capacidad de energía: por TAMAÑO (base) × MASA corporal (depósito extra). La masa añade
-  // RESERVA (buffer para sobrevivir hambrunas/valles de presa), pero —clave— la reproducción NO
-  // depende de la masa (ver abajo): así la complejidad no frena la cría (no colapsa a simple) ni
-  // da velocidad (no alimenta la carrera presa-depredador); es un nicho "superviviente".
-  const eMaxBase = en.E_max_base * (0.5 + size);
-  const eMax = eMaxBase * massMul;
+  // ---- ALOMETRÍA (#3): la talla es una MASA física -------------------------------
+  // `sizeMass` ∝ radio^massExp, normalizado al radio MEDIO (size 0.5) → un organismo medio tiene sizeMass≈1.
+  // `mass` = sizeMass · massMul (los nodos suman masa real). La CAPACIDAD escala con la masa (almacén ∝ volumen):
+  // la masa añade RESERVA (buffer para hambrunas), y la complejidad de nodos sigue sumando depósito. El
+  // METABOLISMO escala con masa^kleiber (Kleiber: los grandes gastan menos por unidad de masa → economía de
+  // escala). La REPRODUCCIÓN usa SOLO sizeMass (sin massMul, ver abajo) → la complejidad no frena la cría (#4).
+  const refRadius = (e.size.min + e.size.max) * 0.5;         // radio del organismo medio (size 0.5)
+  const sizeMass = Math.pow(radius / refRadius, en.massExp); // masa de talla (límite blando: radio acotado por expr.size)
+  const mass = sizeMass * massMul;                           // masa física total (talla × complejidad de nodos)
+  const eMax = en.E_max_base * mass;
   sim.eMax[i] = eMax;
 
   // SEÑUELO BIOLUMINISCENTE (anglerfish): órgano FUNCIONAL. Su prominencia = orn (gen de exhibición, gateado)
@@ -85,12 +89,12 @@ export function computePhenotype(sim, i) {
   sim.matureAge[i] = lerp(e.mature_age.min, e.mature_age.max, g[b + G.mature_age]);
   sim.senesMult[i] = lerp(cfg.age.senesSlow, cfg.age.senesFast, lifeFast);
 
-  // Coste basal/tick: metabolismo · (tamaño, visión, MASA corporal extra, SEÑUELO luminoso, LONGEVIDAD). Los
-  // apéndices son decorativos → no cuestan. El coste de NADAR se cobra en el movimiento (sim.js). El coste es el
-  // MISMO sea cual sea la dieta (las muletas carnUpkeep/k_sizeHerb se retiraron, auditoría #6).
+  // Coste basal/tick (ALOMÉTRICO, #3): mantenimiento del cuerpo ∝ masa^kleiber (Kleiber: economía de escala —
+  // subsume el viejo coste lineal por tamaño y por masa de nodos), × metabolismo × longevidad × órganos
+  // (visión, señuelo). El coste de NADAR se cobra en el movimiento (sim.js). MISMO coste sea cual sea la dieta.
   sim.baseCost[i] =
-    en.c_base * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
-    (1 + en.k_size * size + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure);
+    en.c_base * Math.pow(mass, en.kleiber) * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
+    (1 + en.k_sense * sense + en.k_lure * lure);
 
   // Alimentación: ritmo escala con metabolismo y con la MASA corporal (segmentos/módulos = más superficie para pastar).
   sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *
@@ -104,12 +108,11 @@ export function computePhenotype(sim, i) {
   // Reproducción: umbral de energía = max(repro_thr, invest) para no morir al parir.
   const reproFrac = lerp(e.repro_thr.min, e.repro_thr.max, g[b + G.repro_thr]);
   const investFrac = lerp(e.invest.min, e.invest.max, g[b + G.invest]);
-  // Referencia de reproducción ACOPLADA al tamaño igual que la energía: reproRef = eMaxBase = E_max_base·(0.5+size).
-  // Criar cuesta una FRACCIÓN constante de tu energía máxima-por-talla → el pequeño (eMax bajo) llena su depósito
-  // antes y se reproduce más rápido (ventaja r natural); el grande es K-estratega. El compromiso r/K EMERGE de la
-  // talla, sin un knob aparte que lo aplane (antes reproBase/reproSizeCost desacoplaban este coste del tamaño para
-  // frenar al pequeño; retirado en auditoría #4). No usa la masa: la complejidad da reserva pero no frena la cría.
-  const reproRef = eMaxBase;
+  // Referencia de reproducción ACOPLADA a la MASA DE TALLA (no a la masa total): reproRef = E_max_base·sizeMass.
+  // Criar cuesta una fracción de tu energía-por-talla → el pequeño (sizeMass bajo) llena su depósito antes y cría
+  // más rápido (ventaja r); el grande es K-estratega. El compromiso r/K EMERGE de la talla (auditoría #4). Usa
+  // sizeMass y NO la masa total: la complejidad de nodos da reserva (eMax) pero NO frena la cría.
+  const reproRef = en.E_max_base * sizeMass;
   sim.investE[i] = investFrac * reproRef;
   sim.reproNeedE[i] = Math.max(reproFrac, investFrac) * reproRef;
 

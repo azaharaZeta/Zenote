@@ -239,7 +239,7 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso: 10/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #4, #5, #6, #9, #10, #11, #12. Pendientes: #3, #7, #8, #13.
+**Progreso: 11/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #3, #4, #5, #6, #9, #10, #11, #12. Pendientes: #7, #8, #13.
 
 0. ✅ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** — COMPLETO (A1+A2+B1+B2+B3+CONTRACT). El cuerpo es un
    genoma generativo por nodos (una primitiva), la física de locomoción es direccional y emerge de la
@@ -256,8 +256,8 @@ De más fundacional / mayor retorno de realismo a más periférico.
    *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
 2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`
    (0.5 ≡ uniforme); preserva complejos co-adaptados y co-herencia `orn`/`pref`.* — *Capa 2*
-3. ⬜ **Alometría en el mapa gen→fenotipo** (masa por volumen; coste metabólico ∝ masa^¾; límites blandos
-   por coste en vez de topes duros). Gran palanca de realismo, coste CPU nulo. — *Capa 1*
+3. ✅ **Alometría en el mapa gen→fenotipo** (masa por volumen; coste metabólico ∝ masa^¾; límites blandos
+   por coste en vez de topes duros). Gran palanca de realismo, coste CPU nulo. *Hecho: `mass = (radius/refRadius)^massExp · massMul`; `eMax = E_max_base·mass`; coste basal ∝ `mass^kleiber` (Kleiber 0.75); `reproRef = E_max_base·sizeMass` (preserva #4); `massExp`/`kleiber` tunables; recalibrado al medio. Retirados `k_size`/`k_body`.* — *Capa 1*
 4. ✅ **Restaurar el compromiso r/K honesto** (quitar el desacople de `reproRef`). *Hecho: `reproRef = eMaxBase`
    = `E_max_base·(0.5+size)`; fuera `reproBase`/`reproSizeCost`. r/K emerge de la talla. Pendiente observar si
    colapsa a talla mínima → entonces compensar con depredación/coste estructurado por talla.* — *Capa 3/6*

@@ -45,18 +45,18 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Energética y costes
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `energy.c_base` | 0.02 | *(UI)* coste basal/tick (existir cuesta) |
-| `energy.k_size` | 0.45 | *(UI)* coste basal por **tamaño** |
+| `energy.c_base` | 0.024 | *(UI)* coste basal/tick (recalibrado por la alometría #3; antes 0.02 con `k_size` aparte) |
+| `energy.massExp` | 1.5 | *(UI)* **exponente alométrico** talla→masa: `sizeMass=(radius/refRadius)^massExp`. 1 = lineal; 2 = área 2D |
+| `energy.kleiber` | 0.75 | *(UI)* **exponente metabólico** (Kleiber): coste basal ∝ `mass^kleiber`. <1 = los grandes gastan menos por unidad de masa |
 | `energy.k_sense` | 0.3 | coste de la visión (alcance) |
 | `energy.k_metab` | 0.6 | coste del metabolismo |
 | `energy.k_lifespan` | 0.35 | *(UI)* coste basal extra de la **longevidad** (disposable soma, #12): factor `(1 + k_lifespan·(1−senescence))`. Evita que la senescencia colapse a "inmortal" |
 | `energy.k_temp` | 1.9 | coste por desviarse del óptimo térmico (0 = sin selección térmica) |
-| `energy.k_body` | 0.10 | coste basal extra por **masa corporal** (nodos lóbulo/segmento) |
 | `energy.k_lure` | 0.13 | coste de mantener el **señuelo** bioluminiscente (∝ prominencia) |
 | `energy.k_graze` | 0.50 | pasto **extra ∝ masa** (ata la complejidad al nicho herbívoro) |
 | `energy.k_effort` | 1.59 | coste extra de moverse ∝ esfuerzo (gen `speed`) |
 | `energy.moveCost` | 0.015 | coef. del coste de nado **∝ velocidad²** (frena la carrera de velocidad) |
-| `energy.E_max_base` | 71 | `E_max = E_max_base·(0.5+size)·massMul`. Criar cuesta una fracción de la energía-por-talla (r/K emerge, auditoría #4) |
+| `energy.E_max_base` | 71 | `E_max = E_max_base·mass` (mass = sizeMass·massMul). Criar cuesta `E_max_base·sizeMass` (sin nodos → la complejidad no frena la cría, #4) |
 | `energy.preyGain` | 0.90 | fracción de energía de la presa aprovechada al cazar |
 | `energy.corpseReturn` | 0.5 | fracción de energía que un cadáver (muerte por hambre/vejez) devuelve al campo de recurso |
 

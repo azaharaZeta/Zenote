@@ -39,21 +39,24 @@ export const config = {
   },
 
   // ───── Energética y costes (qué cuesta vivir, moverse, crecer, criar) ─────
+  // ALOMETRÍA (#3): la talla es una MASA física. eMax ∝ masa (almacén ∝ volumen); metabolismo ∝ masa^kleiber
+  // (ley de Kleiber: economía de escala). Ver organism.js. `massExp`/`kleiber` son tunables; las bases están
+  // recalibradas para que el organismo MEDIO (size 0.5, head-only) conserve ≈ los valores previos.
   energy: {
-    c_base: 0.02,       // (UI) Coste basal por tick (existir cuesta)
-    k_size: 0.45,       // (UI) Coste basal por TAMAÑO
+    c_base: 0.024,      // (UI) Coste basal por tick (recalibrado por la alometría: antes 0.02 con k_size aparte)
+    massExp: 1.5,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp. 1 = lineal; 2 = área 2D
+    kleiber: 0.75,      // (UI) Exponente metabólico: coste basal ∝ masa^kleiber (¾ = Kleiber; <1 = los grandes gastan menos por masa)
     k_sense: 0.3,       // Coste de la visión (alcance)
     k_metab: 0.6,       // Coste del metabolismo
     k_lifespan: 0.35,   // (#12, disposable soma) Coste basal extra de la LONGEVIDAD: factor (1 + k_lifespan·(1−senescence)).
                         //      Vivir lento/longevo cuesta mantener el cuerpo → evita que la senescencia colapse a "inmortal".
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
-    k_body: 0.10,       // Coste basal extra por MASA corporal (segmentos/módulos)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
-    k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal (ata la complejidad al nicho herbívoro)
+    k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
-    E_max_base: 71,     // Energía máxima base · E_max = E_max_base · (0.5 + size). Criar cuesta una fracción de
-                        //      esta energía-por-talla (ver organism.js reproRef): el compromiso r/K emerge de la talla.
+    E_max_base: 71,     // Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
+                        //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // Fracción de energía de la presa aprovechada al cazarla
     corpseReturn: 0.5,  // Fracción de energía que devuelve un cadáver
   },

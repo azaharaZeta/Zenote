@@ -288,10 +288,10 @@ const LAB_SPEC = [
   ]},
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
-    { k: 'energy.k_size', label: 'Coste por tamaño', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto cuesta ser grande. Bajo = el tamaño es casi neutro y coexisten tamaños variados por deriva; alto = ser grande se penaliza fuerte.' },
+    { k: 'energy.massExp', label: 'Escala talla→masa', min: 1, max: 2.2, step: 0.05, dec: 2, d: 'Cuánto pesa ser grande (exponente alométrico). 1 = lineal (la talla casi no cambia la masa); 2 = área 2D (la masa, y con ella la reserva y el coste, se disparan con el tamaño).' },
     { k: 'energy.k_metab', label: 'Coste por metabolismo', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto encarece el gen de metabolismo el coste basal. Metabolismo alto come y procesa más rápido, pero gasta más.' },
     { k: 'energy.k_sense', label: 'Coste por visión', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste energético de tener buena visión (alcance). Ver lejos cuesta: presiona a invertir en vista solo si compensa.' },
-    { k: 'energy.k_body', label: 'Coste por masa corporal', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste extra por masa (segmentos y módulos). Los cuerpos complejos gastan más en mantenerse.' },
+    { k: 'energy.kleiber', label: 'Metabolismo de escala', min: 0.5, max: 1, step: 0.02, dec: 2, d: 'Cómo escala el coste de mantenerse con la masa (ley de Kleiber). 0.75 = los grandes gastan menos por unidad de masa (economía de escala); 1 = el coste crece proporcional a la masa (sin ventaja de ser grande).' },
     { k: 'energy.k_graze', label: 'Pasto extra por masa', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto más pasta un cuerpo con más masa. Ata la complejidad al nicho herbívoro (al carnívoro no le aporta).' },
     { k: 'energy.k_effort', label: 'Coste por esfuerzo', min: 0, max: 3, step: 0.05, dec: 2, d: 'Coste extra de nadar con mucho esfuerzo. Ir a tope sale caro → la velocidad la limita el presupuesto energético.' },
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coeficiente del coste de moverse, proporcional a la velocidad al cuadrado. Frena la carrera de velocidad.' },
