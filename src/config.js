@@ -58,12 +58,11 @@ export const config = {
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
   loco: {
-    kThrust: 5.5,       // Calibra la velocidad-capacidad típica (recalibrado en B3 con el empuje direccional)
+    kThrust: 3.2,       // Calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, effort una vez)
     paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
     oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
     elongMax: 3.0,      // B3: techo de la elongación derivada de la geometría de nodos (streamlining)
-    waveFloor: 0.3,     // (obsoleto desde B3: la amplitud viene de osc_amp por nodo) Empuje mínimo sin ondular
-    symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría desvía empuje a girar)
+    symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría del grafo desvía empuje a girar)
     streamBase: 1.0,    // Arrastre base del cuerpo
     streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica)
     effortFloor: 0.2,   // Esfuerzo mínimo de nado
@@ -81,14 +80,11 @@ export const config = {
     modDrag: 0.6,       // Arrastre extra por módulo
     segTurn: 0.03,      // Cada segmento extra empeora el giro
     bodyThrust: 1.0,    // A2 (Pilar v2.0): escala del empuje del CUERPO (cabeza+segmentos que ondulan); propulsor principal
-    // A1 (Pilar v2.0): piezas antes inertes → físicas. limbs = apéndices de cabeza + patas de segmento.
+    // Limbs (tentáculos/aletas finos) y nodos: empuje vs arrastre por unidad de área.
     limbThrust: 0.12,   // Empuje por unidad de área de limbs (ondulan → propulsión secundaria)
     limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente)
-    appWidFloor: 0.25,  // Suelo de grosor: un apéndice fino aún tiene algo de área (no degenera a 0)
-    branchArea: 1.5,    // s_branch ≥ 0.5 ramifica → +50% de superficie de apéndices (coherente con el render)
-    bodyDrag: 0.30,     // Arrastre por unidad de área de cuerpo ancho (b_aspect)
-    bodyMass: 0.30,     // Masa metabólica por área de cuerpo ancho (el ancho SÍ es volumen real)
-    coreStream: 0.5,    // s_core (afilado del núcleo) recorta hasta −50% el arrastre/masa del ancho
+    bodyDrag: 0.30,     // Arrastre por unidad de área de nodo ancho (cabeza/lóbulo)
+    bodyMass: 0.30,     // Masa metabólica por área de nodo ancho (el ancho SÍ es volumen real)
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────

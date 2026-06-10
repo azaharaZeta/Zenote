@@ -239,9 +239,11 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso: 6/14 hechos** → ✅ #1, #2, #4, #5, #6, #11.
+**Progreso: 7/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #4, #5, #6, #11. Pendientes: #3, #7, #8, #9, #10, #12, #13.
 
-0. 🔄 **🏛️ PILAR v2.0 — Forma y movimiento emergentes** (arco grande, incremental A→B). Es el titular del
+0. ✅ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** — COMPLETO (A1+A2+B1+B2+B3+CONTRACT). El cuerpo es un
+   genoma generativo por nodos (una primitiva), la física de locomoción es direccional y emerge de la
+   geometría, el render dibuja desde los nodos y los genes morfológicos viejos se han retirado. Es el titular del
    rediseño y subsume gran parte de las Capas 1 y 5. Ver sección dedicada abajo. Puede solaparse/ordenarse
    con los pasos siguientes (la alometría #3 y los límites blandos son su lenguaje físico natural).
    *Progreso: ✅ A1 (apéndices/patas/ancho → empuje/arrastre), ✅ A2 (empuje aditivo por superficies que

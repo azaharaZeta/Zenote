@@ -85,16 +85,17 @@ export function computeBodyPlan(g, b, lo, effort) {
   return n;
 }
 
-// Reduce el plan (los `n` nodos en scratch) a los escalares de locomoción. En B1 reproduce A2 exacto:
+// Reduce el plan (los `n` nodos en scratch) a los escalares de locomoción (B3):
 //   massMul = 1 + Σ_nodo ar + bodyMass·bodyExtra            (cabeza aporta su ar=1; limbAr NO es masa)
 //   Dmul    = 1 + segDrag·(Σ_seg ar + 0.08·nSeg) + modDrag·Σ_mod ar + limbDrag·Σ limbAr + bodyDrag·bodyExtra
-//   Psum    = Σ_nodo ar·amp·eff + Σ limbAr·effort·limbThrust   (forma Σ ar·amp·eff = puente a B3)
-export function reducePlan(n, lo, effort) {
+//   Psum    = Σ_nodo (ar·eff + limbAr·limbThrust) · amp_nodo · gait   (DIRECCIONAL; amp_nodo ya incluye el
+//            throttle `effort` UNA vez → `v` NO debe volver a multiplicar por effort). amp por nodo = `osc_amp`.
+export function reducePlan(n, lo) {
   let massMul = 0, Dmul = 1, Psum = 0, nSegNodes = 0;
   for (let k = 0; k < n; k++) {
     const ar = _ar[k], limbAr = _limbAr[k], bodyEx = _bodyEx[k];
     massMul += ar + lo.bodyMass * bodyEx;
-    Psum += (ar * _amp[k] * _eff[k] + limbAr * effort * lo.limbThrust) * _gait[k]; // DIRECCIONAL (puede ser <0)
+    Psum += (ar * _eff[k] + limbAr * lo.limbThrust) * _amp[k] * _gait[k]; // direccional; amp del nodo (incl. effort)
     Dmul += lo.limbDrag * limbAr + lo.bodyDrag * bodyEx;
     const kind = _kind[k];
     if (kind === KIND_SEG) { Dmul += lo.segDrag * (ar + 0.08); nSegNodes++; }

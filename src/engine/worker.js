@@ -6,7 +6,7 @@
 
 import { config } from '../config.js';
 import { Sim } from './sim.js';
-import { NUM_GENES, G, BRAIN0, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
+import { NUM_GENES, G, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
 
 const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo

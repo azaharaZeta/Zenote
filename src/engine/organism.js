@@ -46,10 +46,11 @@ export function computePhenotype(sim, i) {
   // es transitorio (scratch reutilizable); se reduce aquí a los escalares cacheados. `m_wave`/`m_elong`
   // ya no se usan (migrados a los nodos).
   const nNodes = computeBodyPlan(g, b, lo, effort);
-  const R = reducePlan(nNodes, lo, effort);
+  const R = reducePlan(nNodes, lo);
   const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)
   const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (un cuerpo "ilógico" → 0)
-  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul) * effort;
+  // `effort` (throttle) NO se multiplica aquí: ya está dentro de la amplitud de cada nodo (Psum). Si no, sería effort².
+  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul);
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento

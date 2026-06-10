@@ -1,7 +1,7 @@
 // UI: controles en vivo (sliders que afectan la simulación), inspector de genoma,
 // reseed, modo contemplación. Pensado para ratón y táctil (pointer events).
 
-import { GENES, GENE_LABELS, G, NUM_GENES, BRAIN0, GENE_GROUPS, DECOR, NODE_COUNT } from '../engine/genome.js';
+import { GENES, GENE_LABELS, G, NUM_GENES, GENE_GROUPS, DECOR, NODE_COUNT } from '../engine/genome.js';
 
 export function setupControls(app) {
   const { sim, renderer, charts, cfg, worker } = app;
@@ -491,13 +491,13 @@ function setupLab(app, send) {
     // hue acotado a [0.62, 0.68]: con la rueda completa del render (hue·360) eso da ~223-245° → entorno al AZUL.
     g('size', R(0.58, 0.66)); g('hue', R(0.62, 0.68)); g('sense', 0.5); g('metab', 0.5);
     g('diet', R(0.38, 0.44)); g('aggro', R(0.38, 0.44));
-    g('m_app', R(0.3, 0.4)); g('m_len', R(0.48, 0.58)); g('m_width', R(0.4, 0.48)); g('m_sym', R(0.72, 0.8));
-    g('m_elong', R(0.42, 0.5)); g('m_wave', R(0.5, 0.6));
-    g('m_seg', R(0.42, 0.52)); g('m_segtaper', R(0.47, 0.53)); g('m_segspace', R(0.4, 0.45));
-    g('mod0_on', R(0.14, 0.24)); g('mod1_on', R(0.1, 0.2));
-    g('s_asym', R(0.17, 0.27)); g('s_curve', R(0.35, 0.6)); g('s_place', R(0.32, 0.4)); g('s_branch', R(0.14, 0.24)); g('s_core', R(0.47, 0.53));
+    // FORMA del mascot vía NODOS: cabeza redonda + un par de "orejas" laterales; resto de nodos ausentes.
+    g('n0_present', 1); g('n0_size', 0.55); g('n0_aspect', 0.3); g('n0_osc_amp', 0.55);
+    g('n1_present', 0.95); g('n1_size', 0.5); g('n1_aspect', 0.68); g('n1_angle', 0.32); g('n1_attach', 0.7); g('n1_osc_amp', 0.5);
+    g('n2_present', 0.9); g('n2_size', 0.42); g('n2_aspect', 0.55); g('n2_angle', 0.6); g('n2_attach', 0.6); g('n2_osc_amp', 0.5);
+    for (let k = 3; k < NODE_COUNT; k++) g('n' + k + '_present', 0.1);
     g('c_app', R(0.44, 0.56)); g('c_tip', R(0.45, 0.58)); g('e_fov', R(0.32, 0.4)); g('c_eye', R(0.45, 0.55));
-    g('orn', R(0.54, 0.66)); g('b_aspect', R(0.42, 0.48)); g('c_lum', R(0.66, 0.78)); g('c_sat', R(0.68, 0.8));
+    g('orn', R(0.54, 0.66)); g('c_lum', R(0.66, 0.78)); g('c_sat', R(0.68, 0.8));
     g('o_len', R(0.48, 0.58)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22));
     const ictx = introCanvas.getContext('2d');
     let raf = 0, on = true;

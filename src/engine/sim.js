@@ -139,15 +139,8 @@ export class Sim {
         this.genes[b + G.w_food] = rng.next() * 0.2;
         this.genes[b + G.repro_thr] = rng.next() * 0.25; // se reproduce a ~media energía
         this.genes[b + G.invest]    = 0.1 + rng.next() * 0.3;
-        // Morfología nadadora (condición inicial: cuerpo capaz de perseguir; la selección
-        // afinará la forma). Sin esto nacerían con apéndices aleatorios → muchos lentos.
-        this.genes[b + G.m_app]   = 0.4 + rng.next() * 0.4;  // bastantes apéndices → empuje
-        this.genes[b + G.m_len]   = 0.4 + rng.next() * 0.4;
-        this.genes[b + G.m_width] = 0.3 + rng.next() * 0.4;
-        this.genes[b + G.m_wave]  = 0.5 + rng.next() * 0.5;  // ondulan fuerte (nadan rápido)
-        this.genes[b + G.m_sym]   = 0.2 + rng.next() * 0.4;  // algo asimétricos → giran para interceptar
-        this.genes[b + G.m_elong] = 0.4 + rng.next() * 0.5;  // hidrodinámicos
         this.genes[b + G.e_fov]   = rng.next() * 0.35;       // ojos frontales de largo alcance (cazador)
+        // La FORMA nadadora cazadora EMERGE de los nodos (genes de nodo aleatorios del init); aquí solo ecología.
       } else {
         // Guild herbívoro: dieta y agresión bajas (donde la selección los llevaría igualmente).
         // Sembrarlos pacíficos evita una masacre intraespecífica en el transitorio inicial.
@@ -194,7 +187,7 @@ export class Sim {
     // entre la base compartida (div=0 → todos iguales) y la muestra individual (div=1 → variado actual).
     // c_lum (glow + luminosidad) y c_sat (color): sembrado MÁS ALTO (0.3/0.25 + cola) → organismos más
     // luminosos, con glow visible y menos grises. Antes (rng·rng ≈ 0.25) salían oscuros/apagados.
-    const baseSeg = rng.next() * 0.7, baseCurve = rng.next(), baseTex2 = rng.next();
+    const baseTex2 = rng.next();
     const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
     const blend = (base, sample) => base + (sample - base) * div;
     const jit = (v) => { const x = v + rng.gaussian() * J; return x < 0 ? 0 : x > 1 ? 1 : x; };
@@ -211,16 +204,7 @@ export class Sim {
       this.genes[b + G.diet] = jit(0.08); this.genes[b + G.aggro] = jit(0.08);
       this.genes[b + G.w_food] = jit(0.55); this.genes[b + G.w_prey] = jit(0.15); this.genes[b + G.w_flee] = jit(0.4);
       this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
-      // Morfología SENCILLA: pocos apéndices, simétrico, redondeado, 1 segmento, sin módulos/ramas
-      this.genes[b + G.m_app] = jit(0.12); this.genes[b + G.m_len] = jit(0.4); this.genes[b + G.m_width] = jit(0.4);
-      this.genes[b + G.m_sym] = jit(0.82); this.genes[b + G.m_elong] = jit(0.3); this.genes[b + G.m_wave] = jit(0.5);
-      this.genes[b + G.m_seg] = blend(baseSeg, rng.next() * 0.7); this.genes[b + G.m_segtaper] = jit(0.5); this.genes[b + G.m_segspace] = jit(0.5); // segmentos: variedad escalada por diversidad
-      this.genes[b + G.mod0_on] = jit(0.12); this.genes[b + G.mod0_ang] = jit(0.5); this.genes[b + G.mod0_dist] = jit(0.5); this.genes[b + G.mod0_size] = jit(0.5);
-      this.genes[b + G.mod1_on] = jit(0.1); this.genes[b + G.mod1_ang] = jit(0.5); this.genes[b + G.mod1_dist] = jit(0.5); this.genes[b + G.mod1_size] = jit(0.5);
-      // Apariencia LISA (silueta de cabeza, estilo de ojo, colocación, ramificación, núcleo, colores, cresta)
-      this.genes[b + G.s_asym] = jit(0.12); this.genes[b + G.s_curve] = blend(baseCurve, rng.next()); this.genes[b + G.s_place] = jit(0.15); // s_curve = PIEL: variedad de patrones escalada por diversidad
-      this.genes[b + G.s_branch] = jit(0.35); this.genes[b + G.s_core] = jit(0.5); // más ramificación de partida (apéndices coral + bifurcación de segmentos)
-      this.genes[b + G.leg_len] = jit(0.4); this.genes[b + G.leg_grad] = jit(0.5); // patas del cuerpo: largo medio, gradiente neutro de partida (evoluciona)
+      // La FORMA (cuerpo/apéndices) se siembra abajo vía el bloque de NODOS (B2/B3). Aquí solo color/ojos/ornamento.
       this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
       // Apariencia decorativa: arranque MODESTO (jit) → la variedad de glow/color/esbeltez/señuelo EMERGE por deriva.
@@ -230,7 +214,7 @@ export class Sim {
       // c_sat (VIVACIDAD de color) sembrado POR INDIVIDUO (rng·rng: sesgo bajo, cola hasta arriba) en vez de un
       // único valor per-run → hay color desde el inicio y la deriva lo explora; antes toda la run se quedaba en el
       // mismo gris. (Igual que c_lum/glow.) Tono ya va en banda estrecha → más vivacidad ≠ circo, son matices.
-      this.genes[b + G.b_aspect] = jit(0.32); this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55); // glow/color más altos (menos gris/oscuro), variedad escalada por diversidad
+      this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55); // glow/color (variedad escalada por diversidad)
       this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y POCOS de partida
       this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // escala/densidad de piel: variedad escalada por diversidad
       // Cohorte proto-carnívora: SOLO sesga la ECOLOGÍA (dieta/agresión/caza), el cuerpo sigue sencillo →
@@ -239,13 +223,9 @@ export class Sim {
         this.genes[b + G.diet] = jit(0.8); this.genes[b + G.aggro] = jit(0.7); this.genes[b + G.w_prey] = jit(0.7);
         this.genes[b + G.w_food] = jit(0.15); this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
         this.genes[b + G.repro_thr] = jit(0.35);
-        // Kit de CAZADOR VIABLE (ecología, no complejidad: sigue siendo 1 segmento sin módulos/ramas):
-        //  · ventaja de TAMAÑO → el combate exige depredador > presa (si no, no captura → se extingue);
-        //  · cuerpo HIDRODINÁMICO y ONDULANTE → nada lo bastante rápido para alcanzar a la presa.
-        // Sin esto el cohorte cazador no puede comer y la depredación colapsa (→ sobrepastoreo). La
-        // forma fina de cada cazador (nº de apéndices, segmentos…) EMERGE luego por selección.
+        // Kit de CAZADOR VIABLE (solo ecología; la FORMA cazadora emerge de los nodos): ventaja de TAMAÑO
+        // (el combate exige depredador > presa) y esfuerzo alto para nadar rápido tras la presa.
         this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
-        this.genes[b + G.m_wave] = jit(0.75); this.genes[b + G.m_elong] = jit(0.62); this.genes[b + G.m_sym] = jit(0.7);
       }
       // --- NODOS (B2): cuerpo generativo. La RAÍZ (cabeza) siempre; los nodos 1..7 con presencia DECRECIENTE
       //     (≈50% el 1º, ≈29% el 2º-3º, ≈9% el resto) → variedad inmediata (cabezas, cadenas y tentáculos)

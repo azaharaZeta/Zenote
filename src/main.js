@@ -24,7 +24,7 @@ const simProxy = {
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),
   },
   x: empty, y: empty, radius: empty, hue: empty, diet: empty, eFrac: empty,
-  lineage: empty, geneSel: empty, heading: empty, spd: empty, morph: empty, tint: empty, eye: empty, face: empty, deco: empty,
+  lineage: empty, geneSel: empty, heading: empty, spd: empty, nodes: empty, tint: empty, eye: empty, face: empty, deco: empty,
   species: empty, speciesCount: 0,
   active: identity, activeCount: 0,
   popCount: 0, tick: 0, births: 0, deaths: 0, carn: 0,
