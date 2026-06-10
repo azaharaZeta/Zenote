@@ -58,8 +58,11 @@ export const config = {
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
   loco: {
-    kThrust: 2.5,       // Calibra la velocidad-capacidad típica
-    waveFloor: 0.3,     // Empuje mínimo sin ondular
+    kThrust: 5.5,       // Calibra la velocidad-capacidad típica (recalibrado en B3 con el empuje direccional)
+    paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
+    oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
+    elongMax: 3.0,      // B3: techo de la elongación derivada de la geometría de nodos (streamlining)
+    waveFloor: 0.3,     // (obsoleto desde B3: la amplitud viene de osc_amp por nodo) Empuje mínimo sin ondular
     symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría desvía empuje a girar)
     streamBase: 1.0,    // Arrastre base del cuerpo
     streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica)

@@ -36,35 +36,26 @@ export function computePhenotype(sim, i) {
   // arrastre). El programador define la física; la selección esculpe la forma. Aquí está
   // la frontera. Mismos parámetros de forma que usa el render (cuerpos coherentes con su física).
   const lo = cfg.loco;
-  const elong = 1 + g[b + G.m_elong] * 1.3;
-  const waveG = g[b + G.m_wave];
+  const effort = lo.effortFloor + (1 - lo.effortFloor) * speed; // throttle global (gen speed)
 
-  // A2 (Pilar v2.0): el empuje EMERGE de las superficies que oscilan (ver abajo, Psum aditivo), no de un
-  // escalar abstracto. `wave` = AMPLITUD de ondulación del CUERPO. La direccionalidad (`plan.straight`) ya
-  // NO viene del gen m_sym: EMERGE de la (a)simetría del grafo de nodos (ver computeBodyPlan, B2).
-  const wave = lo.waveFloor + (1 - lo.waveFloor) * waveG;      // amplitud de ondulación del cuerpo
-  // Hidrodinámica: la elongación reduce el arrastre (cuerpo afilado). La VELOCIDAD es
-  // independiente del tamaño (empuje y arrastre escalan igual con el radio → se cancela):
-  // encoger ya no regala velocidad; la velocidad emerge solo de la FORMA y el esfuerzo.
-  const stream = lo.streamBase + lo.streamGain * (elong - 1);
-  const effort = lo.effortFloor + (1 - lo.effortFloor) * speed;
-
-  // ---- PLAN CORPORAL POR NODOS (Pilar v2.0, B1) → FÍSICA ------------------------------
-  // La forma se expresa como una lista de NODOS (cabeza + cadena de segmentos + módulos, con apéndices/
-  // patas agregados en su nodo de anclaje). La física —masa, arrastre, empuje, giro— EMERGE de sumar
-  // sobre esos nodos (ver bodyplan.js). El plan es transitorio (scratch reutilizable) y se reduce aquí a
-  // los escalares cacheados; no se almacena por agente. En B1 reproduce A2 exacto; B3 añadirá oscilación
-  // y arrastre por orientación POR NODO (gait emergente) reusando esta misma estructura.
-  const nNodes = computeBodyPlan(g, b, lo, wave, effort);
+  // ---- PLAN CORPORAL POR NODOS (Pilar v2.0, B3) → FÍSICA ------------------------------
+  // La forma se expresa como un GRAFO DE NODOS. La física —masa, arrastre, EMPUJE DIRECCIONAL, giro,
+  // streamlining— EMERGE de sumar sobre esos nodos (ver bodyplan.js): cada nodo propulsa según su
+  // ORIENTACIÓN (cola atrás empuja adelante; nodo frontal frena) y su amplitud de oscilación propia
+  // (osc_amp). `plan.stream` (elongación) y `plan.elongN` (giro) también emergen de la geometría. El plan
+  // es transitorio (scratch reutilizable); se reduce aquí a los escalares cacheados. `m_wave`/`m_elong`
+  // ya no se usan (migrados a los nodos).
+  const nNodes = computeBodyPlan(g, b, lo, effort);
   const R = reducePlan(nNodes, lo, effort);
   const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)
-  let v = lo.kThrust * R.Psum * plan.straight * (stream / R.Dmul) * effort; // straight emerge del grafo (B2)
+  const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (un cuerpo "ilógico" → 0)
+  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul) * effort;
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
   // Agilidad de giro: la asimetría del cuerpo (plan.turnAsym, emergente) mejora el giro; grandes/elongados/
   // con más nodos-segmento giran peor.
-  let turn = lo.turnBase + lo.turnAsym * plan.turnAsym - lo.turnSize * size - lo.turnElong * (elong - 1)
+  let turn = lo.turnBase + lo.turnAsym * plan.turnAsym - lo.turnSize * size - lo.turnElong * (plan.elongN - 1)
              - lo.segTurn * R.nSegNodes;
   sim.turnRate[i] = turn < lo.turnMin ? lo.turnMin : turn > 1 ? 1 : turn;
 

@@ -149,13 +149,14 @@ GENES.forEach((name, i) => { G[name] = i; });
 const DECOR_NAMES = ['s_curve', 'tex2', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
   'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
-// Reserva B3 (oscilación por nodo): osc_amp/osc_phase aún no afectan a la física → neutrales (no especie).
-for (let k = 0; k < NODE_COUNT; k++) { DECOR.add(G['n' + k + '_osc_amp']); DECOR.add(G['n' + k + '_osc_phase']); }
+// B3: `osc_amp` por nodo YA afecta a la física (amplitud de oscilación) → FUNCIONAL (define especie).
+// `osc_phase` sigue siendo andamio (la coordinación de fase llega después) → neutral (DECOR).
+for (let k = 0; k < NODE_COUNT; k++) { DECOR.add(G['n' + k + '_osc_phase']); }
 
-// B2a: los genes morfológicos VIEJOS ya NO alimentan la física (la forma emerge de los nodos, ver bodyplan.js);
-// siguen vivos solo para el RENDER hasta B2c. Se excluyen de la distancia genética para no contar la forma DOS
-// veces (nodos + viejos). m_elong/m_wave NO están aquí: aún alimentan elongación/amplitud en B2a.
-const LEGACY_MORPH = new Set(['m_app', 'm_len', 'm_width', 'm_sym', 'm_seg', 'm_segtaper', 'm_segspace',
+// Los genes morfológicos VIEJOS ya NO alimentan la física (la forma —incl. amplitud y elongación— emerge de
+// los nodos, ver bodyplan.js). Desde B3 también `m_elong`/`m_wave` están aquí. Siguen vivos solo para el RENDER
+// clásico hasta el CONTRACT (B3b). Se excluyen de la distancia genética para no contar la forma DOS veces.
+const LEGACY_MORPH = new Set(['m_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave', 'm_seg', 'm_segtaper', 'm_segspace',
   'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_asym', 's_place', 's_branch', 's_core', 'leg_len', 'leg_grad'].map((n) => G[n]));
 
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes
