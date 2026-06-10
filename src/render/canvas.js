@@ -604,20 +604,22 @@ export class Renderer {
   // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
   _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
-    const px = this._ngx || (this._ngx = new Float32Array(NS));   // buffers reutilizables (sin GC por frame)
+    const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
     const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
     const pl = this._ngl || (this._ngl = new Float32Array(NS));   // longitud (eje)
-    const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión (local)
+    const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión en reposo
     const pres = this._ngp || (this._ngp = new Uint8Array(NS));
+    const par = this._ngpar || (this._ngpar = new Int8Array(NS));  // índice del padre (−1 = raíz)
+    const dep = this._ngdep || (this._ngdep = new Uint8Array(NS)); // profundidad en el grafo (fase de la onda)
     // RAÍZ (cabeza): en el origen, mirando al frente (+x); el rumbo ya lo aplica el ctx.rotate de abajo.
     pres[0] = 1; pr[0] = r * (0.55 + nodes[no + 2] * 0.5); pl[0] = pr[0] * (1 + nodes[no + 3] * 0.8);
-    px[0] = 0; py[0] = 0; pa[0] = 0;
+    px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0;
     for (let k = 1; k < NS; k++) {
       const nb = no + k * ST;
       if (nodes[nb] < 0.5) { pres[k] = 0; continue; }
       let p = (nodes[nb + 1] * k) | 0; if (p > k - 1) p = k - 1; if (!pres[p]) p = 0; // padre < k; reanclar huérfano
-      pres[k] = 1;
+      pres[k] = 1; par[k] = p; dep[k] = dep[p] + 1;
       const sz = 0.15 + nodes[nb + 2] * 0.85, asp = nodes[nb + 3];
       const cr = r * sz * (1 - 0.6 * asp);                        // sección transversal (fino → pequeña)
       const ln = r * sz * (1 + 1.8 * asp);                        // longitud (fino → larga = tentáculo)
@@ -659,13 +661,27 @@ export class Renderer {
         }
       }
     };
+    // ---- ONDA VIAJERA (B2b): la flexión se ACUMULA del padre al hijo → cadena articulada (anguila). La
+    // cabeza (raíz, prof. 0) queda estable; la cola ondula más (fase por profundidad). Nada más rápido = más onda.
+    const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
+    const wpy = this._ngwy || (this._ngwy = new Float32Array(NS));
+    const acc = this._ngac || (this._ngac = new Float32Array(NS));  // flexión acumulada hasta el nodo
+    const waveT = t * (1 + spd * 2.5), jointAmp = 0.18 * (0.4 + spd * 0.8);
+    wpx[0] = 0; wpy[0] = 0; acc[0] = 0;
+    for (let k = 1; k < NS; k++) {
+      if (!pres[k]) continue;
+      const p = par[k], bend = Math.sin(waveT - dep[k] * 1.1) * jointAmp;
+      acc[k] = acc[p] + bend;                                     // acumula la flexión del padre + la propia
+      const rdx = px[k] - px[p], rdy = py[k] - py[p], ca = Math.cos(acc[k]), sa = Math.sin(acc[k]);
+      wpx[k] = wpx[p] + rdx * ca - rdy * sa; wpy[k] = wpy[p] + rdx * sa + rdy * ca; // gira el segmento padre→hijo
+    }
     for (let mode = 0; mode <= 1; mode++) {                       // pasada 0 = contornos (todos), pasada 1 = cuerpos
       for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
         if (!pres[k]) continue;
         const lateral = k > 0 && Math.abs(Math.sin(pa[k])) > 0.25; // lejos del eje → par bilateral espejado
-        for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {
-          const wob = k > 0 ? Math.sin(t * (1 + spd * 2) + k) * 0.12 : 0; // leve ondulación
-          drawNode(px[k], py[k] * sgn, pa[k] * sgn + wob, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode);
+        const baseRot = pa[k] + acc[k];                           // orientación del nodo = reposo + onda acumulada
+        for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {  // sgn=−1 = reflejo bilateral (y y rotación)
+          drawNode(wpx[k], wpy[k] * sgn, baseRot * sgn, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode);
         }
       }
     }
