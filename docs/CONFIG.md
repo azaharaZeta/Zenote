@@ -169,7 +169,14 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `render.showResourceField` | true | *(UI)* dibujar la vegetación/comida |
 | `render.ambiance` | 'abyssal' | escenario: 'abyssal' (abisal oscuro) \| 'meadow' (pradera) |
 | `render.dprCap` | 2 | tope de densidad de píxeles (DPR) — protege FPS en retina/móvil |
-| `render.quality` | 'high' | *(UI)* 'high' \| 'low' (baja = sin bloom, LOD agresivo → móvil) |
+| `render.quality` | 'high' | *(UI)* 'high' \| 'low'. **Baja** = sin bloom (blur), **sin halos por agente**, sin nieve marina, menos chispas, y umbrales LOD ×`lodLowMult` (más puntos) → móvil/equipos lentos |
+| `render.lodBody` | 5 | LOD: rPx (radio en pantalla) mínimo para dibujar CUERPO (debajo = punto plano) |
+| `render.lodFull` | 9 | LOD: rPx mínimo para el GRAFO de nodos completo (entre `lodBody` y esto = cuerpo barato: elipse de volumen orientada) |
+| `render.lodEye` | 11 | LOD: rPx mínimo para los OJOS (dentro del grafo) |
+| `render.lodLure` | 22 | LOD: rPx mínimo para el SEÑUELO (béziers+gradientes, caro) |
+| `render.lodWave` | 18 | LOD: rPx mínimo para la ONDA viajera + 2ª pasada de contorno (si no, cuerpo en reposo, 1 pasada) |
+| `render.lodHalo` | 6 | LOD: rPx mínimo para el HALO por agente (los puntos diminutos brillan ya por el bloom global) |
+| `render.lodLowMult` | 2.6 | Multiplicador de todos los umbrales LOD en calidad baja (más agresivo) |
 | `render.grassDensity` | 6800 | nº de matojos de hierba |
 | `render.grassSpriteCount` | 22 | variedad de formas de matojo precalculadas |
 | `render.grassRefreshFrames` | 15 | cada cuántos frames se redibuja la hierba |

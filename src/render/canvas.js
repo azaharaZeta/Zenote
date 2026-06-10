@@ -239,11 +239,12 @@ export class Renderer {
       }
       // (C) MICRO-FLORA luminosa: motas tenues que brillan donde hay comida (plancton/floración). Reusa tufts.
       ctx.globalCompositeOperation = 'lighter';
+      const sparkStep = cfg.render.quality === 'low' ? 2 : 1;    // calidad baja: la mitad de chispas
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         const wxMin = this.camX - vwHalf - tx * W - margin, wxMax = this.camX + vwHalf - tx * W + margin;
         const wyMin = this.camY - vhHalf - ty * H - margin, wyMax = this.camY + vhHalf - ty * H + margin;
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        for (let i = 0; i < this.nTufts; i++) {
+        for (let i = 0; i < this.nTufts; i += sparkStep) {
           const x = this.tuftX[i], y = this.tuftY[i];
           if (x < wxMin || x > wxMax || y < wyMin || y > wyMax) continue;
           let cx = (x / cellW) | 0, cy = (y / cellH) | 0; if (cx >= cols) cx = cols - 1; if (cy >= rows) cy = rows - 1;
@@ -434,13 +435,13 @@ export class Renderer {
     const tyMin = Math.floor((this.camY - vhHalf) / H), tyMax = Math.floor((this.camY + vhHalf) / H);
     // (B) NIEVE MARINA: partículas tenues a la deriva (detrito/esporas) → agua profunda viva + profundidad.
     // Capa propia, BAJO los organismos. Solo abisal. Anclada al mundo (deriva lenta con descenso + parpadeo).
-    if (abyssal && cfg.render.glow) {
+    if (abyssal && cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)
       if (!this._snow) { const n = 740, sn = this._snow = new Float32Array(n * 4), hu = this._snowHue = new Float32Array(n);
         const PAL = [190, 200, 285, 45, 330]; // cian, azul, violeta, oro, rosa (colorcillo raro)
         for (let k = 0; k < n; k++) { sn[k * 4] = Math.random() * W; sn[k * 4 + 1] = Math.random() * H; sn[k * 4 + 2] = Math.random() * 6.283; sn[k * 4 + 3] = 0.4 + Math.random() * Math.random() * 2.1;
           hu[k] = Math.random() < 0.05 ? PAL[(Math.random() * PAL.length) | 0] : -1; } } // ~5% con color, resto azul-blanco
       const sn = this._snow, hu = this._snowHue, tt = this._animT * 0.0009;
-      const snEnd = lowQ ? ((sn.length >> 4) << 2) : sn.length; // calidad baja: ~1/4 de las motas
+      const snEnd = sn.length;                                   // (solo alta: nieve completa; baja la omite)
       ctx.globalCompositeOperation = 'lighter';
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
@@ -528,16 +529,15 @@ export class Renderer {
     const mode = this.colorMode;
     const sc = this._scale();
     this._drawScale = sc;              // escala mundo→pantalla, para que el ojo sepa su tamaño REAL en píxeles (LOD)
-    const detail = 5;                  // si el radio en pantalla supera esto (px) → cuerpo detallado
-                                       // (bajo: los detalles aparecen con poco zoom; hay margen de FPS)
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
-    const eyeDetail = 9;               // los ojos necesitan algo más de tamaño en pantalla para leerse
-    // LOD (rendimiento): a partir de qué radio EN PANTALLA se dibuja cada nivel de detalle. En calidad BAJA
-    // (móvil) los umbrales suben → muchos más bichos se dibujan como punto → gran ahorro.
-    const lowQ = this.cfg.render.quality === 'low';
-    const dThr = detail;                        // CUERPO: umbral para pasar de punto a cuerpo detallado
-    const eThr = eyeDetail * (lowQ ? 2.2 : 1);  // OJOS (gradientes+clips, caros) → muy gateados en baja
+    // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
+    // fullThr ≤ grafo completo. En calidad BAJA los umbrales se multiplican (más puntos/cuerpos baratos → barato).
+    const R = this.cfg.render, lowQ = R.quality === 'low', lodMul = lowQ ? (R.lodLowMult || 2.6) : 1;
+    const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
+    const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
+    const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
+    const haloThr = R.lodHalo * lodMul;         // halo por agente (los puntos no lo necesitan)
     for (let a = 0; a < n; a++) {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
@@ -571,16 +571,19 @@ export class Renderer {
         }
       }
       const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
-      const detailed = nodes && nodes.length && rPx > dThr; // pequeño en pantalla → punto simple (barato)
-      // Sombra de contacto (solo cuerpos detallados): despega al organismo del fondo (luz arriba-izq).
+      const hasNodes = nodes && nodes.length;
+      const tier = !hasNodes || rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo
+      // Sombra de contacto (solo el grafo completo): despega al organismo del fondo (luz arriba-izq).
       // Se omite con estelas activas (dejaría manchas oscuras al desvanecerse).
-      if (detailed && !trails && !abyssal) {     // sombra de contacto inútil sobre fondo oscuro
+      if (tier === 2 && !trails && !abyssal) {     // sombra de contacto inútil sobre fondo oscuro
         ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath();
         ctx.ellipse(x + r * 0.32, y + r * 0.42, r * 1.08, r * 0.96, 0, 0, 6.2832);
         ctx.fill();
       }
-      if (glow) {
+      // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos
+      // (los puntos ya brillan con el bloom GLOBAL de la capa de organismos; no necesitan su propio halo).
+      if (glow && !lowQ && rPx > haloThr) {
         // Halo con DEGRADADO de transparencia. El RADIO y la INTENSIDAD varían con el ornamento (orn):
         // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
         // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
@@ -597,18 +600,35 @@ export class Renderer {
         ctx.arc(x, y, gr, 0, 6.2832);
         ctx.fill();
       }
-      // LOD: cuerpo detallado solo si es grande en pantalla (zoom/agente grande); si no, punto.
-      if (detailed) {
-        // Render por GRAFO DE NODOS (única fuente desde B3b): cabeza+nodos, ojos, señuelo, volumen, onda viajera.
+      // LOD de 3 niveles según tamaño en pantalla.
+      if (tier === 2) {
+        // GRAFO completo: cabeza+nodos, ojos, señuelo, volumen, onda viajera (con sus propios gates internos por rPx).
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
                             eye, i * 4, face, i * 3, rPx > eThr, tint, i, deco, i * 7);
+      } else if (tier === 1) {
+        // CUERPO BARATO: elipse orientada al rumbo con volumen (1 gradiente), sin nodos/ojos/señuelo/onda.
+        this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]);
       } else {
-        ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
+        ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;       // PUNTO plano (lo barato para la mayoría)
         ctx.beginPath();
         ctx.arc(x, y, r, 0, 6.2832);
         ctx.fill();
       }
     }
+  }
+
+  // LOD tier 1 — CUERPO BARATO: una elipse orientada al rumbo con un degradado de volumen (1 gradiente),
+  // sin recorrer nodos ni dibujar ojos/señuelo/onda. Lee como "un cuerpo con orientación" a coste mínimo
+  // (≈15× más barato que el grafo completo). Para bichos de tamaño medio en pantalla.
+  _drawBodyCheap(ctx, x, y, r, h, s, l, heading) {
+    const rx = r * 1.05, ry = r * 0.72;                          // elipse alargada al eje de nado
+    ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
+    const g = ctx.createRadialGradient(-rx * 0.3, -ry * 0.35, r * 0.12, 0, 0, rx);
+    g.addColorStop(0, `hsl(${h},${Math.max(20, s - 14)}%,${Math.min(84, l + 16)}%)`);
+    g.addColorStop(1, `hsl(${h},${Math.min(100, s + 8)}%,${Math.max(6, l - 20)}%)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 6.2832); ctx.fill();
+    ctx.restore();
   }
 
   // B2b (EN CONSTRUCCIÓN): dibuja el cuerpo desde el GRAFO DE NODOS (una sola primitiva). Reconstruye las
@@ -618,6 +638,11 @@ export class Renderer {
   // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
   _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
+    // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
+    // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
+    const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1);
+    const doWave = rPxG > (Rc.lodWave || 0);    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
+    const doLure = rPxG > (Rc.lodLure || 0);
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
     const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
@@ -686,14 +711,17 @@ export class Renderer {
     for (let k = 1; k < NS; k++) {
       if (!pres[k]) continue;
       const p = par[k], nb = no + k * ST;
-      const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]); // amplitud por nodo (osc_amp, FUNCIONAL en física)
-      const phK = nodes[nb + 7] * 6.283185307;                   // fase por nodo (osc_phase): coordinada → onda limpia
-      const bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;  // onda viajera por profundidad + offset genético
+      let bend = 0;
+      if (doWave) {                                              // LOD: a tamaño pequeño, cuerpo en REPOSO (sin onda)
+        const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]); // amplitud por nodo (osc_amp, físico)
+        const phK = nodes[nb + 7] * 6.283185307;                 // fase por nodo (osc_phase): coordinada → onda limpia
+        bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;      // onda viajera por profundidad + offset genético
+      }
       acc[k] = acc[p] + bend;                                     // acumula la flexión del padre + la propia
       const rdx = px[k] - px[p], rdy = py[k] - py[p], ca = Math.cos(acc[k]), sa = Math.sin(acc[k]);
       wpx[k] = wpx[p] + rdx * ca - rdy * sa; wpy[k] = wpy[p] + rdx * sa + rdy * ca; // gira el segmento padre→hijo
     }
-    for (let mode = 0; mode <= 1; mode++) {                       // pasada 0 = contornos (todos), pasada 1 = cuerpos
+    for (let mode = doWave ? 0 : 1; mode <= 1; mode++) {          // LOD: a tamaño pequeño solo pasada de cuerpo (sin contorno)
       for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
         if (!pres[k]) continue;
         const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > EPS_AXIS; // mismo umbral que la física (bodyplan.js)
@@ -706,7 +734,7 @@ export class Renderer {
     // ---- SEÑUELO / ORNAMENTO (B2b incremento 3): tallo curvo afilado + bulbo bioluminiscente, naciendo del
     // morro y proyectado al frente (illicium de rape). Gateado por `orn`; estilo por o_len/o_bulb/o_hue/o_num. ----
     const orn = tint ? tint[to] : 0;   // #13: tint = solo orn (stride 1)
-    if (orn > 0.12 && deco) {
+    if (orn > 0.12 && deco && doLure) {   // LOD: señuelo (béziers+gradientes, caro) solo a tamaño suficiente
       const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
       const ds = this._drawScale || 1, fmin = (px) => px / ds;
       const hr = pr[0], elong = pl[0] / pr[0];

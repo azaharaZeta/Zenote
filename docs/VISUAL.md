@@ -85,6 +85,16 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
 - **Coordenadas de entrada → mundo.** El tap/clic llega en píxeles de pantalla; se
   invierte la transformación (`scale`, letterbox, DPR) para obtener la coord. lógica y
   buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
+- **LOD por RADIO EN PANTALLA (3 niveles).** El coste de dibujar un bicho se escala con su tamaño en píxeles
+  (`rPx`), no con el zoom directamente: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
+  orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos completo** (`rPx ≥ lodFull`), y DENTRO
+  del grafo los detalles caros entran por umbral propio (ojos `lodEye`, onda+contorno `lodWave`, señuelo `lodLure`).
+  Así al alejar (miles de bichos diminutos) casi todo son puntos baratos, y al acercar emergen forma → ojos →
+  onda → señuelo con gracia. El **halo por agente** (un gradiente/bicho) solo se pinta por encima de `lodHalo` y
+  en calidad alta; los puntos ya brillan por el **bloom global** de la capa de organismos. Umbrales en `config.render`.
+- **Calidad alta/baja.** Baja (móvil/equipos lentos): sin bloom (blur), **sin halos por agente**, sin nieve marina,
+  menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult` (≈×2.6 → muchos más puntos). Render medido:
+  worst-case ~2 ms/frame en alta con 4000 agentes a la vista; baja ≈ la mitad.
 - **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se bajan
   efectos visuales (glow, estelas, mostrar campo de recurso) y se puede reducir
   `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,

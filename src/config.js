@@ -188,7 +188,17 @@ export const config = {
     showResourceField: true,  // (UI) Dibujar la vegetación/comida
     ambiance: 'abyssal',      // Escenario: 'abyssal' (abisal oscuro) | 'meadow' (pradera)
     dprCap: 2,                // Tope de densidad de píxeles (DPR)
-    quality: 'high',          // (UI) 'high' | 'low' (baja = sin bloom, menos nieve, LOD agresivo → móvil)
+    quality: 'high',          // (UI) 'high' | 'low' (baja = sin bloom, sin halos por agente, sin nieve, LOD agresivo → móvil)
+    // ── LOD (nivel de detalle por RADIO EN PANTALLA, px). 3 niveles: punto < lodBody ≤ cuerpo barato < lodFull ≤ grafo
+    //    completo. lodEye/lodLure/lodWave gatean detalles caros DENTRO del grafo. En calidad BAJA se multiplican por
+    //    lodLowMult (umbrales más altos → más puntos/cuerpos baratos → muchos menos gradientes). Solo render. ──
+    lodBody: 5,               // rPx mínimo para dibujar CUERPO (debajo = punto plano)
+    lodFull: 9,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
+    lodEye: 11,               // rPx mínimo para dibujar OJOS (dentro del grafo)
+    lodLure: 22,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
+    lodWave: 18,              // rPx mínimo para la ONDA viajera + 2ª pasada de contorno (si no, cuerpo en reposo, 1 pasada)
+    lodHalo: 6,               // rPx mínimo para el HALO por agente (los puntos diminutos no lo necesitan; el bloom global ya brilla)
+    lodLowMult: 2.6,          // Multiplicador de TODOS los umbrales LOD en calidad baja (más agresivo)
     grassDensity: 6800,       // Nº de matojos de hierba repartidos por el mundo
     grassSpriteCount: 22,     // Variedad de formas de matojo precalculadas
     grassRefreshFrames: 15,   // Cada cuántos frames se redibuja la capa de hierba
