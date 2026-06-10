@@ -53,6 +53,7 @@ const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id esta
 // el muestreo es fiel. HIST_WINDOW debe coincidir con charts.windowTicks. ----
 const HIST_K = 40, HIST_WINDOW = 4800;
 const histPop = [], histCarn = [], histVeg = [], histTick = [];
+const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / carnívoros (>0.6)
 const histDC = [], histDS = [], histDA = [], histDE = [];   // muertes carnívoras por ventana: combate/hambre/vejez/cazado
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0 };
 function vegFrac() {
@@ -61,21 +62,21 @@ function vegFrac() {
   return sc > 0 ? sr / sc : 0;
 }
 function sampleHistory() {
-  const s = sim, act = s.active, n = s.activeCount; let carn = 0;
-  for (let k = 0; k < n; k++) if (s.diet[act[k]] > 0.5) carn++;
-  histPop.push(s.popCount); histCarn.push(carn); histVeg.push(vegFrac()); histTick.push(s.tick);
+  const s = sim, act = s.active, n = s.activeCount; let carn = 0, herb = 0, omni = 0;
+  for (let k = 0; k < n; k++) { const d = s.diet[act[k]]; if (d > 0.6) carn++; else if (d < 0.4) herb++; else omni++; }
+  histPop.push(s.popCount); histCarn.push(carn); histHerb.push(herb); histOmni.push(omni); histVeg.push(vegFrac()); histTick.push(s.tick);
   const cd = s.carnDeath, L = histLastCD;
   histDC.push(Math.max(0, cd.combat - L.combat)); histDS.push(Math.max(0, cd.starv - L.starv));
   histDA.push(Math.max(0, cd.age - L.age)); histDE.push(Math.max(0, cd.eaten - L.eaten));
   histLastCD = { starv: cd.starv, combat: cd.combat, age: cd.age, eaten: cd.eaten };
   const t0 = s.tick - HIST_WINDOW;
   while (histTick.length > 1 && histTick[0] < t0) {
-    histPop.shift(); histCarn.shift(); histVeg.shift(); histTick.shift();
+    histPop.shift(); histCarn.shift(); histHerb.shift(); histOmni.shift(); histVeg.shift(); histTick.shift();
     histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift();
   }
 }
 function clearHistory() {
-  for (const a of [histPop, histCarn, histVeg, histTick, histDC, histDS, histDA, histDE]) a.length = 0;
+  for (const a of [histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE]) a.length = 0;
   lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0 };
 }
 function classifySpecies() {
@@ -210,7 +211,7 @@ function snapshot() {
     huntable, huntCarn, huntHerb, autopsy,   // diagnóstico de depredación (cazabilidad + autopsia de extinción)
     frozenDeath,                             // foto congelada de la gráfica de muertes (≠ null → extinción en curso)
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
-    histPop, histCarn, histVeg, histTick, histDC, histDS, histDA, histDE,
+    histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE,
     resource: s.world.resource.slice(),
   });
 }

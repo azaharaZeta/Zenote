@@ -65,7 +65,7 @@ worker.onmessage = (e) => {
     simProxy.huntable = m.huntable; simProxy.huntCarn = m.huntCarn; simProxy.huntHerb = m.huntHerb; simProxy.autopsy = m.autopsy;
     // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
     // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
-    charts.history = m.histPop; charts.histC = m.histCarn; charts.histV = m.histVeg; charts.histT = m.histTick;
+    charts.history = m.histPop; charts.histC = m.histCarn; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histV = m.histVeg; charts.histT = m.histTick;
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
     charts.frozenDeath = m.frozenDeath; // ≠ null → la gráfica de muertes se congela en la foto de la extinción
     simProxy.world.resource = m.resource;
@@ -107,10 +107,12 @@ function frame(now) {
     frames = 0; lastTickCount = simProxy.tick; lastFpsT = now;
     const adv = panelEl.classList.contains('advanced');
     // Vista simple (contemplativa): solo fps · tick · población. El laboratorio mantiene t/s, nacimientos y muertes.
+    // La población total va en AZUL (mismo color que tenía la curva total en la gráfica, que ya no se dibuja).
     fpsEl.textContent = adv ? `${fps} FPS · ${tps} t/s` : `${fps} FPS`;
-    statEl.textContent = adv
-      ? `pob ${simProxy.popCount} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`
-      : `tick ${simProxy.tick} · pob ${simProxy.popCount}`;
+    const pobHtml = `<span style="color:#5a7cd1">pob ${simProxy.popCount}</span>`;
+    statEl.innerHTML = adv
+      ? `${pobHtml} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`
+      : `tick ${simProxy.tick} · ${pobHtml}`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
     // Diagnóstico de depredación: cazabilidad de presa (causa raíz) + autopsia de extinción carnívora.

@@ -15,7 +15,7 @@ export class Charts {
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
     // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
-    this.history = []; this.histC = []; this.histV = []; this.histT = [];
+    this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
     // Muertes carnívoras por ventana, por causa (combate/hambre/vejez/cazado): también del worker.
     this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
     this.frozenDeath = null; // foto congelada de la gráfica de muertes en la extinción (la fija el worker)
@@ -49,7 +49,7 @@ export class Charts {
 
   // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
   clear() {
-    this.history = []; this.histC = []; this.histV = []; this.histT = [];
+    this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
     this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
   }
 
@@ -64,14 +64,14 @@ export class Charts {
     ctx.clearRect(0, 0, w, h);
     const hist = this.history;
     if (hist.length < 2) return;
-    const histC = this.histC, histT = this.histT;
+    const histC = this.histC, histH = this.histH, histO = this.histO, histT = this.histT;
     let max = 1;
-    for (let i = 0; i < hist.length; i++) if (hist[i] > max) max = hist[i];
+    for (let i = 0; i < hist.length; i++) if (hist[i] > max) max = hist[i]; // normaliza por el TOTAL → las curvas muestran proporciones
     // Eje X en TICKS: ventana fija (windowTicks) anclada a la derecha (el último tick = "ahora").
     // Así cada píxel equivale al MISMO nº de ticks pase lo que pase con la velocidad de reloj.
     const tEnd = histT[histT.length - 1], span = this.windowTicks || 1;
-    // Banda superior RESERVADA para la etiqueta → la curva se dibuja SOLO debajo (nunca la tapa el texto).
-    const TOP = 15, ph = h - TOP - 2;
+    // Banda superior RESERVADA para la leyenda (2 filas) → la curva se dibuja SOLO debajo (nunca la tapa el texto).
+    const TOP = 23, ph = h - TOP - 2;
     const line = (arr, color, norm) => {
       const m = norm || max;                  // escala propia opcional (la vegetación va en fracción 0-1, no en cuenta)
       ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -82,25 +82,27 @@ export class Charts {
       }
       ctx.stroke();
     };
-    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN disponible (fracción 0-1, escala propia) en verde, al fondo
-    line(hist, '#5a7cd1');                 // población total (teal)
-    if (histC.length) line(histC, '#ff6b5a'); // carnívoros (rojo)
-    const carnNow = histC.length ? histC[histC.length - 1] : 0;
-    const vegNow = this.histV.length ? this.histV[this.histV.length - 1] : 0;
+    // 4 series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros / carnívoros).
+    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN (fracción 0-1, escala propia) en verde, al fondo
+    if (histH.length) line(histH, '#5ab3d1');               // herbívoros (cian-teal)
+    if (histO.length) line(histO, '#f0b429');               // omnívoros (ámbar)
+    if (histC.length) line(histC, '#ff6b5a');               // carnívoros (rojo)
+    const last = (a) => a.length ? a[a.length - 1] | 0 : 0;
+    const vegNow = this.histV.length ? (this.histV[this.histV.length - 1] * 100) | 0 : 0;
     ctx.font = '10px monospace';
-    // 3 segmentos coloreados (pob/carn/veg). Monospace + padStart ⇒ ancho fijo: las posiciones no bailan
-    // con las cifras. La x avanza por el ancho medido de cada segmento + un hueco fijo.
-    const segs = [
-      [`pob ${String(this.sim.popCount).padStart(5)}`, '#5a7cd1'],         // teal (población)
-      [`carn ${String(carnNow | 0).padStart(5)}`, '#ff6b5a'],             // rojo (carnívoros)
-      [`veg ${String((vegNow * 100) | 0).padStart(3)}%`, '#6fcf6a'],      // verde (vegetación)
+    // Leyenda en 2 FILAS de 2 (no cabe en una a este ancho). Monospace + padStart ⇒ posiciones fijas.
+    const rows = [
+      [[`carn ${String(last(histC)).padStart(4)}`, '#ff6b5a'], [`omni ${String(last(histO)).padStart(4)}`, '#f0b429']],
+      [[`herb ${String(last(histH)).padStart(4)}`, '#5ab3d1'], [`veg ${String(vegNow).padStart(3)}%`, '#6fcf6a']],
     ];
-    let tx = 4;
-    for (const [text, col] of segs) {
-      ctx.fillStyle = col;
-      ctx.fillText(text, tx, 11);
-      tx += ctx.measureText(text).width + 8;   // hueco fijo entre segmentos
-    }            // en la banda reservada → ya no se solapa con la curva
+    for (let r = 0; r < rows.length; r++) {
+      let tx = 4;
+      for (const [text, col] of rows[r]) {
+        ctx.fillStyle = col;
+        ctx.fillText(text, tx, 10 + r * 11);
+        tx += ctx.measureText(text).width + 8;   // hueco fijo entre segmentos
+      }
+    }
   }
 
   // Causas de muerte de los CARNÍVOROS a lo largo del tiempo, una LÍNEA por causa (combate / hambre / vejez /

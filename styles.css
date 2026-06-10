@@ -92,7 +92,7 @@ optgroup { font-weight: 500; }
 
 .charts { margin: 8px 0; }
 .chart-pair { display: block; }   /* simple: gráficas apiladas. avanzado: lado a lado (ver #panel.advanced) */
-.chart { width: 100%; height: 68px; display: block; background: rgba(0,0,0,0.25); border-radius: 8px; margin-bottom: 6px; }
+.chart { width: 100%; height: 84px; display: block; background: rgba(0,0,0,0.25); border-radius: 8px; margin-bottom: 6px; } /* alto para acomodar la leyenda de 2 filas de la curva de población */
 .death-chart { display: none; margin: 0 0 6px; }            /* causas de muerte carnívora: solo modo laboratorio */
 #panel.advanced .death-chart { display: block; }
 #panel.advanced .death-chart .chart { height: 56px; margin-bottom: 0; }
@@ -207,7 +207,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 
 /* Compactar y EMPEQUEÑECER la vista simple en modo laboratorio (más técnico; hueco para las opciones) */
 #panel.advanced .chart-pair { display: flex; gap: 6px; }                 /* gráficas LADO A LADO (aprovecha el ancho) */
-#panel.advanced .chart-pair .chart { flex: 1 1 0; min-width: 0; height: 44px; margin-bottom: 0; }
+#panel.advanced .chart-pair .chart { flex: 1 1 0; min-width: 0; height: 60px; margin-bottom: 0; } /* algo más alto: la leyenda de población usa 2 filas */
 #panel.advanced .charts { margin: 5px 0; }
 #panel.advanced .readout { margin: 4px 0; font-size: 10px; }
 #panel.advanced .ctrl label { margin: 5px 0 2px; font-size: 10px; }
