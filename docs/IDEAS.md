@@ -64,3 +64,55 @@ perceptual neutra; "lo más rentable y seguro" es una optimización de fitness.
 (`combat.failDamage`)] ataca la misma fragilidad carnívora desde el otro lado (suaviza la
 *consecuencia* en vez de evitar la *mala pelea*). Conviene medir el efecto del cambio 1 ANTES de
 decidir si este hace falta — puede que con failDamage ajustado ya no sea urgente.
+
+---
+
+## Nuevas ENTRADAS sensoriales del cerebro (uso táctico emergente)
+
+**Estado:** propuesta, sin implementar (2026-06-10). Surgió analizando el refugio (#7) y la "manada".
+
+Hoy el cerebro tiene 7 entradas: gradiente de comida (x,y), dirección a presa (x,y), dirección a amenaza
+(x,y), energía. **No percibe ni la cobertura ni a los congéneres** → ciertas conductas no PUEDEN evolucionar
+porque al cerebro le falta la señal. Dos entradas candidatas (misma implementación: `BRAIN.I` +N → relayout
+del genoma + ampliar `seedBrain`, como en #9/#10):
+
+- **Cobertura/vegetación local** (densidad de vegetación en la celda, o gradiente hacia lo tupido) → permitiría
+  que emerja el **uso TÁCTICO del refugio**: huir HACIA la maleza al ser perseguido, no solo huir de la amenaza.
+  Hoy el beneficio de la cobertura (#7) es POSICIONAL (te salva si estás en lush), no una decisión. Con esta
+  entrada, esconderse podría volverse conducta seleccionada.
+- **Dirección al congénere más cercano** → permitiría que emerja la **caza/movimiento coordinado en manada**
+  (hoy las "manadas" son solo clustering por reproducción local + objetivos compartidos, no coordinación; ver
+  memoria `emergent-pack-clustering`). Con esta entrada, cardúmenes/manadas reales podrían emerger por selección.
+
+**Coste:** cada entrada nueva = `BRAIN.I` +1, recalcular `BRAIN_W`, ampliar `seedBrain`, percibir la señal en
+`sim.js`. Moderado. Riesgo: más entradas = espacio de pesos mayor → la conducta tarda más en afinarse (ver la
+fragilidad carnívora con mutación baja, memoria `carnivore-extinction-mutation`).
+
+---
+
+## Amplificar los refugios MÓVILES (patchiness por defecto)
+
+**Estado:** ajuste/experimento, sin decidir (2026-06-10).
+
+Tras #7 (cobertura = vegetación viva), la dinámica de **refugios que migran** (claros pastados ↔ parches que
+rebrotan, Huffaker) es mucho más rica con `resource.patchiness > 0` (rebrote logístico + difusión → parches
+que emergen y migran). Pero el **default es `patchiness: 0`** (rebrote lineal/uniforme) → la dinámica de claros
+es suave. Idea: **subir el default de `patchiness`** (o documentarlo como "el knob para ver el Huffaker en todo
+su esplendor") para que los refugios móviles y el bucle "comer destruye tu escondite" se aprecien de serie.
+Medir que no desestabilice (parches escasos → hambrunas locales más duras).
+
+---
+
+## Mejorar el DIBUJADO de la vegetación (legibilidad)
+
+**Estado:** mejora visual pendiente (2026-06-10).
+
+**Problema:** ahora mismo apenas se distingue dónde hay vegetación y dónde no — solo una diferencia sutil de
+color/tinte. Con #7 la cobertura importa **a nivel jugable/observable** (la presa se esconde en lo tupido), así
+que el jugador debería **ver claramente** los parches densos vs los claros pastados.
+
+**Idea:** reforzar el render del campo de recurso (`render/canvas.js`, capa de hierba/matojos) para que la
+densidad de vegetación se lea de un vistazo — p. ej. densidad/tamaño/opacidad de matojos ∝ `res[cell]`, o un
+sutil realce de las zonas lush (las que de hecho son refugio). Respetar la estética abisal (sin saturar) y el
+rendimiento (la hierba ya se dibuja en búfer con culling). Ojo: el render NO debe tocar la simulación (regla 3
+de VISUAL.md); es solo lectura. Bonus: que se "vean" los claros abrirse al pastar = ver el Huffaker emerger.

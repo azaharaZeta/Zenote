@@ -15,14 +15,14 @@ export const config = {
     gridCols: 64,       // Columnas de la rejilla de recurso
     gridRows: 48,       // Filas de la rejilla de recurso
     R_max: 1.0,         // Recurso máximo por celda
-    R_regen: 0.0016,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
+    R_regen: 0.0060,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
     patchiness: 0,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
                         //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
-    grazeRefuge: 0.11,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
+    grazeRefuge: 0.30,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
   },
 
   // ───── Población ─────
@@ -157,7 +157,7 @@ export const config = {
   combat: {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
-    failDamage: 0.3,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
+    failDamage: 0.2,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
