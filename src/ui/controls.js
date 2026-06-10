@@ -480,7 +480,7 @@ function setupLab(app, send) {
     g('n1_present', 0.95); g('n1_size', 0.5); g('n1_aspect', 0.68); g('n1_angle', 0.32); g('n1_attach', 0.7); g('n1_osc_amp', 0.5);
     g('n2_present', 0.9); g('n2_size', 0.42); g('n2_aspect', 0.55); g('n2_angle', 0.6); g('n2_attach', 0.6); g('n2_osc_amp', 0.5);
     for (let k = 3; k < NODE_COUNT; k++) g('n' + k + '_present', 0.1);
-    g('c_app', R(0.44, 0.56)); g('c_tip', R(0.45, 0.58)); g('e_fov', R(0.32, 0.4)); g('c_eye', R(0.45, 0.55));
+    g('e_fov', R(0.32, 0.4)); g('c_eye', R(0.45, 0.55));   // #13: c_app/c_tip retirados
     g('orn', R(0.54, 0.66)); g('c_lum', R(0.66, 0.78)); g('c_sat', R(0.68, 0.8));
     g('o_len', R(0.48, 0.58)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22));
     const ictx = introCanvas.getContext('2d');

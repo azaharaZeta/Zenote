@@ -239,7 +239,7 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso: 12/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #3, #4, #5, #6, #7, #9, #10, #11, #12. Pendientes: #8, #13.
+**Progreso: 14/14 — AUDITORÍA CERRADA ✅** → #0 (Pilar completo), #1, #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13. (Lo pendiente vive ahora en `IDEAS.md`, no en el backlog.)
 
 0. ✅ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** — COMPLETO (A1+A2+B1+B2+B3+CONTRACT). El cuerpo es un
    genoma generativo por nodos (una primitiva), la física de locomoción es direccional y emerge de la
@@ -266,7 +266,7 @@ De más fundacional / mayor retorno de realismo a más periférico.
 6. ✅ **Retirar muletas energéticas** (`carnUpkeep`, `k_sizeHerb`). *Hecho: coste basal independiente de la
    dieta.* — *Capa 3*
 7. ✅ **Repensar el refugio** como estructura de hábitat espacial, no flag "no cazable". *Hecho: cobertura GRADUADA por la vegetación viva local (escape = `refuge.strength·veg` en el combate); refugios dinámicos (Huffaker) al pastarse/rebrotar; retirada la máscara binaria `world.refuge`.* — *Capa 4*
-8. ⬜ **Auditar las constantes de locomoción** por si alguna fija "qué forma es buena". — *Capa 5*
+8. ✅ **Auditar las constantes de locomoción** por si alguna fija "qué forma es buena". *Hecho: las 27 constantes se usan (sin muertas) y todas son FÍSICA (empuje/arrastre/giro por geometría), cada empuje emparejado con su arrastre → ninguna fija una forma "buena"; la decide la selección. Frontera marcada en config.js. Matiz conocido: bodyThrust alto = cabeza buen propulsor → idea "cabeza nadadora" en IDEAS.* — *Capa 5*
 
 **Catálogo de genes (decidido el 2026-06-09, ver sección dedicada):**
 
@@ -274,7 +274,7 @@ De más fundacional / mayor retorno de realismo a más periférico.
 10. ✅ **Plegar `aggro` en el cerebro** (nueva salida de ataque, `O: 2→3`, `BRAIN_W 77→83`). *Hecho: ataque por impulso del cerebro; fuerza sin `aggro`; "ceño" = impulso suavizado.* — *Catálogo*
 11. ✅ **Eliminar el subsistema de carroña** (código `carrion`). *Hecho: `corpseReturn` se mantiene.* — *Catálogo*
 12. ✅ **Añadir genes de historia de vida** (`mature_age`, `senescence`). *Hecho: `mature_age` gatea cría + inicia senescencia; `senescence` escala la vejez y, vía coste de longevidad (`k_lifespan`, disposable soma), crea el eje r/K sin degenerar.* — *Catálogo*
-13. ⬜ **Consolidar los genes de color/adorno** casi-redundantes (sin perder identidad visual). — *Catálogo*
+13. ✅ **Consolidar los genes de color/adorno** casi-redundantes (sin perder identidad visual). *Hecho: retirados `c_app` (solo tintaba el tallo del señuelo → ahora usa el tono del cuerpo) y `c_tip` (muerto, no se leía); snapshot repacado (`tint`→solo `orn`; `deco` sin el slot muerto `b_aspect` → cierra también el #5 diferido de la revisión). Identidad visual intacta: c_eye/c_lum/c_sat/o_*/tex2 se mantienen.* — *Catálogo*
 
 > Cada paso es pequeño y verificable por separado, como pide el flujo del proyecto. Conviene un commit
 > por paso y medir la deriva de algún gen / la dinámica antes de seguir.

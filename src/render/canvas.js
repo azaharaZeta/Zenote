@@ -560,8 +560,8 @@ export class Renderer {
         // VIBRANCIA la dispara el ornamento (`orn`, gen de selección sexual): la mayoría va apagada y solo
         // los muy ornamentados lucen colores vivos (exhibición). La absorción usa el gen crudo (sim.js).
         default: {
-          const cSat = deco ? deco[i * 8 + 2] : 0.35;   // VIVACIDAD (deriva libre)
-          const cLumC = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD (deriva libre)
+          const cSat = deco ? deco[i * 7 + 1] : 0.35;   // VIVACIDAD (deriva libre)
+          const cLumC = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD (deriva libre)
           h = sim.hue[i] * 360;                // rueda COMPLETA: cualquier color (incl. verde) es alcanzable por deriva. El verde se EVITA solo en el sembrado.
           s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
           // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
@@ -584,7 +584,7 @@ export class Renderer {
         // Halo con DEGRADADO de transparencia. El RADIO y la INTENSIDAD varían con el ornamento (orn):
         // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
         // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
-        const cLumG = deco ? deco[i * 8 + 1] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
+        const cLumG = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
         const gr = r * (abyssal ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4)); // halo algo mayor
         const gl = abyssal ? Math.min(82, l + 26) : Math.min(74, l + 12);
         const a0 = (abyssal ? 0.21 : 0.13) + cLumG * cLumG * (abyssal ? 0.48 : 0.32); // suelo y empuje subidos → glow más visible
@@ -601,7 +601,7 @@ export class Renderer {
       if (detailed) {
         // Render por GRAFO DE NODOS (única fuente desde B3b): cabeza+nodos, ojos, señuelo, volumen, onda viajera.
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                            eye, i * 4, face, i * 3, rPx > eThr, tint, i * 3, deco, i * 8);
+                            eye, i * 4, face, i * 3, rPx > eThr, tint, i, deco, i * 7);
       } else {
         ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
         ctx.beginPath();
@@ -651,7 +651,7 @@ export class Renderer {
     const coreOut = `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`;
     const chh = Math.cos(heading), shh = Math.sin(heading);
     const llx = -0.7 * chh + -0.7 * shh, lly = 0.7 * chh + -0.7 * shh; // dir de luz (mundo -0.7,-0.7) → local
-    const tex2 = deco ? deco[dco + 7] : 0.5;
+    const tex2 = deco ? deco[dco + 6] : 0.5;
     const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
     const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
     const drawNode = (cx, cy, rot, rxx, ryy, mode) => {
@@ -705,14 +705,14 @@ export class Renderer {
     }
     // ---- SEÑUELO / ORNAMENTO (B2b incremento 3): tallo curvo afilado + bulbo bioluminiscente, naciendo del
     // morro y proyectado al frente (illicium de rape). Gateado por `orn`; estilo por o_len/o_bulb/o_hue/o_num. ----
-    const orn = tint ? tint[to + 2] : 0;
+    const orn = tint ? tint[to] : 0;   // #13: tint = solo orn (stride 1)
     if (orn > 0.12 && deco) {
-      const oLen = deco[dco + 3], oBulb = deco[dco + 4], oHue = deco[dco + 5], oNum = deco[dco + 6], cApp = tint[to];
+      const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
       const ds = this._drawScale || 1, fmin = (px) => px / ds;
       const hr = pr[0], elong = pl[0] / pr[0];
       const np = 1 + ((oNum * oNum * 6) | 0);
       const plen = r * (0.5 + oLen * 5.5);
-      const ohue = (((h + (cApp - 0.5) * 70) % 360) + 360) % 360;
+      const ohue = h;   // #13: el tallo del señuelo usa el tono del cuerpo (antes desfase por c_app, retirado)
       ctx.lineCap = 'round';
       const bulbR = Math.max(fmin(0.6), r * (0.06 + oBulb * 0.34));
       const bulbHue = (((ohue + (oHue - 0.5) * 300) % 360) + 360) % 360;
@@ -809,12 +809,12 @@ export class Renderer {
     if (dark) { bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c'); }              // fondo abisal
     else { bg.addColorStop(0, 'hsl(85,18%,82%)'); bg.addColorStop(1, 'hsl(60,20%,62%)'); }   // ficha clara
     pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
-    const tint = this._pTint || (this._pTint = new Float32Array(3));
-    tint[0] = genes[G.c_app]; tint[1] = genes[G.c_tip]; tint[2] = genes[G.orn];
-    const pdeco = this._pDeco || (this._pDeco = new Float32Array(8)); // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]
-    pdeco[0] = 0; pdeco[1] = genes[G.c_lum]; pdeco[2] = genes[G.c_sat]; // slot 0 (b_aspect) retirado
-    pdeco[3] = genes[G.o_len]; pdeco[4] = genes[G.o_bulb]; pdeco[5] = genes[G.o_hue]; pdeco[6] = genes[G.o_num];
-    pdeco[7] = genes[G.tex2];
+    const tint = this._pTint || (this._pTint = new Float32Array(1));
+    tint[0] = genes[G.orn];   // #13: tint = solo ornamento (gatea el señuelo)
+    const pdeco = this._pDeco || (this._pDeco = new Float32Array(7)); // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]
+    pdeco[0] = genes[G.c_lum]; pdeco[1] = genes[G.c_sat];
+    pdeco[2] = genes[G.o_len]; pdeco[3] = genes[G.o_bulb]; pdeco[4] = genes[G.o_hue]; pdeco[5] = genes[G.o_num];
+    pdeco[6] = genes[G.tex2];
     const eye = this._pEye || (this._pEye = new Float32Array(4));
     eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = genes[G.c_eye]; eye[3] = atkArg || 0; // ceño = impulso de ataque
     const heading = (headingArg != null) ? headingArg : -Math.PI / 2; // por defecto mira arriba; si se da, usa el del mundo

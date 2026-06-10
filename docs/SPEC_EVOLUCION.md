@@ -66,7 +66,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | Bloque | Nº | Genes |
 |--------|----|-------|
 | **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
-| **Identidad / display** | 13 | `c_app`, `c_tip`, `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
+| **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
 | **Cuerpo por NODOS** | 64 | 8 nodos × 8 campos (ver §2bis) |
 | **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
 
@@ -86,7 +86,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `mature_age` | **historia de vida (#12)**: edad de madurez `Tm = lerp(expr.mature_age)`. Gatea la reproducción (no se cría antes de `Tm`) **e** inicia la senescencia (no hay muerte por vejez antes de `Tm`). Madurar pronto = criar antes (r) pero envejecer antes; tarde = retrasar la cría pero vivir más (K). |
 | `senescence` | **historia de vida (#12)**: ritmo de vida `lifeFast ∈ [0,1]`. Escala la pendiente de la mortalidad por vejez (`senesMult`, ver §3) y, por **disposable soma**, el coste basal: ser longevo (`lifeFast` bajo) cuesta más mantenerse. Crea el eje r/K vivir-rápido↔longevo sin degenerar. |
 
-**Genes de identidad / display:** color por partes (`c_app`, `c_tip`), color de ojo (`c_eye`),
+**Genes de identidad / display:** color de ojo (`c_eye`),
 luminosidad/saturación (`c_lum`, `c_sat`), estilo del señuelo (`o_len`, `o_bulb`, `o_hue`, `o_num`)
 y piel (`tex2`) son **NEUTRALES** (solo render, derivan por linaje → identidad visual de especie;
 **excluidos de la distancia genética**). Dos excepciones **funcionales** en este bloque:

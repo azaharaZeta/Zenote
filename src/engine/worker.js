@@ -10,7 +10,6 @@ import { NUM_GENES, G, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './geno
 const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
 
 const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo
-const C0 = G.c_app; // índice del primer gen de ornamentación de color (2 consecutivos)
 // Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color. (El "ceño" = impulso de
 // ataque del cerebro, dinámico → s.atkDrive, no un gen.)
 const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_ORN = G.orn;
@@ -144,10 +143,10 @@ function snapshot() {
   const hue = new Float32Array(n), diet = new Float32Array(n), eFrac = new Float32Array(n);
   const lineage = new Float32Array(n), geneSel = new Float32Array(n);
   const heading = new Float32Array(n), spd = new Float32Array(n); // para orientar/animar el cuerpo
-  const tint = new Float32Array(n * 3);                           // color por partes (2) + ornamento (1)/agente
+  const tint = new Float32Array(n * 1);                           // [orn]/agente (gatea el señuelo) — #13: c_app/c_tip retirados
   const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, atkDrive]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
-  const deco = new Float32Array(n * 8);                           // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente
+  const deco = new Float32Array(n * 7);                           // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente (#13: sin slot muerto b_aspect)
   const nodes = new Float32Array(n * NODEB);                      // B2b: genes de nodo/agente (cuerpo generativo, para el render por grafo)
   const hT = config.combat.handlingTime || 1;
   const hist = new Float32Array(HIST_BINS);
@@ -167,15 +166,14 @@ function snapshot() {
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
-    const cb = i * NG + C0, tb = k * 3;
-    tint[tb] = s.genes[cb]; tint[tb + 1] = s.genes[cb + 1]; tint[tb + 2] = s.genes[i * NG + G_ORN];
     const ib = i * NG, eb = k * 4;
+    tint[k] = s.genes[ib + G_ORN];                                 // #13: tint = solo ornamento (gatea el señuelo)
     eye[eb] = s.genes[ib + G_SENSE]; eye[eb + 1] = s.genes[ib + G_FOV];
     eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.atkDrive[i]; // "ceño" = impulso de ataque suavizado (emergente)
-    const db = k * 8;
-    deco[db] = 0; deco[db + 1] = s.genes[ib + G.c_lum]; deco[db + 2] = s.genes[ib + G.c_sat]; // slot 0 (b_aspect) retirado
-    deco[db + 3] = s.genes[ib + G.o_len]; deco[db + 4] = s.genes[ib + G.o_bulb]; deco[db + 5] = s.genes[ib + G.o_hue]; deco[db + 6] = s.genes[ib + G.o_num];
-    deco[db + 7] = s.genes[ib + G.tex2];
+    const db = k * 7;
+    deco[db] = s.genes[ib + G.c_lum]; deco[db + 1] = s.genes[ib + G.c_sat];
+    deco[db + 2] = s.genes[ib + G.o_len]; deco[db + 3] = s.genes[ib + G.o_bulb]; deco[db + 4] = s.genes[ib + G.o_hue]; deco[db + 5] = s.genes[ib + G.o_num];
+    deco[db + 6] = s.genes[ib + G.tex2];
     const fb = k * 3;
     face[fb] = s.gazeX[i]; face[fb + 1] = s.gazeY[i];
     let atk = s.attackCD[i] / hT; face[fb + 2] = atk > 1 ? 1 : atk; // recencia de ataque (boca/fogonazo)

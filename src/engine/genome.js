@@ -9,9 +9,8 @@ const BASE_GENES = [
   'mature_age', 'senescence',
   // --- IDENTIDAD / DISPLAY (color por partes, ojos, selección sexual, señuelo, piel). Tras el CONTRACT (B3b)
   //     la FORMA del cuerpo vive en el bloque de NODOS (abajo); estos son los ejes de color/exhibición. ---
-  // Color por partes (`c_app`/`c_tip` CONTIGUOS: el snapshot los manda como bloque `tint`). NEUTRAL.
-  'c_app', 'c_tip',
   // Visión: `e_fov` FUNCIONAL (campo de visión, conserva área del cono); `c_eye` color de ojos (neutral).
+  // (#13: `c_app`/`c_tip` retirados — c_tip estaba muerto y c_app solo tintaba el tallo del señuelo.)
   'e_fov', 'c_eye',
   // Selección sexual: `orn` = cuánto exhibe (gateado el señuelo); `pref` = ornamento preferido en la pareja (runaway).
   'orn', 'pref',
@@ -61,8 +60,6 @@ export const GENE_LABELS = {
   temp_pref: 'Pref. térmica',
   mature_age: 'Edad de madurez',
   senescence: 'Ritmo de vida (senescencia)',
-  c_app: 'Color apéndices',
-  c_tip: 'Color puntas',
   e_fov: 'Campo de visión',
   c_eye: 'Color de ojos',
   orn: 'Ornamento (cresta)',
@@ -84,7 +81,7 @@ export const GENE_GROUPS = [
   { label: 'Dieta',                genes: ['diet'] },
   { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
-  { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
+  { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
 ];
 // B2: grupo de los genes de nodo (cuerpo generativo). Se añade tras construir el bloque (NODE0/NODE_COUNT).
 GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0 + NODE_COUNT * NODE_STRIDE) });
@@ -98,7 +95,7 @@ GENES.forEach((name, i) => { G[name] = i; });
 // genética → dos bichos con misma ecología y FORMA (nodos) pero distinto COLOR siguen siendo la misma especie
 // (y se cruzan) → morfos de color intra-especie. Su variedad surge por DERIVA NEUTRAL. La FORMA del cuerpo
 // vive en el bloque de NODOS (funcional, sí cuenta para especie). `osc_amp` por nodo también es funcional.
-const DECOR_NAMES = ['tex2', 'c_app', 'c_tip', 'c_eye', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
+const DECOR_NAMES = ['tex2', 'c_eye', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // B3: `osc_amp` por nodo afecta a la física (amplitud de oscilación) → FUNCIONAL (define especie).
 // B3+: `osc_phase` también afecta a la física (coherencia de marcha, ver bodyplan.reducePlan), PERO se queda

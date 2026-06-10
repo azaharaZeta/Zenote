@@ -11,12 +11,12 @@ de la geometría, el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **171 genes/agente** (SoA, typed arrays):
+Genoma de **169 genes/agente** (SoA, typed arrays):
 
 | Bloque | Genes | Codifica |
 |---|---|---|
 | Ecología | 11 | size, speed(esfuerzo), sense, metab, diet, repro_thr, invest, hue, temp_pref, **mature_age, senescence** (ciclo de vida) |
-| Identidad / display | 13 | colores por parte, e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
+| Identidad / display | 11 | e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
 | Cuerpo por NODOS | 64 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase} → grafo generativo |
 | Cerebro | 83 | MLP recurrente (Elman); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
 
@@ -36,15 +36,16 @@ coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/tér
 depredación estructurada por talla · **refugios móviles** (cobertura por vegetación viva → la presa se esconde en
 parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · identidad visual por linaje.
 
-## Huecos principales (detalle y prioridad → [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md) §Backlog · ideas → [IDEAS.md](IDEAS.md))
-- **"Cabeza nadadora"**: poca presión para evolucionar colas (idea en IDEAS).
-- **Colores sin consolidar** (#13), **constantes loco** sin auditar (#8).
-- *Tuning pendiente*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
+## Huecos / pendientes (ideas → [IDEAS.md](IDEAS.md))
+- **Backlog de auditoría CERRADO (14/14).** Lo que queda son IDEAS futuras (no backlog): uso táctico del
+  refugio + caza en manada (entradas del cerebro), "cabeza nadadora", selección de presa por talla, Fase 2 del
+  dibujado (organismos tras el dosel), amplificar refugios móviles.
+- *Tuning*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
-**12/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #3 alometría, #4 r/K honesto,
-#5 maxAlive, #6 muletas energéticas, #7 refugio (cobertura graduada), #9 cerebro neural-only, #10 ataque del cerebro,
-#11 carroña, #12 historia de vida. **Pendientes:** #8 constantes loco · #13 consolidar color.
+**14/14 — CERRADO ✅:** #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #3 alometría, #4 r/K honesto,
+#5 maxAlive, #6 muletas energéticas, #7 refugio (cobertura graduada), #8 constantes loco, #9 cerebro neural-only,
+#10 ataque del cerebro, #11 carroña, #12 historia de vida, #13 consolidar color.
 
 ---
 
@@ -69,7 +70,7 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 
 ## Frescura de la documentación
 **Saldada la deuda v2.0 (2026-06-10):** `SPEC_EVOLUCION.md` y `CONFIG.md` reescritos al modelo de nodos
-(genoma de 167 genes, física direccional, crossover con ligamiento, distancia sobre genes funcionales,
+(genoma por nodos, física direccional, crossover con ligamiento, distancia sobre genes funcionales,
 combate con `failDamage`/banda de talla, r/K honesto); `VISUAL.md` actualizado para el render por nodos.
 Todos los docs reflejan ahora el código real. Mantenerlos al día con la regla: cada cambio de modelo →
 SPEC; cada parámetro → CONFIG; cada avance de backlog → AUDIT; cada hito → este ESTADO.

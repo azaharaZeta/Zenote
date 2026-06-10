@@ -183,7 +183,6 @@ export class Sim {
     // verde puede EMERGER por deriva; solo se evita al ARRANCAR (un mundo recién sembrado nunca nace verde).
     const baseHue = ((180 + rng.next() * 250) % 360) / 360;
     const baseOhue = rng.next();                          // tono base del bulbo del señuelo (acento por run)
-    const baseApp = rng.next(), baseTip = rng.next();     // matices base de apéndices/puntas (coherentes por run)
     // Bases per-run de los genes decorativos de DISPERSIÓN (segmentos, piel, glow, color). blend() interpola
     // entre la base compartida (div=0 → todos iguales) y la muestra individual (div=1 → variado actual).
     // c_lum (glow + luminosidad) y c_sat (color): sembrado MÁS ALTO (0.3/0.25 + cola) → organismos más
@@ -208,7 +207,7 @@ export class Sim {
       // Historia de vida (#12): arranque a rango medio (≈madurez 308 ticks, ritmo medio) → r/K emerge por deriva
       this.genes[b + G.mature_age] = jit(0.4); this.genes[b + G.senescence] = jit(0.5);
       // La FORMA (cuerpo/apéndices) se siembra abajo vía el bloque de NODOS (B2/B3). Aquí solo color/ojos/ornamento.
-      this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
+      this.genes[b + G.c_eye] = jit(0.5);   // #13: c_app/c_tip retirados
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
       // Apariencia decorativa: arranque MODESTO (jit) → la variedad de glow/color/esbeltez/señuelo EMERGE por deriva.
       // c_lum (LUMINOSIDAD/glow): sembrado POR INDIVIDUO con sesgo bajo pero COLA hasta arriba (rng·rng) → la

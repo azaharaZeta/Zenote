@@ -62,6 +62,11 @@ export const config = {
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
+  // FRONTERA AUDITABLE (auditoría #8): TODO lo de aquí es FÍSICA (cómo la geometría→fuerza), NO juicios de
+  // "qué forma es buena". Cada empuje (bodyThrust/segThrust/modThrust/limbThrust) va emparejado con su arrastre
+  // (bodyDrag/segDrag/modDrag/limbDrag) → trade-off, sin barra libre; el giro emerge de asimetría/tamaño/elongación.
+  // Qué morfología gana lo decide la SELECCIÓN, no estos números. (Matiz: bodyThrust alto = cabeza buen propulsor
+  // → ver idea "cabeza nadadora" en IDEAS.md; es balance, no una regla de forma.)
   loco: {
     kThrust: 3.2,       // Calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, effort una vez)
     paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
