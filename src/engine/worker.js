@@ -9,9 +9,7 @@ import { Sim } from './sim.js';
 import { NUM_GENES, G, BRAIN0, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
 
-const M0 = G.m_app; // inicio del bloque de forma corporal (contiguo)
-const NB = 24;      // bloque de forma: 6 morfología + 3 segmentación + 8 módulos + 5 forma + 2 patas de cuerpo
-const NODEB = NODE_COUNT * NODE_STRIDE; // B2: bloque de genes de NODO (contiguo desde NODE0) para el render por grafo
+const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo
 const C0 = G.c_app; // índice del primer gen de ornamentación de color (2 consecutivos)
 // Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color, agresividad.
 const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_AGGRO = G.aggro, G_ORN = G.orn;
@@ -145,7 +143,6 @@ function snapshot() {
   const hue = new Float32Array(n), diet = new Float32Array(n), eFrac = new Float32Array(n);
   const lineage = new Float32Array(n), geneSel = new Float32Array(n);
   const heading = new Float32Array(n), spd = new Float32Array(n); // para orientar/animar el cuerpo
-  const morph = new Float32Array(n * NB);                         // bloque de forma corporal/agente
   const tint = new Float32Array(n * 3);                           // color por partes (2) + ornamento (1)/agente
   const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, aggro]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
@@ -167,9 +164,7 @@ function snapshot() {
     heading[k] = Math.atan2(s.vy[i], s.vx[i]);
     const v = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 1);
     spd[k] = v > 1 ? 1 : v;
-    const mb = i * NG + M0, kb = k * NB;
-    for (let q = 0; q < NB; q++) morph[kb + q] = s.genes[mb + q];
-    const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (B2b)
+    const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
     const cb = i * NG + C0, tb = k * 3;
     tint[tb] = s.genes[cb]; tint[tb + 1] = s.genes[cb + 1]; tint[tb + 2] = s.genes[i * NG + G_ORN];
@@ -177,7 +172,7 @@ function snapshot() {
     eye[eb] = s.genes[ib + G_SENSE]; eye[eb + 1] = s.genes[ib + G_FOV];
     eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.genes[ib + G_AGGRO];
     const db = k * 8;
-    deco[db] = s.genes[ib + G.b_aspect]; deco[db + 1] = s.genes[ib + G.c_lum]; deco[db + 2] = s.genes[ib + G.c_sat];
+    deco[db] = 0; deco[db + 1] = s.genes[ib + G.c_lum]; deco[db + 2] = s.genes[ib + G.c_sat]; // slot 0 (b_aspect) retirado
     deco[db + 3] = s.genes[ib + G.o_len]; deco[db + 4] = s.genes[ib + G.o_bulb]; deco[db + 5] = s.genes[ib + G.o_hue]; deco[db + 6] = s.genes[ib + G.o_num];
     deco[db + 7] = s.genes[ib + G.tex2];
     const fb = k * 3;
@@ -210,7 +205,7 @@ function snapshot() {
   }
   postMessage({
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn,
-    x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, morph, tint, eye, face, deco, nodes, hist, sel,
+    x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount,
     huntable, huntCarn, huntHerb, autopsy,   // diagnóstico de depredación (cazabilidad + autopsia de extinción)
     frozenDeath,                             // foto congelada de la gráfica de muertes (≠ null → extinción en curso)

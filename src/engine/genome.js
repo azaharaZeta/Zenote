@@ -2,41 +2,22 @@
 // Un genoma es un tramo de NUM_GENES floats en [0,1] dentro de un Float32Array SoA.
 
 const BASE_GENES = [
+  // Ecología / fisiología (núcleo de nichos).
   'size', 'speed', 'sense', 'metab', 'diet', 'aggro',
   'w_food', 'w_prey', 'w_flee', 'repro_thr', 'invest', 'hue', 'temp_pref',
-  // --- BLOQUE DE FORMA CORPORAL (contiguo: se manda al render de una pieza). ---
-  // Morfología base (F-A/F-B): apéndices del cuerpo principal. Funcional (locomoción).
-  'm_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave',
-  // Segmentación (complejidad emergente): cadena de segmentos tras la "cabeza".
-  // FASE VISUAL: por ahora solo afectan al dibujo (neutrales). Luego pasarán a funcionales.
-  'm_seg', 'm_segtaper', 'm_segspace',
-  // Módulos opcionales (2): partes extra on/off ancladas al cuerpo (cabezas/colas/lóbulos).
-  'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size',
-  'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size',
-  // Forma (estética, NEUTRAL: solo render, derivan libres → variedad de siluetas sin que la
-  // selección las colapse). asimetría, curvatura de la columna, colocación de apéndices, ramificación,
-  // forma del núcleo.
-  's_asym', 's_curve', 's_place', 's_branch', 's_core',
-  // Patas del CUERPO (segmentos), independientes de los apéndices de la cabeza: largo base + gradiente delante↔atrás.
-  'leg_len', 'leg_grad',
-  // --- Ornamentación (color por partes). NEUTRAL: deriva por linaje. Base selección sexual F4. ---
+  // --- IDENTIDAD / DISPLAY (color por partes, ojos, selección sexual, señuelo, piel). Tras el CONTRACT (B3b)
+  //     la FORMA del cuerpo vive en el bloque de NODOS (abajo); estos son los ejes de color/exhibición. ---
+  // Color por partes (`c_app`/`c_tip` CONTIGUOS: el snapshot los manda como bloque `tint`). NEUTRAL.
   'c_app', 'c_tip',
-  // --- Ojos / visión emergente (F-D). `e_fov` FUNCIONAL (campo de visión); `c_eye` neutral. ---
+  // Visión: `e_fov` FUNCIONAL (campo de visión, conserva área del cono); `c_eye` color de ojos (neutral).
   'e_fov', 'c_eye',
-  // --- Selección sexual (Fase 4): `orn` = ornamento de exhibición (penacho/cresta visible);
-  //     `pref` = ornamento preferido en la pareja. Al heredarse juntos co-evolucionan → runaway. ---
+  // Selección sexual: `orn` = cuánto exhibe (gateado el señuelo); `pref` = ornamento preferido en la pareja (runaway).
   'orn', 'pref',
-  // --- APARIENCIA decorativa (deriva libre, NO afecta física ni especie): esbeltez corporal (ancho
-  //     independiente del grosor de apéndices) + ejes de EXHIBICIÓN sin runaway: luminosidad (glow) y
-  //     vivacidad de color (saturación) → espectro apagado/acromático ↔ brillante/vívido entre individuos. ---
-  'b_aspect', 'c_lum', 'c_sat',
-  // --- ESTILO del SEÑUELO/ornamento (decorativos, deriva libre): largo del tallo, tamaño del bulbo, color
-  //     del bulbo (acento), y nº de señuelos. `orn` sigue siendo "cuánto exhibe" (selección sexual); estos
-  //     varían el ESTILO independientemente → señuelos muy distintos entre individuos. ---
+  // Exhibición sin runaway: luminosidad (glow) y vivacidad de color (saturación). NEUTRALES.
+  'c_lum', 'c_sat',
+  // Estilo del SEÑUELO (decorativos): largo del tallo, tamaño del bulbo, color del bulbo, nº de señuelos.
   'o_len', 'o_bulb', 'o_hue', 'o_num',
-  // --- 2º EJE DE PIEL (decorativo, deriva libre): modula la ESCALA/DENSIDAD del patrón de `s_curve`
-  //     (rayas finas↔gruesas, moteado denso↔disperso, ocelos pequeños↔grandes) de forma independiente
-  //     al patrón en sí → multiplica el espacio de texturas. Va al final para no mover el bloque de forma. ---
+  // Piel: escala/densidad del patrón de textura. NEUTRAL.
   'tex2',
 ];
 
@@ -125,11 +106,9 @@ export const GENE_LABELS = {
 export const GENE_GROUPS = [
   { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest'] },
   { label: 'Dieta y conducta',     genes: ['diet', 'aggro', 'w_food', 'w_prey', 'w_flee'] },
-  { label: 'Locomoción',           genes: ['speed', 'm_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave'] },
-  { label: 'Segmentos y módulos',  genes: ['m_seg', 'm_segtaper', 'm_segspace', 'leg_len', 'leg_grad', 'mod0_on', 'mod0_ang', 'mod0_dist', 'mod0_size', 'mod1_on', 'mod1_ang', 'mod1_dist', 'mod1_size'] },
-  { label: 'Forma',                genes: ['s_asym', 's_curve', 'tex2', 's_place', 's_branch', 's_core'] },
+  { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
-  { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'] },
+  { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
 ];
 // B2: grupo de los genes de nodo (cuerpo generativo). Se añade tras construir el bloque (NODE0/NODE_COUNT).
 GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0 + NODE_COUNT * NODE_STRIDE) });
@@ -138,31 +117,22 @@ GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0
 export const G = {};
 GENES.forEach((name, i) => { G[name] = i; });
 
-// --- GENES DECORATIVOS LIBRES (solo render): colores por parte, estilo de ojo y colocación de
-// módulos/ojos. NO afectan a la física/energía y los dejamos FUERA de la identidad de especie:
-// NO cuentan en la distancia genética → dos bichos con misma ecología y forma pero distinto COLOR/ojos
-// siguen siendo la misma especie (y se cruzan) → morfos de color/ojos intra-especie. Su variedad surge
-// por DERIVA NEUTRAL (ya NO por mutar más rápido: ahora todos los genes mutan al mismo ritmo, ver mut).
-// La FORMA del cuerpo y los apéndices SÍ cuenta para la especie (no está aquí) → los miembros de una
-// especie comparten plan corporal y la variedad de formas queda ENTRE especies. La silueta de cabeza
-// (s_asym) cuenta como forma; el estilo de ojo (s_curve) y los colores siguen libres.
-const DECOR_NAMES = ['s_curve', 'tex2', 'mod0_ang', 'mod0_dist', 'mod1_ang', 'mod1_dist', 'c_app', 'c_tip', 'c_eye',
-  'b_aspect', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
+// --- GENES DECORATIVOS LIBRES (solo render): colores por parte, color de ojo, estilo de señuelo y piel.
+// NO afectan a la física/energía y los dejamos FUERA de la identidad de especie: NO cuentan en la distancia
+// genética → dos bichos con misma ecología y FORMA (nodos) pero distinto COLOR siguen siendo la misma especie
+// (y se cruzan) → morfos de color intra-especie. Su variedad surge por DERIVA NEUTRAL. La FORMA del cuerpo
+// vive en el bloque de NODOS (funcional, sí cuenta para especie). `osc_amp` por nodo también es funcional.
+const DECOR_NAMES = ['tex2', 'c_app', 'c_tip', 'c_eye', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // B3: `osc_amp` por nodo YA afecta a la física (amplitud de oscilación) → FUNCIONAL (define especie).
 // `osc_phase` sigue siendo andamio (la coordinación de fase llega después) → neutral (DECOR).
 for (let k = 0; k < NODE_COUNT; k++) { DECOR.add(G['n' + k + '_osc_phase']); }
 
-// Los genes morfológicos VIEJOS ya NO alimentan la física (la forma —incl. amplitud y elongación— emerge de
-// los nodos, ver bodyplan.js). Desde B3 también `m_elong`/`m_wave` están aquí. Siguen vivos solo para el RENDER
-// clásico hasta el CONTRACT (B3b). Se excluyen de la distancia genética para no contar la forma DOS veces.
-const LEGACY_MORPH = new Set(['m_app', 'm_len', 'm_width', 'm_sym', 'm_elong', 'm_wave', 'm_seg', 'm_segtaper', 'm_segspace',
-  'mod0_on', 'mod0_size', 'mod1_on', 'mod1_size', 's_asym', 's_place', 's_branch', 's_core', 'leg_len', 'leg_grad'].map((n) => G[n]));
-
 // Distancia genética (→ compatibilidad de cruce y clústeres de especie) sobre los genes
-// ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría), la APARIENCIA (decorativa) y
-// la morfología VIEJA (sustituida por los nodos). Las especies se definen por lo que importa para sobrevivir.
-export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i) && !LEGACY_MORPH.has(i));
+// ECOLÓGICOS/funcionales del cuerpo; EXCLUYE el cerebro (su deriva dominaría) y la APARIENCIA (decorativa).
+// Tras el CONTRACT (B3b) la FORMA vive en los genes de NODO (funcionales). Las especies se definen por lo
+// que importa para sobrevivir: ecología + forma (nodos).
+export const FUNCTIONAL = GENES.map((_, i) => i).filter((i) => i < BRAIN0 && !DECOR.has(i));
 
 export function lerp(a, b, t) { return a + (b - a) * t; }
 export function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }

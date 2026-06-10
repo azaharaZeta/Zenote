@@ -4,6 +4,30 @@ Ideas estudiadas pero no implementadas (aún). Cada una con su contexto para pod
 
 ---
 
+## "Cabeza nadadora" — ¿debería un cuerpo de 1 nodo poder nadar? (ajuste de balance)
+
+**Estado:** decisión consciente, pendiente de revisar (2026-06-10).
+
+**Hoy:** el nodo raíz (cabeza) es un "motor base" — `gait=+1` y amplitud propia (`osc_amp`), así que un
+organismo de **1 solo nodo nada bien** (interpretación: el cuerpo se contorsiona, como un renacuajo). Se
+decidió así para que los organismos simples sembrados sean viables (si no, casi nadie se movería al arrancar).
+
+**El problema (para la misión visual):** si una cabeza pelada ya nada bien, **hay poca presión selectiva
+para evolucionar colas/aletas** (una cola añade empuje pero cuesta arrastre/masa) → el mundo tiende a
+dominarse de cabezas simples, en vez de morfologías variadas y "vivas".
+
+**Idea a probar:** **reducir o quitar el empuje base de la cabeza** (`_gait[0]`/amplitud raíz en
+`bodyplan.js`), de modo que nadar bien EXIJA estructuras propulsoras (cola trasera con `gait≈+1`, aletas
+laterales). Así emergerían colas por selección → cuerpos más elaborados. Más realista (un blob liso no se
+propulsa en fluido — teorema de la concha de vieira). 
+
+**Riesgo / por qué es un ajuste DELIBERADO, no trivial:** es un cambio de **balance ecológico** — al
+principio muchos organismos nadarían poco → más mortalidad → fuerte selección hacia colas. Hay que medir
+(¿colapsa la población?, ¿emergen colas o se extingue todo?). Probar con un suelo pequeño de empuje base
+(no cero) y observar. Relacionado con el dominio de cabezas que ya se observó en B2.
+
+---
+
 ## Selección de presa por talla (forrajeo óptimo) — EMERGENTE
 
 **Estado:** propuesta, sin implementar (2026-06-09).

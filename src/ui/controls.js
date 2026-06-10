@@ -68,12 +68,10 @@ export function setupControls(app) {
 
   // ---- Selector de gen para el histograma ----
   const sel = $('geneSel');
-  // Genes SOLO de apariencia (no afectan a la simulación: su histograma solo refleja deriva, no evolución útil):
-  // los DECOR (colores, piel, ojos, señuelo, ángulo/distancia de módulos) MÁS la morfología render-only
-  // (nº/largo/grosor de apéndices, separación de segmentos, silueta/colocación/ramificación/núcleo) y el color de linaje.
-  const COSMETIC = new Set([...DECOR,
-    G.m_app, G.m_len, G.m_width, G.m_segspace, G.s_asym, G.s_place, G.s_branch, G.s_core, G.hue]);
-  const HIDE_GROUPS = new Set(['Segmentos y módulos', 'Color y ornamento']); // grupos enteros fuera del histograma
+  // Genes SOLO de apariencia (su histograma solo refleja deriva, no evolución útil): los DECOR (colores,
+  // piel, ojos, señuelo) más el color de linaje (`hue`). La forma ahora vive en los genes de NODO.
+  const COSMETIC = new Set([...DECOR, G.hue]);
+  const HIDE_GROUPS = new Set(['Color y ornamento']); // grupo entero fuera del histograma
   GENE_GROUPS.forEach((grp) => {            // agrupado en <optgroup> → desplegable navegable, no infinito
     if (HIDE_GROUPS.has(grp.label)) return; // grupos no deseados en el filtro de histograma
     const og = document.createElement('optgroup');

@@ -46,16 +46,6 @@ const app = { sim: simProxy, worker, renderer, charts, cfg: config, running: tru
 setupControls(app);
 window.app = app; // sonda de depuración
 
-// B2b (dev): bandera de render por nodos PERSISTENTE (sobrevive a recargas vía localStorage). Toggle rápido
-// desde consola: app.toggleBodyGraph(). Es solo una ayuda de desarrollo mientras se reescribe el render.
-try { const bg = localStorage.getItem('bodyGraph'); if (bg !== null) config.render.bodyGraph = bg === '1'; } catch (e) {}
-app.toggleBodyGraph = () => {
-  config.render.bodyGraph = !config.render.bodyGraph;
-  try { localStorage.setItem('bodyGraph', config.render.bodyGraph ? '1' : '0'); } catch (e) {}
-  console.log('render.bodyGraph =', config.render.bodyGraph);
-  return config.render.bodyGraph;
-};
-
 let tps = 0;
 worker.onmessage = (e) => {
   const m = e.data;
@@ -69,7 +59,7 @@ worker.onmessage = (e) => {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
     simProxy.hue = m.hue; simProxy.diet = m.diet; simProxy.eFrac = m.eFrac;
     simProxy.lineage = m.lineage; simProxy.geneSel = m.geneSel;
-    simProxy.heading = m.heading; simProxy.spd = m.spd; simProxy.morph = m.morph; simProxy.tint = m.tint; simProxy.eye = m.eye; simProxy.face = m.face; simProxy.deco = m.deco; simProxy.nodes = m.nodes;
+    simProxy.heading = m.heading; simProxy.spd = m.spd; simProxy.tint = m.tint; simProxy.eye = m.eye; simProxy.face = m.face; simProxy.deco = m.deco; simProxy.nodes = m.nodes;
     simProxy.activeCount = m.n; simProxy.popCount = m.pop;
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel;

@@ -504,7 +504,7 @@ export class Renderer {
     const detail = 5;                  // si el radio en pantalla supera esto (px) → cuerpo detallado
                                        // (bajo: los detalles aparecen con poco zoom; hay margen de FPS)
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
-    const morph = sim.morph, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
+    const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     const eyeDetail = 9;               // los ojos necesitan algo más de tamaño en pantalla para leerse
     const partDetail = 11;             // segmentos/módulos solo cuando el cuerpo es bien grande (coste)
     const NB = 24;                     // longitud del bloque de forma corporal/agente (incluye leg_len/leg_grad al final)
@@ -551,7 +551,7 @@ export class Renderer {
         }
       }
       const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
-      const detailed = morph && morph.length && rPx > dThr; // pequeño en pantalla → punto simple (barato)
+      const detailed = nodes && nodes.length && rPx > dThr; // pequeño en pantalla → punto simple (barato)
       // Sombra de contacto (solo cuerpos detallados): despega al organismo del fondo (luz arriba-izq).
       // Se omite con estelas activas (dejaría manchas oscuras al desvanecerse).
       if (detailed && !trails && !abyssal) {     // sombra de contacto inútil sobre fondo oscuro
@@ -579,15 +579,9 @@ export class Renderer {
       }
       // LOD: cuerpo detallado solo si es grande en pantalla (zoom/agente grande); si no, punto.
       if (detailed) {
-        if (this.cfg.render.bodyGraph && sim.nodes) {
-          // B2b (EN PRUEBAS): dibuja el cuerpo desde el GRAFO DE NODOS (forma nueva). Incompleto:
-          // lóbulos + tentáculos coloreados, sin ojos/textura/señuelo todavía. Bandera off por defecto.
-          this._drawBodyGraph(ctx, x, y, r, h, s, l, sim.nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                              eye, i * 4, face, i * 3, rPx > eThr, tint, i * 3, deco, i * 8);
-        } else {
-          this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
-                       eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 8); // ojos/segmentos solo si grandes en pantalla
-        }
+        // Render por GRAFO DE NODOS (única fuente desde B3b): cabeza+nodos, ojos, señuelo, volumen, onda viajera.
+        this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
+                            eye, i * 4, face, i * 3, rPx > eThr, tint, i * 3, deco, i * 8);
       } else {
         ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
         ctx.beginPath();
@@ -1315,7 +1309,7 @@ export class Renderer {
     const tint = this._pTint || (this._pTint = new Float32Array(3));
     tint[0] = genes[G.c_app]; tint[1] = genes[G.c_tip]; tint[2] = genes[G.orn];
     const pdeco = this._pDeco || (this._pDeco = new Float32Array(8)); // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]
-    pdeco[0] = genes[G.b_aspect]; pdeco[1] = genes[G.c_lum]; pdeco[2] = genes[G.c_sat];
+    pdeco[0] = 0; pdeco[1] = genes[G.c_lum]; pdeco[2] = genes[G.c_sat]; // slot 0 (b_aspect) retirado
     pdeco[3] = genes[G.o_len]; pdeco[4] = genes[G.o_bulb]; pdeco[5] = genes[G.o_hue]; pdeco[6] = genes[G.o_num];
     pdeco[7] = genes[G.tex2];
     const eye = this._pEye || (this._pEye = new Float32Array(4));
@@ -1330,12 +1324,7 @@ export class Renderer {
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
-    if (this.cfg.render.bodyGraph) {                     // B2b: el retrato sigue al mundo (render por nodos)
-      this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
-    } else {
-      this._drawBody(pctx, px, py, r, h, s, l, genes, G.m_app, heading, pspd, t,
-                   tint, 0, true, eye, 0, true, ef || 0.5, face, 0, true, pdeco, 0);
-    }
+    this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
   }
 
   // Resalta el organismo seleccionado (anillo). Recibe el objeto `sel` del worker
