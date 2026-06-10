@@ -303,6 +303,9 @@ export class Sim {
     const preyLo = cfg.combat.preyBandLo != null ? cfg.combat.preyBandLo : 0;
     const preyHi = cfg.combat.preyBandHi != null ? cfg.combat.preyBandHi : 1;
     const inPreyBand = (predR, preyR) => { const ratio = preyR / predR; return ratio >= preyLo && ratio <= preyHi; };
+    // Bandas precalculadas para el bucle caliente (evitan la closure y una división por vecino): presa = rj/myR
+    // ∈ [preyLo,preyHi]; amenaza = myR/rj ∈ [preyLo,preyHi] ⟺ rj/myR ∈ [1/preyHi, 1/preyLo].
+    const threatLo = 1 / preyHi, threatHi = 1 / preyLo, maxRadius = cfg.expr.size.max;
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
@@ -364,6 +367,12 @@ export class Sim {
         // Radio de escaneo ADAPTATIVO al alcance visual: un ojo estrecho ve más lejos que una celda (~80px).
         // Cono ancho/corto → 3×3 (R=1, como antes); visión larga → 5×5 (R=2) → ya NO se trunca su percepción.
         const scanR = Math.min(3, Math.max(1, Math.ceil(sr / hc)));
+        // Precálculo por agente (fuera del bucle de vecinos): la mayoría de vecinos del bloque de celdas caen
+        // MÁS LEJOS que la visión Y que el alcance de captura → se descartan con solo la distancia (sin calcular
+        // dieta/banda/contacto). `scanMax2` = cota superior (rj ≤ maxRadius) del radio que de verdad importa.
+        const myDiet = this.diet[i], lureExtent = lureReach * this.lure[i] * myR;
+        const reachMax = myR + maxRadius + lureExtent;
+        const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
         for (let oy = -scanR; oy <= scanR; oy++) {
           for (let ox = -scanR; ox <= scanR; ox++) {
             let gx = hx + ox, gy = hy + oy;
@@ -378,29 +387,27 @@ export class Sim {
                   if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
                 }
                 const d2 = ddx * ddx + ddy * ddy;
-                const rsum = myR + this.radius[j];
-                // Presa = más pequeña Y claramente más abajo en la dieta (presa real, no un igual).
-                // Amenaza = lo contrario (alguien que puede comerme a MÍ).
-                const rj = this.radius[j], dDiff = this.diet[i] - this.diet[j];
-                // Presa = en la BANDA DE TAMAÑO del depredador Y claramente más abajo en la dieta (presa real).
-                let canEat = inPreyBand(myR, rj) && dDiff > dietMargin;
-                // REFUGIO (#7): la presa SÍ es percibida/perseguible aunque esté en cobertura; la cobertura solo
-                // dificulta la CAPTURA (escape graduado en la resolución del combate, abajo). Sin zona binaria.
-                const reach = rsum + lureReach * this.lure[i] * myR;   // SEÑUELO (anglerfish): radio de captura extendido
-                if (canEat && d2 < reach * reach && d2 < bestContactD) { bestContactD = d2; bestContact = j; }
-                if (d2 < sr2) {
-                  // ¿Cae el vecino dentro del cono de visión (relativo al rumbo)?
-                  let seen = omni;
-                  if (!seen) {
-                    const dot = ddx * headx + ddy * heady; // = |d|·cos(θ)
-                    seen = vc <= 0
-                      ? (dot >= 0 || dot * dot < vc * vc * d2)  // cono >90°: solo ciego por detrás
-                      : (dot > 0 && dot * dot > vc * vc * d2);  // cono <90°: solo hacia delante
+                if (d2 < scanMax2) {   // EARLY-CULL: fuera de visión Y de captura → ni se evalúa (la mayoría)
+                  // Presa = en la BANDA DE TAMAÑO del depredador Y más abajo en dieta. Amenaza = lo contrario.
+                  const rj = this.radius[j], ratio = rj / myR, dDiff = myDiet - this.diet[j];
+                  const canEat = ratio >= preyLo && ratio <= preyHi && dDiff > dietMargin; // inline de inPreyBand(myR,rj)
+                  if (canEat) {   // CONTACTO (combate): solo presas válidas dentro del alcance (#7: cobertura se aplica en la resolución)
+                    const reach = myR + rj + lureExtent;            // SEÑUELO: radio de captura extendido
+                    if (d2 < reach * reach && d2 < bestContactD) { bestContactD = d2; bestContact = j; }
                   }
-                  if (seen) {
-                    if (canEat && d2 < bestPreyD) { bestPreyD = d2; bestPrey = j; }
-                    // Amenaza = j puede comerme a MÍ (yo estoy en LA BANDA de j, y j está más arriba en dieta).
-                    else if (inPreyBand(rj, myR) && -dDiff > dietMargin && d2 < bestThreatD) { bestThreatD = d2; bestThreat = j; }
+                  if (d2 < sr2) {   // PERCEPCIÓN: dentro de la visión Y del cono (relativo al rumbo)
+                    let seen = omni;
+                    if (!seen) {
+                      const dot = ddx * headx + ddy * heady; // = |d|·cos(θ)
+                      seen = vc <= 0
+                        ? (dot >= 0 || dot * dot < vc * vc * d2)  // cono >90°: solo ciego por detrás
+                        : (dot > 0 && dot * dot > vc * vc * d2);  // cono <90°: solo hacia delante
+                    }
+                    if (seen) {
+                      if (canEat) { if (d2 < bestPreyD) { bestPreyD = d2; bestPrey = j; } }
+                      // Amenaza: j puede comerME (yo en su banda: rj/myR ∈ [threatLo,threatHi]; j más arriba en dieta).
+                      else if (ratio >= threatLo && ratio <= threatHi && -dDiff > dietMargin && d2 < bestThreatD) { bestThreatD = d2; bestThreat = j; }
+                    }
                   }
                 }
               }

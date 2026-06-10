@@ -28,7 +28,7 @@ export const config = {
   // ───── Población ─────
   pop: {
     initial: 400,            // Nº de fundadores al sembrar
-    maxAgents: 4000,         // Tope físico del pool (límite duro de memoria) · ÚNICO límite de población
+    maxAgents: 1000,         // Tope físico del pool (límite duro de memoria) · ÚNICO límite de población
                              //      (la capacidad de carga la pone el recurso, no un tope numérico — ver auditoría #5).
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)

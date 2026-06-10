@@ -34,7 +34,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
 | `pop.initial` | 400 | nº de fundadores al sembrar |
-| `pop.maxAgents` | 4000 | **tope duro del pool** (memoria/FPS), único límite numérico — la capacidad de carga la pone el recurso, no un tope (auditoría #5) |
+| `pop.maxAgents` | 1000 | **tope duro del pool** (memoria/FPS), único límite numérico — la capacidad de carga la pone el recurso, no un tope (auditoría #5) |
 | `pop.seed` | 123 | si número, RNG reproducible (mismo seed → misma corrida) |
 | `pop.seedDietLow` | false | true = sembrar todo herbívoro; false = dieta diversa con proto-carnívoros |
 | `pop.carnivoreSeedFrac` | 0.14 | fracción de fundadores sembrados como proto-carnívoros |
