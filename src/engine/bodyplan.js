@@ -35,7 +35,7 @@ const TWO_PI  = 6.283185307;
 
 // Exponer el scratch + escalares emergentes (para la física y, en B2b, el render). No se copian arrays.
 export const plan = { ar: _ar, axis: _axis, amp: _amp, eff: _eff, kind: _kind, limbAr: _limbAr, bodyEx: _bodyEx,
-  gait: _gait, straight: 1, turnAsym: 0, elongN: 1, stream: 1, fwdReach: 0 };
+  gait: _gait, straight: 1, turnAsym: 0, elongN: 1, stream: 1, fwdReach: 0, flapWork: 0 };
 
 // Construye el plan corporal DESDE EL GENOMA DE NODOS (B2). Un cuerpo = grafo de ≤NODE_COUNT nodos de una sola
 // primitiva; cada nodo es lóbulo redondo (aspect bajo → masa+arrastre) o tentáculo fino (aspect alto → limbAr,
@@ -47,7 +47,7 @@ export const plan = { ar: _ar, axis: _axis, amp: _amp, eff: _eff, kind: _kind, l
 // `effort`). Así la forma hidrodinámicamente coherente (cola atrás) EMERGE por selección, sin reglas codificadas.
 export function computeBodyPlan(g, b, lo, effort) {
   const nb = b + NODE0, paddleEff = lo.paddleEff, oscFloor = lo.oscFloor;
-  let n = 0, asymAccum = 0, latArea = 0, axialExtent = 0, latExtent = 0, fwdReach = 0;
+  let n = 0, asymAccum = 0, latArea = 0, axialExtent = 0, latExtent = 0, fwdReach = 0, flapWork = 0;
   const ampOf = (oscG) => (oscFloor + (1 - oscFloor) * oscG) * effort; // amplitud del nodo = (suelo+osc_amp)·throttle
   // --- NODO 0 = RAÍZ (cabeza), siempre presente. Su aspecto define el ancho del cuerpo (redondo = ancho). ---
   const headW = 1.5 - g[nb + 3] * 0.95;                     // aspect 0 (redondo) → 1.5 ancho; 1 (fino) → 0.55
@@ -95,11 +95,13 @@ export function computeBodyPlan(g, b, lo, effort) {
     axialExtent += areaForExt * Math.abs(ce) * length;      // estira el cuerpo a lo LARGO (eje de nado)
     latExtent += areaForExt * Math.abs(se) * length;        // … o a lo ANCHO
     if (ce > 0) fwdReach += length * ce * w;                // Capa 2: apéndices que apuntan AL FRENTE → alcance de captura (cuesta nado: gait<0)
+    flapWork += m * se * se * ar * mult;                     // Capa 3: trabajo de aleteo (lateral) → coste energético del golpe activo (organism.js)
     if (!isLateral) asymAccum += se * (ar * mult);          // medial desviado del eje → desvía empuje a girar
     latArea += ar * mult;
     n++;
   }
   plan.fwdReach = fwdReach;                                  // Capa 2: extensión frontal (alcance de captura, ver organism.js)
+  plan.flapWork = flapWork;                                  // Capa 3: trabajo de aleteo → coste energético (ver organism.js)
   // Direccionalidad/giro y streamlining EMERGENTES de la geometría.
   const asymFrac = latArea > 0 ? Math.min(1, Math.abs(asymAccum) / latArea) : 0;
   plan.straight = lo.symBase + (1 - lo.symBase) * (1 - asymFrac); // 1 = recto; <1 desvía empuje a giro

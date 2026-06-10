@@ -48,8 +48,9 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   uno con una **silueta paramétrica** (curva cerrada base↔punta según `tipShape`: afila a púa/garra/
   tentáculo, elipse, o se abre en aleta/paleta), su elongación (`aspect`), su orientación (`angle`), su par
   bilateral emergente, ojos, señuelo bioluminiscente y una onda viajera de undulación acumulada padre→hijo.
-  Los nodos **crecen** al aparecer (presencia graduada). Es la **misma geometría que usa la física**
-  (`bodyplan.js`) → lo que ves coincide con cómo nada.
+  Los nodos **crecen** al aparecer (presencia graduada). Al **girar** (la mirada difiere del rumbo) las aletas
+  laterales se **inclinan asimétricamente** hacia el giro (pista visual de "remar para virar"; solo render, no
+  toca la física del giro). Es la **misma geometría que usa la física** (`bodyplan.js`) → lo que ves coincide con cómo nada.
   Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color por partes, glow,
   saturación y textura de piel salen de los genes decorativos (`c_*`, `o_*`, `tex2`).
 - Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo

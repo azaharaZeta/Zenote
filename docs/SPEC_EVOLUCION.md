@@ -228,8 +228,12 @@ Por tick, cada organismo:
   vivir lento cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
-- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort)`, **cuadrático en la
-  velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
+- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost)`, **cuadrático en
+  la velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
+  **`flapCost`** (Capa 3) = `k_flap · flapWork` (trabajo de aleteo, lateral): **aletear ENCARECE el nado** (el golpe
+  activo gasta). Hace honesto el eje **ondular (crucero barato) ↔ aletear (ráfaga cara)**: el aleteo da +empuje
+  (§2bis) pero cuesta, así que solo compensa a quien necesita la ráfaga (cazador que lancea); el pastador tranquilo
+  prefiere ondular. Coste ligado a la propulsión de aleteo → coste↔beneficio. Solo lo paga quien aletea (neutro en 0).
 - **Alimentación** (ritmo `absEff = absRate · (0.5 + metab) · (1 + k_graze·(massMul−1)) · (1 + k_grazeWide·anchura)`;
   más masa = más superficie de pasto. **`anchura`** (Capa 2) = `1 − (elongN−1)/(elongMax−1)` ∈ [0,1]: un cuerpo
   **ancho/aplanado** (baja elongación) **barre más recurso** que uno fino/aerodinámico → premia la morfología de

@@ -48,13 +48,41 @@ ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda a�
   - **FÍSICA HECHA (2026-06-10):** aletear da +empuje en nodos LATERALES (`effFlap = 1+flapGain·m·sin²(emit)`) y
     +arrastre (`×(1+flapDrag·m)`); neutro en 0 (`bodyplan.js`; `loco.flapGain/flapDrag`). Eje crucero↔ráfaga.
     Sembrado a 0 (ondular puro) → el aleteo evoluciona. Test gaitMode 6/6 (lateral aletea → empuje ×2 + drag; medial casi no).
-  - **RENDER HECHO (2026-06-10):** el batido reutiliza la onda viajera (que ya pivota el nodo sobre su padre):
-    los nodos con `gaitMode` alto baten con MÁS amplitud, ponderado a lo lateral (`·sin²(emit)`, como la física)
-    → las alas/aletas baten amplio (golpe arriba/abajo), las colas mediales solo ondulan (`canvas.js`, `flapBeat`).
-    Verificado en preview: alas batiendo vs ondulador. → **Capa 3 completa**. *Afinar en preview:* `flapBeat` (2.6) si se quiere más/menos barrido.
+  - **COSTE ENERGÉTICO HECHO (2026-06-11):** aletear MULTIPLICA el coste de nado (`×(1+flapCost)`, `flapCost =
+    k_flap·flapWork`, ligado a la propulsión lateral del aleteo; `organism.js`/`sim.js`; `energy.k_flap=0.7`).
+    Antes aletear era casi gratis (drag diluido) → "siempre conviene"; ahora es un **trade-off honesto**: ráfaga
+    cara (cazador que lancea) ↔ crucero barato (pastador ondulando). Test flapCost 5/5. *A vigilar:* ajustar `k_flap` si nadie aletea o si el coste es excesivo.
+  - **RENDER HECHO (2026-06-10, reforzado 06-11):** el batido se MEZCLA por intensidad de aleteo (`gaitMode·sin²(emit)`).
+    Ondular = onda viajera suave (ripple de anguila). Aletear = batido **rápido** (`flapFreq 2.4`), **amplio**
+    (`flapBeat 2.6`), **asimétrico** (golpe potencia+recuperación, `sin(x−0.6·sin x)`) y **DESACOPLADO** de la onda del
+    cuerpo (sin desfase por profundidad → la aleta bate a su ritmo mientras el cuerpo planea). `canvas.js`. Verificado
+    en preview: las alas baten un rango grande entre fotogramas vs ondulador casi quieto. → **Capa 3 completa**.
 
 **PENDIENTE (menor) — apiñamiento de hermanos:** varios nodos con el mismo `parent` y `emit` parecido se
 solapan. Posible reparto angular sutil entre hermanos (solo render, no toca genética).
+
+---
+
+## Giro físico — que girar use los segmentos del cuerpo (estudio 2026-06-11)
+
+Hoy el giro es **cinemático**: el rumbo rota hacia el deseo del cerebro un máx. `turnRate`/tick (emerge de la forma,
+`organism.js`), pero el cuerpo no "hace" nada para girar. Idea del usuario: que girar sea un **acto físico** con los
+propulsores (remar/aletear asimétrico), emergente de la forma, sin if-else. Tres niveles estudiados:
+
+- **C — SEÑAL VISUAL del remado. HECHO (2026-06-11).** Solo render: al girar (mirada `face` ≠ rumbo) las aletas
+  LATERALES se inclinan asimétricamente hacia el giro pretendido (`canvas.js`, `turnLean = (gaze−heading)·0.5`).
+  Pista de "rema con las aletas para virar"; recto → simétrico. NO toca la física. Verificado en preview (izq/der
+  espejo). *Matiz:* usa mirada−rumbo (intención), así que un bicho que HUYE mirando a la amenaza también se inclina
+  (maniobra, dirección aproximada). Si se quiere fiel al giro real, cambiar a delta de rumbo entre frames. Ganancia 0.5 tuneable.
+- **B — AUTORIDAD de giro desde la palanca de los propulsores (POSIBLE, recomendado para más adelante).** Sin tocar
+  el cerebro: el giro pasa a ser un **par físico** cuya fuerza máxima emerge de la palanca de las aletas laterales
+  (área lateral × brazo de momento, calculable de la geometría de nodos) + **inercia angular** (∝ masa·talla² → los
+  grandes no giran de golpe, sobrepasan, contra-giran). Sustituye la fórmula `turnRate` por algo emergente-de-la-forma
+  con momento realista. Riesgo BAJO (cerebro intacto). Esfuerzo medio.
+- **A — GIRO 100% emergente: el cerebro controla izq/der.** Cambiar las salidas motoras a "empuje izquierdo/derecho";
+  avance y giro emergen del batir asimétrico, palanca de la forma. Lo más real y fiel a la petición, pero **el cambio
+  más arriesgado** (rehacer semántica motora del cerebro + re-sembrar competente + re-verificar TODA la conducta;
+  riesgo de nadar en círculos / colapso). Solo si se va a por todas con re-tuning del comportamiento.
 
 ---
 

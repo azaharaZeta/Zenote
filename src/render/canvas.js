@@ -548,17 +548,38 @@ export class Renderer {
       const p = par[k], nb = no + k * ST;
       let bend = 0;
       if (doWave) {                                              // LOD: a tamaño pequeño, cuerpo en REPOSO (sin onda)
-        // ALETEO (Capa 3): un nodo con gaitMode alto BATE con más amplitud, ponderado a lo LATERAL (sin²(emit),
-        // como la física) → las aletas/alas baten amplio sobre su anclaje (la onda ya pivota el nodo sobre el
-        // padre); las colas mediales solo ondulan. flapBeat = ganancia de barrido SOLO visual.
-        const se = Math.sin(pa[k]), flapBeat = 2.6;
-        const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]) * (1 + flapBeat * nodes[nb + 9] * se * se);
-        const phK = nodes[nb + 7] * 6.283185307;                 // fase por nodo (osc_phase): coordinada → onda limpia
-        bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;      // onda viajera/batido por profundidad + offset genético
+        // ONDULAR vs ALETEAR (Capa 3, SOLO render): el modo se MEZCLA por intensidad de aleteo (gaitMode ponderado
+        // a lo lateral, sin²(emit) — las aletas baten, las colas ondulan). ONDULAR = onda viajera suave del cuerpo
+        // (desfase por profundidad → ripple de anguila). ALETEAR = batido RÁPIDO, AMPLIO, ASIMÉTRICO (golpe de
+        // potencia + recuperación lenta) y DESACOPLADO de la onda del cuerpo (sin desfase por profundidad → la
+        // aleta bate "a su ritmo" mientras el cuerpo planea). La onda ya pivota cada nodo sobre su padre (=eje de la aleta).
+        const phK = nodes[nb + 7] * 6.283185307;                 // fase por nodo (osc_phase)
+        const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]);
+        const se = Math.sin(pa[k]), flap = nodes[nb + 9] * se * se; // intensidad de aleteo (0 = ondular puro)
+        const bU = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;  // ONDULAR
+        if (flap > 0.001) {
+          const flapFreq = 2.4, flapBeat = 2.6;                  // más rápido y más amplio
+          const xf = waveT * flapFreq - phK;
+          const bF = Math.sin(xf - 0.6 * Math.sin(xf)) * ampK * (1 + flapBeat); // ALETEAR: seco/asimétrico (potencia+recuperación)
+          bend = bU * (1 - flap) + bF * flap;                    // mezcla ondular↔aletear
+        } else bend = bU;
       }
       acc[k] = acc[p] + bend;                                     // acumula la flexión del padre + la propia
       const rdx = px[k] - px[p], rdy = py[k] - py[p], ca = Math.cos(acc[k]), sa = Math.sin(acc[k]);
       wpx[k] = wpx[p] + rdx * ca - rdy * sa; wpy[k] = wpy[p] + rdx * sa + rdy * ca; // gira el segmento padre→hijo
+    }
+    // GIRO visible (solo render, pista del "remado"): al girar (la MIRADA difiere del RUMBO) las aletas LATERALES
+    // se inclinan asimétricamente (una rema más que la otra) hacia el giro pretendido → se VE que el cuerpo gira con
+    // sus segmentos. NO toca la física (el giro real sigue siendo el de sim.js). gaze−heading = cuánto quiere girar.
+    let turnLean = 0;
+    if (face) {
+      const gx = face[fo], gy = face[fo + 1];
+      if (gx || gy) {
+        let d = Math.atan2(gy, gx) - heading;
+        while (d > 3.14159) d -= 6.28318; while (d < -3.14159) d += 6.28318;
+        if (d > 1) d = 1; else if (d < -1) d = -1;                // acota a ±1 rad
+        turnLean = d * 0.5;                                       // ganancia del remado (solo visual)
+      }
     }
     for (let mode = doWave ? 0 : 1; mode <= 1; mode++) {          // LOD: a tamaño pequeño solo pasada de cuerpo (sin contorno)
       for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
@@ -566,7 +587,8 @@ export class Renderer {
         const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > EPS_AXIS; // mismo umbral que la física (bodyplan.js)
         const baseRot = pa[k] + acc[k];                           // orientación del nodo = reposo + onda acumulada
         for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {  // sgn=−1 = reflejo bilateral (y y rotación)
-          drawNode(wpx[k], wpy[k] * sgn, baseRot * sgn, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode, pts[k]);
+          const rot = baseRot * sgn + (lateral ? turnLean * sgn : 0); // remado: aletas laterales se inclinan hacia el giro
+          drawNode(wpx[k], wpy[k] * sgn, rot, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode, pts[k]);
         }
       }
     }

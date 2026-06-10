@@ -55,6 +55,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `energy.k_lure` | 0.13 | coste de mantener el **señuelo** bioluminiscente (∝ prominencia) |
 | `energy.k_graze` | 0.50 | pasto **extra ∝ masa** (ata la complejidad al nicho herbívoro) |
 | `energy.k_grazeWide` | 0.5 | (Capa 2) pasto **extra ∝ anchura** (baja elongación): cuerpos anchos/aplanados barren más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico |
+| `energy.k_flap` | 0.7 | (Capa 3) coste de **nado extra por aletear** (∝ `flapWork`): el golpe activo gasta → aletear es ráfaga **cara**. Hace honesto el eje ondular (crucero) ↔ aletear (ráfaga) |
 | `energy.k_effort` | 1.59 | coste extra de moverse ∝ esfuerzo (gen `speed`) |
 | `energy.moveCost` | 0.015 | coef. del coste de nado **∝ velocidad²** (frena la carrera de velocidad) |
 | `energy.E_max_base` | 71 | `E_max = E_max_base·mass` (mass = sizeMass·massMul). Criar cuesta `E_max_base·sizeMass` (sin nodos → la complejidad no frena la cría, #4) |

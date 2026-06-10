@@ -57,6 +57,7 @@ export class Sim {
     this.heading = new Float32Array(cap);  // rumbo PERSISTENTE (rad) para el render: se conserva cuando v≈0
                                            //   (recién nacido/sembrado/tope) → evita el "salto al este" de atan2(0,0)
     this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
+    this.flapCost = new Float32Array(cap); // Capa 3: coste de NADO extra por aletear (golpe activo); ver organism.js
     this.senseR = new Float32Array(cap);   // alcance visual efectivo (emerge de sense · e_fov)
     this.visCos = new Float32Array(cap);   // cos(semiángulo del cono de visión) → visión direccional
     this.gazeX = new Float32Array(cap);    // dirección de la mirada (a la presa/amenaza, si no al frente)
@@ -551,7 +552,7 @@ export class Sim {
       // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
       // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
       // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]);
+      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]); // aletear (Capa 3) encarece el nado
 
       // Alimentación herbívora: absorber del campo de recurso de la celda actual.
       const eMaxI = this.eMax[i], effH = this.effHerb[i];

@@ -113,6 +113,12 @@ export function computePhenotype(sim, i) {
   sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *
     (1 + en.k_graze * (massMul - 1)) * (1 + en.k_grazeWide * breadth);
 
+  // COSTE del ALETEO (Capa 3): el golpe activo gasta energía → aletear MULTIPLICA el coste de NADO (sim.js).
+  // Ligado a la propulsión de aleteo (`plan.flapWork`, lateral) → coste↔beneficio: aletear da ráfaga pero CUESTA.
+  // Hace honesto el eje ONDULAR (crucero barato) ↔ ALETEAR (ráfaga cara): solo lo paga quien aletea, y solo
+  // compensa a quien necesita la ráfaga (cazador que lancea); el pastador tranquilo preferirá ondular. Emergente.
+  sim.flapCost[i] = en.k_flap * plan.flapWork;
+
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);
   sim.effHerb[i] = (1 - diet) * omni;

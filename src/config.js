@@ -56,6 +56,8 @@ export const config = {
     k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
     k_grazeWide: 0.5,   // (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
                         //          más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico
+    k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
+                        //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
     E_max_base: 71,     // Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
