@@ -73,6 +73,7 @@ export class Renderer {
     this.tuftScale = new Float32Array(n);  // variedad de tamaño
     this.tuftSprite = new Uint8Array(n);   // qué sprite de matojo usa (fijo)
     this.tuftFlower = new Int8Array(n);    // índice de flor, o -1 si esta mata no florece
+    this.tuftSeed = new Float32Array(n);   // umbral aleatorio por mota → plancton con densidad POR CANTIDAD
     const fFrac = this.cfg.render.flowerFrac;
     for (let i = 0; i < n; i++) {
       this.tuftX[i] = rng.next() * W.width;
@@ -80,7 +81,24 @@ export class Renderer {
       this.tuftScale[i] = 0.75 + rng.next() * 0.85;
       this.tuftSprite[i] = (rng.next() * ns) | 0;
       this.tuftFlower[i] = rng.next() < fFrac ? (rng.next() * nf) | 0 : -1;
+      this.tuftSeed[i] = rng.next();
     }
+    // CHISPAS de plancton (abisal): puntito con halo radial suave, en teal/cian/verde-teal desaturado.
+    // Pre-renderizadas → drawImage barato por mota. La vegetación = textura TENUE, distinta del glow de los bichos.
+    this.sparkSprites = [this._makeSparkSprite(150), this._makeSparkSprite(165), this._makeSparkSprite(180),
+                         this._makeSparkSprite(196), this._makeSparkSprite(212)]; // verde-algas → cian → azul-cian (variedad)
+  }
+
+  // Sprite de chispa: núcleo suave + halo radial que se desvanece (glow), de un tono dado (teal/cian/verde).
+  _makeSparkSprite(hue) {
+    const S = 24, c = document.createElement('canvas'); c.width = S; c.height = S;
+    const x = c.getContext('2d'), r = S / 2;
+    const g = x.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0,    `hsla(${hue},70%,78%,0.95)`);  // núcleo claro pero NO blanco (tono presente)
+    g.addColorStop(0.3,  `hsla(${hue},75%,58%,0.45)`);  // halo
+    g.addColorStop(1,    `hsla(${hue},75%,48%,0)`);      // se desvanece a transparente
+    x.fillStyle = g; x.beginPath(); x.arc(r, r, r, 0, 6.2832); x.fill();
+    return c;
   }
 
   // Genera un sprite de matojo frondoso: muchas briznas curvas y extendidas, cada una con
@@ -196,17 +214,21 @@ export class Renderer {
         const tv = tT + (tB - tT) * fyc;
         const rT = res[i00] + (res[i10] - res[i00]) * fxc, rB = res[i01] + (res[i11] - res[i01]) * fxc;
         let food = (rT + (rB - rT) * fyc) / Rmax; food = food > 1 ? 1 : food < 0 ? 0 : food;
-        // (E) PALETA ABISAL AZUL: frío = azul profundo → cálido = azul-violeta (sin verdes; canal verde contenido).
+        // (E) PALETA ABISAL: fondo CASI NEGRO donde no hay vegetación (azul profundo) → así la vegetación se lee
+        // por CONTRASTE contra la oscuridad, no por brillo. Frío = azul casi negro; cálido = azul-violeta apagado.
         let rr, gg, bb;
-        if (tv < 0.5) { const u = tv / 0.5; rr = 2 + u * 3; gg = 5 + u * 6; bb = 29 - u * 3; }   // azul aún más profundo
-        else { const u = (tv - 0.5) / 0.5; rr = 5 + u * 13; gg = 11 + u * -5; bb = 31 + u * 6; }
+        if (tv < 0.5) { const u = tv / 0.5; rr = 1 + u * 1.5; gg = 2 + u * 4; bb = 12 + u * 4; }
+        else { const u = (tv - 0.5) / 0.5; rr = 2.5 + u * 7; gg = 6 + u * -1; bb = 16 + u * 4; }
         const u = wx / W, v = wy / H;
         const n = 0.62 * pnoise(u, v, 26, 17, 0) + 0.38 * pnoise(u, v, 70, 47, 7); // (A) moteado 2 octavas PERIÓDICO (sin costura)
         const mott = 0.7 + n * 0.72;
         const o = (j * NW + i) * 4;
-        d[o]     = rr * mott + food * 7;   // (C) comida = fosforescencia AZUL-CIAN (poco rojo)
-        d[o + 1] = gg * mott + food * 31;  // verde contenido
-        d[o + 2] = bb * mott + food * 72;  // azul dominante
+        // (C) VEGETACIÓN = fosforescencia TENUE teal/algas (verde-azul desaturado), DISTINTA del cian brillante de
+        // los bichos. Dim a propósito (techo de brillo bajo): la legibilidad la da el contraste con el fondo negro.
+        const fg = Math.pow(food, 0.72);  // realza algo los mids → la vegetación moderada también se nota
+        d[o]     = rr * mott + fg * 6;     // muy poco rojo
+        d[o + 1] = gg * mott + fg * 40;    // verde (teal/algas)
+        d[o + 2] = bb * mott + fg * 52;    // azul moderado → teal apagado, no cian neón
         d[o + 3] = 255;
       }
       this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
@@ -225,13 +247,17 @@ export class Renderer {
           const x = this.tuftX[i], y = this.tuftY[i];
           if (x < wxMin || x > wxMax || y < wyMin || y > wyMax) continue;
           let cx = (x / cellW) | 0, cy = (y / cellH) | 0; if (cx >= cols) cx = cols - 1; if (cy >= rows) cy = rows - 1;
-          const food = res[cy * cols + cx] / Rmax; if (food < 0.28) continue;
-          const a = (food - 0.28) * 0.45 * this.tuftScale[i];
-          ctx.fillStyle = `hsla(${196 + (this.tuftSprite[i] % 6) * 7},92%,70%,${a})`;
-          ctx.beginPath(); ctx.arc(x, y, (0.5 + food * 1.5) * this.tuftScale[i], 0, 6.2832); ctx.fill();
+          const food = res[cy * cols + cx] / Rmax;
+          if (food < 0.03 + this.tuftSeed[i] * 0.8) continue;   // densidad por CANTIDAD + CONTRASTE: lush = casi todas, claro = casi ninguna
+          const a = Math.min(0.6, 0.15 + food * 0.5) * this.tuftScale[i];  // brillo CAPADO (nunca más que un bicho)
+          const spk = this.sparkSprites[this.tuftSprite[i] % this.sparkSprites.length];
+          const sz = (2.0 + food * 2.2) * this.tuftScale[i];    // chispas PEQUEÑAS (crecen poco con la comida)
+          ctx.globalAlpha = a;
+          ctx.drawImage(spk, x - sz / 2, y - sz / 2, sz, sz);   // 'lighter' → en zonas densas se acumulan = floración
         }
       }
       ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;                                 // restaurar (las chispas usaron globalAlpha)
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       return;
     }
