@@ -161,7 +161,7 @@ function snapshot() {
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
-    heading[k] = Math.atan2(s.vy[i], s.vx[i]);
+    heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
     const v = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 1);
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
@@ -200,7 +200,7 @@ function snapshot() {
       speciesIdx: sIds.indexOf(speciesOf[i]), speciesTotal: sIds.length,
       speciesMembers: (speciesReps.find(r => r.id === speciesOf[i]) || { count: 0 }).count, // nº de individuos de esta especie
 
-      heading: Math.atan2(s.vy[i], s.vx[i]), spd: vsp > 1 ? 1 : vsp,   // para que el retrato oriente/ondule IGUAL que en el mundo
+      heading: s.heading[i], spd: vsp > 1 ? 1 : vsp,   // rumbo persistente → el retrato orienta/ondula IGUAL que en el mundo
     };
   }
   postMessage({

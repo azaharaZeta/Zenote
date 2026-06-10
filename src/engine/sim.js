@@ -54,6 +54,8 @@ export class Sim {
     this.radius = new Float32Array(cap);
     this.vmax = new Float32Array(cap);     // velocidad-capacidad (emerge de la morfología · esfuerzo)
     this.turnRate = new Float32Array(cap); // agilidad de giro (emerge de asimetría/tamaño/elongación)
+    this.heading = new Float32Array(cap);  // rumbo PERSISTENTE (rad) para el render: se conserva cuando v≈0
+                                           //   (recién nacido/sembrado/tope) → evita el "salto al este" de atan2(0,0)
     this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
     this.senseR = new Float32Array(cap);   // alcance visual efectivo (emerge de sense · e_fov)
     this.visCos = new Float32Array(cap);   // cos(semiángulo del cono de visión) → visión direccional
@@ -153,6 +155,7 @@ export class Sim {
       this.x[i] = rng.next() * W.width;
       this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
+      this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
       this.E[i] = 0.5 * this.eMax[i];
       this.age[i] = 0;
       this.cooldown[i] = (rng.next() * cfg.repro.cooldown) | 0; // desincronizar reproducción
@@ -249,6 +252,7 @@ export class Sim {
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
+      this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
       this.E[i] = 0.5 * this.eMax[i];
       this.age[i] = 0;
       this.cooldown[i] = (rng.next() * cfg.repro.cooldown) | 0; // desincronizar reproducción
@@ -485,6 +489,9 @@ export class Sim {
         vx[i] = nvx / m * target; vy[i] = nvy / m * target;
       }
       const dist = Math.hypot(vx[i], vy[i]);
+      // Rumbo PERSISTENTE para el render: solo se reorienta si hay avance real; si v≈0 conserva el último
+      // (evita el parpadeo "al este" de atan2(0,0) en parados/recién nacidos/topes no-toroidales).
+      if (dist > 1e-3) this.heading[i] = Math.atan2(vy[i], vx[i]);
       // Guardar la mirada (render): al objetivo si lo hay, si no en la dirección de avance.
       if (!gazeSet) { gzx = vx[i]; gzy = vy[i]; }
       const gm = Math.hypot(gzx, gzy) || 1;
@@ -569,6 +576,7 @@ export class Sim {
           }
           this.x[child] = ox; this.y[child] = oy;
           this.vx[child] = 0; this.vy[child] = 0;
+          this.heading[child] = this.heading[i]; // hereda el rumbo del progenitor (sin él, miraría al este al nacer)
           this.E[child] = childE;
           this.age[child] = 0;
           this.cooldown[child] = baseCD;
