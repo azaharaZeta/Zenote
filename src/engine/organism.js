@@ -103,9 +103,15 @@ export function computePhenotype(sim, i) {
     en.c_base * Math.pow(mass, en.kleiber) * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
     (1 + en.k_sense * sense + en.k_lure * lure);
 
-  // Alimentación: ritmo escala con metabolismo y con la MASA corporal (segmentos/módulos = más superficie para pastar).
+  // Alimentación: ritmo escala con metabolismo, con la MASA corporal (más superficie para pastar) y con la
+  // ANCHURA del cuerpo (Capa 2): un cuerpo ANCHO/aplanado (baja elongación) BARRE más campo de recurso que uno
+  // fino/aerodinámico → premia la morfología de pastador (aletas/hojas anchas). FRONTERA: defino que "ancho =
+  // más pasto"; la selección decide. Es el reverso del nicho cazador (afila+alarga para nadar/alcanzar): la MISMA
+  // elongación empuja a herbívoros (anchos) y carnívoros (aerodinámicos) a formas OPUESTAS → divergencia por dieta.
+  // Solo rinde al que de verdad pasta (effHerb); el carnívoro ancho gana ~nada (come carne) → no se ensancha por esto.
+  const breadth = 1 - Math.min(1, (plan.elongN - 1) / (lo.elongMax - 1)); // 1 = ancho/redondo · 0 = aerodinámico
   sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *
-    (1 + en.k_graze * (massMul - 1));
+    (1 + en.k_graze * (massMul - 1)) * (1 + en.k_grazeWide * breadth);
 
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);

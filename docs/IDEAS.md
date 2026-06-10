@@ -35,10 +35,15 @@ ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda a�
     rentabiliza al depredador → morfología de agarre (garras/tentáculos al frente) EMERGE en carnívoros. Test 5/5.
     Founders sembrados con cola trasera → `morphReach=0`; el alcance debe evolucionar. *A vigilar en ecología:* que
     no haga la caza demasiado fácil (bajar `morphReach` si los carnívoros dominan); afinar.
-  - **PENDIENTE — superficie de PASTOREO:** hoy el pastoreo ya escala con `massMul` (`k_graze`); se podría premiar
-    además la superficie de nodos laterales anchos (aletas/hojas = filtrar) → cuerpo herbívoro de paletas.
-  - **PENDIENTE — MANIOBRA premiada:** que el giro (ya emergente de la asimetría) dé ventaja real al cazar presa
-    ágil / evadir → presión hacia cuerpos maniobrables.
+  - **HECHO (2026-06-10) — superficie de PASTOREO:** el pasto escala además con la ANCHURA del cuerpo (baja
+    elongación): `absEff ·(1 + k_grazeWide·anchura)`, `anchura = 1 − (elongN−1)/(elongMax−1)` (`organism.js`;
+    `energy.k_grazeWide`). Cuerpo ancho/aplanado pasta más; afilar/alargar sirve para nadar+alcanzar → la MISMA
+    elongación tira de herbívoros (anchos) y carnívoros (aerodinámicos) a formas opuestas. Solo rinde a `effHerb`.
+    Test 3/3 (ancho 0.49 vs largo 0.29). *A vigilar:* que no dispare la población herbívora (bajar `k_grazeWide`).
+  - **MANIOBRA — probablemente ya emergente, sin lever nuevo.** El giro (`turnRate`, emergente de asimetría/talla)
+    YA da ventaja vía la dinámica de persecución/evasión: quien gira mejor cierra distancia con la presa o escapa
+    del depredador (el cerebro controla el rumbo; `turnRate` limita cuán rápido). No hace falta un bonus de combate
+    explícito (sería heavy-handed / menos emergente). → **Capa 2 se da por completa** con alcance + pastoreo + maniobra implícita.
 - **CAPA 3 — MODOS de movimiento (`gaitMode`). El escalón grande.** Mezclar *ondular* (flexión axial, actual) ↔
   *aletear* (barrido del ángulo `emit` = batir) — un nodo lateral abierto que ADEMÁS bate = un ala de verdad.
   Cada modo nuevo = su curva de empuje/arrastre/coste en la física + su animación en el render → es lo más caro;

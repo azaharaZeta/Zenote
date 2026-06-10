@@ -224,8 +224,12 @@ Por tick, cada organismo:
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
 - **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort)`, **cuadrático en la
   velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
-- **Alimentación** (ritmo `absEff = absRate · (0.5 + metab) · (1 + k_graze·(massMul−1))`; más masa =
-  más superficie de pasto → ata la complejidad al nicho herbívoro):
+- **Alimentación** (ritmo `absEff = absRate · (0.5 + metab) · (1 + k_graze·(massMul−1)) · (1 + k_grazeWide·anchura)`;
+  más masa = más superficie de pasto. **`anchura`** (Capa 2) = `1 − (elongN−1)/(elongMax−1)` ∈ [0,1]: un cuerpo
+  **ancho/aplanado** (baja elongación) **barre más recurso** que uno fino/aerodinámico → premia la morfología de
+  **pastador** (aletas/hojas anchas). Es el reverso del cazador (que afila+alarga para nadar y alcanzar, §2bis/§3.1):
+  la MISMA elongación empuja a herbívoros (anchos) y carnívoros (aerodinámicos) a formas OPUESTAS → divergencia por
+  dieta. Solo rinde a quien pasta (`effHerb`) → el carnívoro no se ensancha por esto):
   - **Eficiencia de dieta:** `omni = 1 − omniPenalty · 4·diet·(1−diet)` (0 en los extremos, máx en 0.5);
     `effHerb = (1−diet)·omni`, `effCarn = diet·omni`. El especialista no paga; el omnívoro sí.
   - **Sintonía de color:** `colorMatch = 1 − matchPenalty · 2·distCirc(hue, luz_local)`. Pigmento
