@@ -64,6 +64,7 @@ export class Sim {
     this.eMax = new Float32Array(cap);
     this.baseCost = new Float32Array(cap);
     this.lure = new Float32Array(cap);     // prominencia del señuelo (anglerfish): coste + alcance de caza
+    this.morphReach = new Float32Array(cap); // Capa 2: alcance de captura por apéndices frontales (px); ver organism.js
     this.absEff = new Float32Array(cap);
     this.effHerb = new Float32Array(cap);
     this.effCarn = new Float32Array(cap);
@@ -374,8 +375,8 @@ export class Sim {
         // Precálculo por agente (fuera del bucle de vecinos): la mayoría de vecinos del bloque de celdas caen
         // MÁS LEJOS que la visión Y que el alcance de captura → se descartan con solo la distancia (sin calcular
         // dieta/banda/contacto). `scanMax2` = cota superior (rj ≤ maxRadius) del radio que de verdad importa.
-        const myDiet = this.diet[i], lureExtent = lureReach * this.lure[i] * myR;
-        const reachMax = myR + maxRadius + lureExtent;
+        const myDiet = this.diet[i], reachExt = lureReach * this.lure[i] * myR + this.morphReach[i]; // señuelo + apéndices frontales (Capa 2)
+        const reachMax = myR + maxRadius + reachExt;
         const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
         for (let oy = -scanR; oy <= scanR; oy++) {
           for (let ox = -scanR; ox <= scanR; ox++) {
@@ -396,7 +397,7 @@ export class Sim {
                   const rj = this.radius[j], ratio = rj / myR, dDiff = myDiet - this.diet[j];
                   const canEat = ratio >= preyLo && ratio <= preyHi && dDiff > dietMargin; // inline de inPreyBand(myR,rj)
                   if (canEat) {   // CONTACTO (combate): solo presas válidas dentro del alcance (#7: cobertura se aplica en la resolución)
-                    const reach = myR + rj + lureExtent;            // SEÑUELO: radio de captura extendido
+                    const reach = myR + rj + reachExt;              // alcance de captura: señuelo + apéndices frontales
                     if (d2 < reach * reach && d2 < bestContactD) { bestContactD = d2; bestContact = j; }
                   }
                   if (d2 < sr2) {   // PERCEPCIÓN: dentro de la visión Y del cono (relativo al rumbo)

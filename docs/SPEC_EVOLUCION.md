@@ -252,12 +252,20 @@ mueren y no se reproducen.** El fitness emerge.
 
 ### 3.1 Combate / depredación (física trófica, no conducta)
 El atacante solo puede atacar a un agente que, al **solaparse** (distancia < suma de radios + bonus
-de señuelo `lureReach`), cumpla:
+de señuelo `lureReach` + **alcance morfológico** `morphReach`), cumpla:
 - **(a) talla cazable:** el ratio `presa/depredador` está en la banda `[preyBandLo, preyBandHi]`
   (ni demasiado pequeña para que compense, ni mayor de lo que `preyBandHi` permita arriesgar);
 - **(b) dieta:** la presa está al menos `dietMargin` **más abajo en la dieta** (presa real, no un igual);
 - **(c)** el atacante **no está en tiempo de manejo** y **decide atacar** (con probabilidad = su **impulso de
   ataque** `a`, la 3ª salida del cerebro). Cazar/agredir emerge del cerebro, no de un gen `aggro` (retirado, #10).
+
+**Alcance morfológico (`morphReach`, Capa 2).** El radio de captura se **extiende con los apéndices que apuntan
+AL FRENTE** (`plan.fwdReach` = Σ de su longitud·proyección frontal·presencia; ver `bodyplan.js`/`organism.js`):
+una garra/púa/tentáculo frontal permite golpear desde más lejos. **Compromiso honesto y emergente:** esos
+nodos frontales **frenan el nado** (`gait < 0`) y suman masa/arrastre, así que solo **compensan al depredador**
+(rentabiliza el alcance); el herbívoro que los desarrollara solo pagaría el coste de nado → no los conserva. La
+**morfología de agarre EMERGE en los carnívoros**, no está cableada por dieta. Escala con `combat.morphReach`.
+Afilar (`tipShape < 0.5`, alarga el nodo) da más alcance → liga la Capa 1 (forma) con la caza.
 
 > **Por qué (a) y (b)** (física trófica, no conducta codificada): un depredador no caza a otro de
 > dieta similar (evita canibalismo y la **carrera al gigantismo**); y la banda de talla acopla el

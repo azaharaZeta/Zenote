@@ -156,6 +156,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `combat.preyBandLo` | 0.20 | ratio presa/depredador **mínimo** cazable (más pequeño no compensa) |
 | `combat.preyBandHi` | 2.0 | *(UI)* ratio presa/depredador **máximo** atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada) |
 | `combat.lureReach` | 0.85 | alcance de captura extra que da el señuelo (∝ prominencia) |
+| `combat.morphReach` | 0.4 | (Capa 2) alcance de captura extra por **apéndices frontales** (∝ `fwdReach`·radio). Premia la morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (`gait<0`). Emergente |
 
 ## Motor / tiempo
 | Parámetro | Valor | Notas |

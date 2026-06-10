@@ -29,9 +29,16 @@ ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda a�
   `loco.tipThrust/tipDrag/tipReach`. **Render**: silueta paramétrica en `drawNode` (`silPath`, base↔punta) que
   crece con la presencia. Tests `tipShape` 6/6. *Pendiente de afinar en preview* las proporciones de la silueta;
   *no hecho*: anclar por la BASE (se quedó en anclaje centrado + suelo 0.85); revisitar si las puntas se entierran.
-- **CAPA 2 — FUNCIONES ecológicas de los nodos.** Apoyándose en las formas de la capa 1: tentáculos/púas que
-  **extiendan el alcance de captura**; superficie corporal → mejor **pastoreo**; maniobra (giro) premiada para
-  cazar/evadir. → morfospacio multi-pico (más especies por cuerpo).
+- **CAPA 2 — FUNCIONES ecológicas de los nodos.** Apoyándose en las formas de la capa 1 → morfospacio multi-pico.
+  - **HECHO (2026-06-10) — alcance de captura morfológico:** los apéndices FRONTALES extienden el radio de caza
+    (`plan.fwdReach` → `sim.morphReach` → combate en `sim.js`; `combat.morphReach`). Cuesta nado (`gait<0`) → solo
+    rentabiliza al depredador → morfología de agarre (garras/tentáculos al frente) EMERGE en carnívoros. Test 5/5.
+    Founders sembrados con cola trasera → `morphReach=0`; el alcance debe evolucionar. *A vigilar en ecología:* que
+    no haga la caza demasiado fácil (bajar `morphReach` si los carnívoros dominan); afinar.
+  - **PENDIENTE — superficie de PASTOREO:** hoy el pastoreo ya escala con `massMul` (`k_graze`); se podría premiar
+    además la superficie de nodos laterales anchos (aletas/hojas = filtrar) → cuerpo herbívoro de paletas.
+  - **PENDIENTE — MANIOBRA premiada:** que el giro (ya emergente de la asimetría) dé ventaja real al cazar presa
+    ágil / evadir → presión hacia cuerpos maniobrables.
 - **CAPA 3 — MODOS de movimiento (`gaitMode`). El escalón grande.** Mezclar *ondular* (flexión axial, actual) ↔
   *aletear* (barrido del ángulo `emit` = batir) — un nodo lateral abierto que ADEMÁS bate = un ala de verdad.
   Cada modo nuevo = su curva de empuje/arrastre/coste en la física + su animación en el render → es lo más caro;

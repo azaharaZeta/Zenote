@@ -82,6 +82,13 @@ export function computePhenotype(sim, i) {
   const lure = g[b + G.orn] > 0.12 ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
   sim.lure[i] = lure;
 
+  // ALCANCE DE CAPTURA MORFOLÓGICO (Capa 2): los apéndices que apuntan AL FRENTE (plan.fwdReach, en radios de
+  // cabeza) extienden el radio de caza (ver sim.js). FRONTERA: el programador define que "alcanzar al frente
+  // ayuda a capturar" y que esos nodos FRENAN el nado (gait<0, bodyplan); QUÉ cuerpo gana lo decide la selección.
+  // Solo el depredador rentabiliza el alcance → la morfología de agarre (garras/tentáculos frontales) emerge en
+  // los carnívoros y no en los herbívoros (que solo pagarían el coste de nado). No está cableado por dieta.
+  sim.morphReach[i] = cfg.combat.morphReach * plan.fwdReach * radius;
+
   // HISTORIA DE VIDA (#12): madurez (gatea cría + inicio de senescencia) y ritmo de vida (senescencia).
   // `lifeFast` ∈[0,1]: 1 = vivir rápido (envejece deprisa, barato de mantener); 0 = longevo (envejece despacio,
   // CARO de mantener — disposable soma). El acople longevidad↔coste es lo que hace honesto el eje r/K.

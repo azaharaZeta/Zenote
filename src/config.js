@@ -175,6 +175,8 @@ export const config = {
     preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
     preyBandHi: 2.0,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
+    morphReach: 0.4,     // (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
+                         //          morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (gait<0)
   },
 
 
