@@ -1,7 +1,7 @@
 // Render con Canvas 2D. El mundo es lógico y fijo; aquí solo se MUESTRA, con una cámara
 // (zoom + paneo toroidal en mosaico). Nada de esto toca la simulación.
 
-import { NUM_GENES, G } from '../engine/genome.js';
+import { NUM_GENES, G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
 import { makeRng } from '../util/rng.js';
 
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
@@ -579,8 +579,14 @@ export class Renderer {
       }
       // LOD: cuerpo detallado solo si es grande en pantalla (zoom/agente grande); si no, punto.
       if (detailed) {
-        this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
+        if (this.cfg.render.bodyGraph && sim.nodes) {
+          // B2b (EN PRUEBAS): dibuja el cuerpo desde el GRAFO DE NODOS (forma nueva). Incompleto:
+          // lóbulos + tentáculos coloreados, sin ojos/textura/señuelo todavía. Bandera off por defecto.
+          this._drawBodyGraph(ctx, x, y, r, h, s, l, sim.nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t);
+        } else {
+          this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
                        eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 8); // ojos/segmentos solo si grandes en pantalla
+        }
       } else {
         ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;
         ctx.beginPath();
@@ -588,6 +594,51 @@ export class Renderer {
         ctx.fill();
       }
     }
+  }
+
+  // B2b (EN CONSTRUCCIÓN): dibuja el cuerpo desde el GRAFO DE NODOS (una sola primitiva). Reconstruye las
+  // posiciones recorriendo padres (la física no las necesita; el render sí) y dibuja cada nodo como una
+  // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
+  // PRIMER INCREMENTO: sin ojos/textura/señuelo/contorno fino aún (llegan en incrementos siguientes). El
+  // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
+  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t) {
+    const NS = NODE_COUNT, ST = NODE_STRIDE;
+    const px = this._ngx || (this._ngx = new Float32Array(NS));   // buffers reutilizables (sin GC por frame)
+    const py = this._ngy || (this._ngy = new Float32Array(NS));
+    const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
+    const pl = this._ngl || (this._ngl = new Float32Array(NS));   // longitud (eje)
+    const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión (local)
+    const pres = this._ngp || (this._ngp = new Uint8Array(NS));
+    // RAÍZ (cabeza): en el origen, mirando al frente (+x); el rumbo ya lo aplica el ctx.rotate de abajo.
+    pres[0] = 1; pr[0] = r * (0.55 + nodes[no + 2] * 0.5); pl[0] = pr[0] * (1 + nodes[no + 3] * 0.8);
+    px[0] = 0; py[0] = 0; pa[0] = 0;
+    for (let k = 1; k < NS; k++) {
+      const nb = no + k * ST;
+      if (nodes[nb] < 0.5) { pres[k] = 0; continue; }
+      let p = (nodes[nb + 1] * k) | 0; if (p > k - 1) p = k - 1; if (!pres[p]) p = 0; // padre < k; reanclar huérfano
+      pres[k] = 1;
+      const sz = 0.15 + nodes[nb + 2] * 0.85, asp = nodes[nb + 3];
+      const cr = r * sz * (1 - 0.6 * asp);                        // sección transversal (fino → pequeña)
+      const ln = r * sz * (1 + 1.8 * asp);                        // longitud (fino → larga = tentáculo)
+      const emit = nodes[nb + 4] * Math.PI;                       // 0 (frente) .. π (atrás) desde el eje del cuerpo
+      const dist = (pr[p] + cr) * (0.4 + nodes[nb + 5] * 0.7);    // anclaje al padre (attach)
+      px[k] = px[p] + Math.cos(emit) * dist; py[k] = py[p] + Math.sin(emit) * dist;
+      pr[k] = cr; pl[k] = ln; pa[k] = emit;
+    }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
+    const fill = `hsl(${h},${s}%,${l}%)`, edge = `hsl(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 20)}%)`;
+    ctx.lineWidth = Math.max(0.6, r * 0.06); ctx.strokeStyle = edge; ctx.fillStyle = fill;
+    for (let k = NS - 1; k >= 0; k--) {                           // de atrás (hojas) hacia delante (raíz encima)
+      if (!pres[k]) continue;
+      const lateral = k > 0 && Math.abs(Math.sin(pa[k])) > 0.25;  // lejos del eje → par bilateral espejado
+      for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {
+        const wob = k > 0 ? Math.sin(t * (1 + spd * 2) + k) * 0.12 : 0; // leve ondulación
+        ctx.save(); ctx.translate(px[k], py[k] * sgn); ctx.rotate(pa[k] * sgn + wob);
+        ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), 0, 0, 6.2832);
+        ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
   // Dibuja el cuerpo de un organismo: núcleo (elipse orientada al rumbo) + apéndices que

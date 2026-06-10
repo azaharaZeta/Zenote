@@ -165,6 +165,8 @@ export const config = {
 
   // ───── Render (solo visual; no afecta a la simulación) ─────
   render: {
+    bodyGraph: false,         // (UI) B2b EN CURSO: dibujar el cuerpo desde el GRAFO DE NODOS (forma nueva).
+                              //      false = render clásico (genes viejos). true = render por nodos (incompleto, en pruebas).
     trails: false,            // (UI) Estelas
     glow: true,               // (UI) Resplandor (bloom)
     showResourceField: true,  // (UI) Dibujar la vegetación/comida
