@@ -23,12 +23,12 @@ Diagnóstico: hoy cada nodo es **una elipse** (`aspect` solo cambia la elongaci�
 oscilación** por nodo (el render ya ondula vía onda viajera, pero la física no distingue ondular de aletear). Para
 ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda añadir variedad **por capas**:
 
-- **CAPA 1 — FORMA del nodo (`tipShape`). PRÓXIMO.** Un gen nuevo por nodo: afila hacia la punta (`<0.5`: púa,
-  garra, tentáculo) ↔ elipse (`≈0.5`, actual) ↔ se abre (`>0.5`: aleta, paleta, ala). **Física honesta**: punta
-  abierta = más empuje al oscilar pero más arrastre (paleta); punta afilada = menos arrastre + más alcance
-  (perforación). Render: silueta paramétrica en `drawNode` (base→punta); anclar por la BASE del nodo. Ya añade
-  función ecológica por sí solo (compromiso empuje/arrastre/alcance) → empieza a crear nichos. Esfuerzo MEDIO,
-  payoff ALTO. *Atajo de tanteo:* reutilizar `aspect` (alto = fino y afilado) sin gen nuevo.
+- **CAPA 1 — FORMA del nodo (`tipShape`). HECHO (2026-06-10).** Gen nuevo por nodo (genoma 169→177): afila a la
+  punta (`<0.5`: púa/garra/tentáculo) ↔ elipse (`≈0.5`) ↔ se abre (`>0.5`: aleta/paleta/ala). **Física honesta y
+  neutra en 0.5** (`bodyplan.js`): abrir → +empuje +arrastre; afilar → −empuje, −arrastre, +alcance. Coefs
+  `loco.tipThrust/tipDrag/tipReach`. **Render**: silueta paramétrica en `drawNode` (`silPath`, base↔punta) que
+  crece con la presencia. Tests `tipShape` 6/6. *Pendiente de afinar en preview* las proporciones de la silueta;
+  *no hecho*: anclar por la BASE (se quedó en anclaje centrado + suelo 0.85); revisitar si las puntas se entierran.
 - **CAPA 2 — FUNCIONES ecológicas de los nodos.** Apoyándose en las formas de la capa 1: tentáculos/púas que
   **extiendan el alcance de captura**; superficie corporal → mejor **pastoreo**; maniobra (giro) premiada para
   cazar/evadir. → morfospacio multi-pico (más especies por cuerpo).

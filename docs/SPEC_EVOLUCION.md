@@ -59,7 +59,7 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **169 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — **177 genes** float en `[0,1]` (SoA: `Float32Array`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
@@ -67,7 +67,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 |--------|----|-------|
 | **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
 | **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
-| **Cuerpo por NODOS** | 64 | 8 nodos × 8 campos (ver §2bis) |
+| **Cuerpo por NODOS** | 72 | 8 nodos × 9 campos (ver §2bis) |
 | **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
 
 **Genes de ecología/fisiología:**
@@ -125,9 +125,9 @@ La frontera vive en `bodyplan.js` (geometría → escalares) y `organism.js` (es
 cacheada al nacer. Todo en unidades del radio de cabeza (`r` se cancela: empuje y arrastre escalan
 igual con el tamaño → **encoger no regala velocidad**; clave para la coexistencia presa-depredador).
 
-### El grafo de nodos (64 genes = 8 nodos × 8 campos)
+### El grafo de nodos (72 genes = 8 nodos × 9 campos)
 Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
-`present`, `parent`, `size`, `aspect`, `angle`, `attach`, `osc_amp`, `osc_phase`.
+`present`, `parent`, `size`, `aspect`, `angle`, `attach`, `osc_amp`, `osc_phase`, `tipShape`.
 
 - **Nodo 0 = raíz (cabeza)**, siempre presente. Su `aspect` define el ancho del cuerpo
   (redondo → ancho con masa+arrastre; fino → estilizado). Propulsa **DÉBIL** (`loco.headThrust`, bajo): la cabeza
@@ -147,6 +147,10 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
     uno **medial** va solo. La **simetría bilateral EMERGE** del ángulo, no se impone.
   - `parent`/`attach` definen la topología (de quién cuelga y dónde). `osc_amp` = cuánto ondula este
     nodo. `osc_phase` = fase de su oscilación (**funcional**: coordinación de marcha, ver más abajo).
+  - `tipShape` (Capa 1) = **silueta** base↔punta. `<0.5` **afila** (púa/garra/tentáculo), `≈0.5` elipse,
+    `>0.5` **abre** (aleta/paleta/ala). Compromiso físico honesto, **NEUTRO en 0.5**: abrir → +empuje y
+    +arrastre (paleta que empuja más agua); afilar → −empuje, −arrastre (streamlining) y **+alcance** (alarga
+    el nodo). Coeficientes `loco.tipThrust/tipDrag/tipReach`. El render dibuja la silueta real (no es solo cosmético).
 
 ### Física emergente (`bodyplan.js`)
 - **Empuje DIRECCIONAL por nodo:** `gait = −cos(emit) + paddleEff·sin²(emit)`.

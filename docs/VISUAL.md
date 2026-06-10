@@ -45,9 +45,11 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
 ## Render
 - **Cuerpo dibujado desde el grafo de nodos** (modelo v2.0): el render NO usa categorías
   de pieza; recorre los nodos del genoma (`render/canvas.js`, `_drawBodyGraph`) y dibuja cada
-  uno como lóbulo o tentáculo según su `aspect`, con su orientación (`angle`), su par bilateral
-  emergente, ojos, señuelo bioluminiscente y una onda viajera de undulación acumulada padre→hijo.
-  Es la **misma geometría que usa la física** (`bodyplan.js`) → lo que ves coincide con cómo nada.
+  uno con una **silueta paramétrica** (curva cerrada base↔punta según `tipShape`: afila a púa/garra/
+  tentáculo, elipse, o se abre en aleta/paleta), su elongación (`aspect`), su orientación (`angle`), su par
+  bilateral emergente, ojos, señuelo bioluminiscente y una onda viajera de undulación acumulada padre→hijo.
+  Los nodos **crecen** al aparecer (presencia graduada). Es la **misma geometría que usa la física**
+  (`bodyplan.js`) → lo que ves coincide con cómo nada.
   Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color por partes, glow,
   saturación y textura de piel salen de los genes decorativos (`c_*`, `o_*`, `tex2`).
 - Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo

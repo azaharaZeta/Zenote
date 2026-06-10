@@ -89,6 +89,9 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `loco.limbDrag` | 0.20 | arrastre por área de tentáculo (> limbThrust → propulsor ineficiente) |
 | `loco.bodyDrag` | 0.30 | arrastre por área de nodo ancho (cabeza/lóbulo) |
 | `loco.bodyMass` | 0.30 | masa metabólica por área de nodo ancho (el ancho sí es volumen real) |
+| `loco.tipThrust` | 0.4 | FORMA del nodo (gen `tipShape`, NEUTRO en 0.5): abrir la punta (aleta) → +empuje; afilar (púa) → −empuje |
+| `loco.tipDrag` | 0.5 | abrir → +arrastre; afilar → −arrastre (streamlining) |
+| `loco.tipReach` | 0.35 | afilar → +longitud (alcance: tentáculo/púa); abrir → más corto |
 
 ## Visión emergente — `sense` fija la inversión, `e_fov` reparte alcance↔ángulo (SPEC §2ter)
 | Parámetro | Valor | Notas |

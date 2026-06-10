@@ -464,12 +464,13 @@ export class Renderer {
     const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
     const pl = this._ngl || (this._ngl = new Float32Array(NS));   // longitud (eje)
     const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión en reposo
+    const pts = this._ngts || (this._ngts = new Float32Array(NS)); // tipShape por nodo (silueta base↔punta)
     const pres = this._ngp || (this._ngp = new Uint8Array(NS));
     const par = this._ngpar || (this._ngpar = new Int8Array(NS));  // índice del padre (−1 = raíz)
     const dep = this._ngdep || (this._ngdep = new Uint8Array(NS)); // profundidad en el grafo (fase de la onda)
     // RAÍZ (cabeza): en el origen, mirando al frente (+x); el rumbo ya lo aplica el ctx.rotate de abajo.
     pres[0] = 1; pr[0] = r * (0.55 + nodes[no + 2] * 0.5); pl[0] = pr[0] * (1 + nodes[no + 3] * 0.8);
-    px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0;
+    px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0; pts[0] = 0.5; // cabeza: silueta neutra (elipse)
     for (let k = 1; k < NS; k++) {
       const nb = no + k * ST;
       const w = presWeight(nodes[nb]);                            // presencia GRADUADA (misma banda que la física)
@@ -482,7 +483,7 @@ export class Renderer {
       const emit = nodes[nb + 4] * Math.PI;                       // 0 (frente) .. π (atrás) desde el eje del cuerpo
       const dist = (pr[p] + cr) * (0.85 + nodes[nb + 5] * 0.5);   // anclaje al padre: suelo alto (0.85) → el hijo no queda ENTERRADO bajo el padre
       px[k] = px[p] + Math.cos(emit) * dist; py[k] = py[p] + Math.sin(emit) * dist;
-      pr[k] = cr; pl[k] = ln; pa[k] = emit;
+      pr[k] = cr; pl[k] = ln; pa[k] = emit; pts[k] = nodes[nb + 8]; // tipShape (silueta)
     }
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
     // VOLUMEN (B2b incremento 4): colores de relieve del render clásico + luz desde arriba-izq del MUNDO,
@@ -496,22 +497,39 @@ export class Renderer {
     const tex2 = deco ? deco[dco + 6] : 0.5;
     const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
     const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
-    const drawNode = (cx, cy, rot, rxx, ryy, mode) => {
-      if (mode === 0) {                                          // PASADA contorno: silueta oscura agrandada
+    // Silueta del nodo (Capa 1): forma base↔punta según tipShape. Curva cerrada simétrica al eje; wB = medio-ancho
+    // cerca de la BASE (hacia el padre), wT = cerca de la PUNTA (hacia fuera). Afilar (<0.5) engorda base y afila
+    // punta (púa/garra/tentáculo); abrir (>0.5) afila base y abre punta (aleta/paleta); 0.5 ≈ lente ≈ elipse previa.
+    // Los puntos se transforman aquí a coords del cuerpo (rot+centro) → el gradiente/luz quedan coherentes (no rotamos el canvas).
+    const silPath = (cx, cy, rot, L, wB, wT) => {
+      const cR = Math.cos(rot), sR = Math.sin(rot);
+      const X = (lx, ly) => cx + lx * cR - ly * sR, Y = (lx, ly) => cy + lx * sR + ly * cR;
+      ctx.beginPath();
+      ctx.moveTo(X(-L, 0), Y(-L, 0));
+      ctx.bezierCurveTo(X(-L * 0.5, wB), Y(-L * 0.5, wB), X(L * 0.5, wT), Y(L * 0.5, wT), X(L, 0), Y(L, 0));
+      ctx.bezierCurveTo(X(L * 0.5, -wT), Y(L * 0.5, -wT), X(-L * 0.5, -wB), Y(-L * 0.5, -wB), X(-L, 0), Y(-L, 0));
+      ctx.closePath();
+    };
+    const drawNode = (cx, cy, rot, rxx, ryy, mode, tip) => {
+      const sShape = (tip - 0.5) * 2;                          // −1 afila .. +1 abre
+      let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
+      let wT = ryy * (1.30 + sShape * 1.15);                   // medio-ancho punta (abrir engorda)
+      if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
+      if (mode === 0) {                                        // PASADA contorno: misma silueta agrandada
         ctx.fillStyle = coreOut;
-        ctx.beginPath(); ctx.ellipse(cx, cy, rxx + outW, ryy + outW, rot, 0, 6.2832); ctx.fill();
-      } else {                                                   // PASADA cuerpo: degradado de volumen + textura
-        const rad = (rxx > ryy ? rxx : ryy);
+        silPath(cx, cy, rot, rxx + outW, wB + outW, wT + outW); ctx.fill();
+      } else {                                                 // PASADA cuerpo: degradado de volumen + textura
+        const rad = Math.max(rxx, wB, wT);
         const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
         g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rxx, ryy, rot, 0, 6.2832); ctx.fill();
-        if (rxx * ds > 10) {                                     // TEXTURA: bandas transversales sutiles (clip a la elipse)
-          ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, rxx, ryy, rot, 0, 6.2832); ctx.clip();
-          const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot);
+        ctx.fillStyle = g; silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
+        if (rxx * ds > 10) {                                   // TEXTURA: bandas transversales sutiles (clip a la silueta)
+          ctx.save(); silPath(cx, cy, rot, rxx, wB, wT); ctx.clip();
+          const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
           ctx.strokeStyle = inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
           for (let bI = 1; bI < nb2; bI++) {
             const u = bI / nb2 - 0.5, ox = cr2 * u * 2 * rxx, oy = sr2 * u * 2 * rxx;
-            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, ryy * 0.95, ryy * 0.55, rot + 1.5708, 0, 6.2832); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, wMax * 0.95, wMax * 0.55, rot + 1.5708, 0, 6.2832); ctx.stroke();
           }
           ctx.restore();
         }
@@ -544,7 +562,7 @@ export class Renderer {
         const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > EPS_AXIS; // mismo umbral que la física (bodyplan.js)
         const baseRot = pa[k] + acc[k];                           // orientación del nodo = reposo + onda acumulada
         for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {  // sgn=−1 = reflejo bilateral (y y rotación)
-          drawNode(wpx[k], wpy[k] * sgn, baseRot * sgn, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode);
+          drawNode(wpx[k], wpy[k] * sgn, baseRot * sgn, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode, pts[k]);
         }
       }
     }
