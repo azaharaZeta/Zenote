@@ -69,6 +69,8 @@ export class Sim {
     this.effCarn = new Float32Array(cap);
     this.investE = new Float32Array(cap);
     this.reproNeedE = new Float32Array(cap);
+    this.matureAge = new Float32Array(cap); // (#12) edad de madurez: gatea la cría + inicio de la senescencia
+    this.senesMult = new Float32Array(cap); // (#12) multiplicador de senescencia (ritmo de vida: alto = muere joven)
     this.diet = new Float32Array(cap);
     this.atkOut = new Float32Array(cap);   // impulso de ataque (3ª salida del cerebro) ∈[0,1] del último tick
     this.atkDrive = new Float32Array(cap); // impulso de ataque SUAVIZADO (EMA) → "ceño" del render (emergente)
@@ -203,6 +205,8 @@ export class Sim {
       // Conducta: herbívoro tranquilo (la dieta emerge; las ganas de atacar emergen del cerebro)
       this.genes[b + G.diet] = jit(0.08);
       this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
+      // Historia de vida (#12): arranque a rango medio (≈madurez 308 ticks, ritmo medio) → r/K emerge por deriva
+      this.genes[b + G.mature_age] = jit(0.4); this.genes[b + G.senescence] = jit(0.5);
       // La FORMA (cuerpo/apéndices) se siembra abajo vía el bloque de NODOS (B2/B3). Aquí solo color/ojos/ornamento.
       this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
@@ -536,10 +540,12 @@ export class Sim {
         this._kill(i, 'starv'); continue;
       }
       this.age[i]++;
-      const over = this.age[i] - age.mature;
+      // Muerte por vejez (#12): la senescencia arranca en la EDAD DE MADUREZ del gen (`matureAge`) y su pendiente
+      // la escala el gen de ritmo de vida (`senesMult`). Antes de madurar no hay riesgo de vejez.
+      const over = this.age[i] - this.matureAge[i];
       if (over > 0) {
         const t = over / age.scale;
-        if (rng.next() < age.mortality * t * t) {
+        if (rng.next() < age.mortality * this.senesMult[i] * t * t) {
           this._depositCorpse(x[i], y[i], en.corpseReturn * E[i]);
           this._kill(i, 'age');
           continue;
@@ -549,7 +555,9 @@ export class Sim {
       // ---------- REPRODUCCIÓN (asexual) ----------
       if (this.attackCD[i] > 0) this.attackCD[i]--; // enfriamiento de ataque (independiente)
       if (this.cooldown[i] > 0) this.cooldown[i]--; // en cooldown no se reproduce (SPEC §4)
-      else if (E[i] >= this.reproNeedE[i]) {
+      // Gate de MADUREZ (#12): no se cría antes de la edad de madurez (gen `mature_age`). Madurar pronto =
+      // criar antes (ventaja r); tarde = retrasa la cría pero pospone la senescencia (longevo, K).
+      else if (this.age[i] >= this.matureAge[i] && E[i] >= this.reproNeedE[i]) {
         // Repro SEXUAL: buscar pareja compatible cercana (distancia genética < umbral). Si no hay
         // ninguna al alcance → fallback ASEXUAL (clon). El "padre" i pone la energía y queda en cooldown.
         const mate = sexual ? this._findMate(i) : -1;

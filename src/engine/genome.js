@@ -4,6 +4,9 @@
 const BASE_GENES = [
   // Ecología / fisiología (núcleo de nichos). Conducta (moverse Y atacar) = cerebro neuronal, no genes-atajo.
   'size', 'speed', 'sense', 'metab', 'diet', 'repro_thr', 'invest', 'hue', 'temp_pref',
+  // HISTORIA DE VIDA (#12): edad de madurez (gatea cría + inicio de senescencia) y ritmo de vida (senescencia
+  // + coste de longevidad). Juntos crean el eje r/K emergente (vivir rápido y morir joven ↔ lento y longevo).
+  'mature_age', 'senescence',
   // --- IDENTIDAD / DISPLAY (color por partes, ojos, selección sexual, señuelo, piel). Tras el CONTRACT (B3b)
   //     la FORMA del cuerpo vive en el bloque de NODOS (abajo); estos son los ejes de color/exhibición. ---
   // Color por partes (`c_app`/`c_tip` CONTIGUOS: el snapshot los manda como bloque `tint`). NEUTRAL.
@@ -56,6 +59,8 @@ export const GENE_LABELS = {
   invest: 'Inversión en crías',
   hue: 'Color (linaje)',
   temp_pref: 'Pref. térmica',
+  mature_age: 'Edad de madurez',
+  senescence: 'Ritmo de vida (senescencia)',
   c_app: 'Color apéndices',
   c_tip: 'Color puntas',
   e_fov: 'Campo de visión',
@@ -75,6 +80,7 @@ export const GENE_LABELS = {
 // que si no son un listado interminable). No incluye los pesos del cerebro.
 export const GENE_GROUPS = [
   { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest'] },
+  { label: 'Ciclo de vida',        genes: ['mature_age', 'senescence'] },
   { label: 'Dieta',                genes: ['diet'] },
   { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },

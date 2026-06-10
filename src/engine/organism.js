@@ -78,11 +78,18 @@ export function computePhenotype(sim, i) {
   const lure = g[b + G.orn] > 0.12 ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
   sim.lure[i] = lure;
 
-  // Coste basal/tick: metabolismo · (tamaño, visión, MASA corporal extra, SEÑUELO luminoso). Los apéndices son
-  // decorativos → no cuestan. El coste de NADAR se cobra en el movimiento (sim.js). El coste es el MISMO sea cual
-  // sea la dieta: sin descuentos por categoría (las muletas carnUpkeep/k_sizeHerb se retiraron, auditoría #6).
+  // HISTORIA DE VIDA (#12): madurez (gatea cría + inicio de senescencia) y ritmo de vida (senescencia).
+  // `lifeFast` ∈[0,1]: 1 = vivir rápido (envejece deprisa, barato de mantener); 0 = longevo (envejece despacio,
+  // CARO de mantener — disposable soma). El acople longevidad↔coste es lo que hace honesto el eje r/K.
+  const lifeFast = g[b + G.senescence];
+  sim.matureAge[i] = lerp(e.mature_age.min, e.mature_age.max, g[b + G.mature_age]);
+  sim.senesMult[i] = lerp(cfg.age.senesSlow, cfg.age.senesFast, lifeFast);
+
+  // Coste basal/tick: metabolismo · (tamaño, visión, MASA corporal extra, SEÑUELO luminoso, LONGEVIDAD). Los
+  // apéndices son decorativos → no cuestan. El coste de NADAR se cobra en el movimiento (sim.js). El coste es el
+  // MISMO sea cual sea la dieta (las muletas carnUpkeep/k_sizeHerb se retiraron, auditoría #6).
   sim.baseCost[i] =
-    en.c_base * (1 + en.k_metab * metab) *
+    en.c_base * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
     (1 + en.k_size * size + en.k_sense * sense + en.k_body * (massMul - 1) + en.k_lure * lure);
 
   // Alimentación: ritmo escala con metabolismo y con la MASA corporal (segmentos/módulos = más superficie para pastar).

@@ -49,6 +49,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `energy.k_size` | 0.45 | *(UI)* coste basal por **tamaño** |
 | `energy.k_sense` | 0.3 | coste de la visión (alcance) |
 | `energy.k_metab` | 0.6 | coste del metabolismo |
+| `energy.k_lifespan` | 0.35 | *(UI)* coste basal extra de la **longevidad** (disposable soma, #12): factor `(1 + k_lifespan·(1−senescence))`. Evita que la senescencia colapse a "inmortal" |
 | `energy.k_temp` | 1.9 | coste por desviarse del óptimo térmico (0 = sin selección térmica) |
 | `energy.k_body` | 0.10 | coste basal extra por **masa corporal** (nodos lóbulo/segmento) |
 | `energy.k_lure` | 0.13 | coste de mantener el **señuelo** bioluminiscente (∝ prominencia) |
@@ -115,9 +116,12 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Edad / senescencia
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `age.mature` | 300 | ticks sin riesgo de muerte por edad |
-| `age.mortality` | 0.0005 | mortalidad por senescencia (prob./tick tras madurar) |
+| `age.mortality` | 0.0005 | *(UI)* mortalidad **base** por senescencia (el gen `senescence` la escala por individuo) |
 | `age.scale` | 500 | escala temporal de la curva cuadrática de riesgo |
+| `age.senesSlow` | 0.3 | multiplicador de senescencia con `senescence`=0 (longevo) |
+| `age.senesFast` | 3.0 | multiplicador con `senescence`=1 (vida rápida, muere joven) |
+
+> La **edad de madurez** ya no es un parámetro global: es el gen `mature_age` (#12, ver `expr.mature_age`).
 
 ## Reproducción
 | Parámetro | Valor | Notas |
@@ -180,7 +184,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `sense` → alcance visión base (px) | 10 | 80 | |
 | `repro_thr` → fracción de la referencia | 0.5 | 0.95 | |
 | `invest` → energía a la cría (fracción) | 0.2 | 0.6 | |
+| `mature_age` → edad de madurez (ticks) | 80 | 650 | #12: gatea la cría e inicia la senescencia |
 
-> `metab`, `diet`, `hue`, `temp_pref` y los genes de **nodo** se usan directamente en
+> `metab`, `diet`, `hue`, `temp_pref`, `senescence` y los genes de **nodo** se usan directamente en
 > `[0,1]` (su efecto está en las fórmulas de SPEC §2bis–§3). Los pesos del cerebro se mapean por
 > `(gen−0.5)·BRAIN.scale` (SPEC §cerebro).

@@ -329,8 +329,9 @@ const LAB_SPEC = [
     { k: 'color.matchPenalty', label: 'Penaliz. color/luz', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza tener un color desajustado con la luz local (reduce la absorción de comida). Presiona a "camuflarse" con el ambiente.' },
   ]},
   { cat: '⬡ Edad', items: [
-    { k: 'age.mature', label: 'Edad de madurez', min: 0, max: 1000, step: 20, dec: 0, d: 'Edad a partir de la cual empieza la mortalidad por vejez. Más alto = viven más antes de envejecer.' },
-    { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
+    // La edad de madurez es ahora un GEN evolucionable (#12), no un parámetro global. Aquí solo la escala base.
+    { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad BASE de morir de viejo (el gen de ritmo de vida la escala por individuo; crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
+    { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta de mantener ser longevo (vivir despacio). Más alto = la vida larga sale cara → favorece estrategias rápidas. Es el contrapeso que evita que todos se vuelvan "inmortales".' },
   ]},
   { cat: '🌿 Refugio de presa', items: [
     { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Las zonas de vegetación más densa son cobertura: la presa que está ahí NO es cazable. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador clásico de Lotka-Volterra). No desacopla al carnívoro de la presa viva, así que preserva la diversidad de tamaño.' },
@@ -509,7 +510,10 @@ function inspCard(g, sel) {
   // "Ganas de atacar" = impulso de ataque del cerebro (dinámico, emergente), no un gen.
   const ag = sel.atkDrive != null ? sel.atkDrive : 0, agL = ag > 0.5 ? '😠 agresivo' : ag < 0.2 ? '😌 pacífico' : '😐 templado';
   const orn = g[G.orn] > 0.5 ? ' · 🦚 ornamentado' : '';
-  return `<div class="insp-card">${dietL} · 🐛 ${nSeg} seg · ${nApp} apénd.<br>${fovL} · ${agL}${orn}</div>`;
+  // Estrategia de vida (#12): madurez precoz↔tardía y ritmo rápido↔longevo (eje r/K).
+  const mat = g[G.mature_age], life = g[G.senescence];
+  const lifeL = (mat < 0.4 ? '⏳ precoz' : mat > 0.66 ? '⏳ tardío' : '⏳ medio') + ' · ' + (life > 0.6 ? '🐇 vida rápida' : life < 0.34 ? '🐢 longevo' : '🐇 ritmo medio');
+  return `<div class="insp-card">${dietL} · 🐛 ${nSeg} seg · ${nApp} apénd.<br>${fovL} · ${agL}${orn}<br>${lifeL}</div>`;
 }
 
 let _inspKey = null; // identidad del organismo mostrado → solo reconstruir al CAMBIAR de bicho

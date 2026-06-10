@@ -62,7 +62,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Bloque | Nº | Genes |
 |--------|----|-------|
-| **Ecología / fisiología** | 9 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref` |
+| **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
 | **Identidad / display** | 13 | `c_app`, `c_tip`, `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
 | **Cuerpo por NODOS** | 64 | 8 nodos × 8 campos (ver §2bis) |
 | **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
@@ -80,6 +80,8 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `invest` | energía transferida a cada cría: `lerp(expr.invest)` de la referencia. |
 | `hue` | tono del organismo. **Rasgo adaptativo:** cuanto mejor sintoniza con el "color de la luz" local, mejor absorbe el recurso (§3). Muta como cualquier gen. |
 | `temp_pref` | óptimo térmico; la desviación frente a la temperatura local multiplica el coste basal (`k_temp`). Segundo eje de nicho. |
+| `mature_age` | **historia de vida (#12)**: edad de madurez `Tm = lerp(expr.mature_age)`. Gatea la reproducción (no se cría antes de `Tm`) **e** inicia la senescencia (no hay muerte por vejez antes de `Tm`). Madurar pronto = criar antes (r) pero envejecer antes; tarde = retrasar la cría pero vivir más (K). |
+| `senescence` | **historia de vida (#12)**: ritmo de vida `lifeFast ∈ [0,1]`. Escala la pendiente de la mortalidad por vejez (`senesMult`, ver §3) y, por **disposable soma**, el coste basal: ser longevo (`lifeFast` bajo) cuesta más mantenerse. Crea el eje r/K vivir-rápido↔longevo sin degenerar. |
 
 **Genes de identidad / display:** color por partes (`c_app`, `c_tip`), color de ojo (`c_eye`),
 luminosidad/saturación (`c_lum`, `c_sat`), estilo del señuelo (`o_len`, `o_bulb`, `o_hue`, `o_num`)
@@ -196,8 +198,10 @@ no frena la cría ni da velocidad. `energyPerUnit` convierte recurso normalizado
 Por tick, cada organismo:
 
 - **Coste basal:**
-  `c_base · (1 + k_metab·metab) · (1 + k_size·size + k_sense·sense + k_body·(massMul−1) + k_lure·lure)`.
-  Más grande, con más visión, más masa y con señuelo luminoso → más caro de mantener. El coste es el
+  `c_base · (1 + k_metab·metab) · (1 + k_lifespan·(1−lifeFast)) · (1 + k_size·size + k_sense·sense + k_body·(massMul−1) + k_lure·lure)`.
+  Más grande, con más visión, más masa, con señuelo luminoso **y más longevo** → más caro de mantener.
+  El término `(1 + k_lifespan·(1−lifeFast))` es el coste de **longevidad** (disposable soma, #12): vivir lento
+  cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
 - **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort)`, **cuadrático en la
@@ -215,8 +219,10 @@ Por tick, cada organismo:
   captura** al cazar (`combat.lureReach`). El carnívoro lo recupera cazando → evoluciona señuelos
   largos; el herbívoro solo paga → los pierde. La correlación señuelo↔dieta **emerge**.
 - **Reproducción:** §4. **Muerte por hambre:** `E ≤ 0`.
-- **Muerte por vejez** (senescencia estocástica): cada tick muere con prob.
-  `age.mortality · (max(0, edad − age.mature) / age.scale)²`. Sin tope duro.
+- **Muerte por vejez** (senescencia estocástica, #12): cada tick muere con prob.
+  `age.mortality · senesMult · (max(0, edad − Tm) / age.scale)²`, donde `Tm` = edad de madurez (gen `mature_age`)
+  y `senesMult = lerp(age.senesSlow, age.senesFast, lifeFast)` (gen `senescence`). Antes de madurar no hay
+  riesgo de vejez. Sin tope duro.
 - **Reciclaje del cadáver:** al morir **por hambre o vejez** deposita `corpseReturn · E` como recurso
   en su celda (respetando `R_max`). Una presa muerta **por depredación NO deposita cadáver** (su
   energía ya se la queda el depredador → la energía se conserva, no se contabiliza dos veces).
@@ -266,6 +272,7 @@ puede sembrarse como proto-carnívoros (cruza el "valle de fitness" del arranque
 
 ### Referencia de reproducción y compromiso r/K (auditoría #4)
 `reproRef = eMaxBase = E_max_base · (0.5 + size)` (acoplada al tamaño igual que la energía).
+- **Gate de madurez (#12):** además del umbral de energía, no se cría antes de `edad ≥ Tm` (gen `mature_age`).
 - Umbral para criar: `reproNeedE = max(repro_thr, invest) · reproRef` (el `max` garantiza que pagar la
   cría nunca deja al progenitor en negativo).
 - Coste: transfiere `investE = invest · reproRef` a la cría.

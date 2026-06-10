@@ -11,11 +11,11 @@ de la geometría, el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **169 genes/agente** (SoA, typed arrays):
+Genoma de **171 genes/agente** (SoA, typed arrays):
 
 | Bloque | Genes | Codifica |
 |---|---|---|
-| Ecología | 9 | size, speed(esfuerzo), sense, metab, diet, repro_thr, invest, hue, temp_pref |
+| Ecología | 11 | size, speed(esfuerzo), sense, metab, diet, repro_thr, invest, hue, temp_pref, **mature_age, senescence** (ciclo de vida) |
 | Identidad / display | 13 | colores por parte, e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
 | Cuerpo por NODOS | 64 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase} → grafo generativo |
 | Cerebro | 83 | MLP recurrente (Elman); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
@@ -31,16 +31,18 @@ Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pasta
 pesos — sin reglas ni gen `aggro`) · **morfología generativa** y **gait direccional** (colas atrás propulsan,
 frentes penalizan; ondulantes vs remeros) · **coordinación de marcha** (la natación coordinada se premia vía
 coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/térmico (camuflaje color↔luz) ·
+**ciclo de vida r/K** (madurez precoz+vida rápida ↔ tardía+longeva, con coste de longevidad) ·
 depredación estructurada por talla · selección sexual (orn/pref) · identidad visual por linaje.
 
 ## Huecos principales (detalle y prioridad → [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md) §Backlog · ideas → [IDEAS.md](IDEAS.md))
 - **"Cabeza nadadora"**: poca presión para evolucionar colas (idea en IDEAS).
-- **Sin alometría** (#3), **sin genes de historia de vida** (#12), **refugio** aún flag binario (#7).
+- **Sin alometría** (#3), **refugio** aún flag binario (#7), **colores sin consolidar** (#13).
+- *Tuning pendiente*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
-**9/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #4 r/K honesto, #5 maxAlive,
-#6 muletas energéticas, #9 cerebro neural-only, #10 ataque del cerebro, #11 carroña. **Pendientes:**
-#3 alometría · #7 refugio · #8 constantes loco · #12 historia de vida · #13 consolidar color.
+**10/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #4 r/K honesto, #5 maxAlive,
+#6 muletas energéticas, #9 cerebro neural-only, #10 ataque del cerebro, #11 carroña, #12 historia de vida.
+**Pendientes:** #3 alometría · #7 refugio · #8 constantes loco · #13 consolidar color.
 
 ---
 

@@ -44,6 +44,8 @@ export const config = {
     k_size: 0.45,       // (UI) Coste basal por TAMAÑO
     k_sense: 0.3,       // Coste de la visión (alcance)
     k_metab: 0.6,       // Coste del metabolismo
+    k_lifespan: 0.35,   // (#12, disposable soma) Coste basal extra de la LONGEVIDAD: factor (1 + k_lifespan·(1−senescence)).
+                        //      Vivir lento/longevo cuesta mantener el cuerpo → evita que la senescencia colapse a "inmortal".
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
     k_body: 0.10,       // Coste basal extra por MASA corporal (segmentos/módulos)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
@@ -114,10 +116,13 @@ export const config = {
   },
 
   // ───── Edad / mortalidad ─────
+  // Edad / mortalidad. La madurez (inicio de senescencia + gate de cría) y el ritmo de vida son GENES (#12):
+  // ver expr.mature_age y el gen `senescence`. Aquí quedan solo las escalas BASE comunes.
   age: {
-    mature: 300,        // Edad de madurez (ticks)
-    mortality: 0.0005,  // Mortalidad por senescencia (prob./tick tras madurar)
+    mortality: 0.0005,  // Mortalidad base por senescencia (prob./tick tras madurar; el gen `senescence` la escala)
     scale: 500,         // Escala temporal de la senescencia
+    senesSlow: 0.3,     // (#12) multiplicador de senescencia con `senescence`=0 (longevo: envejece despacio)
+    senesFast: 3.0,     // (#12) multiplicador con `senescence`=1 (vida rápida: envejece deprisa, muere joven)
   },
 
   // ───── Reproducción ─────
@@ -186,5 +191,6 @@ export const config = {
     sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (px)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)
+    mature_age:{ min: 80,  max: 650 },  // (#12) gen mature_age → edad de madurez (ticks): gatea la cría e inicia la senescencia
   },
 };
