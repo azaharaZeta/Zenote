@@ -287,6 +287,7 @@ export class Sim {
     const preyHi = cfg.combat.preyBandHi != null ? cfg.combat.preyBandHi : 1;
     const inPreyBand = (predR, preyR) => { const ratio = preyR / predR; return ratio >= preyLo && ratio <= preyHi; };
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
+    const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
@@ -366,8 +367,8 @@ export class Sim {
                 const rj = this.radius[j], dDiff = this.diet[i] - this.diet[j];
                 // Presa = en la BANDA DE TAMAÑO del depredador Y claramente más abajo en la dieta (presa real).
                 let canEat = inPreyBand(myR, rj) && dDiff > dietMargin;
-                // REFUGIO: una presa en celda-refugio (vegetación densa) NO es cazable (ni percibida como presa).
-                if (canEat && refugeOn && W.refuge[W.cellIndexAt(x[j], y[j])]) canEat = false;
+                // REFUGIO (#7): la presa SÍ es percibida/perseguible aunque esté en cobertura; la cobertura solo
+                // dificulta la CAPTURA (escape graduado en la resolución del combate, abajo). Sin zona binaria.
                 const reach = rsum + lureReach * this.lure[i] * myR;   // SEÑUELO (anglerfish): radio de captura extendido
                 if (canEat && d2 < reach * reach && d2 < bestContactD) { bestContactD = d2; bestContact = j; }
                 if (d2 < sr2) {
@@ -393,7 +394,13 @@ export class Sim {
         // ---------- COMBATE (resolución exacta §3.1) ----------
         // Al solaparse, el atacante ataca con probabilidad = su IMPULSO DE ATAQUE (3ª salida del cerebro,
         // del tick previo). Cazar/agredir EMERGE del cerebro seleccionado, no de un gen-atajo `aggro`.
-        if (bestContact !== -1 && this.alive[bestContact] && this.attackCD[i] <= 0 && rng.next() < this.atkOut[i]) {
+        const wantsAttack = bestContact !== -1 && this.alive[bestContact] && this.attackCD[i] <= 0 && rng.next() < this.atkOut[i];
+        // REFUGIO/COBERTURA (#7): la presa en vegetación densa se escabulle (Huffaker, GRADUADO). Cobertura =
+        // vegetación VIVA en su celda (res∈[0,R_max]) → zona lush ≈ casi siempre escapa, claro pastado = expuesta.
+        // Escape = NO hay combate (ni captura ni failDamage): no la alcanzó entre la maleza. Refugios DINÁMICOS;
+        // el predador SÍ sigue su tick (mueve/come/cría): solo se salta esta resolución de combate.
+        const preyEscapes = wantsAttack && coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])];
+        if (wantsAttack && !preyEscapes) {
           const j = bestContact;
           // Fuerza = (tamaño+0.1)^sizeAdvantage. Resolución estocástica: nadie gana "por regla", emerge del
           // genoma (tamaño) + azar. Las "ganas" de atacar ya están en la tasa de decisión (impulso del cerebro).

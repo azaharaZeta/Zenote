@@ -41,9 +41,12 @@ las estrategias o las formas "buenas". Esas deben emerger.
   lumínico lo pone el programador; el color de los organismos lo decide la evolución.
 - **Temperatura:** eje escalar continuo por región con gradiente espacial (`resource.tempFreq`).
   El gen `temp_pref` es el óptimo térmico; desviarse multiplica el coste basal (`energy.k_temp`).
-- **Refugio de presa** (`refuge`): una fracción del mundo (`refuge.frac`, celdas de mayor
-  capacidad) donde la presa **no es cazable**. Estabilizador tipo Lotka-Volterra (la presa
-  nunca llega a cero → evita el colapso del sistema). Es física del mundo, no conducta.
+- **Refugio de presa = COBERTURA graduada** (`refuge`, #7): no hay zona binaria "no cazable". La **vegetación
+  VIVA local** (el propio campo de recurso) es escondite: en el combate (§3.1) la presa **escapa** con
+  probabilidad `refuge.strength · vegetación_de_su_celda`. Como el pasto se come y rebrota, la cobertura es
+  **espacialmente dinámica** → refugios que migran solos (Huffaker emergente): la presa está a salvo en parches
+  densos y expuesta en los claros pastados. Estabilizador Lotka-Volterra (la presa nunca llega a cero) sin la
+  muleta del interruptor. Es física del mundo, no conducta.
 
 ## 2. El organismo
 
@@ -252,6 +255,9 @@ de señuelo `lureReach`), cumpla:
 > como presa pero pierde otras ventajas), o subir su propia dieta (paga eficiencia herbívora). Resultado:
 > **coexistencia estable**.
 
+- **Escape por COBERTURA (`refuge`, #7):** cuando el atacante decide atacar, la presa **se escabulle** con
+  probabilidad `refuge.strength · vegetación_de_su_celda` (sin combate ni `failDamage`: no la alcanzó entre la
+  maleza). Graduado y dinámico (ver §1): casi inatacable en parches densos, expuesta en claros pastados.
 - **Tiempo de manejo (`handlingTime`):** tras una captura el ganador no puede atacar durante N ticks
   (digestión). Satura la tasa de depredación → la presa amortigua → coexistencia en vez de colapso.
 - **Resolución estocástica:** fuerza de cada contendiente `f = (size+0.1)^combat.sizeAdvantage` (tamaño + azar;

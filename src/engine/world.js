@@ -22,10 +22,8 @@ export class World {
     // Arranca lleno a su capacidad local.
     this.resource.set(this.capacity);
 
-    // Máscara de REFUGIO (1 = celda-refugio, presa no cazable ahí). Las celdas de MAYOR vegetación
-    // (cobertura densa) → reutiliza el campo de capacidad. Reconstruido en cada reset (mundo nuevo).
-    this.refuge = new Uint8Array(this.cols * this.rows);
-    this._buildRefuge();
+    // REFUGIO (#7): NO hay máscara binaria. La cobertura es GRADUADA y sale de la vegetación VIVA local
+    // (ver sim.js combate): zona densa = más escondite, zona pastada = presa expuesta → refugios dinámicos.
 
     // Campo de "color de la luz" del ambiente: pocas regiones grandes de tono fijo.
     // FÍSICA del mundo: define qué color de pigmento rinde en cada zona. La evolución
@@ -50,25 +48,6 @@ export class World {
     this.cellNext = new Int32Array(maxAgents);
   }
 
-  // Refugio = las celdas con MÁS capacidad (vegetación densa = cobertura). Umbral por percentil → exactamente
-  // `frac` del mundo es refugio. Si la capacidad es casi uniforme (gradiente 'uniform'), usa un campo de ruido
-  // de baja frecuencia para repartir parches-refugio. Patchy → la presa tiene cobertura distribuida (Huffaker).
-  _buildRefuge() {
-    const rf = this.cfg.refuge;
-    this.refuge.fill(0);
-    if (!rf || !rf.enabled || rf.frac <= 0) return;
-    const n = this.capacity.length, frac = Math.min(0.9, rf.frac);
-    const sorted = Float32Array.from(this.capacity).sort();
-    if (sorted[n - 1] - sorted[0] < 1e-4) {                 // capacidad uniforme → refugio por ruido
-      const noise = new Float32Array(n); this._buildField(noise, 5);
-      const s2 = Float32Array.from(noise).sort();
-      const t2 = s2[Math.floor((1 - frac) * n)];
-      for (let i = 0; i < n; i++) this.refuge[i] = noise[i] >= t2 ? 1 : 0;
-      return;
-    }
-    const thr = sorted[Math.floor((1 - frac) * n)];
-    for (let i = 0; i < n; i++) this.refuge[i] = this.capacity[i] >= thr ? 1 : 0;
-  }
 
   // Gradiente de capacidad: 'perlin' (ruido fractal barato), 'center' o 'uniform'.
   _buildGradient() {

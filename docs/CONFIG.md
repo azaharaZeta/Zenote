@@ -105,8 +105,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Refugio de presa (estabilizador Lotka-Volterra)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `refuge.enabled` | true | *(UI)* activar refugio (presa en celda-refugio NO cazable) |
-| `refuge.frac` | 0.18 | *(UI ↻)* fracción del mundo que es refugio (celdas de mayor capacidad) |
+| `refuge.enabled` | true | *(UI)* activar la **cobertura** de presa (#7: graduada por vegetación viva, no flag binario) |
+| `refuge.strength` | 0.9 | *(UI)* fuerza de la cobertura: prob. de escape = `strength · vegetación_local`. En vivo (sin reseed) |
 
 ## Color como pigmento (SPEC §3)
 | Parámetro | Valor | Notas |

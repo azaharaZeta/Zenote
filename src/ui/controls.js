@@ -334,8 +334,8 @@ const LAB_SPEC = [
     { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta de mantener ser longevo (vivir despacio). Más alto = la vida larga sale cara → favorece estrategias rápidas. Es el contrapeso que evita que todos se vuelvan "inmortales".' },
   ]},
   { cat: '🌿 Refugio de presa', items: [
-    { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Las zonas de vegetación más densa son cobertura: la presa que está ahí NO es cazable. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador clásico de Lotka-Volterra). No desacopla al carnívoro de la presa viva, así que preserva la diversidad de tamaño.' },
-    { k: 'refuge.frac', label: '↻ Tamaño del refugio', min: 0, max: 0.6, step: 0.02, dec: 2, reseed: true, d: 'Fracción del mundo que es refugio (las celdas de mayor vegetación). Pequeño = suelo de presas pequeño; grande = demasiadas presas a salvo (el carnívoro pasa hambre). Requiere volver a Sembrar.' },
+    { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Cobertura: la vegetación densa esconde a la presa, que se escabulle del ataque tanto más cuanto más tupida sea la zona (no es un "no cazable" binario). Como el pasto se come y rebrota, los refugios se MUEVEN solos. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador Lotka-Volterra).' },
+    { k: 'refuge.strength', label: 'Cobertura del refugio', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto protege la cobertura: probabilidad de que la presa escape = esto × vegetación de su celda. 0 = sin refugio (la presa puede ser barrida); alto = en zonas tupidas casi siempre escapa (los carnívoros dependen de los claros pastados). Efecto en vivo.' },
   ]},
 ];
 

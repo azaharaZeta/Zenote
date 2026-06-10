@@ -107,10 +107,12 @@ export const config = {
     omniPenalty: 0.0,  // Penalización por dieta intermedia (bajo = omnívoros más viables)
   },
 
-  // ───── Refugio de presa: estabilizador Lotka-Volterra. La presa en celda-refugio NO es cazable ─────
+  // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.
+  //       Estabilizador Lotka-Volterra: en vegetación densa la presa escapa al combate (refugios DINÁMICOS). ─────
   refuge: {
-    enabled: true,      // (UI) Activar refugio de presa
-    frac: 0.18,         // (UI ↻) Fracción del mundo que es refugio (celdas de mayor capacidad) · requiere Sembrar
+    enabled: true,      // (UI) Activar la cobertura/refugio de presa
+    strength: 0.9,      // (UI) Fuerza de la cobertura: prob. de escape = strength · vegetación_local (∈[0,1]).
+                        //      En vegetación máxima la presa escapa ~strength de los ataques; 0 = sin refugio. En vivo.
   },
 
   // ───── Color como pigmento (sintonía con la luz local) ─────

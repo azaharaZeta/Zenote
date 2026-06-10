@@ -239,7 +239,7 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso: 11/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #3, #4, #5, #6, #9, #10, #11, #12. Pendientes: #7, #8, #13.
+**Progreso: 12/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #3, #4, #5, #6, #7, #9, #10, #11, #12. Pendientes: #8, #13.
 
 0. ✅ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** — COMPLETO (A1+A2+B1+B2+B3+CONTRACT). El cuerpo es un
    genoma generativo por nodos (una primitiva), la física de locomoción es direccional y emerge de la
@@ -265,7 +265,7 @@ De más fundacional / mayor retorno de realismo a más periférico.
    (pool físico); retirado también el diagnóstico `atCap` del worker.* — *Capa 4*
 6. ✅ **Retirar muletas energéticas** (`carnUpkeep`, `k_sizeHerb`). *Hecho: coste basal independiente de la
    dieta.* — *Capa 3*
-7. ⬜ **Repensar el refugio** como estructura de hábitat espacial, no flag "no cazable". — *Capa 4*
+7. ✅ **Repensar el refugio** como estructura de hábitat espacial, no flag "no cazable". *Hecho: cobertura GRADUADA por la vegetación viva local (escape = `refuge.strength·veg` en el combate); refugios dinámicos (Huffaker) al pastarse/rebrotar; retirada la máscara binaria `world.refuge`.* — *Capa 4*
 8. ⬜ **Auditar las constantes de locomoción** por si alguna fija "qué forma es buena". — *Capa 5*
 
 **Catálogo de genes (decidido el 2026-06-09, ver sección dedicada):**
