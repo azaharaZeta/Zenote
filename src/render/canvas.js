@@ -582,7 +582,8 @@ export class Renderer {
         if (this.cfg.render.bodyGraph && sim.nodes) {
           // B2b (EN PRUEBAS): dibuja el cuerpo desde el GRAFO DE NODOS (forma nueva). Incompleto:
           // lóbulos + tentáculos coloreados, sin ojos/textura/señuelo todavía. Bandera off por defecto.
-          this._drawBodyGraph(ctx, x, y, r, h, s, l, sim.nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t);
+          this._drawBodyGraph(ctx, x, y, r, h, s, l, sim.nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
+                              eye, i * 4, face, i * 3, rPx > eThr);
         } else {
           this._drawBody(ctx, x, y, r, h, s, l, morph, i * NB, heading[i], spd[i], t, tint, i * 3, ornament,
                        eye, i * 4, rPx > eThr, ef, face, i * 3, rPx > pThr, deco, i * 8); // ojos/segmentos solo si grandes en pantalla
@@ -601,7 +602,7 @@ export class Renderer {
   // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
   // PRIMER INCREMENTO: sin ojos/textura/señuelo/contorno fino aún (llegan en incrementos siguientes). El
   // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
-  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t) {
+  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // buffers reutilizables (sin GC por frame)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
@@ -636,6 +637,42 @@ export class Renderer {
         ctx.save(); ctx.translate(px[k], py[k] * sgn); ctx.rotate(pa[k] * sgn + wob);
         ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), 0, 0, 6.2832);
         ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+    }
+    // ---- OJOS en la raíz (B2b incremento 2): perla vidriosa oscura + pupila que sigue la MIRADA. Conteo
+    // (cíclope/par/racimo) desde `sense`; iris ligado a la paleta del cuerpo (c_eye); entornado por `aggro`
+    // (depredador). Versión sencilla (sin formas de pupila ni almendra rasgada todavía). ----
+    if (showEyes && eye) {
+      const senseG = eye[eo], cEye = eye[eo + 2], aggroG = eye[eo + 3];
+      const hr = pr[0], elong = pl[0] / pr[0];
+      const er0 = Math.max(0.8, hr * (0.16 + 0.34 * senseG));
+      const nEye = senseG < 0.3 ? 1 : senseG < 0.72 ? 2 : 4 + ((senseG - 0.72) * 12 | 0);
+      const iHue = (((h + (cEye - 0.5) * 70) % 360) + 360) % 360;
+      const aspectY = 1 - aggroG * 0.4;                          // aggro alto → ojo entornado (depredador)
+      const ch = Math.cos(heading), sh = Math.sin(heading);
+      let lgx = 1, lgy = 0;
+      if (face) { const gx = face[fo], gy = face[fo + 1]; lgx = gx * ch + gy * sh; lgy = -gx * sh + gy * ch; }
+      const drawEye = (cx, cy, er) => {
+        const erx = er, ery = er * aspectY;
+        const eg = ctx.createRadialGradient(cx - erx * 0.3, cy - ery * 0.3, er * 0.1, cx, cy, er * 1.05);
+        eg.addColorStop(0, `hsl(${iHue},55%,30%)`); eg.addColorStop(1, `hsl(${iHue},62%,7%)`);
+        ctx.fillStyle = eg; ctx.beginPath(); ctx.ellipse(cx, cy, erx, ery, 0, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.beginPath();
+        ctx.arc(cx + lgx * er * 0.32, cy + lgy * ery * 0.32, er * 0.42, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath();
+        ctx.arc(cx - erx * 0.3, cy - ery * 0.34, er * 0.22, 0, 6.2832); ctx.fill();
+      };
+      const fx = hr * elong * 0.45;                              // ojos en la mitad FRONTAL de la raíz (+x = rumbo)
+      if (nEye === 1) drawEye(fx, 0, er0 * 1.2);                 // cíclope
+      else if (nEye === 2) { for (let e = 0; e < 2; e++) { const sgn = e ? -1 : 1; drawEye(fx, sgn * hr * 0.55, er0); } }
+      else {                                                     // racimo en pares espejados
+        const er = er0 * 0.6, pairs = nEye >> 1;
+        for (let p = 0; p < pairs; p++) {
+          const tt = pairs > 1 ? p / (pairs - 1) : 0.5, aa = 0.5 + tt * 0.8, dd = hr * (0.4 + tt * 0.4);
+          const cx = Math.cos(aa) * dd * elong, cy = Math.sin(aa) * dd;
+          drawEye(cx, cy, er); drawEye(cx, -cy, er);
+        }
+        if (nEye & 1) drawEye(fx, 0, er);
       }
     }
     ctx.restore();
@@ -1196,8 +1233,12 @@ export class Renderer {
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
-    this._drawBody(pctx, px, py, r, h, s, l, genes, G.m_app, heading, pspd, t,
+    if (this.cfg.render.bodyGraph) {                     // B2b: el retrato sigue al mundo (render por nodos)
+      this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true);
+    } else {
+      this._drawBody(pctx, px, py, r, h, s, l, genes, G.m_app, heading, pspd, t,
                    tint, 0, true, eye, 0, true, ef || 0.5, face, 0, true, pdeco, 0);
+    }
   }
 
   // Resalta el organismo seleccionado (anillo). Recibe el objeto `sel` del worker
