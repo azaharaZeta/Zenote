@@ -1,144 +1,187 @@
-# Configuración por defecto — "Primordia"
+# Configuración por defecto — "Zenote / Primordia"
 
-Valores de arranque. Deben vivir en un único objeto/módulo `config` que el motor
-lea, y los marcados como *(UI)* deben exponerse como controles en vivo. Ningún
-valor debe estar "hardcodeado" disperso por el motor.
+Referencia de **parámetros**. Todos viven en un único objeto `config` (`src/config.js`) que el
+motor lee; **nada hardcodeado disperso**. Los marcados *(UI)* tienen control en vivo en el modo
+Laboratorio y afectan a la simulación al instante; los *(UI ↻)* requieren **Sembrar** para aplicarse.
+Frontera de diseño: el programador define la **física**; la conducta y la forma **evolucionan**.
+
+> Esta tabla refleja los valores reales del modelo v2.0 (cuerpo por nodos). La mecánica que
+> usan está en `SPEC_EVOLUCION.md`. Si un parámetro de notas viejas no aparece aquí (p. ej.
+> `k_speed`, `k_app`, `waveFloor`, `maxAlive`, bloque `carrion`), es que **se retiró**.
 
 ## Mundo
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `world.width` | 1200 | px lógicos |
-| `world.height` | 800 | px lógicos |
+| `world.width` | 1200 | ancho del mundo (px lógicos, fijo) |
+| `world.height` | 800 | alto |
 | `world.wrap` | true | toro (bordes envueltos) |
-| `resource.gridCols` | 64 | resolución del campo de recurso |
-| `resource.gridRows` | 48 | |
-| `resource.R_max` | 1.0 | máximo por celda (normalizado) |
-| `resource.R_regen` | 0.004 | *(UI)* regeneración por tick por celda |
-| `resource.gradient` | "perlin" | "perlin" \| "center" \| "uniform" |
-| `resource.absRate` | 0.12 | fracción del recurso de celda absorbible/tick (antes de escalar por `metab`). Bajo a propósito: evita arrasar la celda de un bocado → agentes más sanos. Valor inicial 0.5, recalibrado por observación |
-| `resource.energyPerUnit` | 20 | **conversión recurso→energía**: 1 unidad de recurso = 20 pts de energía. Parámetro de equilibrio crítico (ver SPEC §3). Valor inicial 40, recalibrado por observación a un enjambre denso y bien alimentado |
 
-## Población inicial
-| Parámetro | Valor |
-|-----------|-------|
-| `pop.initial` | 400 |
-| `pop.maxAgents` | 4000 | tope duro para proteger FPS (red de seguridad, no punto de operación). Valor inicial 8000 |
-| `pop.seed` | null | si número, RNG reproducible |
-| `pop.seedDietLow` | false | Fase 1: `true` siembra herbívoros (diet≈0). Fase 2: `false` |
-| `pop.carnivoreSeedFrac` | 0.1 | Fase 2: fracción de fundadores sembrados como proto-carnívoros coordinados (cruza el "valle de fitness") |
-
-## Energética
+## Recurso / vegetación
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `energy.c_base` | 0.02 | coste basal/tick |
-| `energy.k_size` | 1.8 | peso del tamaño en el coste basal. Alto a propósito (Fase 2): ser grande es caro → la presa no puede escapar de la depredación volviéndose gigante. Valor inicial 1.0 |
-| `energy.k_speed` | 1.6 | **legado** (F-B: la velocidad emerge de la morfología, ya no de este gen; sin efecto). |
-| `energy.k_sense` | 0.3 | |
-| `energy.k_metab` | 0.6 | peso de `metab` en el coste basal |
-| `energy.k_temp` | 1.9 | coste extra por desviarse del óptimo térmico (`temp_pref` vs temperatura local). 0 = sin selección térmica |
-| `energy.k_app` | 1.0 | coste basal de **mantener/arrastrar apéndices grandes** (∝ superficie de apéndices). F-B |
-| `energy.k_effort` | 1.2 | coste extra de moverse según el esfuerzo (gen `speed`) → nadar fuerte es caro. F-B |
-| `energy.moveCost` | 0.015 | coef. del coste de nado **∝ velocidad²** (arrastre hidrodinámico; frena la carrera de velocidad). F-B |
-| `energy.E_max_base` | 100 | `E_max = E_max_base * (0.5 + size)` → rango 50–150 |
-| `energy.preyGain` | 0.8 | fracción de energía obtenida de una presa. Subido (Fase 2) para que una caza rate-limitada compense; valor inicial 0.6 |
-| `diet.omniPenalty` | 0.3 | penalización máx. de eficiencia del omnívoro (en diet=0.5). Suavizado para que el eje dieta sea escalable; valor inicial 0.5 |
-| `color.matchPenalty` | 0.6 | cuánto baja la absorción si el color desajusta con la luz local (0=neutral, 1=máx). Hace que `hue` sea adaptativo |
-| `energy.corpseReturn` | 0.5 | fracción de la energía del muerto devuelta como recurso |
+| `resource.gridCols` | 64 | columnas del campo de recurso |
+| `resource.gridRows` | 48 | filas |
+| `resource.R_max` | 1.0 | recurso máximo por celda (normalizado) |
+| `resource.R_regen` | 0.0016 | *(UI)* ritmo de rebrote — **regulador principal** de cuánta comida sostiene el mundo |
+| `resource.gradient` | "perlin" | forma de la capacidad: "perlin" \| "center" \| "uniform" |
+| `resource.patchiness` | 0 | *(UI)* 0 = rebrote lineal (sin parches) … 1 = logístico + difusión de semilla → **parches que emergen y migran** |
+| `resource.tempFreq` | 3 | frecuencia del campo térmico (bajo = zonas climáticas grandes) |
+| `resource.absRate` | 0.20 | *(UI)* ritmo de pastado/tick (antes de escalar por `metab`) |
+| `resource.energyPerUnit` | 10 | **conversión recurso→energía** (1 unidad = 10 pts). Parámetro de equilibrio más sensible (SPEC §3) |
+| `resource.grazeRefuge` | 0.11 | reserva de rebrote intocable por celda (evita el sobrepastoreo letal) |
 
-## Locomoción emergente (F-B) — la forma produce el movimiento (ver SPEC §2bis)
+## Población
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `loco.kThrust` | 12 | calibra la velocidad-capacidad típica (~0.9 px/tick con morfología media) |
-| `loco.waveFloor` | 0.3 | empuje mínimo sin ondular (`m_wave`=0) |
-| `loco.symBase` | 0.4 | empuje útil recto mínimo (asimétrico desvía empuje a girar) |
+| `pop.initial` | 400 | nº de fundadores al sembrar |
+| `pop.maxAgents` | 4000 | **tope duro del pool** (memoria/FPS), único límite numérico — la capacidad de carga la pone el recurso, no un tope (auditoría #5) |
+| `pop.seed` | 123 | si número, RNG reproducible (mismo seed → misma corrida) |
+| `pop.seedDietLow` | false | true = sembrar todo herbívoro; false = dieta diversa con proto-carnívoros |
+| `pop.carnivoreSeedFrac` | 0.14 | fracción de fundadores sembrados como proto-carnívoros |
+| `pop.simpleStart` | true | fundadores **simples** (complejidad y apariencia emergen); false = genes aleatorios |
+| `pop.startJitter` | 0.06 | magnitud del jitter gaussiano del sembrado simple |
+| `pop.startDiversity` | 0.5 | *(UI)* diversidad inicial: 0 = monótono … 1 = variado |
+
+## Energética y costes
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| `energy.c_base` | 0.02 | *(UI)* coste basal/tick (existir cuesta) |
+| `energy.k_size` | 0.45 | *(UI)* coste basal por **tamaño** |
+| `energy.k_sense` | 0.3 | coste de la visión (alcance) |
+| `energy.k_metab` | 0.6 | coste del metabolismo |
+| `energy.k_temp` | 1.9 | coste por desviarse del óptimo térmico (0 = sin selección térmica) |
+| `energy.k_body` | 0.10 | coste basal extra por **masa corporal** (nodos lóbulo/segmento) |
+| `energy.k_lure` | 0.13 | coste de mantener el **señuelo** bioluminiscente (∝ prominencia) |
+| `energy.k_graze` | 0.50 | pasto **extra ∝ masa** (ata la complejidad al nicho herbívoro) |
+| `energy.k_effort` | 1.59 | coste extra de moverse ∝ esfuerzo (gen `speed`) |
+| `energy.moveCost` | 0.015 | coef. del coste de nado **∝ velocidad²** (frena la carrera de velocidad) |
+| `energy.E_max_base` | 71 | `E_max = E_max_base·(0.5+size)·massMul`. Criar cuesta una fracción de la energía-por-talla (r/K emerge, auditoría #4) |
+| `energy.preyGain` | 0.90 | fracción de energía de la presa aprovechada al cazar |
+| `energy.corpseReturn` | 0.5 | fracción de energía que un cadáver (muerte por hambre/vejez) devuelve al campo de recurso |
+
+## Locomoción emergente — la forma produce el movimiento (SPEC §2bis)
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| `loco.kThrust` | 3.2 | calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, `effort` una vez) |
+| `loco.paddleEff` | 0.6 | peso del **remo lateral** en el gait (aleta lateral propulsa, menos que cola trasera) |
+| `loco.oscFloor` | 0.15 | suelo de amplitud de oscilación por nodo |
+| `loco.elongMax` | 3.0 | techo de la elongación derivada de la geometría (streamlining) |
+| `loco.symBase` | 0.4 | empuje útil recto mínimo (la asimetría del grafo desvía empuje a girar) |
 | `loco.streamBase` | 1.0 | arrastre base del cuerpo |
-| `loco.streamGain` | 0.5 | cuánto reduce el arrastre la elongación (`m_elong`) |
-| `loco.effortFloor` | 0.2 | esfuerzo mínimo (el gen `speed` es el acelerador 0..1) |
-| `loco.vMin` / `loco.vMax` | 0.15 / 3.5 | suelo/techo de la velocidad-capacidad |
-| `loco.turnBase` | 0.18 | agilidad de giro base (fracción que la dirección rota hacia el deseo/tick) |
-| `loco.turnAsym` | 0.35 | la asimetría (`m_sym` bajo) mejora el giro |
-| `loco.turnSize` | 0.15 | los cuerpos grandes giran peor (inercia) |
+| `loco.streamGain` | 0.5 | cuánto reduce el arrastre la elongación (hidrodinámica) |
+| `loco.effortFloor` | 0.2 | esfuerzo mínimo de nado (gen `speed` = acelerador 0..1) |
+| `loco.vMin` / `loco.vMax` | 0.15 / 3.0 | suelo/techo de la velocidad-capacidad |
+| `loco.turnBase` | 0.18 | agilidad de giro base |
+| `loco.turnAsym` | 0.35 | la asimetría del cuerpo mejora el giro |
+| `loco.turnSize` | 0.15 | los cuerpos grandes giran peor |
 | `loco.turnElong` | 0.08 | los cuerpos elongados giran peor |
 | `loco.turnMin` | 0.08 | giro mínimo (nadie queda incapaz de virar) |
+| `loco.bodyThrust` | 1.0 | escala del empuje del **cuerpo** (cabeza + segmentos que ondulan); propulsor principal |
+| `loco.segThrust` | 0.34 | empuje de las patas de los segmentos (nodos mediales) |
+| `loco.modThrust` | 0.3 | empuje de los apéndices laterales (nodos espejados) |
+| `loco.segDrag` | 0.22 | arrastre extra por segmento |
+| `loco.modDrag` | 0.6 | arrastre extra por nodo lateral |
+| `loco.segTurn` | 0.03 | cada nodo-segmento extra empeora el giro |
+| `loco.limbThrust` | 0.12 | empuje por área de tentáculo/aleta fina (propulsión secundaria) |
+| `loco.limbDrag` | 0.20 | arrastre por área de tentáculo (> limbThrust → propulsor ineficiente) |
+| `loco.bodyDrag` | 0.30 | arrastre por área de nodo ancho (cabeza/lóbulo) |
+| `loco.bodyMass` | 0.30 | masa metabólica por área de nodo ancho (el ancho sí es volumen real) |
 
-## Visión emergente y direccional (F-D) — los ojos producen la visión (ver SPEC §2ter)
+## Visión emergente — `sense` fija la inversión, `e_fov` reparte alcance↔ángulo (SPEC §2ter)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `vision.halfFovMin` | 0.35 | semiángulo mínimo (rad ≈ 20°): cono estrecho frontal (largo alcance) |
-| `vision.halfFovMax` | 2.70 | semiángulo máximo (rad ≈ 155°): casi panorámico (corto alcance) |
-| `vision.fovRef` | 3.05 | FOV de referencia (rad) para repartir alcance↔ángulo |
-| `vision.rangeExp` | 0.4 | exponente del reparto (0.5 = conserva área; <0.5 = ventaja frontal más suave → amortigua oscilaciones) |
+| `vision.halfFovMin` | 0.35 | semiángulo mínimo del cono (rad ≈ 20°): estrecho frontal (cazador) |
+| `vision.halfFovMax` | 2.70 | semiángulo máximo (rad ≈ 155°): casi panorámico (presa) |
+| `vision.fovRef` | 3.05 | FOV de referencia para conservar el área visual |
+| `vision.rangeExp` | 0.4 | exponente del reparto alcance↔ángulo (ventaja frontal suave) |
 
-## Complejidad corporal (F-C funcional) — segmentos y módulos (ver SPEC §2quater)
+## Dieta
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `loco.segThrust` | 0.3 | empuje extra de las patas de segmentos (< segDrag → la complejidad NO da velocidad) |
-| `loco.modThrust` | 0.3 | empuje extra de los apéndices de módulos |
-| `loco.segDrag` | 0.6 | arrastre extra por segmentos (cuerpo largo = más lento) |
-| `loco.modDrag` | 0.6 | arrastre extra por módulos |
-| `loco.segTurn` | 0.06 | cada segmento extra empeora el giro |
-| `loco.appTurn` | 0.01 | cada apéndice mejora un poco el giro (flavor menor) |
-| `energy.k_appN` | 0.02 | coste fijo POR apéndice: MUY suave → el nº de apéndices es casi NEUTRO y DERIVA por todo el rango (1..8) → coexisten organismos con pocos/uno y con muchos (diversidad por deriva, no por nicho) |
-| `energy.k_appGraze` | 0.0 | (desactivado) atar el pasto al nº empujaba a los herbívoros a "muchos"; dejándolo libre hay variedad real |
-| `energy.k_body` | 0.4 | coste basal extra por masa corporal (tejido a mantener) |
-| `energy.k_graze` | 0.6 | cuánto más pasta un cuerpo con más masa → ata la complejidad al nicho herbívoro |
+| `diet.omniPenalty` | 0.0 | penalización por dieta intermedia (0 = omnívoros viables; sube para forzar especialistas) |
 
-## Senescencia (vejez)
+## Refugio de presa (estabilizador Lotka-Volterra)
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| `refuge.enabled` | true | *(UI)* activar refugio (presa en celda-refugio NO cazable) |
+| `refuge.frac` | 0.18 | *(UI ↻)* fracción del mundo que es refugio (celdas de mayor capacidad) |
+
+## Color como pigmento (SPEC §3)
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| `color.matchPenalty` | 0.6 | cuánto penaliza un color desajustado con la luz local (0 = neutral, 1 = máx) → hace `hue` adaptativo |
+
+## Edad / senescencia
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
 | `age.mature` | 300 | ticks sin riesgo de muerte por edad |
-| `age.mortality` | 0.0005 | escala de probabilidad de muerte/tick tras la madurez |
-| `age.scale` | 500 | divisor de edad en la curva cuadrática de riesgo |
+| `age.mortality` | 0.0005 | mortalidad por senescencia (prob./tick tras madurar) |
+| `age.scale` | 500 | escala temporal de la curva cuadrática de riesgo |
 
-## Reproducción y mutación
+## Reproducción
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `repro.cooldown` | 60 | ticks |
-| `mut.rate` | 0.03 | *(UI)* prob. de mutar cada gen |
-| `mut.sigma` | 0.05 | *(UI)* desviación del ruido gaussiano |
-| `mut.bigRate` | 0.002 | prob. de mutación de gran efecto |
-| `mut.bigSigmaMult` | 5 | multiplicador de sigma en mutación grande |
-| `repro.sexual` | true | **Fase 4**: reproducción sexual (recombinación de 2 padres compatibles); fallback asexual si no hay pareja cerca |
-| `repro.speciesGenThreshold` | 0.25 | distancia genética máx. para cruzarse = misma "especie" (también define los clústeres del contador) |
-| `repro.mateRadius` | 55 | radio (px) en el que se busca pareja compatible al reproducirse |
-| `sim.brain` | 'neural' | **DEFECTO**: cerebro neuronal RECURRENTE (RNN Elman, pesos=genoma, sembrado competente) decide el movimiento. `'reactive'` (regla reactiva) sigue en el código pero ya NO se expone en la UI. El cerebro brilla con `resource.patchiness` alta |
+| `repro.cooldown` | 60 | enfriamiento entre crías (ticks) |
+| `repro.sexual` | true | reproducción sexual (recombinación de dos padres compatibles) |
+| `repro.asexual` | true | *(UI)* permitir clon mutado si no hay pareja compatible cerca (fallback) |
+| `repro.speciesGenThreshold` | 0.15 | distancia genética máx. para cruzarse (= misma especie; define los clústeres) |
+| `repro.mateRadius` | 70 | radio (px) de búsqueda de pareja al reproducirse |
 
-## Combate (carnívoros)
+## Mutación — una sola tasa por locus, CIEGA a la función del gen (auditoría #1)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `combat.enabled` | true | Fase 2 activa. Poner `false` recupera el mundo solo-herbívoro |
-| `combat.sizeAdvantage` | 1.0 | exponente sobre el tamaño en la fuerza de combate (↑ = el tamaño decide más). Resolución exacta en SPEC §3.1 |
-| `combat.handlingTime` | 48 | ticks de enfriamiento tras una captura (digestión). Limita la tasa de depredación → estabiliza la coexistencia. Subido (F-D) para amortiguar las oscilaciones que acentúa la visión direccional; valor previo 30 |
-| `combat.dietMargin` | 0.25 | para atacar, la presa debe estar al menos esto MÁS abajo en la dieta (además de ser más pequeña). Evita el canibalismo entre depredadores y, con ello, la carrera al gigantismo que los hacía insostenibles |
-| `combat.contactRadius` | *(derivado)* | suma de radios; solo se ataca a presas MÁS pequeñas al solaparse (ver SPEC §3.1) |
+| `mut.rate` | 0.05 | *(UI)* prob. de mutación por gen (todos por igual) |
+| `mut.sigma` | 0.08 | *(UI)* magnitud de la mutación |
+| `mut.bigRate` | 0.002 | prob. de macromutación (salto grande y raro) |
+| `mut.bigSigmaMult` | 5 | multiplicador de magnitud de la macromutación |
+| `mut.recomb` | 0.07 | *(UI)* recombinación sexual: prob. de cruce **por locus** (LIGAMIENTO). 0.5 = uniforme; →0 = tramos contiguos co-heredados |
 
-## Simulación / render
+## Combate / depredación — física trófica, no conducta (SPEC §3.1)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `sim.targetTPS` | 120 | *(UI)* velocidad en **ticks por segundo**, desacoplada de los fps. El motor ejecuta los ticks que toquen según el tiempo real transcurrido. 0 = pausa |
-| `sim.frameBudgetMs` | 40 | máx. ms simulando por frame; si mantener `targetTPS` exige más, bajan los fps (nunca congela el render) |
-| `sim.maxBudgetMs` | 250 | modo "max": simula a tope durante estos ms/frame (fps↓, ticks/s al techo de CPU) |
+| `combat.enabled` | true | *(UI)* activar depredación/combate (`false` = mundo solo-herbívoro) |
+| `combat.sizeAdvantage` | 1.4 | *(UI)* cuánto pesa el tamaño en quién gana el combate |
+| `combat.failDamage` | 0.45 | *(UI)* energía que pierde el atacante al **fallar** (× su eMax); muere solo si llega a 0. Freno denso-dependiente. ≥1 ≈ muerte segura |
+| `combat.handlingTime` | 31 | enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones |
+| `combat.dietMargin` | 0.08 | diferencia de dieta mínima para considerar a otro "presa" (no un igual) |
+| `combat.preyBandLo` | 0.20 | ratio presa/depredador **mínimo** cazable (más pequeño no compensa) |
+| `combat.preyBandHi` | 2.0 | *(UI)* ratio presa/depredador **máximo** atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada) |
+| `combat.lureReach` | 0.85 | alcance de captura extra que da el señuelo (∝ prominencia) |
+
+## Motor / tiempo
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| `sim.targetTPS` | 20 | *(UI)* ticks por segundo objetivo, desacoplado de los fps. 0 = pausa |
+| `sim.frameBudgetMs` | 40 | máx. ms simulando por frame en modo normal (si no llega, bajan fps, no se congela) |
+| `sim.maxBudgetMs` | 250 | máx. ms simulando por frame en modo "máx velocidad" |
+| `sim.brain` | 'neural' | **defecto**: cerebro neuronal recurrente (pesos = genoma). `'reactive'` = regla fija (no expuesta en UI) |
+
+## Render (solo visual; no afecta a la simulación)
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
 | `render.trails` | false | *(UI)* estelas |
-| `render.glow` | true | *(UI)* |
-| `render.showResourceField` | true | *(UI)* hierba/vegetación (el fondo es siempre el mapa térmico: nieve fría → marrón cálido) |
-| `render.dprCap` | 2 | tope de devicePixelRatio al fijar resolución del canvas (protege FPS en pantallas retina/móvil) |
-| `render.narrowBreakpoint` | 700 | px de viewport por debajo del cual la UI pasa a layout móvil y arranca con efectos apagados |
+| `render.glow` | true | *(UI)* resplandor (bloom) |
+| `render.showResourceField` | true | *(UI)* dibujar la vegetación/comida |
+| `render.ambiance` | 'abyssal' | escenario: 'abyssal' (abisal oscuro) \| 'meadow' (pradera) |
+| `render.dprCap` | 2 | tope de densidad de píxeles (DPR) — protege FPS en retina/móvil |
+| `render.quality` | 'high' | *(UI)* 'high' \| 'low' (baja = sin bloom, LOD agresivo → móvil) |
+| `render.grassDensity` | 6800 | nº de matojos de hierba |
+| `render.grassSpriteCount` | 22 | variedad de formas de matojo precalculadas |
+| `render.grassRefreshFrames` | 15 | cada cuántos frames se redibuja la hierba |
+| `render.flowerSpriteCount` | 12 | variedad de flores precalculadas |
+| `render.flowerFrac` | 0.45 | fracción de matas que pueden florecer |
+| `render.flowerThreshold` | 0.5 | vegetación mínima de una mata para florecer |
 
-## Genes — rangos de expresión (lerp desde [0,1])
-| Gen | min | max |
-|-----|-----|-----|
-| size → radio px | 2 | 12 |
-| speed → esfuerzo (F-B; ya no fija v_max, que emerge de la morfología) | 0.2 | 2.0 |
-| sense → radio px | 10 | 80 |
-| repro_thr → fracción E_max | 0.5 | 0.95 |
-| invest → fracción E_max a cría | 0.2 | 0.6 |
-| w_food → factor de atracción comida | 0 | 2 |
-| w_prey → factor de atracción presa | 0 | 2 |
-| w_flee → factor de repulsión amenaza | 0 | 2 |
+## Genes — rangos de expresión (`expr`, lerp desde [0,1])
+| Gen | min | max | Notas |
+|-----|-----|-----|-------|
+| `size` → radio px | 1.7 | 9 | solo render/contacto; **no** afecta a la energía |
+| `speed` → escala de esfuerzo | 0.2 | 2.0 | acelerador; la velocidad emerge de la morfología (SPEC §2bis) |
+| `sense` → alcance visión base (px) | 10 | 80 | |
+| `repro_thr` → fracción de la referencia | 0.5 | 0.95 | |
+| `invest` → energía a la cría (fracción) | 0.2 | 0.6 | |
+| `w_food`/`w_prey`/`w_flee` → factor de peso | 0 | 2 | `expr.wMax = 2`; solo en modo reactivo |
 
-> `metab`, `diet`, `aggro`, `hue` y `temp_pref` se usan directamente en `[0,1]` (sin lerp a
-> otro rango); su efecto está en las fórmulas de SPEC §3. `hue` se mapea a tono; `temp_pref`
-> es el óptimo térmico (coste si difiere de la temperatura local, `energy.k_temp`).
-
-> Sugerencia: empezar con `combat.enabled=false` para validar que un mundo solo
-> de herbívoros ya muestra selección (genes derivando). Luego activar carnívoros.
+> `metab`, `diet`, `aggro`, `hue`, `temp_pref` y los genes de **nodo** se usan directamente en
+> `[0,1]` (su efecto está en las fórmulas de SPEC §2bis–§3). Los pesos del cerebro se mapean por
+> `(gen−0.5)·BRAIN.scale` (SPEC §cerebro).

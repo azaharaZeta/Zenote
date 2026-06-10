@@ -46,6 +46,13 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
 - Texto UI: gris claro `#c7d0dd`; acentos en un cian suave `#5ad1c4`.
 
 ## Render
+- **Cuerpo dibujado desde el grafo de nodos** (modelo v2.0): el render NO usa categorías
+  de pieza; recorre los nodos del genoma (`render/canvas.js`, `_drawBodyGraph`) y dibuja cada
+  uno como lóbulo o tentáculo según su `aspect`, con su orientación (`angle`), su par bilateral
+  emergente, ojos, señuelo bioluminiscente y una onda viajera de undulación acumulada padre→hijo.
+  Es la **misma geometría que usa la física** (`bodyplan.js`) → lo que ves coincide con cómo nada.
+  Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color por partes, glow,
+  saturación y textura de piel salen de los genes decorativos (`c_*`, `o_*`, `tex2`).
 - Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo
   más grande y translúcido (más rápido que blur real). Medir FPS antes de abusar.
 - Estelas: dibujar el fondo con una capa negra a baja opacidad cada frame en vez de
@@ -80,7 +87,7 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
 - **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se bajan
   efectos visuales (glow, estelas, mostrar campo de recurso) y se puede reducir
-  `sim.ticksPerFrame` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
+  `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
   no el resultado—. **No se baja `pop.maxAgents` automáticamente**, porque eso sí cambiaría
   el ecosistema; si el usuario quiere ese ajuste, que sea un control consciente y avisado.
   Detección barata por defecto: si el viewport es estrecho (`< 700px`) o los FPS caen,
@@ -96,11 +103,13 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
 - Curva de población total (y por dieta si hay carnívoros).
 - Histograma en vivo de 1–2 genes seleccionables (size, speed, diet...). Ver el
   histograma deslizarse es la prueba visual de la selección.
-- Contador de "especies" estimadas por clustering simple de `hue`+genes (opcional).
+- Contador de "especies" = clústeres por **distancia genética sobre genes funcionales**
+  (ecología + forma de nodos; excluye color y cerebro). Modo de render "colorear por especie".
 - Reloj de generaciones / tiempo de simulación y FPS.
 
 ## Interacción mínima pero deliciosa
-- Play / pausa. Slider de velocidad de simulación (ticks por frame).
+- Play / pausa. Slider de velocidad de simulación en **ticks por segundo** (`sim.targetTPS`,
+  desacoplado de los fps).
 - Sliders de `mut_rate`, `mut_sigma`, `R_regen` para "jugar a ser el ambiente" y
   ver cómo responde la evolución en directo.
 - **Cámara con zoom y paneo toroidal:** rueda (o pinza en móvil) para zoom, arrastrar para

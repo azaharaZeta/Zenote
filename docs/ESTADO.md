@@ -64,8 +64,9 @@ visual por linaje.
 - **Ideas no planificadas** → SOLO en IDEAS (cuando una se ejecuta, pasa a AUDIT/SPEC y se retira de IDEAS).
 - **ESTADO** no almacena detalle: sintetiza y enlaza. Si algo aparece en dos sitios, sobra en uno.
 
-## ⚠️ Deuda de documentación (a saldar)
-`SPEC_EVOLUCION.md` y `CONFIG.md` son **anteriores al refactor v2.0** (4 jun) y describen el modelo VIEJO
-(genes morfológicos por categoría, `maxAlive`, carroña, mutación por 3 tasas…). La "fuente de verdad" está
-DESACTUALIZADA → **pendiente reescribir SPEC y CONFIG al modelo de nodos**. `VISUAL.md` conviene revisarlo
-para el render por nodos. Hasta entonces, **este ESTADO + AUDIT son la referencia fiable**.
+## Frescura de la documentación
+**Saldada la deuda v2.0 (2026-06-10):** `SPEC_EVOLUCION.md` y `CONFIG.md` reescritos al modelo de nodos
+(genoma de 167 genes, física direccional, crossover con ligamiento, distancia sobre genes funcionales,
+combate con `failDamage`/banda de talla, r/K honesto); `VISUAL.md` actualizado para el render por nodos.
+Todos los docs reflejan ahora el código real. Mantenerlos al día con la regla: cada cambio de modelo →
+SPEC; cada parámetro → CONFIG; cada avance de backlog → AUDIT; cada hito → este ESTADO.
