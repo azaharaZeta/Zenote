@@ -800,6 +800,20 @@ export class Renderer {
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
+    // GLOW/halo: MISMA fórmula que en el mundo (_drawAgents) para que el retrato se vea igual de luminoso.
+    // Gateado por la misma config de glow → coinciden con el efecto encendido/apagado. (`dark` = ambiente abisal.)
+    if (this.cfg.render.glow) {
+      const cLumG = cLumP;
+      const gr = r * (dark ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4));
+      const gl = dark ? Math.min(82, l + 26) : Math.min(74, l + 12);
+      const a0 = (dark ? 0.21 : 0.13) + cLumG * cLumG * (dark ? 0.48 : 0.32);
+      const gg = pctx.createRadialGradient(px, py, r * 0.25, px, py, gr);
+      gg.addColorStop(0, `hsla(${h},${s}%,${gl}%,${a0})`);
+      gg.addColorStop(0.45, `hsla(${h},${s}%,${gl}%,${a0 * 0.32})`);
+      gg.addColorStop(1, `hsla(${h},${s}%,${gl}%,0)`);
+      pctx.fillStyle = gg;
+      pctx.beginPath(); pctx.arc(px, py, gr, 0, 6.2832); pctx.fill();
+    }
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
     this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
   }
