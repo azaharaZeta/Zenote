@@ -188,6 +188,7 @@ export class Sim {
     // c_lum (glow + luminosidad) y c_sat (color): sembrado MÁS ALTO (0.3/0.25 + cola) → organismos más
     // luminosos, con glow visible y menos grises. Antes (rng·rng ≈ 0.25) salían oscuros/apagados.
     const baseTex2 = rng.next();
+    const baseOsc = rng.next();                           // fase de oscilación base por run (div=0 → marcha COORDINADA y uniforme)
     const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
     const blend = (base, sample) => base + (sample - base) * div;
     const jit = (v) => { const x = v + rng.gaussian() * J; return x < 0 ? 0 : x > 1 ? 1 : x; };
@@ -236,18 +237,35 @@ export class Sim {
       this.genes[b + G.n0_present] = 1;                        // raíz siempre presente
       this.genes[b + G.n0_size] = jit(0.5); this.genes[b + G.n0_aspect] = jit(0.35);
       this.genes[b + G.n0_parent] = 0; this.genes[b + G.n0_angle] = 0; this.genes[b + G.n0_attach] = 0;
-      this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = rng.next();
-      for (let k = 1; k < NODE_COUNT; k++) {
+      this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = blend(baseOsc, rng.next());
+      // NODO 1 = COLA propulsora (renacuajo): con headThrust bajo la cabeza sola apenas avanza, así que se siembra
+      // una cola TRASERA que ondula (emit≈π → gait≈+1) → el fundador NADA bien desde el tick 1 (evita el colapso).
+      // A diversidad 0 todos los fundadores son renacuajos casi IDÉNTICOS (lo más básico); la morfología
+      // DIVERSIFICA por selección/mutación y, a más diversidad, por los nodos extra (abajo).
+      { const nb = b + G.n1_present;
+        this.genes[nb + 0] = 1;                                // present (cola siempre al sembrar)
+        this.genes[nb + 1] = 0;                                // parent = cabeza
+        this.genes[nb + 2] = jit(0.5);                         // size (uniforme a div=0)
+        this.genes[nb + 3] = jit(0.35);                        // aspect: segmento (no tentáculo puro)
+        this.genes[nb + 4] = jit(0.9);                         // angle ≈ ATRÁS (emit≈π → cola que propulsa)
+        this.genes[nb + 5] = jit(0.7);                         // attach (cerca de punta → cadena)
+        this.genes[nb + 6] = jit(0.6);                         // osc_amp (ondula con ganas)
+        this.genes[nb + 7] = blend(baseOsc, rng.next());       // osc_phase (uniforme a div=0 → marcha coordinada)
+      }
+      // NODOS 2..7 (complejidad extra): su PRESENCIA escala con la diversidad → a div=0 NINGUNO (renacuajo puro),
+      // a div=1 ≈ el reparto previo (~29% nodo2-3, ~9% resto). Así "diversidad inicial 0" = lo más básico posible.
+      for (let k = 2; k < NODE_COUNT; k++) {
         const nb = b + G['n' + k + '_present'];                // 8 campos contiguos por nodo
-        const pScale = k === 1 ? 1.0 : k <= 3 ? 0.7 : 0.55;    // presencia decreciente por profundidad de nodo
-        this.genes[nb + 0] = rng.next() * pScale;              // present (umbral 0.5): ≈50% nodo1, ≈29% nodo2-3, ≈9% resto
+        const pPresent = k <= 3 ? 0.29 : 0.09;                 // prob. de presencia a diversidad máxima (≈ previo)
+        const present = rng.next() < div * pPresent;           // ∝ diversidad → a div=0, ausente
+        this.genes[nb + 0] = present ? (0.6 + rng.next() * 0.35) : (rng.next() * 0.45);
         this.genes[nb + 1] = rng.next();                       // parent
         this.genes[nb + 2] = 0.3 + rng.next() * 0.5;           // size (moderado)
         this.genes[nb + 3] = rng.next();                       // aspect: mezcla lóbulos (segmento) ↔ tentáculos
         this.genes[nb + 4] = rng.next();                       // angle: mezcla medial (cadena) ↔ lateral (par)
         this.genes[nb + 5] = jit(0.7);                         // attach (cerca de punta → cadenas)
-        this.genes[nb + 6] = jit(0.5);                         // osc_amp (reserva B3)
-        this.genes[nb + 7] = rng.next();                       // osc_phase (reserva B3)
+        this.genes[nb + 6] = jit(0.5);                         // osc_amp
+        this.genes[nb + 7] = rng.next();                       // osc_phase
       }
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;

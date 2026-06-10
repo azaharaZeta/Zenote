@@ -17,7 +17,7 @@ export const config = {
     R_max: 1.0,         // Recurso máximo por celda
     R_regen: 0.0060,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
-    patchiness: 0,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
+    patchiness: 0.3,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
                         //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
@@ -35,7 +35,8 @@ export const config = {
     carnivoreSeedFrac: 0.14, // Fracción de fundadores sembrados como proto-carnívoros
     simpleStart: true,       // Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios
     startJitter: 0.06,       // Magnitud del jitter gaussiano del sembrado simple
-    startDiversity: 0.5,     // (UI) Diversidad inicial del sembrado: 0 = monótono … 1 = variado
+    startDiversity: 0,       // (UI) Diversidad inicial: 0 = fundadores casi CLONALES, lo más básico (renacuajos
+                             //      simples idénticos + cohorte carnívora) para ver evolucionar desde cero … 1 = variado
   },
 
   // ───── Energética y costes (qué cuesta vivir, moverse, crecer, criar) ─────
@@ -68,7 +69,9 @@ export const config = {
   // Qué morfología gana lo decide la SELECCIÓN, no estos números. (Matiz: bodyThrust alto = cabeza buen propulsor
   // → ver idea "cabeza nadadora" en IDEAS.md; es balance, no una regla de forma.)
   loco: {
-    kThrust: 3.2,       // Calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, effort una vez)
+    kThrust: 7.1,       // Calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47)
+    headThrust: 0.15,   // (UI) Empuje de la CABEZA (motor base débil): 1 = cabeza nadadora (como antes); bajo = la cabeza
+                        //      es carga y nadar bien EXIGE cola/aletas → emergen propulsores por selección. Ver bodyplan.js.
     paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
     oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
     phaseGain: 0.5,     // (UI) B3+: cuánto penaliza la marcha DESCOORDINADA (fases dispersas) el empuje. 0 = sin

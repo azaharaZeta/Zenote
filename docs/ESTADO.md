@@ -38,8 +38,10 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 
 ## Huecos / pendientes (ideas → [IDEAS.md](IDEAS.md))
 - **Backlog de auditoría CERRADO (14/14).** Lo que queda son IDEAS futuras (no backlog): uso táctico del
-  refugio + caza en manada (entradas del cerebro), "cabeza nadadora", selección de presa por talla, Fase 2 del
-  dibujado (organismos tras el dosel), amplificar refugios móviles.
+  refugio + caza en manada (entradas del cerebro), selección de presa por talla, Fase 2 del dibujado
+  (organismos tras el dosel), amplificar refugios móviles.
+- *En pruebas:* **cabezas voladoras** — la cabeza ya no es el motor (`headThrust` bajo + sembrado renacuajo);
+  verificar en navegador que no colapsa y que emergen colas/aletas.
 - *Tuning*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))

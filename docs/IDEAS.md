@@ -4,9 +4,17 @@ Ideas estudiadas pero no implementadas (aún). Cada una con su contexto para pod
 
 ---
 
-## "Cabeza nadadora" — ¿debería un cuerpo de 1 nodo poder nadar? (ajuste de balance)
+## "Cabeza nadadora / cabezas voladoras" — la cabeza ya NO es el motor (HECHO, en pruebas)
 
-**Estado:** decisión consciente, pendiente de revisar (2026-06-10).
+**Estado: IMPLEMENTADO** (2026-06-10), pendiente de verificación ecológica en el navegador.
+**Hecho:** `loco.headThrust` (0.15) → la cabeza propulsa débil (es carga, no motor); `kThrust` recalibrado a 7.1
+(un nadador con cola ≈ v1, cabeza sola ~0.47). Sembrado "renacuajo" (cabeza + cola propulsora) para no colapsar
+al arrancar. Slider "Empuje de la cabeza" para tunear la presión (1 = régimen previo). Verificado numéricamente:
+cabeza sola 0.47 ≪ cabeza+cola 1.0 → la cola RINDE. **A vigilar en el navegador:** que la población no colapse y
+que proliferen colas/aletas (menos cabezas peladas). Texto histórico de la idea abajo.
+
+---
+**(Contexto original)**
 
 **Hoy:** el nodo raíz (cabeza) es un "motor base" — `gait=+1` y amplitud propia (`osc_amp`), así que un
 organismo de **1 solo nodo nada bien** (interpretación: el cuerpo se contorsiona, como un renacuajo). Se

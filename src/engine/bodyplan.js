@@ -45,8 +45,9 @@ export function computeBodyPlan(g, b, lo, effort) {
   // --- NODO 0 = RAÍZ (cabeza), siempre presente. Su aspecto define el ancho del cuerpo (redondo = ancho). ---
   const headW = 1.5 - g[nb + 3] * 0.95;                     // aspect 0 (redondo) → 1.5 ancho; 1 (fino) → 0.55
   let bodyEx = headW * headW - 1; if (bodyEx < 0) bodyEx = 0; // área extra del cuerpo ancho (drag+masa); fino → 0
-  _ar[0] = 1; _axis[0] = Math.PI; _amp[0] = ampOf(g[nb + 6]); _eff[0] = lo.bodyThrust; _kind[0] = KIND_HEAD;
-  _bodyEx[0] = bodyEx; _limbAr[0] = 0; _gait[0] = 1;        // emit=π → motor base que propulsa hacia delante
+  _ar[0] = 1; _axis[0] = Math.PI; _amp[0] = ampOf(g[nb + 6]); _eff[0] = lo.headThrust; _kind[0] = KIND_HEAD;
+  _bodyEx[0] = bodyEx; _limbAr[0] = 0; _gait[0] = 1;        // emit=π; propulsa DÉBIL (headThrust): la cabeza es carga,
+  //  no motor → nadar bien EXIGE cola/aletas (que emergen por selección). Antes era el motor dominante (bodyThrust).
   _phase[0] = g[nb + 7] * TWO_PI;                           // osc_phase de la cabeza
   n = 1;
   // --- NODOS 1..NODE_COUNT-1 (opcionales) ---

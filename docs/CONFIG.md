@@ -40,7 +40,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `pop.carnivoreSeedFrac` | 0.14 | fracción de fundadores sembrados como proto-carnívoros |
 | `pop.simpleStart` | true | fundadores **simples** (complejidad y apariencia emergen); false = genes aleatorios |
 | `pop.startJitter` | 0.06 | magnitud del jitter gaussiano del sembrado simple |
-| `pop.startDiversity` | 0.5 | *(UI)* diversidad inicial: 0 = monótono … 1 = variado |
+| `pop.startDiversity` | 0 | *(UI)* diversidad inicial: **0 = fundadores casi clonales** (renacuajos simples idénticos + cohorte carnívora; ver evolucionar desde cero) … 1 = variado. A 0 los nodos extra (2..7) no se siembran (solo cabeza+cola) |
 
 ## Energética y costes
 | Parámetro | Valor | Notas |
@@ -63,7 +63,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Locomoción emergente — la forma produce el movimiento (SPEC §2bis)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `loco.kThrust` | 3.2 | calibra la velocidad-capacidad típica (recalibrado en B3: empuje direccional, `effort` una vez) |
+| `loco.kThrust` | 7.1 | calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47) |
+| `loco.headThrust` | 0.15 | *(UI)* empuje de la **cabeza** (motor base débil). 1 = cabeza nadadora (régimen previo); bajo = la cabeza es carga → nadar bien exige cola/aletas (emergen por selección) |
 | `loco.paddleEff` | 0.6 | peso del **remo lateral** en el gait (aleta lateral propulsa, menos que cola trasera) |
 | `loco.oscFloor` | 0.15 | suelo de amplitud de oscilación por nodo |
 | `loco.phaseGain` | 0.5 | *(UI)* cuánto penaliza la marcha **descoordinada** (fases dispersas) el empuje. 0 = sin penalización (modelo previo); 1 = máx. Hace funcional `osc_phase` → nadar coordinado emerge (SPEC §2bis) |

@@ -130,7 +130,10 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
 `present`, `parent`, `size`, `aspect`, `angle`, `attach`, `osc_amp`, `osc_phase`.
 
 - **Nodo 0 = raíz (cabeza)**, siempre presente. Su `aspect` define el ancho del cuerpo
-  (redondo → ancho con masa+arrastre; fino → estilizado). Es el motor base (empuja hacia delante).
+  (redondo → ancho con masa+arrastre; fino → estilizado). Propulsa **DÉBIL** (`loco.headThrust`, bajo): la cabeza
+  es sobre todo **carga** (masa + arrastre), NO el motor. → nadar bien **exige propulsores** (cola trasera con
+  `gait≈+1`, aletas laterales) → las colas/aletas **emergen por selección** (más realista: un blob liso no se
+  autopropulsa). `headThrust=1` recupera el régimen "cabeza nadadora" previo.
 - **Nodos 1..7 opcionales** (`present ≥ 0.5`). Cada uno:
   - `aspect` 0 = **lóbulo/segmento** redondo (aporta **masa + arrastre**, `_ar`); 1 = **tentáculo/aleta**
     fino y largo (aporta **superficie hidrodinámica** `_limbAr`, sin masa). El continuo lóbulo↔tentáculo
