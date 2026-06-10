@@ -28,13 +28,15 @@
     <div id="predDiag" class="pred-diag"></div>
     <div id="autopsy" class="autopsy"></div>
 
-    <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Cambiar a modo laboratorio</button>
-    <button id="qualityBtn" class="mode-btn" title="Calidad gráfica. Baja mejora el rendimiento (recomendado en móvil): sin bloom, menos partículas, menor resolución.">Calidad: Alta</button>
+    <div class="row btn-row">
+      <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
+      <button id="qualityBtn" class="mode-btn" title="Calidad gráfica. Baja mejora el rendimiento (recomendado en móvil): sin bloom, menos partículas, menor resolución.">Calidad: Alta</button>
+      <button id="reseed" class="mode-btn">↻ Reiniciar</button>
+    </div>
 
     <div class="row">
-      <button id="reseed">↻ Reiniciar</button>
       <input id="seedInput" type="text" placeholder="semilla" />
-      <label class="div-row" title="Diversidad inicial del sembrado (se aplica al pulsar Sembrar): monótono ↔ variado">
+      <label class="div-row" title="Diversidad inicial del sembrado (se aplica al pulsar Reiniciar): monótono ↔ variado">
         Diversidad inicial <output id="divVal">0.00</output>
         <input id="divSlider" type="range" min="0" max="1" step="0.05" value="0" />
       </label>

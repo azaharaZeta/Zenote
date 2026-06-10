@@ -461,7 +461,7 @@ function setupLab(app, send) {
   const LS_MODE = 'zenote.advanced';
   const applyMode = (adv) => {
     panel.classList.toggle('advanced', adv);
-    modeBtn.textContent = adv ? 'Cambiar a modo simple' : 'Cambiar a modo laboratorio';
+    modeBtn.textContent = adv ? 'Simple' : 'Laboratorio'; // texto corto (el destino del toggle); el title lo explica
     // En modo SIMPLE el color es siempre "visión real" (el selector "Colorear por" queda oculto) → fuérzalo.
     // (Disparamos 'change' en el <select> para reusar su handler, que vive en otro ámbito y actualiza la leyenda.)
     const cs = $('colorMode');
