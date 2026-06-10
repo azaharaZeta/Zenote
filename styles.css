@@ -192,6 +192,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .div-row input[type="range"] { flex: 1 1 auto; min-width: 70px; }
 .div-row output { color: var(--text, #cdd5e0); font-variant-numeric: tabular-nums; }
 #panel:not(.advanced) #colorModeRow { display: none; }         /* en modo simple no se muestra "Colorear por" */
+/* Vista simple (contemplativa): sin histograma, su combo, su leyenda ni el texto de velocidad real.
+   El laboratorio (.advanced) conserva el histograma como herramienta de análisis. */
+#panel:not(.advanced) #histChart,
+#panel:not(.advanced) .charts .inline,
+#panel:not(.advanced) #legend,
+#panel:not(.advanced) #speedReal { display: none; }
 
 .lab-section { display: none; margin-top: 6px; }
 #panel.advanced .lab-section { display: block; }

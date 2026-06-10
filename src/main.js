@@ -85,6 +85,7 @@ let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
+const panelEl = document.getElementById('panel');         // .advanced ⇒ laboratorio; simple ⇒ vista contemplativa
 const predDiagEl = document.getElementById('predDiag');   // medidor de cazabilidad de presa
 const autopsyEl = document.getElementById('autopsy');     // aviso de autopsia al extinguirse los carnívoros
 
@@ -105,9 +106,12 @@ function frame(now) {
     fps = Math.round((frames * 1000) / dt);
     tps = Math.round(((simProxy.tick - lastTickCount) * 1000) / dt);
     frames = 0; lastTickCount = simProxy.tick; lastFpsT = now;
-    fpsEl.textContent = `${fps} FPS · ${tps} t/s`;
-    statEl.textContent =
-      `pob ${simProxy.popCount} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`;
+    const adv = panelEl.classList.contains('advanced');
+    // Vista simple (contemplativa): solo fps · tick · población. El laboratorio mantiene t/s, nacimientos y muertes.
+    fpsEl.textContent = adv ? `${fps} FPS · ${tps} t/s` : `${fps} FPS`;
+    statEl.textContent = adv
+      ? `pob ${simProxy.popCount} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`
+      : `tick ${simProxy.tick} · pob ${simProxy.popCount}`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
     // Diagnóstico de depredación: cazabilidad de presa (causa raíz) + autopsia de extinción carnívora.
