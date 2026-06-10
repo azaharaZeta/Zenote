@@ -56,16 +56,16 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **167 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — **169 genes** float en `[0,1]` (SoA: `Float32Array`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Bloque | Nº | Genes |
 |--------|----|-------|
-| **Ecología / fisiología** | 13 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `aggro`, `w_food`, `w_prey`, `w_flee`, `repro_thr`, `invest`, `hue`, `temp_pref` |
+| **Ecología / fisiología** | 9 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref` |
 | **Identidad / display** | 13 | `c_app`, `c_tip`, `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
 | **Cuerpo por NODOS** | 64 | 8 nodos × 8 campos (ver §2bis) |
-| **Cerebro neuronal** | 77 | pesos de la RNN (ver §cerebro) |
+| **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
 
 **Genes de ecología/fisiología:**
 
@@ -76,8 +76,6 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `sense` | inversión visual → alcance base de visión + coste (`k_sense`). El reparto alcance↔ángulo lo hace `e_fov` (§2ter). |
 | `metab` | escala a la vez el ritmo de alimentación y el coste basal (`k_metab`). Alto = come y rinde más pero quema más. Trade-off, sin "mejor". |
 | `diet` | 0 = herbívoro puro (come del campo), 1 = carnívoro puro (caza). Intermedio = omnívoro penalizado (`omniPenalty`). |
-| `aggro` | probabilidad de iniciar ataque al contactar a una presa válida (§3.1). También define el "ceño" en el render (los depredadores parecen feroces porque *evolucionan* aggro alto). |
-| `w_food`/`w_prey`/`w_flee` | pesos del **modo reactivo** (atracción a comida / a presa / repulsión de amenaza). Solo se usan si `sim.brain='reactive'`; con el cerebro neuronal (defecto) derivan. Factor `lerp(0, expr.wMax)`. |
 | `repro_thr` | umbral de energía para criar: `lerp(expr.repro_thr)` de la referencia (§4). |
 | `invest` | energía transferida a cada cría: `lerp(expr.invest)` de la referencia. |
 | `hue` | tono del organismo. **Rasgo adaptativo:** cuanto mejor sintoniza con el "color de la luz" local, mejor absorbe el recurso (§3). Muta como cualquier gen. |
@@ -98,20 +96,21 @@ y piel (`tex2`) son **NEUTRALES** (solo render, derivan por linaje → identidad
 > dice *a qué ambiente se adapta* un organismo; el linaje, *de quién desciende*.
 
 ### Cerebro (decisión) — RNN neuronal por defecto
-La decisión la toma una **red neuronal recurrente diminuta (Elman)** cuyos **pesos SON genes**
-(`sim.brain='neural'`, por defecto):
+La decisión la toma una **red neuronal recurrente diminuta (Elman)** cuyos **pesos SON genes**.
+Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*`, backlog #9):
 
-- Topología `BRAIN = {I:7, H:5, O:2}`, **77 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
+- Topología `BRAIN = {I:7, H:5, O:3}`, **83 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
   entrada→oculta, **oculta→oculta (memoria)**, sesgos ocultos, oculta→salida, sesgos salida.
   El estado oculto **persiste entre ticks** (memoria → búsqueda/persistencia emergente).
-- **Entradas (7):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la
-  amenaza (x,y), energía. **Salidas (2):** vector de deseo de movimiento (dx,dy). Pesos = `(gen−0.5)·scale`.
-- Nada de estrategia programada: pastar/cazar/huir **emerge 100% de los pesos seleccionados**.
-- Los pesos se **excluyen de la distancia genética** (no contaminan las especies). Un fundador
-  se siembra con una conducta competente de partida (≈ regla reactiva) y la evolución la **afina**.
-- **Modo reactivo** (`'reactive'`): alternativa de regla fija parametrizada por `w_food/w_prey/w_flee`;
-  sigue en el código pero no se expone en la UI. (Backlog #9/#10: retirar el modo reactivo y plegar
-  `aggro` como una salida más del cerebro → conducta 100% neuronal.)
+- **Entradas (7):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
+  energía. **Salidas (3):** deseo de movimiento (dx,dy) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]`.
+  Pesos = `(gen−0.5)·scale`.
+- Nada de estrategia programada: pastar/cazar/huir **y atacar/agredir** emergen **100% de los pesos
+  seleccionados** (el ataque ya no es el gen `aggro`, retirado en #10 → ver §3.1). El "ceño" feroz del render
+  refleja el impulso de ataque suavizado: los depredadores parecen feroces porque **evolucionan a atacar**.
+- Los pesos se **excluyen de la distancia genética** (no contaminan las especies). Un fundador se siembra con
+  una conducta competente de partida y la evolución la **afina**; los carnívoros fundadores se siembran con un
+  sesgo de ataque positivo (cazan en contacto desde el arranque).
 
 ## 2bis. Locomoción y forma emergentes — el cuerpo GENERATIVO por nodos
 
@@ -233,7 +232,8 @@ de señuelo `lureReach`), cumpla:
 - **(a) talla cazable:** el ratio `presa/depredador` está en la banda `[preyBandLo, preyBandHi]`
   (ni demasiado pequeña para que compense, ni mayor de lo que `preyBandHi` permita arriesgar);
 - **(b) dieta:** la presa está al menos `dietMargin` **más abajo en la dieta** (presa real, no un igual);
-- **(c)** el atacante **no está en tiempo de manejo** y **decide atacar** (con probabilidad `aggro`).
+- **(c)** el atacante **no está en tiempo de manejo** y **decide atacar** (con probabilidad = su **impulso de
+  ataque** `a`, la 3ª salida del cerebro). Cazar/agredir emerge del cerebro, no de un gen `aggro` (retirado, #10).
 
 > **Por qué (a) y (b)** (física trófica, no conducta codificada): un depredador no caza a otro de
 > dieta similar (evita canibalismo y la **carrera al gigantismo**); y la banda de talla acopla el
@@ -243,8 +243,9 @@ de señuelo `lureReach`), cumpla:
 
 - **Tiempo de manejo (`handlingTime`):** tras una captura el ganador no puede atacar durante N ticks
   (digestión). Satura la tasa de depredación → la presa amortigua → coexistencia en vez de colapso.
-- **Resolución estocástica:** fuerza de cada contendiente ∝ tamaño y `aggro`, con el tamaño elevado a
-  `combat.sizeAdvantage`. `P(gana atacante) = f_att / (f_att + f_def)`. Nadie gana "por regla".
+- **Resolución estocástica:** fuerza de cada contendiente `f = (size+0.1)^combat.sizeAdvantage` (tamaño + azar;
+  ya no pesa `aggro` — las ganas de atacar están en la tasa de decisión `a`). `P(gana atacante) = f_att / (f_att
+  + f_def)`. Nadie gana "por regla".
 - **Al vencer:** el perdedor muere (sin cadáver); el ganador recibe `preyGain · E_perdedor · effCarn`
   (limitado a `E_max`). Un herbívoro puro (`effCarn≈0`) no gana nada atacando → la agresión solo se
   sostiene si la dieta carnívora coevoluciona (emergencia, no la regla "los herbívoros no atacan").
@@ -306,7 +307,7 @@ runaway) → ornamentos divergentes por especie. Solo afecta a la elección y al
 Métrica única (compatibilidad sexual + clústeres de especie): **euclídea normalizada sobre los genes
 FUNCIONALES** → `dist = sqrt( Σ_func (g1ᵢ − g2ᵢ)² / n_func ) ∈ [0,1]`.
 - **FUNCIONALES** = ecología + `e_fov` + `orn`/`pref` + **forma de nodos** (incl. `osc_amp`).
-- **EXCLUIDOS:** el **cerebro** (77 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
+- **EXCLUIDOS:** el **cerebro** (83 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
   (colores, `c_eye`, `c_lum`, `c_sat`, estilo de señuelo `o_*`, `tex2`). **`osc_phase`** también se excluye
   aunque afecta a la física: solo importa su **dispersión dentro de un cuerpo**, no el valor absoluto (dos
   bichos igual de coordinados con fase global distinta nadan idéntico) → contarlo daría especiación espuria.

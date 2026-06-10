@@ -106,14 +106,8 @@ export function computePhenotype(sim, i) {
   sim.investE[i] = investFrac * reproRef;
   sim.reproNeedE[i] = Math.max(reproFrac, investFrac) * reproRef;
 
-  // Pesos de comportamiento → factores lerp(0, wMax). La estrategia emerge de estos.
-  sim.wFood[i] = g[b + G.w_food] * e.wMax;
-  sim.wPrey[i] = g[b + G.w_prey] * e.wMax;
-  sim.wFlee[i] = g[b + G.w_flee] * e.wMax;
-
-  // Crudos usados directos
+  // Conducta (moverse Y atacar) = cerebro neuronal (sim.js). No hay genes-atajo de conducta.
   sim.diet[i]     = diet;
-  sim.aggro[i]    = g[b + G.aggro];
   sim.hue[i]      = g[b + G.hue];
   sim.tempPref[i] = g[b + G.temp_pref]; // óptimo térmico (coste por desviarse, ver sim.js)
 }

@@ -69,11 +69,9 @@ export class Sim {
     this.effCarn = new Float32Array(cap);
     this.investE = new Float32Array(cap);
     this.reproNeedE = new Float32Array(cap);
-    this.wFood = new Float32Array(cap);
-    this.wPrey = new Float32Array(cap);
-    this.wFlee = new Float32Array(cap);
     this.diet = new Float32Array(cap);
-    this.aggro = new Float32Array(cap);
+    this.atkOut = new Float32Array(cap);   // impulso de ataque (3ª salida del cerebro) ∈[0,1] del último tick
+    this.atkDrive = new Float32Array(cap); // impulso de ataque SUAVIZADO (EMA) → "ceño" del render (emergente)
     this.hue = new Float32Array(cap);
     this.tempPref = new Float32Array(cap);
 
@@ -135,26 +133,24 @@ export class Sim {
         this.genes[b + G.diet]   = 0.75 + rng.next() * 0.25;
         this.genes[b + G.speed]  = 0.5 + rng.next() * 0.4;   // esfuerzo alto: rema fuerte para cazar
         this.genes[b + G.size]   = 0.3 + rng.next() * 0.2;   // solo lo justo para superar a la presa
-        this.genes[b + G.aggro]  = 0.6 + rng.next() * 0.4;
-        this.genes[b + G.w_prey] = 0.6 + rng.next() * 0.4;
         this.genes[b + G.sense]  = 0.4 + rng.next() * 0.4;
-        this.genes[b + G.w_food] = rng.next() * 0.2;
         this.genes[b + G.repro_thr] = rng.next() * 0.25; // se reproduce a ~media energía
         this.genes[b + G.invest]    = 0.1 + rng.next() * 0.3;
         this.genes[b + G.e_fov]   = rng.next() * 0.35;       // ojos frontales de largo alcance (cazador)
-        // La FORMA nadadora cazadora EMERGE de los nodos (genes de nodo aleatorios del init); aquí solo ecología.
+        // La FORMA nadadora cazadora y las GANAS de atacar EMERGEN (nodos + cerebro sembrado, abajo); aquí solo ecología.
       } else {
-        // Guild herbívoro: dieta y agresión bajas (donde la selección los llevaría igualmente).
-        // Sembrarlos pacíficos evita una masacre intraespecífica en el transitorio inicial.
+        // Guild herbívoro: dieta baja (donde la selección los llevaría igualmente). El impulso de ataque
+        // emerge del cerebro (sembrado a ~0.5 → la selección lo baja en herbívoros, que no ganan cazando).
         this.genes[b + G.diet] = rng.next() * 0.2;
-        this.genes[b + G.aggro] = rng.next() * 0.15;
         this.genes[b + G.size] = rng.next() * 0.3; // presa pequeña al inicio: el cazador coge ventaja
       }
-      seedBrain(this.genes, i, rng); // arranque competente del cerebro (solo importa en modo neural)
+      // Cerebro competente de partida; carnívoros fundadores con sesgo de ataque alto (cazan en contacto desde ya).
+      seedBrain(this.genes, i, rng, (!dietLow && n < nCarn) ? 0.27 : 0);
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width;
       this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
+      this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
       this.E[i] = 0.5 * this.eMax[i];
       this.age[i] = 0;
@@ -198,14 +194,14 @@ export class Sim {
       const i = this._alloc();
       if (i < 0) break;
       const b = i * NUM_GENES;
-      seedBrain(this.genes, i, rng);                     // cerebro competente de partida (solo importa en modo neural)
+      // Cerebro competente de partida; carnívoros fundadores con sesgo de ataque alto (cazan en contacto desde ya).
+      seedBrain(this.genes, i, rng, (n < nCarn) ? 0.27 : 0);
       // Cuerpo y energía
       this.genes[b + G.size] = jit(0.28); this.genes[b + G.speed] = jit(0.5);
       this.genes[b + G.sense] = jit(0.4); this.genes[b + G.metab] = jit(0.45);
       this.genes[b + G.repro_thr] = jit(0.6); this.genes[b + G.invest] = jit(0.4);
-      // Conducta: herbívoro tranquilo (la dieta/agresión emergen)
-      this.genes[b + G.diet] = jit(0.08); this.genes[b + G.aggro] = jit(0.08);
-      this.genes[b + G.w_food] = jit(0.55); this.genes[b + G.w_prey] = jit(0.15); this.genes[b + G.w_flee] = jit(0.4);
+      // Conducta: herbívoro tranquilo (la dieta emerge; las ganas de atacar emergen del cerebro)
+      this.genes[b + G.diet] = jit(0.08);
       this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
       // La FORMA (cuerpo/apéndices) se siembra abajo vía el bloque de NODOS (B2/B3). Aquí solo color/ojos/ornamento.
       this.genes[b + G.c_app] = jit(baseApp); this.genes[b + G.c_tip] = jit(baseTip); this.genes[b + G.c_eye] = jit(0.5);
@@ -220,11 +216,12 @@ export class Sim {
       this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55); // glow/color (variedad escalada por diversidad)
       this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y POCOS de partida
       this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // escala/densidad de piel: variedad escalada por diversidad
-      // Cohorte proto-carnívora: SOLO sesga la ECOLOGÍA (dieta/agresión/caza), el cuerpo sigue sencillo →
-      // la morfología cazadora EMERGE. Mantiene la coexistencia depredador-presa sin inyectar complejidad.
+      // Cohorte proto-carnívora: SOLO sesga la ECOLOGÍA (dieta/caza), el cuerpo sigue sencillo → la morfología
+      // cazadora EMERGE. El impulso de ataque se siembra en el cerebro (seedBrain atkBias, arriba). Mantiene
+      // la coexistencia depredador-presa sin inyectar complejidad.
       if (n < nCarn) {
-        this.genes[b + G.diet] = jit(0.8); this.genes[b + G.aggro] = jit(0.7); this.genes[b + G.w_prey] = jit(0.7);
-        this.genes[b + G.w_food] = jit(0.15); this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
+        this.genes[b + G.diet] = jit(0.8);
+        this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
         this.genes[b + G.repro_thr] = jit(0.35);
         // Kit de CAZADOR VIABLE (solo ecología; la FORMA cazadora emerge de los nodos): ventaja de TAMAÑO
         // (el combate exige depredador > presa) y esfuerzo alto para nadar rápido tras la presa.
@@ -252,6 +249,7 @@ export class Sim {
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
+      this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
       this.E[i] = 0.5 * this.eMax[i];
       this.age[i] = 0;
@@ -288,7 +286,6 @@ export class Sim {
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
-    const neural = cfg.sim.brain === 'neural'; // cerebro neuronal en vez de la regla reactiva
 
     W.regen();
 
@@ -319,19 +316,16 @@ export class Sim {
       const fmag = Math.hypot(dfx, dfy) || 1;
       dfx /= fmag; dfy /= fmag;
 
-      let dx = this.wFood[i] * dfx;
-      let dy = this.wFood[i] * dfy;
+      let dx = 0, dy = 0;   // el deseo de movimiento lo decide el cerebro (abajo), no una regla fija
 
       // Mirada (solo render): por defecto al frente; si ve presa/amenaza, la sigue (se fija abajo).
       let gzx = 0, gzy = 0, gazeSet = false;
       // Direcciones unitarias a presa/amenaza (0 si ninguna) → entradas del cerebro neuronal.
       let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0;
 
-      // Términos presa/amenaza: solo si el combate está activo (Fase 2) Y el agente tiene
-      // algún motivo para mirar a otros (atacar, perseguir presa o huir). Un grazer pacífico
-      // (aggro≈0, w_prey≈0, w_flee≈0) no usa nada de esto → se salta el escaneo de vecinos,
-      // que es lo más caro del tick. Gran ahorro cuando dominan los herbívoros.
-      if (combat && (neural || this.aggro[i] > 0.02 || this.wPrey[i] > 0.04 || this.wFlee[i] > 0.04)) {
+      // Términos presa/amenaza: solo si el combate está activo (Fase 2). Alimentan las entradas del cerebro
+      // (dirección a presa/amenaza) y la detección de solape para el combate.
+      if (combat) {
         const sr = this.senseR[i], sr2 = sr * sr;
         let bestPrey = -1, bestPreyD = sr2, bestThreat = -1, bestThreatD = sr2;
         let bestContact = -1, bestContactD = Infinity; // vecino solapado más cercano (combate)
@@ -393,13 +387,14 @@ export class Sim {
           }
         }
         // ---------- COMBATE (resolución exacta §3.1) ----------
-        // Al solaparse, el potencial atacante ataca con probabilidad = su `aggro`.
-        if (bestContact !== -1 && this.alive[bestContact] && this.attackCD[i] <= 0 && rng.next() < this.aggro[i]) {
+        // Al solaparse, el atacante ataca con probabilidad = su IMPULSO DE ATAQUE (3ª salida del cerebro,
+        // del tick previo). Cazar/agredir EMERGE del cerebro seleccionado, no de un gen-atajo `aggro`.
+        if (bestContact !== -1 && this.alive[bestContact] && this.attackCD[i] <= 0 && rng.next() < this.atkOut[i]) {
           const j = bestContact;
-          // Fuerza = (tamaño+0.1)^sizeAdvantage · (0.5 + aggro). Resolución estocástica:
-          // nadie gana "por regla", emerge del genoma.
-          const fi = Math.pow(this.genes[i * NG + G.size] + 0.1, sizeAdv) * (0.5 + this.aggro[i]);
-          const fj = Math.pow(this.genes[j * NG + G.size] + 0.1, sizeAdv) * (0.5 + this.aggro[j]);
+          // Fuerza = (tamaño+0.1)^sizeAdvantage. Resolución estocástica: nadie gana "por regla", emerge del
+          // genoma (tamaño) + azar. Las "ganas" de atacar ya están en la tasa de decisión (impulso del cerebro).
+          const fi = Math.pow(this.genes[i * NG + G.size] + 0.1, sizeAdv);
+          const fj = Math.pow(this.genes[j * NG + G.size] + 0.1, sizeAdv);
           if (rng.next() < fi / (fi + fj)) {
             // Gana i: la presa muere SIN depositar cadáver; i come según su eficiencia carnívora.
             const g = en.preyGain * E[j] * this.effCarn[i];
@@ -434,7 +429,6 @@ export class Sim {
           }
           const m = Math.sqrt(bestPreyD) || 1;
           preyDX = ddx / m; preyDY = ddy / m;
-          if (!neural) { dx += this.wPrey[i] * preyDX; dy += this.wPrey[i] * preyDY; } // reactivo
           gzx = ddx; gzy = ddy; gazeSet = true; // mira a la presa
         }
         if (bestThreat !== -1) {
@@ -445,15 +439,14 @@ export class Sim {
           }
           const m = Math.sqrt(bestThreatD) || 1;
           threatDX = ddx / m; threatDY = ddy / m;
-          if (!neural) { dx -= this.wFlee[i] * threatDX; dy -= this.wFlee[i] * threatDY; } // repulsión (reactivo)
           if (!gazeSet) { gzx = ddx; gzy = ddy; gazeSet = true; } // vigila la amenaza
         }
       }
 
-      // ---------- CEREBRO NEURONAL (opcional): la MLP decide el deseo de movimiento ----------
-      // Sustituye la suma reactiva: el deseo (dx,dy) sale de la red (pesos = genoma) a partir de las
-      // mismas señales sensoriales. Comportamiento 100% emergente, sin estrategias programadas.
-      if (neural) {
+      // ---------- CEREBRO NEURONAL: la RNN decide el deseo de movimiento (y el impulso de ataque) ----------
+      // El deseo (dx,dy) sale de la red (pesos = genoma) a partir de las señales sensoriales; `_brain` también
+      // escribe el impulso de ataque (atkOut/atkDrive). Comportamiento 100% emergente, sin estrategias programadas.
+      {
         const inp = this._brIn;
         inp[0] = dfx; inp[1] = dfy; inp[2] = preyDX; inp[3] = preyDY;
         inp[4] = threatDX; inp[5] = threatDY; inp[6] = E[i] / this.eMax[i] * 2 - 1;
@@ -582,6 +575,7 @@ export class Sim {
           this.cooldown[child] = baseCD;
           this.attackCD[child] = 0;
           const hb = child * BRAIN.H; for (let q = 0; q < BRAIN.H; q++) this.brainHid[hb + q] = 0; // memoria a cero
+          this.atkOut[child] = 0; this.atkDrive[child] = 0; // impulso de ataque a cero (lo fija su cerebro al vivir)
           this.lineage[child] = this.lineage[i];          // hereda linaje sin mutar
           this.generation[child] = this.generation[i] + 1; // un escalón más en el árbol
           this.cooldown[i] = baseCD;
@@ -649,12 +643,17 @@ export class Sim {
       hid[h] = Math.tanh(s);
     }
     for (let h = 0; h < H; h++) prev[hb + h] = hid[h];  // guardar nuevo estado oculto (memoria para t+1)
-    let ox = (g[bO] - 0.5) * sc, oy = (g[bO + 1] - 0.5) * sc;
+    let ox = (g[bO] - 0.5) * sc, oy = (g[bO + 1] - 0.5) * sc, oa = (g[bO + 2] - 0.5) * sc; // 3ª salida = ataque
     for (let h = 0; h < H; h++) {
-      ox += hid[h] * (g[wHo + h * O] - 0.5) * sc;
-      oy += hid[h] * (g[wHo + h * O + 1] - 0.5) * sc;
+      const hv = hid[h];
+      ox += hv * (g[wHo + h * O] - 0.5) * sc;
+      oy += hv * (g[wHo + h * O + 1] - 0.5) * sc;
+      oa += hv * (g[wHo + h * O + 2] - 0.5) * sc;
     }
     this._brOut[0] = Math.tanh(ox); this._brOut[1] = Math.tanh(oy);
+    const a = (Math.tanh(oa) + 1) * 0.5;                // impulso de ataque ∈[0,1] (prob. de atacar en contacto)
+    this.atkOut[i] = a;
+    this.atkDrive[i] = this.atkDrive[i] * 0.92 + a * 0.08; // EMA suave → "ceño" estable del render (emergente)
   }
 
   _depositCorpse(px, py, amount) {

@@ -2,9 +2,8 @@
 // Un genoma es un tramo de NUM_GENES floats en [0,1] dentro de un Float32Array SoA.
 
 const BASE_GENES = [
-  // Ecología / fisiología (núcleo de nichos).
-  'size', 'speed', 'sense', 'metab', 'diet', 'aggro',
-  'w_food', 'w_prey', 'w_flee', 'repro_thr', 'invest', 'hue', 'temp_pref',
+  // Ecología / fisiología (núcleo de nichos). Conducta (moverse Y atacar) = cerebro neuronal, no genes-atajo.
+  'size', 'speed', 'sense', 'metab', 'diet', 'repro_thr', 'invest', 'hue', 'temp_pref',
   // --- IDENTIDAD / DISPLAY (color por partes, ojos, selección sexual, señuelo, piel). Tras el CONTRACT (B3b)
   //     la FORMA del cuerpo vive en el bloque de NODOS (abajo); estos son los ejes de color/exhibición. ---
   // Color por partes (`c_app`/`c_tip` CONTIGUOS: el snapshot los manda como bloque `tint`). NEUTRAL.
@@ -34,11 +33,11 @@ export const NODE_STRIDE = NODE_FIELDS.length;   // 8 genes por nodo
 export const NODE0 = BASE_GENES.length;          // índice del primer gen de nodo (n0_present)
 for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.push('n' + k + '_' + f);
 
-// --- CEREBRO NEURONAL (opcional, Fase 4): MLP diminuta cuyos PESOS son genes. Solo se usa si
-// `cfg.sim.brain === 'neural'`; en modo reactivo estos genes derivan neutralmente (y NO cuentan en
-// la distancia genética → no contaminan las especies). Entradas (I) = señales sensoriales; H ocultas
-// (tanh); O=2 salidas = vector de deseo de movimiento. Pesos = (gen-0.5)*scale. ---
-export const BRAIN = { I: 7, H: 5, O: 2, scale: 6 };
+// --- CEREBRO NEURONAL: MLP diminuta cuyos PESOS son genes. Es el ÚNICO motor de conducta (la regla reactiva
+// se retiró, #9). Los pesos NO cuentan en la distancia genética (su deriva dominaría → no contaminan las
+// especies). Entradas (I) = señales sensoriales; H ocultas (tanh); O=3 salidas = deseo de movimiento (dx,dy)
+// + IMPULSO DE ATAQUE (cazar/agredir emerge del cerebro, ya no del gen `aggro`). Pesos = (gen-0.5)*scale. ---
+export const BRAIN = { I: 7, H: 5, O: 3, scale: 6 };
 // RECURRENTE (Elman): pesos entrada→oculta (I·H) + oculta→oculta/MEMORIA (H·H) + sesgos ocultos (H)
 // + oculta→salida (H·O) + sesgos salida (O). El estado oculto persiste entre ticks (en sim.brainHid).
 export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 77
@@ -53,10 +52,6 @@ export const GENE_LABELS = {
   sense: 'Visión',
   metab: 'Metabolismo',
   diet: 'Dieta',
-  aggro: 'Agresividad',
-  w_food: 'Atracción a la comida',
-  w_prey: 'Atracción a la presa',
-  w_flee: 'Tendencia a huir',
   repro_thr: 'Umbral de reproducción',
   invest: 'Inversión en crías',
   hue: 'Color (linaje)',
@@ -80,7 +75,7 @@ export const GENE_LABELS = {
 // que si no son un listado interminable). No incluye los pesos del cerebro.
 export const GENE_GROUPS = [
   { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest'] },
-  { label: 'Dieta y conducta',     genes: ['diet', 'aggro', 'w_food', 'w_prey', 'w_flee'] },
+  { label: 'Dieta',                genes: ['diet'] },
   { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
   { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_app', 'c_tip', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
@@ -146,7 +141,9 @@ export function copyMutated(genes, srcIdx, dstIdx, mut, rng) {
 // salida ≈ +gradiente_comida + hacia_presa − amenaza (como la regla reactiva). El resto de pesos ~0 con
 // ruido pequeño (incluidos los recurrentes, que la evolución refinará para añadir memoria/búsqueda).
 // Así la neuroevolución parte de competencia y AFINA, en vez de descubrirlo todo desde cero.
-export function seedBrain(genes, idx, rng) {
+// `atkBias` (0..~0.3) sesga la 3ª salida (impulso de ataque): 0 → impulso ≈0.5 (ataca a medias en contacto);
+// >0 → siembra cazadores competentes (carnívoros fundadores). La evolución cablea los pesos del ataque.
+export function seedBrain(genes, idx, rng, atkBias = 0) {
   const b = idx * NUM_GENES + BRAIN0, I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, sc = BRAIN.scale;
   for (let i = 0; i < BRAIN_W; i++) genes[b + i] = clamp01(0.5 + (rng.next() - 0.5) * 0.1); // baseline ~0
   const wHo = I * H + H * H + H;                       // offset (relativo al bloque) de oculta→salida
@@ -154,8 +151,9 @@ export function seedBrain(genes, idx, rng) {
   // oculta0 ← +dfx +preyDX −threatDX ; oculta1 ← +dfy +preyDY −threatDY  (entradas 0,2,4 y 1,3,5)
   genes[b + 0 * H + 0] = clamp01(gp + j()); genes[b + 2 * H + 0] = clamp01(gp + j()); genes[b + 4 * H + 0] = clamp01(gn + j());
   genes[b + 1 * H + 1] = clamp01(gp + j()); genes[b + 3 * H + 1] = clamp01(gp + j()); genes[b + 5 * H + 1] = clamp01(gn + j());
-  // salida_x ← oculta0 ; salida_y ← oculta1
+  // salida_x ← oculta0 ; salida_y ← oculta1 ; sesgo de la salida_ataque (índice O-1 = 2)
   genes[b + wHo + 0 * O + 0] = clamp01(gp + j()); genes[b + wHo + 1 * O + 1] = clamp01(gp + j());
+  genes[b + wHo + H * O + 2] = clamp01(0.5 + atkBias);  // bO+2 = sesgo del impulso de ataque
 }
 
 export function crossover(genes, aIdx, bIdx, dstIdx, mut, rng) {

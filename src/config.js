@@ -146,8 +146,8 @@ export const config = {
   // todo). failDamage ≥ 1 ≈ muerte casi segura (comportamiento antiguo); bajarlo da resiliencia carnívora.
   combat: {
     enabled: true,       // (UI) Activar depredación/combate
-    sizeAdvantage: 1.4, // (UI) Cuánto pesa el tamaño en quién gana el combate
-    failDamage: 0.45,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
+    sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
+    failDamage: 0.3,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.20,    // Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa)
@@ -161,7 +161,6 @@ export const config = {
     targetTPS: 20,      // (UI) Ticks por segundo objetivo (0 = pausa)
     frameBudgetMs: 40,  // Máx. ms simulando por frame en modo normal (si no llega, bajan fps, no se congela)
     maxBudgetMs: 250,   // Máx. ms simulando por frame en modo "máx velocidad"
-    brain: 'neural',    // Cerebro: 'neural' (recurrente, pesos = genoma, por defecto) | 'reactive' (regla fija)
   },
 
   // ───── Render (solo visual; no afecta a la simulación) ─────
@@ -187,6 +186,5 @@ export const config = {
     sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (px)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)
-    wMax:      2,                        // w_food / w_prey / w_flee → factor de peso (lerp 0..2)
   },
 };

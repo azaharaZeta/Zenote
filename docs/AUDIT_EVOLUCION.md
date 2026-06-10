@@ -239,7 +239,7 @@ Los coeficientes `k_*` **son** los gradientes de selección. La mayoría son per
 ## Backlog priorizado (orden de ataque sugerido)
 
 De más fundacional / mayor retorno de realismo a más periférico.
-**Progreso: 7/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #4, #5, #6, #11. Pendientes: #3, #7, #8, #9, #10, #12, #13.
+**Progreso: 9/14 hechos** → ✅ #0 (Pilar completo), #1, #2, #4, #5, #6, #9, #10, #11. Pendientes: #3, #7, #8, #12, #13.
 
 0. ✅ **🏛️ PILAR v2.0 — Forma y movimiento emergentes** — COMPLETO (A1+A2+B1+B2+B3+CONTRACT). El cuerpo es un
    genoma generativo por nodos (una primitiva), la física de locomoción es direccional y emerge de la
@@ -270,8 +270,8 @@ De más fundacional / mayor retorno de realismo a más periférico.
 
 **Catálogo de genes (decidido el 2026-06-09, ver sección dedicada):**
 
-9. ⬜ **Cortar el modo reactivo** y los genes `w_food`/`w_prey`/`w_flee` (cerebro neural-only). — *Catálogo*
-10. ⬜ **Plegar `aggro` en el cerebro** (nueva salida de ataque, `O: 2→3`). — *Catálogo*
+9. ✅ **Cortar el modo reactivo** y los genes `w_food`/`w_prey`/`w_flee` (cerebro neural-only). *Hecho: motor solo neural; `sim.brain` retirado.* — *Catálogo*
+10. ✅ **Plegar `aggro` en el cerebro** (nueva salida de ataque, `O: 2→3`, `BRAIN_W 77→83`). *Hecho: ataque por impulso del cerebro; fuerza sin `aggro`; "ceño" = impulso suavizado.* — *Catálogo*
 11. ✅ **Eliminar el subsistema de carroña** (código `carrion`). *Hecho: `corpseReturn` se mantiene.* — *Catálogo*
 12. ⬜ **Añadir genes de historia de vida** (`mature_age`, `senescence`). — *Catálogo*
 13. ⬜ **Consolidar los genes de color/adorno** casi-redundantes (sin perder identidad visual). — *Catálogo*

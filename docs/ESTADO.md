@@ -11,14 +11,14 @@ de la geometría, el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **167 genes/agente** (SoA, typed arrays):
+Genoma de **169 genes/agente** (SoA, typed arrays):
 
 | Bloque | Genes | Codifica |
 |---|---|---|
-| Ecología | 13 | size, speed(esfuerzo), sense, metab, diet, aggro, w_food/prey/flee, repro_thr, invest, hue, temp_pref |
+| Ecología | 9 | size, speed(esfuerzo), sense, metab, diet, repro_thr, invest, hue, temp_pref |
 | Identidad / display | 13 | colores por parte, e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
 | Cuerpo por NODOS | 64 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase} → grafo generativo |
-| Cerebro | 77 | MLP recurrente (Elman); pesos = genes → deseo de movimiento |
+| Cerebro | 83 | MLP recurrente (Elman); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
 
 - **Frontera gen→fenotipo única**: `organism.js` + `bodyplan.js`. El cuerpo es un grafo de una sola primitiva;
   masa, arrastre, **empuje direccional**, giro y elongación EMERGEN de la geometría.
@@ -27,21 +27,20 @@ Genoma de **167 genes/agente** (SoA, typed arrays):
 - **Fitness 100% emergente** (sobrevivir + criar). Motor en Web Worker; render Canvas 2D desde los nodos.
 
 ## Qué EMERGE (no cableado)
-Especiación · conducta (cerebro neuronal: cazar/huir/pastar/atacar) · **morfología generativa** y **gait
-direccional** (colas atrás propulsan, frentes penalizan; ondulantes vs remeros) · **coordinación de marcha**
-(la natación coordinada se premia vía coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/
-térmico (camuflaje color↔luz) · depredación estructurada por talla · selección sexual (orn/pref) · identidad
-visual por linaje.
+Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pastar **y atacar** emergen de los
+pesos — sin reglas ni gen `aggro`) · **morfología generativa** y **gait direccional** (colas atrás propulsan,
+frentes penalizan; ondulantes vs remeros) · **coordinación de marcha** (la natación coordinada se premia vía
+coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/térmico (camuflaje color↔luz) ·
+depredación estructurada por talla · selección sexual (orn/pref) · identidad visual por linaje.
 
 ## Huecos principales (detalle y prioridad → [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md) §Backlog · ideas → [IDEAS.md](IDEAS.md))
 - **"Cabeza nadadora"**: poca presión para evolucionar colas (idea en IDEAS).
-- **Ataque/dirección no 100% del cerebro** (`aggro`/`w_*` siguen siendo genes-atajo → backlog #9/#10).
 - **Sin alometría** (#3), **sin genes de historia de vida** (#12), **refugio** aún flag binario (#7).
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
-**7/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #4 r/K honesto, #5 maxAlive,
-#6 muletas energéticas, #11 carroña. **Pendientes:** #3 alometría · #7 refugio · #8 constantes loco ·
-#9 reactivo+`w_*` · #10 `aggro`→cerebro · #12 historia de vida · #13 consolidar color.
+**9/14 hechos:** ✅ #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #4 r/K honesto, #5 maxAlive,
+#6 muletas energéticas, #9 cerebro neural-only, #10 ataque del cerebro, #11 carroña. **Pendientes:**
+#3 alometría · #7 refugio · #8 constantes loco · #12 historia de vida · #13 consolidar color.
 
 ---
 

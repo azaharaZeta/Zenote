@@ -473,7 +473,7 @@ function setupLab(app, send) {
     const g = (n, v) => { mascot[G[n]] = v < 0 ? 0 : v > 1 ? 1 : v; };
     // hue acotado a [0.62, 0.68]: con la rueda completa del render (hue·360) eso da ~223-245° → entorno al AZUL.
     g('size', R(0.58, 0.66)); g('hue', R(0.62, 0.68)); g('sense', 0.5); g('metab', 0.5);
-    g('diet', R(0.38, 0.44)); g('aggro', R(0.38, 0.44));
+    g('diet', R(0.38, 0.44)); // sin gen `aggro`: las ganas de atacar emergen del cerebro
     // FORMA del mascot vía NODOS: cabeza redonda + un par de "orejas" laterales; resto de nodos ausentes.
     g('n0_present', 1); g('n0_size', 0.55); g('n0_aspect', 0.3); g('n0_osc_amp', 0.55);
     g('n1_present', 0.95); g('n1_size', 0.5); g('n1_aspect', 0.68); g('n1_angle', 0.32); g('n1_attach', 0.7); g('n1_osc_amp', 0.5);
@@ -484,7 +484,7 @@ function setupLab(app, send) {
     g('o_len', R(0.48, 0.58)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22));
     const ictx = introCanvas.getContext('2d');
     let raf = 0, on = true;
-    const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5); } catch (e) {} raf = requestAnimationFrame(loop); };
+    const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5, 0.2); } catch (e) {} raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop); // arranca en el primer frame (tras el primer draw) + try/catch → nunca rompe la init
     enterBtn.addEventListener('click', () => { intro.classList.add('hidden'); on = false; cancelAnimationFrame(raf); });
   }
@@ -506,7 +506,8 @@ function inspCard(g, sel) {
   }
   const nSeg = 1 + segs;                                   // la cabeza cuenta como primer "segmento"
   const fov = g[G.e_fov], fovL = fov < 0.4 ? '👁️ frontal' : fov > 0.6 ? '👁️ panorámica' : '👁️ media';
-  const ag = g[G.aggro], agL = ag > 0.5 ? '😠 agresivo' : ag < 0.2 ? '😌 pacífico' : '😐 templado';
+  // "Ganas de atacar" = impulso de ataque del cerebro (dinámico, emergente), no un gen.
+  const ag = sel.atkDrive != null ? sel.atkDrive : 0, agL = ag > 0.5 ? '😠 agresivo' : ag < 0.2 ? '😌 pacífico' : '😐 templado';
   const orn = g[G.orn] > 0.5 ? ' · 🦚 ornamentado' : '';
   return `<div class="insp-card">${dietL} · 🐛 ${nSeg} seg · ${nApp} apénd.<br>${fovL} · ${agL}${orn}</div>`;
 }
@@ -555,7 +556,7 @@ export function updateInspector(app) {
     const ml = box.querySelector('.insp-members'); if (ml) ml.textContent = membersLabel; // conteo de individuos EN VIVO
   }
   const pc = box.querySelector('.insp-portrait'); // retrato animado (cada frame)
-  if (pc) app.renderer.drawPortrait(pc.getContext('2d'), sel.genes, app.renderer._animT * 0.006, ef, sel.heading, sel.spd); // orienta/ondula como en el mundo
+  if (pc) app.renderer.drawPortrait(pc.getContext('2d'), sel.genes, app.renderer._animT * 0.006, ef, sel.heading, sel.spd, sel.atkDrive); // orienta/ondula como en el mundo
 }
 
 // hashStr: convierte el texto del campo "semilla" en una semilla numérica (cuando se usa).

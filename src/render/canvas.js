@@ -729,15 +729,15 @@ export class Renderer {
     }
 
     // ---- OJOS en la raíz (B2b incremento 2): perla vidriosa oscura + pupila que sigue la MIRADA. Conteo
-    // (cíclope/par/racimo) desde `sense`; iris ligado a la paleta del cuerpo (c_eye); entornado por `aggro`
-    // (depredador). Versión sencilla (sin formas de pupila ni almendra rasgada todavía). ----
+    // (cíclope/par/racimo) desde `sense`; iris ligado a la paleta del cuerpo (c_eye); entornado por el
+    // IMPULSO DE ATAQUE del cerebro (dinámico, emergente: los que cazan parecen feroces — ya no un gen). ----
     if (showEyes && eye) {
-      const senseG = eye[eo], cEye = eye[eo + 2], aggroG = eye[eo + 3];
+      const senseG = eye[eo], cEye = eye[eo + 2], atkDrive = eye[eo + 3];
       const hr = pr[0], elong = pl[0] / pr[0];
       const er0 = Math.max(0.8, hr * (0.16 + 0.34 * senseG));
       const nEye = senseG < 0.3 ? 1 : senseG < 0.72 ? 2 : 4 + ((senseG - 0.72) * 12 | 0);
       const iHue = (((h + (cEye - 0.5) * 70) % 360) + 360) % 360;
-      const aspectY = 1 - aggroG * 0.4;                          // aggro alto → ojo entornado (depredador)
+      const aspectY = 1 - atkDrive * 0.4;                        // impulso de ataque alto → ojo entornado (feroz)
       const ch = Math.cos(heading), sh = Math.sin(heading);
       let lgx = 1, lgy = 0;
       if (face) { const gx = face[fo], gy = face[fo + 1]; lgx = gx * ch + gy * sh; lgy = -gx * sh + gy * ch; }
@@ -770,7 +770,7 @@ export class Renderer {
 
   // Retrato del organismo seleccionado para el inspector: dibuja el bicho centrado en un canvas
   // pequeño a partir de su genoma completo. Reutiliza _drawBodyGraph (mismo aspecto que en el mundo).
-  drawPortrait(pctx, genes, t, ef, headingArg, spdArg) {   // heading/spd opcionales → orienta y ondula IGUAL que en el mundo
+  drawPortrait(pctx, genes, t, ef, headingArg, spdArg, atkArg) {   // heading/spd/atk opcionales → orienta, ondula y entorna el ojo IGUAL que en el mundo
     const cw = pctx.canvas.width, ch = pctx.canvas.height;
     pctx.clearRect(0, 0, cw, ch);
     if (!genes) return;
@@ -790,7 +790,7 @@ export class Renderer {
     pdeco[3] = genes[G.o_len]; pdeco[4] = genes[G.o_bulb]; pdeco[5] = genes[G.o_hue]; pdeco[6] = genes[G.o_num];
     pdeco[7] = genes[G.tex2];
     const eye = this._pEye || (this._pEye = new Float32Array(4));
-    eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = genes[G.c_eye]; eye[3] = genes[G.aggro];
+    eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = genes[G.c_eye]; eye[3] = atkArg || 0; // ceño = impulso de ataque
     const heading = (headingArg != null) ? headingArg : -Math.PI / 2; // por defecto mira arriba; si se da, usa el del mundo
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca

@@ -155,7 +155,6 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `sim.targetTPS` | 20 | *(UI)* ticks por segundo objetivo, desacoplado de los fps. 0 = pausa |
 | `sim.frameBudgetMs` | 40 | máx. ms simulando por frame en modo normal (si no llega, bajan fps, no se congela) |
 | `sim.maxBudgetMs` | 250 | máx. ms simulando por frame en modo "máx velocidad" |
-| `sim.brain` | 'neural' | **defecto**: cerebro neuronal recurrente (pesos = genoma). `'reactive'` = regla fija (no expuesta en UI) |
 
 ## Render (solo visual; no afecta a la simulación)
 | Parámetro | Valor | Notas |
@@ -181,8 +180,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `sense` → alcance visión base (px) | 10 | 80 | |
 | `repro_thr` → fracción de la referencia | 0.5 | 0.95 | |
 | `invest` → energía a la cría (fracción) | 0.2 | 0.6 | |
-| `w_food`/`w_prey`/`w_flee` → factor de peso | 0 | 2 | `expr.wMax = 2`; solo en modo reactivo |
 
-> `metab`, `diet`, `aggro`, `hue`, `temp_pref` y los genes de **nodo** se usan directamente en
+> `metab`, `diet`, `hue`, `temp_pref` y los genes de **nodo** se usan directamente en
 > `[0,1]` (su efecto está en las fórmulas de SPEC §2bis–§3). Los pesos del cerebro se mapean por
 > `(gen−0.5)·BRAIN.scale` (SPEC §cerebro).

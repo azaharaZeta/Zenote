@@ -11,8 +11,9 @@ const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una espe
 
 const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo
 const C0 = G.c_app; // índice del primer gen de ornamentación de color (2 consecutivos)
-// Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color, agresividad.
-const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_AGGRO = G.aggro, G_ORN = G.orn;
+// Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color. (El "ceño" = impulso de
+// ataque del cerebro, dinámico → s.atkDrive, no un gen.)
+const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_ORN = G.orn;
 
 const HIST_BINS = 24;
 // Arranque con semilla ALEATORIA → un mundo distinto en cada carga. (config.pop.seed, p.ej. 123,
@@ -144,7 +145,7 @@ function snapshot() {
   const lineage = new Float32Array(n), geneSel = new Float32Array(n);
   const heading = new Float32Array(n), spd = new Float32Array(n); // para orientar/animar el cuerpo
   const tint = new Float32Array(n * 3);                           // color por partes (2) + ornamento (1)/agente
-  const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, aggro]/agente
+  const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, atkDrive]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
   const deco = new Float32Array(n * 8);                           // [b_aspect, c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente
   const nodes = new Float32Array(n * NODEB);                      // B2b: genes de nodo/agente (cuerpo generativo, para el render por grafo)
@@ -170,7 +171,7 @@ function snapshot() {
     tint[tb] = s.genes[cb]; tint[tb + 1] = s.genes[cb + 1]; tint[tb + 2] = s.genes[i * NG + G_ORN];
     const ib = i * NG, eb = k * 4;
     eye[eb] = s.genes[ib + G_SENSE]; eye[eb + 1] = s.genes[ib + G_FOV];
-    eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.genes[ib + G_AGGRO];
+    eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.atkDrive[i]; // "ceño" = impulso de ataque suavizado (emergente)
     const db = k * 8;
     deco[db] = 0; deco[db + 1] = s.genes[ib + G.c_lum]; deco[db + 2] = s.genes[ib + G.c_sat]; // slot 0 (b_aspect) retirado
     deco[db + 3] = s.genes[ib + G.o_len]; deco[db + 4] = s.genes[ib + G.o_bulb]; deco[db + 5] = s.genes[ib + G.o_hue]; deco[db + 6] = s.genes[ib + G.o_num];
@@ -201,6 +202,7 @@ function snapshot() {
       speciesMembers: (speciesReps.find(r => r.id === speciesOf[i]) || { count: 0 }).count, // nº de individuos de esta especie
 
       heading: s.heading[i], spd: vsp > 1 ? 1 : vsp,   // rumbo persistente → el retrato orienta/ondula IGUAL que en el mundo
+      atkDrive: s.atkDrive[i],                          // impulso de ataque suavizado → ceño del retrato + readout del inspector
     };
   }
   postMessage({
@@ -230,11 +232,11 @@ function computeHuntability() {
   let acc = 0;
   for (let a = 0; a < csN; a++) {
     const ci = carns[(a * cStep) | 0], Rc = s.radius[ci];
-    const fi = Math.pow(s.genes[ci * NG + G.size] + 0.1, sa) * (0.5 + s.aggro[ci]);
+    const fi = Math.pow(s.genes[ci * NG + G.size] + 0.1, sa); // fuerza = tamaño^sizeAdv (sin `aggro`, cortado)
     let win = 0;
     for (let b = 0; b < hsN; b++) {
       const hj = herbs[(b * hStep) | 0], ra = s.radius[hj] / Rc;
-      if (ra >= lo && ra <= hi) { const fj = Math.pow(s.genes[hj * NG + G.size] + 0.1, sa) * (0.5 + s.aggro[hj]); if (fi / (fi + fj) >= 0.5) win++; }
+      if (ra >= lo && ra <= hi) { const fj = Math.pow(s.genes[hj * NG + G.size] + 0.1, sa); if (fi / (fi + fj) >= 0.5) win++; }
     }
     acc += win / hsN;
   }
@@ -328,7 +330,6 @@ onmessage = (e) => {
     case 'tps': config.sim.targetTPS = m.value; break;
     case 'set': setPath(config, m.key, m.value); break;
     case 'gene': geneIdx = m.index; break;
-    case 'brain': config.sim.brain = m.value; break; // 'reactive' | 'neural'
     case 'pick': setSelected(pick(m.wx, m.wy)); break;
     case 'deselect': setSelected(-1); break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); break; // navegar por especies (◀ ▶ en el inspector)
