@@ -79,7 +79,7 @@ export function setupControls(app) {
   // población); los que se leen cada tick, al instante. Los marcados ↻ requieren volver a Sembrar.
   setupLab(app, send);
 
-  // ---- Toggles de render: viven en config.js (glow on, estelas off, ambiente 'abyssal'). ----
+  // ---- Render: glow vive en config.js (sin control en vivo); la calidad alta/baja, en su botón. ----
 
   // ---- Selector de gen para el histograma ----
   const sel = $('geneSel');

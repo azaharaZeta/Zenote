@@ -19,22 +19,19 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   *Ojo con el toro:* un agente que cruza un borde envuelto NO debe interpolarse entre
   los dos lados (daría un latigazo de lado a lado). Detectar el salto > medio mundo y, ese
   frame, dibujarlo sin interpolar.
-- **El suelo = mapa térmico (bioma).** El fondo es siempre la **temperatura** del mundo,
-  con gradiente de 3 paradas: **nieve blanca (frío)** → **oliva (templado)** → **arena de
-  desierto (calor)**.
-  Es world-space (panea/zoomea con la cámara) y se ve a qué clima se adapta cada organismo
-  (gen `temp_pref`). En modos analíticos el suelo se atenúa para que destaquen los colores.
-- **El recurso como ambiente (hierba).** El campo de recurso se dibuja, sobre el suelo, como
-  un tapiz de **matojos**. Para no penalizar el rendimiento: al arrancar se precalcula un catálogo de
-  ~`render.grassSpriteCount` sprites de matojo (cada uno = varias briznas curvas con longitud,
-  curvatura y grosor aleatorios, verde oliva); a cada posición fija se le asigna un sprite
-  (un byte). Se dibuja en un **búfer del tamaño de la pantalla con la cámara aplicada** (nítida
-  a cualquier zoom), re-renderizado solo cuando la cámara se mueve o cambia el recurso (cada
-  `render.grassRefreshFrames`), y solo los matojos visibles (culling → más zoom = más barato).
-  La hierba se **tinta según el clima** de su celda (3 juegos de sprites precalculados): verde-azul
-  grisáceo en frío, verde vivo en templado, marrón seco en desierto → coste nulo por frame.
-  El suelo fértil conserva rastrojo (no se queda enano al pastar) y crece frondoso cuando se
-  recupera. La forma (briznas) y el tono (oliva mate, sin glow) los distinguen de los organismos.
+- **El suelo = sustrato abisal (Cenote).** Único escenario. El fondo es una **nebulosa casi negra**
+  sobre-muestreada: tinte sutil por **temperatura** del mundo (frío = azul casi negro; cálido =
+  azul-violeta apagado), con moteado orgánico por ruido periódico (tesela sin costura en el toro).
+  Es world-space (panea/zoomea con la cámara) y se ve a qué clima se adapta cada organismo (gen
+  `temp_pref`), pero por contraste suave, no por colores chillones.
+- **El recurso como fosforescencia.** El campo de recurso se dibuja, sobre el sustrato, como una
+  **fosforescencia tenue teal/algas** (verde-azul desaturado, DISTINTA del cian brillante de los
+  bichos) que se lee por contraste contra la oscuridad. Encima, motas de **micro-flora/plancton**
+  luminoso (`render.grassDensity` posiciones fijas con sprites de chispa precalculados) que brillan
+  donde hay comida, con densidad **por cantidad** (zona rica = casi todas encienden; claro pastado =
+  casi ninguna). Se dibuja en un **búfer del tamaño de la pantalla con la cámara aplicada** (nítido
+  a cualquier zoom), re-renderizado solo al mover la cámara o cambiar el recurso (cada
+  `render.grassRefreshFrames`), con culling → más zoom = más barato.
 - **Sin ruido visual.** Nada de bordes duros, sombras pesadas, ni UI recargada.
   Tipografía fina, controles discretos en un panel lateral semitransparente que
   se pueda ocultar para modo "solo contemplación".
@@ -101,7 +98,7 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   no el resultado—. **No se baja `pop.maxAgents` automáticamente**, porque eso sí cambiaría
   el ecosistema; si el usuario quiere ese ajuste, que sea un control consciente y avisado.
   Detección barata por defecto: si el viewport es estrecho (`< 700px`) o los FPS caen,
-  arrancar con `glow:false`, `trails:false`.
+  arrancar con `glow:false` (o calidad Baja).
 - **Toques de UI.** Áreas táctiles cómodas (mín. ~40px), panel lateral que en pantallas
   estrechas pasa a hoja inferior (bottom sheet) deslizable u oculta tras un botón. El
   modo contemplación (ocultar toda la UI) es aún más valioso en móvil. Evitar depender
@@ -124,8 +121,8 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   ver cómo responde la evolución en directo.
 - **Cámara con zoom y paneo toroidal:** rueda (o pinza en móvil) para zoom, arrastrar para
   desplazarse. El mundo es un toro y se renderiza **en mosaico**, así el paneo recorre el
-  ecosistema sin fin y **nunca se ven los bordes** (los matojos del borde se envuelven para
-  que la hierba tesele sin costura). Zoom mínimo = el mundo cubre la pantalla (sin letterbox);
+  ecosistema sin fin y **nunca se ven los bordes** (el sustrato y el moteado se envuelven con
+  ruido periódico → teselan sin costura). Zoom mínimo = el mundo cubre la pantalla (sin letterbox);
   doble clic resetea el zoom. El render es solo lectura: la simulación no cambia con la cámara.
 - Click/tap en un organismo (sin arrastrar): muestra su genoma (barras), linaje y generación.
 - **Modos de coloreado** (solo render, no tocan la simulación) para *analizar* la evolución:

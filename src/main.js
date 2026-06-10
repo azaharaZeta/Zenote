@@ -52,8 +52,7 @@ worker.onmessage = (e) => {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
     w.capacity = m.capacity; w.temp = m.temp;
-    renderer._tempWorld = null;   // forzar recolor del mapa térmico
-    renderer._gz = NaN;           // forzar re-render de hierba
+    renderer._gz = NaN;           // forzar re-render del sustrato
   } else if (m.type === 'frame') {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
     simProxy.hue = m.hue; simProxy.diet = m.diet; simProxy.eFrac = m.eFrac;

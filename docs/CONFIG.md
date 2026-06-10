@@ -164,10 +164,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Render (solo visual; no afecta a la simulación)
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `render.trails` | false | *(UI)* estelas |
-| `render.glow` | true | *(UI)* resplandor (bloom) |
-| `render.showResourceField` | true | *(UI)* dibujar la vegetación/comida |
-| `render.ambiance` | 'abyssal' | escenario: 'abyssal' (abisal oscuro) \| 'meadow' (pradera) |
+| `render.glow` | true | resplandor (bloom): halo por organismo + brillo global. Solo config (sin control en vivo) |
 | `render.dprCap` | 2 | tope de densidad de píxeles (DPR) — protege FPS en retina/móvil |
 | `render.quality` | 'high' | *(UI)* 'high' \| 'low'. **Baja** = sin bloom (blur), **sin halos por agente**, sin nieve marina, menos chispas, y umbrales LOD ×`lodLowMult` (más puntos) → móvil/equipos lentos |
 | `render.lodBody` | 5 | LOD: rPx (radio en pantalla) mínimo para dibujar CUERPO (debajo = punto plano) |
@@ -177,12 +174,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `render.lodWave` | 18 | LOD: rPx mínimo para la ONDA viajera + 2ª pasada de contorno (si no, cuerpo en reposo, 1 pasada) |
 | `render.lodHalo` | 6 | LOD: rPx mínimo para el HALO por agente (los puntos diminutos brillan ya por el bloom global) |
 | `render.lodLowMult` | 2.6 | Multiplicador de todos los umbrales LOD en calidad baja (más agresivo) |
-| `render.grassDensity` | 6800 | nº de matojos de hierba |
-| `render.grassSpriteCount` | 22 | variedad de formas de matojo precalculadas |
-| `render.grassRefreshFrames` | 15 | cada cuántos frames se redibuja la hierba |
-| `render.flowerSpriteCount` | 12 | variedad de flores precalculadas |
-| `render.flowerFrac` | 0.45 | fracción de matas que pueden florecer |
-| `render.flowerThreshold` | 0.5 | vegetación mínima de una mata para florecer |
+| `render.grassDensity` | 6800 | nº de motas de plancton/micro-flora luminosa repartidas por el mundo |
+| `render.grassRefreshFrames` | 15 | cada cuántos frames se redibuja la capa de sustrato abisal |
 
 ## Genes — rangos de expresión (`expr`, lerp desde [0,1])
 | Gen | min | max | Notas |

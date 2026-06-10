@@ -23,8 +23,8 @@ export class Renderer {
     this.camX = cfg.world.width / 2;
     this.camY = cfg.world.height / 2;
 
-    // Capa de hierba (mechones). Búfer del tamaño de la PANTALLA: la hierba se dibuja con
-    // la cámara aplicada (nítida a cualquier zoom) y solo se re-renderiza cuando la cámara
+    // Capa de SUSTRATO abisal (`grass`/`grassCtx`: nombre histórico). Búfer del tamaño de la PANTALLA:
+    // se dibuja con la cámara aplicada (nítido a cualquier zoom) y solo se re-renderiza cuando la cámara
     // se mueve o cambia el recurso. La disposición de mechones es fija (semilla).
     this.grass = document.createElement('canvas');
     this.grassCtx = this.grass.getContext('2d');
@@ -40,53 +40,31 @@ export class Renderer {
     this.resize();
   }
 
-  // Posiciones + sprite asignado a cada matojo (todo fijo; solo el tamaño cambia con el
-  // recurso). El catálogo de sprites se dibuja UNA vez al arrancar.
+  // Posiciones + chispa asignada a cada mota de plancton (todo fijo; solo el brillo/tamaño
+  // cambia con el recurso local). El catálogo de chispas se dibuja UNA vez al arrancar.
   _initTufts() {
     const rng = makeRng(20240607);
     const W = this.cfg.world;
     const n = this.cfg.render.grassDensity;
     this.nTufts = n;
-    // 3 juegos de matojos tintados por clima (se eligen según la temperatura de la celda):
-    // frío = verde-azul grisáceo oscuro; templado = verde vivo; desierto = marrón seco.
-    const ns = this.cfg.render.grassSpriteCount;
-    const PAL = {
-      cold:      { h0: 188, hr: 42, satS: 32, satT: 28, lS0: 16, lSr: 6, lT0: 38, lTr: 14 }, // más azul
-      temperate: { h0: 78,  hr: 55, satS: 64, satT: 62, lS0: 18, lSr: 10, lT0: 52, lTr: 22 }, // más brillante
-      desert:    { h0: 28,  hr: 24, satS: 42, satT: 34, lS0: 18, lSr: 8, lT0: 38, lTr: 14 },
-    };
-    const buildSet = (pal) => { const a = []; for (let s = 0; s < ns; s++) a.push(this._makeGrassSprite(rng, pal)); return a; };
-    this.grassByClimate = [buildSet(PAL.cold), buildSet(PAL.temperate), buildSet(PAL.desert)];
-    // Flores tintadas/conformadas POR CLIMA (se eligen según la temperatura de la celda, como
-    // la hierba): frío = pálidas y redondeadas; templado = vivas y llenas; desierto = cálidas y
-    // puntiagudas (estrella). Así cada zona tiende a sus colores/formas.
-    const FPAL = {
-      cold:      { hues: [-1, 270, 210, 322], sat: 42, light: 84, petalMin: 5, petalMax: 6, len: 0.55, wid: 0.52 },
-      temperate: { hues: [52, 332, 300, 18, -1], sat: 60, light: 70, petalMin: 5, petalMax: 8, len: 0.72, wid: 0.55 }, // desaturado (82→60): flores como acento sereno, no alfombra chillona
-      desert:    { hues: [18, 8, 40, 338], sat: 66, light: 62, petalMin: 5, petalMax: 7, len: 0.98, wid: 0.32 },
-    };
-    const nf = this.cfg.render.flowerSpriteCount;
-    const buildFlowers = (pal) => { const a = []; for (let s = 0; s < nf; s++) a.push(this._makeFlowerSprite(rng, pal)); return a; };
-    this.flowersByClimate = [buildFlowers(FPAL.cold), buildFlowers(FPAL.temperate), buildFlowers(FPAL.desert)];
-    this.tuftX = new Float32Array(n);
-    this.tuftY = new Float32Array(n);
-    this.tuftScale = new Float32Array(n);  // variedad de tamaño
-    this.tuftSprite = new Uint8Array(n);   // qué sprite de matojo usa (fijo)
-    this.tuftFlower = new Int8Array(n);    // índice de flor, o -1 si esta mata no florece
-    this.tuftSeed = new Float32Array(n);   // umbral aleatorio por mota → plancton con densidad POR CANTIDAD
-    const fFrac = this.cfg.render.flowerFrac;
-    for (let i = 0; i < n; i++) {
-      this.tuftX[i] = rng.next() * W.width;
-      this.tuftY[i] = rng.next() * W.height;
-      this.tuftScale[i] = 0.75 + rng.next() * 0.85;
-      this.tuftSprite[i] = (rng.next() * ns) | 0;
-      this.tuftFlower[i] = rng.next() < fFrac ? (rng.next() * nf) | 0 : -1;
-      this.tuftSeed[i] = rng.next();
-    }
     // CHISPAS de plancton (abisal): puntito con halo radial suave, en teal/cian/verde-teal desaturado.
     // Pre-renderizadas → drawImage barato por mota. La vegetación = textura TENUE, distinta del glow de los bichos.
     this.sparkSprites = [this._makeSparkSprite(150), this._makeSparkSprite(165), this._makeSparkSprite(180),
                          this._makeSparkSprite(196), this._makeSparkSprite(212)]; // verde-algas → cian → azul-cian (variedad)
+    const nSpark = this.sparkSprites.length;
+    // Posiciones fijas de cada mota de plancton (solo el brillo/tamaño cambia con el recurso local).
+    this.tuftX = new Float32Array(n);
+    this.tuftY = new Float32Array(n);
+    this.tuftScale = new Float32Array(n);  // variedad de tamaño
+    this.tuftSprite = new Uint8Array(n);   // qué chispa usa (fijo)
+    this.tuftSeed = new Float32Array(n);   // umbral aleatorio por mota → plancton con densidad POR CANTIDAD
+    for (let i = 0; i < n; i++) {
+      this.tuftX[i] = rng.next() * W.width;
+      this.tuftY[i] = rng.next() * W.height;
+      this.tuftScale[i] = 0.75 + rng.next() * 0.85;
+      this.tuftSprite[i] = (rng.next() * nSpark) | 0;
+      this.tuftSeed[i] = rng.next();
+    }
   }
 
   // Sprite de chispa: núcleo suave + halo radial que se desvanece (glow), de un tono dado (teal/cian/verde).
@@ -101,92 +79,26 @@ export class Renderer {
     return c;
   }
 
-  // Genera un sprite de matojo frondoso: muchas briznas curvas y extendidas, cada una con
-  // degradado tallo-oscuro→hoja-clara (volumen, aspecto de ramita/hoja). A veces, florecilla.
-  _makeGrassSprite(rng, pal) {
-    const w = 58, h = 58;
-    const cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
-    const g = cv.getContext('2d');
-    const baseY = h - 1, baseX = w / 2;
-    // "Personalidad" del matojo → diversidad entre plantas. Tono base según el clima (pal).
-    const hueBase = pal.h0 + rng.next() * pal.hr;
-    const spread = 0.55 + rng.next() * 1.05;        // estrecho y vertical ↔ ancho y extendido
-    const heightF = 0.6 + rng.next() * 0.45;        // altura general
-    const nB = 10 + ((rng.next() * 9) | 0);         // 10..18 briznas (muy frondoso)
-    for (let b = 0; b < nB; b++) {
-      const len = h * heightF * (0.42 + rng.next() * 0.6);
-      const lean = (rng.next() - 0.5) * w * spread;
-      const curve = (rng.next() - 0.5) * w * 0.6;   // curvatura de la hoja
-      const width = 0.9 + rng.next() * 3.2;         // grosor: tallo grueso vs ramita fina
-      const bx = baseX + (rng.next() - 0.5) * w * 0.48; // base abierta → mata ancha
-      const tipx = bx + lean, tipy = baseY - len;
-      const cx = bx + lean * 0.4 + curve, cy = baseY - len * 0.55;
-      // Degradado a lo largo de la brizna: base oscura (tallo) → punta clara (hoja).
-      const grad = g.createLinearGradient(bx, baseY, tipx, tipy);
-      const hl = hueBase + (rng.next() - 0.5) * 20;
-      grad.addColorStop(0, `hsl(${hl - 14},${pal.satS}%,${pal.lS0 + rng.next() * pal.lSr}%)`);
-      grad.addColorStop(1, `hsl(${hl + 8},${pal.satT}%,${pal.lT0 + rng.next() * pal.lTr}%)`);
-      g.fillStyle = grad;
-      g.beginPath();
-      g.moveTo(bx - width / 2, baseY);
-      g.quadraticCurveTo(cx - width * 0.25, cy, tipx, tipy);   // borde izq. hasta la punta
-      g.quadraticCurveTo(cx + width * 0.25, cy, bx + width / 2, baseY); // borde der. de vuelta
-      g.closePath();
-      g.fill();
-    }
-    return cv;
-  }
-
-  // Sprite de flor suelto (se dibuja aparte, solo en matas altas/sanas). La paleta/forma (pal)
-  // viene del clima de la zona → colores y siluetas características por bioma.
-  _makeFlowerSprite(rng, pal) {
-    const s = 22, c = s / 2;
-    const cv = document.createElement('canvas');
-    cv.width = s; cv.height = s;
-    const g = cv.getContext('2d');
-    const ph = pal.hues[(rng.next() * pal.hues.length) | 0];
-    const pr = 2.8 + rng.next() * 2.4;             // radio de la corola
-    const petals = pal.petalMin + ((rng.next() * (pal.petalMax - pal.petalMin + 1)) | 0);
-    const rot = rng.next() * 6.2832;
-    g.fillStyle = ph < 0 ? `hsl(0,0%,${pal.light + 8}%)` : `hsl(${ph},${pal.sat}%,${pal.light}%)`;
-    for (let p = 0; p < petals; p++) {
-      const a = rot + (p / petals) * 6.2832;
-      // Pétalo = elipse orientada al radio: `len` da el largo (radial), `wid` el ancho → de
-      // redondeado (templado/frío) a puntiagudo tipo estrella (desierto).
-      g.beginPath();
-      g.ellipse(c + Math.cos(a) * pr, c + Math.sin(a) * pr, pr * pal.len, pr * pal.wid, a, 0, 6.2832);
-      g.fill();
-    }
-    g.fillStyle = 'hsl(48,90%,56%)';               // centro
-    g.beginPath();
-    g.arc(c, c, pr * 0.5, 0, 6.2832);
-    g.fill();
-    return cv;
-  }
-
-  // Re-renderiza el SUELO (mapa térmico de fondo + hierba) en el búfer de pantalla con la
-  // cámara aplicada (nítido a cualquier zoom) y teselando el toro. Solo dibuja los matojos
-  // visibles (culling). Se llama solo si cambia cámara o recurso.
+  // Re-renderiza el SUSTRATO abisal (nebulosa + comida fosforescente + plancton) en el búfer de
+  // pantalla con la cámara aplicada (nítido a cualquier zoom) y teselando el toro. Solo dibuja las
+  // motas visibles (culling). Se llama solo si cambia cámara o recurso.
   _refreshGrass() {
     const Wld = this.sim.world, ctx = this.grassCtx, c = this.canvas, cfg = this.cfg;
-    const Rmax = cfg.resource.R_max, fThresh = cfg.render.flowerThreshold;
+    const Rmax = cfg.resource.R_max;
     const res = Wld.resource, cols = Wld.cols, rows = Wld.rows, cellW = Wld.cellW, cellH = Wld.cellH;
-    const sets = this.grassByClimate, fsets = this.flowersByClimate, temp = Wld.temp;
-    const showGrass = cfg.render.showResourceField;
-    this._ensureTempCanvas();
+    const temp = Wld.temp;
     const W = cfg.world.width, H = cfg.world.height, s = this._scale();
     const offX = c.width / 2 - this.camX * s, offY = c.height / 2 - this.camY * s;
     const vwHalf = c.width / (2 * s), vhHalf = c.height / (2 * s);
     const txMin = Math.floor((this.camX - vwHalf) / W), txMax = Math.floor((this.camX + vwHalf) / W);
     const tyMin = Math.floor((this.camY - vhHalf) / H), tyMax = Math.floor((this.camY + vhHalf) / H);
-    const margin = 60 / s; // holgura en coords de mundo para no recortar matojos al borde
+    const margin = 60 / s; // holgura en coords de mundo para no recortar las motas al borde
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
     // --- ABISMO: sustrato orgánico. Nebulosa sobre-muestreada con (E) paleta de región rica por
     // temperatura, (A) moteado orgánico por ruido anclado al mundo, y (C) comida fosforescente +
     // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
-    if (cfg.render.ambiance === 'abyssal') {             // sustrato abisal: independiente del modo de color
+    {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
       const SS = cfg.render.quality === 'low' ? 2 : 3, NW = cols * SS, NH = rows * SS; // baja: 2× (menos píxeles que recalcular)
       let cv = this._abyssLow;
       if (!cv || cv.width !== NW) {
@@ -260,53 +172,7 @@ export class Renderer {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;                                 // restaurar (las chispas usaron globalAlpha)
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      return;
     }
-    for (let ty = tyMin; ty <= tyMax; ty++) {
-      for (let tx = txMin; tx <= txMax; tx++) {
-        // Rango de mundo visible en este mosaico (para descartar matojos fuera de vista).
-        const wxMin = this.camX - vwHalf - tx * W - margin, wxMax = this.camX + vwHalf - tx * W + margin;
-        const wyMin = this.camY - vhHalf - ty * H - margin, wyMax = this.camY + vhHalf - ty * H + margin;
-        ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        // Base: mapa térmico (nieve fría → tierra cálida). Es el suelo del ecosistema.
-        ctx.globalAlpha = 1;
-        ctx.drawImage(this._tempCanvas, 0, 0, W, H);
-        if (!showGrass) continue;              // sin hierba: solo el mapa térmico
-        for (let i = 0; i < this.nTufts; i++) {
-          const x = this.tuftX[i], y = this.tuftY[i];
-          if (x < wxMin || x > wxMax || y < wyMin || y > wyMax) continue; // culling
-          let cx = (x / cellW) | 0, cy = (y / cellH) | 0;
-          if (cx >= cols) cx = cols - 1; if (cy >= rows) cy = rows - 1;
-          const cell = cy * cols + cx;
-          const level = res[cell] / Rmax;        // vegetación actual de la zona
-          const base = Wld.capacity[cell] / Rmax; // fertilidad local (potencial del suelo)
-          // El suelo fértil conserva "rastrojo" aunque lo pasten → la hierba late con el
-          // pastoreo (frondosa si no la comen, corta si sí) pero no se queda enana.
-          const eff = Math.sqrt(Math.max(level, 0.32 * base));
-          if (eff < 0.06) continue;              // suelo pobre y pastado → desnudo
-          // Coloración por clima: frío / templado / desierto según la temperatura local.
-          const tv = temp[cell];
-          const climate = tv < 0.38 ? 0 : tv > 0.62 ? 2 : 1;
-          const sp = sets[climate][this.tuftSprite[i]];
-          const hh = (8 + eff * 20) * this.tuftScale[i];   // alto del matojo (px de mundo)
-          const ww = hh * (sp.width / sp.height);
-          // Sombra de contacto en la base del matojo → profundidad (el suelo deja de verse plano).
-          ctx.globalAlpha = 0.22 * eff;
-          ctx.fillStyle = '#000';
-          ctx.beginPath(); ctx.ellipse(x, y, ww * 0.34, hh * 0.11, 0, 0, 6.2832); ctx.fill();
-          ctx.globalAlpha = 0.5 + eff * 0.5;
-          ctx.drawImage(sp, x - ww / 2, y - hh, ww, hh);
-          const fi = this.tuftFlower[i];
-          if (fi >= 0 && eff > fThresh) {                  // flor solo en matas altas/sanas
-            const fs = (7 + eff * 11) * this.tuftScale[i]; // algo más grandes
-            ctx.globalAlpha = 0.6 + 0.4 * ((eff - fThresh) / (1 - fThresh)); // mucho más visibles (antes casi transparentes)
-            ctx.drawImage(fsets[climate][fi], x - fs / 2, y - hh * 0.82 - fs / 2, fs, fs);
-          }
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   resize() {
@@ -320,8 +186,7 @@ export class Renderer {
     // Escala "cover": el mundo cubre el viewport (sin letterbox) → con el paneo en mosaico
     // nunca se ve el borde del ecosistema. El zoom multiplica sobre esta base.
     this.coverScale = Math.max(c.width / cfg.world.width, c.height / cfg.world.height);
-    // El búfer de "suelo" (mapa térmico + hierba) va a resolución de pantalla; forzar
-    // re-render tras redimensionar.
+    // El búfer de sustrato va a resolución de pantalla; forzar re-render tras redimensionar.
     this.grass.width = c.width; this.grass.height = c.height;
     this.fx.width = c.width; this.fx.height = c.height;
     this._gz = NaN;
@@ -382,11 +247,8 @@ export class Renderer {
     ctx.fillStyle = '#0a0c10';
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // ESCENARIO: abisal (penumbra atmosférica: regiones tenues + comida fosforescente, criaturas
-    // luminosas) o pradera (mapa térmico + hierba/flores). El suelo de cada modo lo pinta _refreshGrass
-    // en su búfer; aquí solo se compone. Solo en modo "real"; los analíticos mantienen su suelo atenuado.
-    const abyssal = cfg.render.ambiance === 'abyssal';   // el FONDO depende solo del ambiente, NO del modo de color
-    this._abyssal = abyssal;
+    // ESCENARIO: Cenote abisal (único). Sustrato de penumbra + comida fosforescente + criaturas
+    // luminosas. El suelo lo pinta _refreshGrass en su búfer; aquí solo se compone.
     const lowQ = cfg.render.quality === 'low';           // calidad baja (móvil): sin blooms, menos partículas, sustrato simple
     const camMoved = this.camX !== this._gx || this.camY !== this._gy || this.zoom !== this._gz;
     if (this._grassTimer <= 0 || camMoved) {
@@ -396,36 +258,25 @@ export class Renderer {
     }
     this._grassTimer--;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalAlpha = (abyssal || this.colorMode === 'real') ? 1 : 0.4; // solo la PRADERA analítica se atenúa; el abisal nunca
+    ctx.globalAlpha = 1;
     ctx.drawImage(this.grass, 0, 0);
     ctx.globalAlpha = 1;
     // BLOOM de la VEGETACIÓN: copia desenfocada y aditiva → los charcos de comida fosforescente (abisal)
     // y la vegetación irradian luz. Solo donde brilla suma; el fondo oscuro apenas cambia.
-    if (cfg.render.glow && !lowQ && (abyssal || this.colorMode === 'real')) {
+    if (cfg.render.glow && !lowQ) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = abyssal ? 0.5 : 0.25;
+      ctx.globalAlpha = 0.5;
       ctx.filter = 'blur(4px)';
       ctx.drawImage(this.grass, 0, 0);
       ctx.filter = 'none';
       ctx.restore();
     }
 
-    // ---- Capa de ORGANISMOS (FX) ----
-    // Con "estelas": se desvanece un poco cada frame (no se borra) → rastros de movimiento.
-    // Sin estelas: se borra y se redibuja (idéntico a antes). En pausa NO se desvanece (congelado).
+    // ---- Capa de ORGANISMOS (FX): se borra y se redibuja entera cada frame. ----
     const fctx = this.fxCtx;
     fctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (cfg.render.trails) {
-      if (!this.paused) {
-        fctx.globalCompositeOperation = 'destination-out';
-        fctx.fillStyle = 'rgba(0,0,0,0.12)';   // borra ~12%/frame → la estela se desvanece
-        fctx.fillRect(0, 0, c.width, c.height);
-        fctx.globalCompositeOperation = 'source-over';
-      }
-    } else {
-      fctx.clearRect(0, 0, c.width, c.height);
-    }
+    fctx.clearRect(0, 0, c.width, c.height);
 
     const s = this._scale();
     const offX = c.width / 2 - this.camX * s, offY = c.height / 2 - this.camY * s;
@@ -435,7 +286,7 @@ export class Renderer {
     const tyMin = Math.floor((this.camY - vhHalf) / H), tyMax = Math.floor((this.camY + vhHalf) / H);
     // (B) NIEVE MARINA: partículas tenues a la deriva (detrito/esporas) → agua profunda viva + profundidad.
     // Capa propia, BAJO los organismos. Solo abisal. Anclada al mundo (deriva lenta con descenso + parpadeo).
-    if (abyssal && cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)
+    if (cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)
       if (!this._snow) { const n = 740, sn = this._snow = new Float32Array(n * 4), hu = this._snowHue = new Float32Array(n);
         const PAL = [190, 200, 285, 45, 330]; // cian, azul, violeta, oro, rosa (colorcillo raro)
         for (let k = 0; k < n; k++) { sn[k * 4] = Math.random() * W; sn[k * 4 + 1] = Math.random() * H; sn[k * 4 + 2] = Math.random() * 6.283; sn[k * 4 + 3] = 0.4 + Math.random() * Math.random() * 2.1;
@@ -470,61 +321,34 @@ export class Renderer {
     ctx.drawImage(this.fx, 0, 0);
     // BLOOM de ORGANISMOS + BULBOS: copia desenfocada y aditiva → todo lo luminoso (halos, bulbos
     // de los señuelos, puntas) "sangra" luz. Da el aspecto bioluminiscente potente.
-    if (cfg.render.glow && !lowQ && (abyssal || this.colorMode === 'real')) {
+    if (cfg.render.glow && !lowQ) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = abyssal ? 0.4 : 0.28;   // bloom algo menor → los apagados (c_lum bajo) se leen apagados
+      ctx.globalAlpha = 0.4;   // bloom algo menor → los apagados (c_lum bajo) se leen apagados
       ctx.filter = 'blur(4px)';
       ctx.drawImage(this.fx, 0, 0);
       ctx.filter = 'none';
       ctx.restore();
     }
 
-    // Viñeta → profundidad y foco al centro. Más marcada en abisal (sella la penumbra). Cacheada por modo.
-    if (abyssal || this.colorMode === 'real') {
+    // Viñeta → profundidad y foco al centro (sella la penumbra abisal). Cacheada por tamaño.
+    {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      if (!this._vignette || this._vigW !== c.width || this._vigH !== c.height || this._vigAb !== abyssal) {
+      if (!this._vignette || this._vigW !== c.width || this._vigH !== c.height) {
         const vg = ctx.createRadialGradient(
-          c.width / 2, c.height / 2, Math.min(c.width, c.height) * (abyssal ? 0.24 : 0.32),
+          c.width / 2, c.height / 2, Math.min(c.width, c.height) * 0.24,
           c.width / 2, c.height / 2, Math.max(c.width, c.height) * 0.72);
         vg.addColorStop(0, 'rgba(0,0,0,0)');
-        vg.addColorStop(1, abyssal ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0.3)');
-        this._vignette = vg; this._vigW = c.width; this._vigH = c.height; this._vigAb = abyssal;
+        vg.addColorStop(1, 'rgba(0,0,0,0.62)');
+        this._vignette = vg; this._vigW = c.width; this._vigH = c.height;
       }
       ctx.fillStyle = this._vignette;
       ctx.fillRect(0, 0, c.width, c.height);
     }
   }
 
-  // (Re)construye el lienzo de baja resolución del mapa térmico (frío azul → cálido rojo).
-  // Se rehace solo si cambió el mundo (reseed).
-  _ensureTempCanvas() {
-    const W = this.sim.world;
-    if (this._tempWorld === W && this._tempCanvas) return;
-    this._tempWorld = W;
-    const cv = this._tempCanvas || (this._tempCanvas = document.createElement('canvas'));
-    cv.width = W.cols; cv.height = W.rows;
-    const g = cv.getContext('2d');
-    const img = g.createImageData(W.cols, W.rows), d = img.data, t = W.temp;
-    // Gradiente de 3 paradas: nieve blanca (frío) → oliva (templado) → arena de desierto (cálido).
-    const cold = [232, 238, 243], mid = [104, 122, 66], hot = [236, 200, 58];
-    for (let i = 0; i < t.length; i++) {
-      const v = t[i], k = i * 4;
-      let a, b, u;
-      if (v < 0.5) { a = cold; b = mid; u = v * 2; }      // frío → templado
-      else { a = mid; b = hot; u = (v - 0.5) * 2; }       // templado → desierto
-      d[k]     = (a[0] + (b[0] - a[0]) * u) | 0;
-      d[k + 1] = (a[1] + (b[1] - a[1]) * u) | 0;
-      d[k + 2] = (a[2] + (b[2] - a[2]) * u) | 0;
-      d[k + 3] = 255;
-    }
-    g.putImageData(img, 0, 0);
-  }
-
   _drawAgents(cullX0, cullX1, cullY0, cullY1) {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
-    const abyssal = this._abyssal;     // escenario abisal → cuerpos más luminosos + glow reforzado
-    const trails = this.cfg.render.trails;
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
     const sc = this._scale();
@@ -555,7 +379,7 @@ export class Renderer {
         case 'species': h = lineageHue(sim.species[i] | 0); s = 78; l = 55; break;  // 1 color por ESPECIE
         case 'gene':    h = (1 - sim.geneSel[i]) * 250; s = 80; l = 52; break;      // azul(bajo)→rojo(alto)
         case 'energy':  h = ef * 130; s = 85; l = 50; break;                         // rojo(hambre)→verde
-        // Visión real: el gen `hue` da el tono (paleta SIN verdes, para no confundirse con la hierba).
+        // Visión real: el gen `hue` da el tono (el verde se evita en el sembrado, para no fundirse con la fosforescencia teal del sustrato).
         // COLORES COMO EN LA NATURALEZA: saturación base BAJA (tonos terrosos/apagados → cripsis); la
         // VIBRANCIA la dispara el ornamento (`orn`, gen de selección sexual): la mayoría va apagada y solo
         // los muy ornamentados lucen colores vivos (exhibición). La absorción usa el gen crudo (sim.js).
@@ -565,7 +389,7 @@ export class Renderer {
           h = sim.hue[i] * 360;                // rueda COMPLETA: cualquier color (incl. verde) es alcanzable por deriva. El verde se EVITA solo en el sembrado.
           s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
           // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
-          l = abyssal ? (31 + ef * 24 + cLumC * cLumC * 14) : (31 + ef * 26 + cLumC * cLumC * 10);
+          l = 31 + ef * 24 + cLumC * cLumC * 14;
           // Los más CARNÍVOROS tienden a algo más oscuros (lectura visual del gen `diet`, SOLO render). Suavizado 7→5.
           l -= sim.diet[i] * 5;
         }
@@ -573,14 +397,6 @@ export class Renderer {
       const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
       const hasNodes = nodes && nodes.length;
       const tier = !hasNodes || rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo
-      // Sombra de contacto (solo el grafo completo): despega al organismo del fondo (luz arriba-izq).
-      // Se omite con estelas activas (dejaría manchas oscuras al desvanecerse).
-      if (tier === 2 && !trails && !abyssal) {     // sombra de contacto inútil sobre fondo oscuro
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
-        ctx.beginPath();
-        ctx.ellipse(x + r * 0.32, y + r * 0.42, r * 1.08, r * 0.96, 0, 0, 6.2832);
-        ctx.fill();
-      }
       // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos
       // (los puntos ya brillan con el bloom GLOBAL de la capa de organismos; no necesitan su propio halo).
       if (glow && !lowQ && rPx > haloThr) {
@@ -588,9 +404,9 @@ export class Renderer {
         // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
         // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
         const cLumG = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
-        const gr = r * (abyssal ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4)); // halo algo mayor
-        const gl = abyssal ? Math.min(82, l + 26) : Math.min(74, l + 12);
-        const a0 = (abyssal ? 0.21 : 0.13) + cLumG * cLumG * (abyssal ? 0.48 : 0.32); // suelo y empuje subidos → glow más visible
+        const gr = r * (1.65 + cLumG * cLumG * 3.0); // halo algo mayor
+        const gl = Math.min(82, l + 26);
+        const a0 = 0.21 + cLumG * cLumG * 0.48; // suelo y empuje subidos → glow más visible
         const gg = ctx.createRadialGradient(x, y, r * 0.25, x, y, gr);
         gg.addColorStop(0, `hsla(${h},${s}%,${gl}%,${a0})`);
         gg.addColorStop(0.45, `hsla(${h},${s}%,${gl}%,${a0 * 0.32})`);
@@ -829,13 +645,9 @@ export class Renderer {
     pctx.clearRect(0, 0, cw, ch);
     if (!genes) return;
     this._drawScale = 1;   // el retrato dibuja en píxeles directos (sin transform) → el ojo es grande → detalle completo
-    // Fondo claro tipo "ficha de espécimen" (degradado suave) → resaltan los contornos oscuros y los
-    // cuerpos terrosos (que sobre fondo negro se camuflaban). El border-radius del canvas lo redondea.
-    // El fondo del retrato SIGUE al ambiente: abisal oscuro / pradera arena (claro).
-    const dark = this.cfg.render.ambiance === 'abyssal';
+    // Fondo abisal oscuro (degradado suave) → resaltan los contornos y el glow de la criatura.
     const bg = pctx.createLinearGradient(0, 0, 0, ch);
-    if (dark) { bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c'); }              // fondo abisal
-    else { bg.addColorStop(0, 'hsl(85,18%,82%)'); bg.addColorStop(1, 'hsl(60,20%,62%)'); }   // ficha clara
+    bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c');
     pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
     const tint = this._pTint || (this._pTint = new Float32Array(1));
     tint[0] = genes[G.orn];   // #13: tint = solo ornamento (gatea el señuelo)
@@ -850,17 +662,17 @@ export class Renderer {
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
     const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (rueda completa de tono + sat/luz)
     const h = genes[G.hue] * 360, s = 18 + cSat * cSat * 82;
-    const l = 31 + (ef || 0.5) * (dark ? 24 : 26) + cLumP * cLumP * (dark ? 14 : 10);
+    const l = 31 + (ef || 0.5) * 24 + cLumP * cLumP * 14;
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
     pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
     pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
     // GLOW/halo: MISMA fórmula que en el mundo (_drawAgents) para que el retrato se vea igual de luminoso.
-    // Gateado por la misma config de glow → coinciden con el efecto encendido/apagado. (`dark` = ambiente abisal.)
+    // Gateado por la misma config de glow → coinciden con el efecto encendido/apagado.
     if (this.cfg.render.glow) {
       const cLumG = cLumP;
-      const gr = r * (dark ? (1.65 + cLumG * cLumG * 3.0) : (1.45 + cLumG * cLumG * 2.4));
-      const gl = dark ? Math.min(82, l + 26) : Math.min(74, l + 12);
-      const a0 = (dark ? 0.21 : 0.13) + cLumG * cLumG * (dark ? 0.48 : 0.32);
+      const gr = r * (1.65 + cLumG * cLumG * 3.0);
+      const gl = Math.min(82, l + 26);
+      const a0 = 0.21 + cLumG * cLumG * 0.48;
       const gg = pctx.createRadialGradient(px, py, r * 0.25, px, py, gr);
       gg.addColorStop(0, `hsla(${h},${s}%,${gl}%,${a0})`);
       gg.addColorStop(0.45, `hsla(${h},${s}%,${gl}%,${a0 * 0.32})`);
