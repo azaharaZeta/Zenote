@@ -48,7 +48,7 @@ window.app = app; // sonda de depuración
 
 // B2b (dev): bandera de render por nodos PERSISTENTE (sobrevive a recargas vía localStorage). Toggle rápido
 // desde consola: app.toggleBodyGraph(). Es solo una ayuda de desarrollo mientras se reescribe el render.
-try { if (localStorage.getItem('bodyGraph') === '1') config.render.bodyGraph = true; } catch (e) {}
+try { const bg = localStorage.getItem('bodyGraph'); if (bg !== null) config.render.bodyGraph = bg === '1'; } catch (e) {}
 app.toggleBodyGraph = () => {
   config.render.bodyGraph = !config.render.bodyGraph;
   try { localStorage.setItem('bodyGraph', config.render.bodyGraph ? '1' : '0'); } catch (e) {}

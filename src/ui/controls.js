@@ -1,7 +1,7 @@
 // UI: controles en vivo (sliders que afectan la simulación), inspector de genoma,
 // reseed, modo contemplación. Pensado para ratón y táctil (pointer events).
 
-import { GENES, GENE_LABELS, G, NUM_GENES, BRAIN0, GENE_GROUPS, DECOR } from '../engine/genome.js';
+import { GENES, GENE_LABELS, G, NUM_GENES, BRAIN0, GENE_GROUPS, DECOR, NODE_COUNT } from '../engine/genome.js';
 
 export function setupControls(app) {
   const { sim, renderer, charts, cfg, worker } = app;
@@ -515,7 +515,15 @@ function setupLab(app, send) {
 function inspCard(g, sel) {
   const diet = sel.diet != null ? sel.diet : g[G.diet];
   const dietL = diet < 0.34 ? '🌿 herbívoro' : diet < 0.67 ? '🍴 omnívoro' : '🦷 carnívoro';
-  const nSeg = 1 + Math.round(g[G.m_seg] * 4), nApp = 1 + Math.round(g[G.m_app] * 7);
+  // Morfología desde el GRAFO DE NODOS (B2): cuenta nodos presentes y los clasifica como segmento
+  // (medial grueso, cadena) o apéndice (fino/lateral), con el mismo umbral lateral que la física.
+  let segs = 0, nApp = 0;
+  for (let k = 1; k < NODE_COUNT; k++) {
+    if (g[G['n' + k + '_present']] < 0.5) continue;
+    const asp = g[G['n' + k + '_aspect']], ang = g[G['n' + k + '_angle']] * Math.PI;
+    if (asp > 0.5 || Math.min(ang, Math.PI - ang) > 0.35) nApp++; else segs++;
+  }
+  const nSeg = 1 + segs;                                   // la cabeza cuenta como primer "segmento"
   const fov = g[G.e_fov], fovL = fov < 0.4 ? '👁️ frontal' : fov > 0.6 ? '👁️ panorámica' : '👁️ media';
   const ag = g[G.aggro], agL = ag > 0.5 ? '😠 agresivo' : ag < 0.2 ? '😌 pacífico' : '😐 templado';
   const orn = g[G.orn] > 0.5 ? ' · 🦚 ornamentado' : '';
