@@ -93,6 +93,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `loco.tipThrust` | 0.4 | FORMA del nodo (gen `tipShape`, NEUTRO en 0.5): abrir la punta (aleta) → +empuje; afilar (púa) → −empuje |
 | `loco.tipDrag` | 0.5 | abrir → +arrastre; afilar → −arrastre (streamlining) |
 | `loco.tipReach` | 0.35 | afilar → +longitud (alcance: tentáculo/púa); abrir → más corto |
+| `loco.flapGain` | 1.2 | (Capa 3, gen `gaitMode`) empuje extra al **aletear**, ponderado a lo lateral (×sin²): una aleta que bate propulsa más |
+| `loco.flapDrag` | 0.6 | (Capa 3) arrastre extra al aletear (golpe de recuperación) → crucero (ondular) vs ráfaga (aletear) |
 
 ## Visión emergente — `sense` fija la inversión, `e_fov` reparte alcance↔ángulo (SPEC §2ter)
 | Parámetro | Valor | Notas |
@@ -105,7 +107,7 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 ## Dieta
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| `diet.omniPenalty` | 0.0 | penalización por dieta intermedia (0 = omnívoros viables; sube para forzar especialistas) |
+| `diet.omniPenalty` | 0.05 | *(UI)* penalización por dieta intermedia. 0 = omnívoros arrasan (sin divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y cazadores con alcance. 0.05 = empujón suave que restaura especialistas |
 
 ## Refugio de presa (estabilizador Lotka-Volterra)
 | Parámetro | Valor | Notas |

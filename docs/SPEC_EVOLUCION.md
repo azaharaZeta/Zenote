@@ -59,7 +59,7 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **177 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — **185 genes** float en `[0,1]` (SoA: `Float32Array`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
@@ -67,7 +67,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 |--------|----|-------|
 | **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
 | **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
-| **Cuerpo por NODOS** | 72 | 8 nodos × 9 campos (ver §2bis) |
+| **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
 | **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
 
 **Genes de ecología/fisiología:**
@@ -125,9 +125,9 @@ La frontera vive en `bodyplan.js` (geometría → escalares) y `organism.js` (es
 cacheada al nacer. Todo en unidades del radio de cabeza (`r` se cancela: empuje y arrastre escalan
 igual con el tamaño → **encoger no regala velocidad**; clave para la coexistencia presa-depredador).
 
-### El grafo de nodos (72 genes = 8 nodos × 9 campos)
+### El grafo de nodos (80 genes = 8 nodos × 10 campos)
 Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
-`present`, `parent`, `size`, `aspect`, `angle`, `attach`, `osc_amp`, `osc_phase`, `tipShape`.
+`present`, `parent`, `size`, `aspect`, `angle`, `attach`, `osc_amp`, `osc_phase`, `tipShape`, `gaitMode`.
 
 - **Nodo 0 = raíz (cabeza)**, siempre presente. Su `aspect` define el ancho del cuerpo
   (redondo → ancho con masa+arrastre; fino → estilizado). Propulsa **DÉBIL** (`loco.headThrust`, bajo): la cabeza
@@ -151,6 +151,12 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
     `>0.5` **abre** (aleta/paleta/ala). Compromiso físico honesto, **NEUTRO en 0.5**: abrir → +empuje y
     +arrastre (paleta que empuja más agua); afilar → −empuje, −arrastre (streamlining) y **+alcance** (alarga
     el nodo). Coeficientes `loco.tipThrust/tipDrag/tipReach`. El render dibuja la silueta real (no es solo cosmético).
+  - `gaitMode` (Capa 3) = **modo de propulsión**. `0` = **ondular** (el nodo va en la onda viajera del cuerpo,
+    anguila; crucero eficiente); `1` = **aletear/batir** (golpe activo). Aletear da **más empuje en nodos
+    LATERALES** (`effFlap = 1 + flapGain·gaitMode·sin²(emit)` → ponderado a lo lateral: las aletas/remos baten, las
+    colas mediales ondulan) pero **cuesta más arrastre** (golpe de recuperación, `×(1+flapDrag·gaitMode)`). NEUTRO
+    en 0. Crea el eje **crucero eficiente ↔ ráfaga/maniobra potente**; una aleta abierta (`tipShape`) que además
+    bate = un ala. Coeficientes `loco.flapGain/flapDrag`. (El render anima el batido: ver VISUAL.)
 
 ### Física emergente (`bodyplan.js`)
 - **Empuje DIRECCIONAL por nodo:** `gait = −cos(emit) + paddleEff·sin²(emit)`.

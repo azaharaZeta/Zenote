@@ -240,6 +240,7 @@ export class Sim {
       this.genes[b + G.n0_parent] = 0; this.genes[b + G.n0_angle] = 0; this.genes[b + G.n0_attach] = 0;
       this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = blend(baseOsc, rng.next());
       this.genes[b + G.n0_tipShape] = jit(0.5);                // forma: elipse neutra al sembrar (la silueta diversifica por deriva)
+      this.genes[b + G.n0_gaitMode] = jit(0);                  // modo: ondular puro al sembrar (el aleteo emerge por deriva)
       // NODO 1 = COLA propulsora (renacuajo): con headThrust bajo la cabeza sola apenas avanza, así que se siembra
       // una cola TRASERA que ondula (emit≈π → gait≈+1) → el fundador NADA bien desde el tick 1 (evita el colapso).
       // A diversidad 0 todos los fundadores son renacuajos casi IDÉNTICOS (lo más básico); la morfología
@@ -254,6 +255,7 @@ export class Sim {
         this.genes[nb + 6] = jit(0.6);                         // osc_amp (ondula con ganas)
         this.genes[nb + 7] = blend(baseOsc, rng.next());       // osc_phase (uniforme a div=0 → marcha coordinada)
         this.genes[nb + 8] = jit(0.5);                         // tipShape: elipse neutra
+        this.genes[nb + 9] = jit(0);                           // gaitMode: ondular puro
       }
       // NODOS 2..7 (complejidad extra): su PRESENCIA escala con la diversidad → a div=0 NINGUNO (renacuajo puro),
       // a div=1 ≈ el reparto previo (~29% nodo2-3, ~9% resto). Así "diversidad inicial 0" = lo más básico posible.
@@ -271,6 +273,7 @@ export class Sim {
         this.genes[nb + 6] = jit(0.5);                         // osc_amp
         this.genes[nb + 7] = rng.next();                       // osc_phase
         this.genes[nb + 8] = jit(0.5);                         // tipShape: elipse neutra (la forma diversifica por deriva)
+        this.genes[nb + 9] = jit(0);                           // gaitMode: ondular puro (el aleteo emerge por deriva)
       }
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;

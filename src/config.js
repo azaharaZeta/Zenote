@@ -106,6 +106,9 @@ export const config = {
     tipThrust: 0.4,     // Abrir la punta (aleta/paleta) → +empuje al oscilar; afilar (púa) → −empuje. ±factor a forma extrema
     tipDrag: 0.5,       // Abrir → +arrastre; afilar → −arrastre (streamlining). ±factor a forma extrema
     tipReach: 0.35,     // Afilar → +longitud (alcance: tentáculo/púa); abrir → más corto. ±factor a forma extrema
+    // MODO de propulsión (Capa 3, gen `gaitMode`, NEUTRO en 0 = ondular). Aletear = batir:
+    flapGain: 1.2,      // Empuje extra al aletear, ponderado a lo LATERAL (×se²): una aleta que bate propulsa más
+    flapDrag: 0.6,      // Arrastre extra al aletear (golpe de recuperación) → crucero (ondular) vs ráfaga (aletear)
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────
@@ -118,7 +121,9 @@ export const config = {
 
   // ───── Dieta ─────
   diet: {
-    omniPenalty: 0.0,  // Penalización por dieta intermedia (bajo = omnívoros más viables)
+    omniPenalty: 0.05, // (UI) Penalización por dieta intermedia. 0 = omnívoros arrasan (generalista gratis, sin
+                       //      divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y
+                       //      cazadores con alcance (Capa 1/2). 0.05 = empujón suave que ya restaura los especialistas.
   },
 
   // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.

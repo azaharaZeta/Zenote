@@ -79,8 +79,13 @@ export function computeBodyPlan(g, b, lo, effort) {
     const mult = isLateral ? 2 : 1;                         // par bilateral espejado
     _axis[n] = emit;
     _amp[n] = ampOf(g[node + 6]);
-    _eff[n] = (isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust) * effShape;
-    _shapeDrag[n] = 1 + lo.tipDrag * 2 * ts;                // arrastre por silueta (lo aplica reducePlan)
+    // MODO de propulsión (Capa 3, gaitMode): m=0 ondular (va en la onda del cuerpo) · m=1 aletear/batir. El aleteo
+    // da MÁS empuje en nodos LATERALES (peso se² → las aletas/remos baten; las colas mediales no "baten", ondulan)
+    // pero cuesta MÁS arrastre (golpe de recuperación). NEUTRO en 0 → sin cambio. Crucero eficiente ↔ ráfaga potente.
+    const m = g[node + 9];
+    const effFlap = 1 + lo.flapGain * m * se * se;          // aleteo: empuje extra ponderado a lo LATERAL
+    _eff[n] = (isLateral ? lo.modThrust : lo.bodyThrust * lo.segThrust) * effShape * effFlap;
+    _shapeDrag[n] = (1 + lo.tipDrag * 2 * ts) * (1 + lo.flapDrag * m); // arrastre por silueta × por aleteo (lo aplica reducePlan)
     _kind[n] = isLateral ? KIND_MOD : KIND_SEG;
     _gait[n] = -ce + paddleEff * se * se;                   // DIRECCIONAL: atrás +1, frente −1, lateral +paddleEff
     _phase[n] = g[node + 7] * TWO_PI;                       // osc_phase del nodo (coherencia de marcha, reducePlan)

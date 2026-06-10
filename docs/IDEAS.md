@@ -44,10 +44,14 @@ ver evolucionar alas/tentáculos/garras "como en la naturaleza" se recomienda a�
     YA da ventaja vía la dinámica de persecución/evasión: quien gira mejor cierra distancia con la presa o escapa
     del depredador (el cerebro controla el rumbo; `turnRate` limita cuán rápido). No hace falta un bonus de combate
     explícito (sería heavy-handed / menos emergente). → **Capa 2 se da por completa** con alcance + pastoreo + maniobra implícita.
-- **CAPA 3 — MODOS de movimiento (`gaitMode`). El escalón grande.** Mezclar *ondular* (flexión axial, actual) ↔
-  *aletear* (barrido del ángulo `emit` = batir) — un nodo lateral abierto que ADEMÁS bate = un ala de verdad.
-  Cada modo nuevo = su curva de empuje/arrastre/coste en la física + su animación en el render → es lo más caro;
-  dejarlo para después de las capas 1-2.
+- **CAPA 3 — MODOS de movimiento (`gaitMode`).** Gen nuevo por nodo (genoma 177→185), 0 = ondular · 1 = aletear.
+  - **FÍSICA HECHA (2026-06-10):** aletear da +empuje en nodos LATERALES (`effFlap = 1+flapGain·m·sin²(emit)`) y
+    +arrastre (`×(1+flapDrag·m)`); neutro en 0 (`bodyplan.js`; `loco.flapGain/flapDrag`). Eje crucero↔ráfaga.
+    Sembrado a 0 (ondular puro) → el aleteo evoluciona. Test gaitMode 6/6 (lateral aletea → empuje ×2 + drag; medial casi no).
+  - **RENDER HECHO (2026-06-10):** el batido reutiliza la onda viajera (que ya pivota el nodo sobre su padre):
+    los nodos con `gaitMode` alto baten con MÁS amplitud, ponderado a lo lateral (`·sin²(emit)`, como la física)
+    → las alas/aletas baten amplio (golpe arriba/abajo), las colas mediales solo ondulan (`canvas.js`, `flapBeat`).
+    Verificado en preview: alas batiendo vs ondulador. → **Capa 3 completa**. *Afinar en preview:* `flapBeat` (2.6) si se quiere más/menos barrido.
 
 **PENDIENTE (menor) — apiñamiento de hermanos:** varios nodos con el mismo `parent` y `emit` parecido se
 solapan. Posible reparto angular sutil entre hermanos (solo render, no toca genética).

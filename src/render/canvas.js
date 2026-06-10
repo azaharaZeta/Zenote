@@ -548,9 +548,13 @@ export class Renderer {
       const p = par[k], nb = no + k * ST;
       let bend = 0;
       if (doWave) {                                              // LOD: a tamaño pequeño, cuerpo en REPOSO (sin onda)
-        const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]); // amplitud por nodo (osc_amp, físico)
+        // ALETEO (Capa 3): un nodo con gaitMode alto BATE con más amplitud, ponderado a lo LATERAL (sin²(emit),
+        // como la física) → las aletas/alas baten amplio sobre su anclaje (la onda ya pivota el nodo sobre el
+        // padre); las colas mediales solo ondulan. flapBeat = ganancia de barrido SOLO visual.
+        const se = Math.sin(pa[k]), flapBeat = 2.6;
+        const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]) * (1 + flapBeat * nodes[nb + 9] * se * se);
         const phK = nodes[nb + 7] * 6.283185307;                 // fase por nodo (osc_phase): coordinada → onda limpia
-        bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;      // onda viajera por profundidad + offset genético
+        bend = Math.sin(waveT - dep[k] * 1.1 - phK) * ampK;      // onda viajera/batido por profundidad + offset genético
       }
       acc[k] = acc[p] + bend;                                     // acumula la flexión del padre + la propia
       const rdx = px[k] - px[p], rdy = py[k] - py[p], ca = Math.cos(acc[k]), sa = Math.sin(acc[k]);
