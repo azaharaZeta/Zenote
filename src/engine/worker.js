@@ -132,7 +132,7 @@ function postWorld() {
   const W = sim.world;
   postMessage({
     type: 'world', cols: W.cols, rows: W.rows, cellW: W.cellW, cellH: W.cellH,
-    capacity: W.capacity.slice(), temp: W.temp.slice(), lightHue: W.lightHue.slice(),
+    capacity: W.capacity.slice(), temp: W.temp.slice(),
   });
 }
 

@@ -10,7 +10,7 @@
 import { G, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 
 const CAP_NODES = NODE_COUNT;        // techo de nodos del cuerpo generativo (B2)
-const EPS_AXIS = 0.35;               // banda axial: |ang−eje| < EPS → nodo MEDIAL (1×); fuera → LATERAL (par ×2)
+export const EPS_AXIS = 0.35;        // banda axial: |ang−eje| < EPS → nodo MEDIAL (1×); fuera → LATERAL (par ×2). Exportado: el render usa el mismo umbral.
 export const KIND_HEAD = 0, KIND_SEG = 1, KIND_MOD = 2;
 
 // Scratch a nivel de módulo (el worker computa nacimientos en serie, monohilo → reentrada imposible).
@@ -81,7 +81,7 @@ export function computeBodyPlan(g, b, lo, effort) {
   let elongN = (axialExtent + 1) / (latExtent + 1);          // cuerpo largo/fino → grande; ancho → ~1
   if (elongN > lo.elongMax) elongN = lo.elongMax; else if (elongN < 1) elongN = 1;
   plan.elongN = elongN;
-  plan.stream = lo.streamBase + lo.streamGain * (elongN - 1); // streamlining (sustituye a m_elong)
+  plan.stream = lo.streamBase + lo.streamGain * (elongN - 1); // streamlining EMERGENTE de la geometría de nodos
   return n;
 }
 

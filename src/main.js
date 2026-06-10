@@ -20,7 +20,6 @@ const simProxy = {
     cellH: config.world.height / config.resource.gridRows,
     capacity: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     temp: new Float32Array(config.resource.gridCols * config.resource.gridRows),
-    lightHue: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),
   },
   x: empty, y: empty, radius: empty, hue: empty, diet: empty, eFrac: empty,
@@ -52,7 +51,7 @@ worker.onmessage = (e) => {
   if (m.type === 'world') {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
-    w.capacity = m.capacity; w.temp = m.temp; w.lightHue = m.lightHue;
+    w.capacity = m.capacity; w.temp = m.temp;
     renderer._tempWorld = null;   // forzar recolor del mapa térmico
     renderer._gz = NaN;           // forzar re-render de hierba
   } else if (m.type === 'frame') {

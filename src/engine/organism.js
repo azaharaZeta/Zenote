@@ -43,8 +43,8 @@ export function computePhenotype(sim, i) {
   // streamlining— EMERGE de sumar sobre esos nodos (ver bodyplan.js): cada nodo propulsa según su
   // ORIENTACIÓN (cola atrás empuja adelante; nodo frontal frena) y su amplitud de oscilación propia
   // (osc_amp). `plan.stream` (elongación) y `plan.elongN` (giro) también emergen de la geometría. El plan
-  // es transitorio (scratch reutilizable); se reduce aquí a los escalares cacheados. `m_wave`/`m_elong`
-  // ya no se usan (migrados a los nodos).
+  // es transitorio (scratch reutilizable); se reduce aquí a los escalares cacheados. La amplitud de
+  // oscilación y el streamlining viven ahora en los genes de nodo (osc_amp + geometría axial/lateral).
   const nNodes = computeBodyPlan(g, b, lo, effort);
   const R = reducePlan(nNodes, lo);
   const massMul = R.massMul;                                   // alimenta eMax, k_body, k_graze (abajo)

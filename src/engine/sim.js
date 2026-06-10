@@ -409,12 +409,13 @@ export class Sim {
             // arriesgada sigue costando energía. `failDamage` ≥ 1 ≈ comportamiento antiguo (muerte casi segura).
             // (Medido en su día: sin coste alguno al fallar → sobre-disparo → colapso presa-depredador. No anular.)
             const dmg = failDamage * this.eMax[i];
+            const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
             E[i] -= dmg;
-            const g = en.preyGain * dmg * this.effCarn[j]; // j aprovecha SOLO el bocado que dio (herbívoro effCarn≈0 → nada)
+            const g = en.preyGain * bite * this.effCarn[j]; // j aprovecha SOLO el bocado real (herbívoro effCarn≈0 → nada)
             E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
             this.attackCD[j] = handlingTime;
             if (E[i] <= 0) {
-              this._kill(i, 'combat'); this.kills++;
+              this._kill(i, 'combat'); // muerte de atacante: NO cuenta como presa abatida (this.kills es solo depredación)
               continue; // i ha muerto: no sigue procesándose este tick
             }
             this.attackCD[i] = handlingTime; // herido: queda en cooldown (no reataca al instante)

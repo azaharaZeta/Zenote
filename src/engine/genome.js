@@ -67,7 +67,6 @@ export const GENE_LABELS = {
   c_eye: 'Color de ojos',
   orn: 'Ornamento (cresta)',
   pref: 'Preferencia de pareja',
-  b_aspect: 'Esbeltez corporal',
   c_lum: 'Luminosidad',
   c_sat: 'Vivacidad de color',
   o_len: 'Señuelo: largo',

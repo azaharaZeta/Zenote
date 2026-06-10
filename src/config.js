@@ -69,7 +69,7 @@ export const config = {
     vMin: 0.15,         // Suelo de velocidad-capacidad (nadie queda 100% inmóvil)
     vMax: 3.0,          // Techo de velocidad-capacidad
     turnBase: 0.18,     // Agilidad de giro base
-    turnAsym: 0.35,     // La asimetría (m_sym bajo) mejora el giro
+    turnAsym: 0.35,     // La asimetría del grafo de nodos (emergente) mejora el giro
     turnSize: 0.15,     // Los cuerpos grandes giran peor
     turnElong: 0.08,    // Los cuerpos elongados giran peor
     turnMin: 0.08,      // Giro mínimo (nadie queda incapaz de virar)

@@ -2,6 +2,7 @@
 // (zoom + paneo toroidal en mosaico). Nada de esto toca la simulación.
 
 import { NUM_GENES, G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
+import { EPS_AXIS } from '../engine/bodyplan.js';
 import { makeRng } from '../util/rng.js';
 
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
@@ -665,7 +666,7 @@ export class Renderer {
     for (let mode = 0; mode <= 1; mode++) {                       // pasada 0 = contornos (todos), pasada 1 = cuerpos
       for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
         if (!pres[k]) continue;
-        const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > 0.35; // EPS_AXIS=0.35: mismo umbral que la física
+        const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > EPS_AXIS; // mismo umbral que la física (bodyplan.js)
         const baseRot = pa[k] + acc[k];                           // orientación del nodo = reposo + onda acumulada
         for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {  // sgn=−1 = reflejo bilateral (y y rotación)
           drawNode(wpx[k], wpy[k] * sgn, baseRot * sgn, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode);
