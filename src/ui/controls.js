@@ -34,7 +34,8 @@ export function setupControls(app) {
     const tEl = $('ticks'), valEl = $('ticksVal'), row = tEl && tEl.closest('.speed-row');
     if (!tEl) return;
     const off = !app.running || app.maxSpeed;
-    tEl.disabled = off;
+    // NO se deshabilita el slider: aunque esté en pausa/máx, pincharlo debe "despertarlo" (salir de
+    // esos estados y adoptar la velocidad pulsada, ver applyTPS). Solo se atenúa visualmente.
     if (row) row.classList.toggle('speed-off', off);
     if (!app.running)      valEl.textContent = 'en pausa';
     else if (app.maxSpeed) valEl.textContent = 'al máximo';
@@ -49,9 +50,23 @@ export function setupControls(app) {
   const tpsToPos = (tps) => tps <= 0 ? 0 : Math.round(1 + (POSN - 1) * Math.log(tps / TPS_MIN) / LR);
   const ticksEl = $('ticks'), ticksValEl = $('ticksVal');
   const applyTPS = () => {
+    // Pinchar/arrastrar el slider DESPIERTA la velocidad: si estaba en MÁX o en PAUSA, sale de esos
+    // estados y adopta la posición pulsada (el slider vuelve a estar activo vía refreshSpeedState).
+    if (app.maxSpeed) {
+      app.maxSpeed = false;
+      if (maxBtn) maxBtn.classList.remove('active');
+      send({ type: 'maxSpeed', value: false });
+    }
+    if (!app.running) {
+      app.running = true;
+      playBtn.textContent = '❚❚';
+      playBtn.title = 'Pausar (Espacio)';
+      send({ type: 'running', value: true });
+    }
     const v = posToTps(+ticksEl.value);
     ticksValEl.textContent = v === 0 ? 'pausa' : `${v} t/s`;
     send({ type: 'tps', value: v });
+    refreshSpeedState();
   };
   ticksEl.value = tpsToPos(cfg.sim.targetTPS); // posición inicial coherente con el arranque (20 t/s)
   ticksEl.addEventListener('input', applyTPS);
@@ -71,7 +86,7 @@ export function setupControls(app) {
   // Genes SOLO de apariencia (su histograma solo refleja deriva, no evolución útil): los DECOR (colores,
   // piel, ojos, señuelo) más el color de linaje (`hue`). La forma ahora vive en los genes de NODO.
   const COSMETIC = new Set([...DECOR, G.hue]);
-  const HIDE_GROUPS = new Set(['Color y ornamento']); // grupo entero fuera del histograma
+  const HIDE_GROUPS = new Set(['Color y ornamento', 'Nodos (cuerpo)']); // grupos enteros fuera del histograma (los nodos del cuerpo no se histograman)
   GENE_GROUPS.forEach((grp) => {            // agrupado en <optgroup> → desplegable navegable, no infinito
     if (HIDE_GROUPS.has(grp.label)) return; // grupos no deseados en el filtro de histograma
     const og = document.createElement('optgroup');
