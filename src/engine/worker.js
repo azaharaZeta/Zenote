@@ -41,10 +41,6 @@ let tickAcc = 0, last = performance.now();
 // umbral, o funda una nueva. Los centroides siguen a sus miembros (k-means con umbral) → ids estables. ---
 let speciesReps = [];                 // [{ id, gene:Float32Array(NG), count, sum }]
 let nextSpeciesId = 1, speciesCount = 0, lastClassify = -1e9;
-// --- DIAGNÓSTICO DE DEPREDACIÓN: cazabilidad (% de presa en banda Y vencible en combate) + autopsia de extinción. ---
-let huntable = -1, huntCarn = 0, huntHerb = 0, lastValidHuntable = -1, lastHunt = -1e9;
-let carnArmed = false, autopsy = null;   // armado: los carnívoros llegaron a establecerse (≥10) → procede autopsia al caer
-let frozenDeath = null;                  // foto CONGELADA de la gráfica de muertes en el instante de la extinción
 const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id estable de agente
 
 // ---- Histórico para las gráficas: muestreado por TICKS DE SIMULACIÓN (no por frames de reloj) → la curva
@@ -54,8 +50,8 @@ const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id esta
 const HIST_K = 40, HIST_WINDOW = 4800;
 const histPop = [], histCarn = [], histVeg = [], histTick = [];
 const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / carnívoros (>0.6)
-const histDC = [], histDS = [], histDA = [], histDE = [];   // muertes carnívoras por ventana: combate/hambre/vejez/cazado
-let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0 };
+const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana: muertes combate/hambre/vejez/cazado + nacimientos sexual/asexual
+let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 function vegFrac() {
   const r = sim.world.resource, c = sim.world.capacity; let sr = 0, sc = 0;
   for (let i = 0; i < r.length; i++) { sr += r[i]; sc += c[i]; }
@@ -65,19 +61,20 @@ function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, herb = 0, omni = 0;
   for (let k = 0; k < n; k++) { const d = s.diet[act[k]]; if (d > 0.6) carn++; else if (d < 0.4) herb++; else omni++; }
   histPop.push(s.popCount); histCarn.push(carn); histHerb.push(herb); histOmni.push(omni); histVeg.push(vegFrac()); histTick.push(s.tick);
-  const cd = s.carnDeath, L = histLastCD;
+  const cd = s.deathCause, bc = s.birthCount, L = histLastCD;
   histDC.push(Math.max(0, cd.combat - L.combat)); histDS.push(Math.max(0, cd.starv - L.starv));
   histDA.push(Math.max(0, cd.age - L.age)); histDE.push(Math.max(0, cd.eaten - L.eaten));
-  histLastCD = { starv: cd.starv, combat: cd.combat, age: cd.age, eaten: cd.eaten };
+  histBS.push(Math.max(0, bc.sexual - L.sexual)); histBA.push(Math.max(0, bc.asexual - L.asexual));
+  histLastCD = { starv: cd.starv, combat: cd.combat, age: cd.age, eaten: cd.eaten, sexual: bc.sexual, asexual: bc.asexual };
   const t0 = s.tick - HIST_WINDOW;
   while (histTick.length > 1 && histTick[0] < t0) {
     histPop.shift(); histCarn.shift(); histHerb.shift(); histOmni.shift(); histVeg.shift(); histTick.shift();
-    histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift();
+    histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift(); histBS.shift(); histBA.shift();
   }
 }
 function clearHistory() {
-  for (const a of [histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE]) a.length = 0;
-  lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0 };
+  for (const a of [histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
+  lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 }
 function classifySpecies() {
   const s = sim, act = s.active, n = s.activeCount, NG = NUM_GENES;
@@ -208,69 +205,12 @@ function snapshot() {
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount,
-    huntable, huntCarn, huntHerb, autopsy,   // diagnóstico de depredación (cazabilidad + autopsia de extinción)
-    frozenDeath,                             // foto congelada de la gráfica de muertes (≠ null → extinción en curso)
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
-    histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE,
+    histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
     resource: s.world.resource.slice(),
   });
 }
 
-// CAZABILIDAD: fracción media (sobre los carnívoros) de herbívoros que están EN BANDA de tamaño Y son
-// VENCIBLES en combate (misma fórmula que sim.js). Muestreo acotado (64×256) → coste fijo aunque haya miles.
-// Es la causa RAÍZ: si cae con presa abundante, la presa ha escapado por tamaño y los carnívoros pasarán hambre.
-function computeHuntability() {
-  const s = sim, act = s.active, n = s.activeCount, NG = NUM_GENES;
-  const lo = config.combat.preyBandLo, hi = config.combat.preyBandHi, sa = config.combat.sizeAdvantage;
-  const carns = [], herbs = [];
-  for (let k = 0; k < n; k++) { const i = act[k]; const d = s.diet[i]; if (d > 0.6) carns.push(i); else if (d < 0.4) herbs.push(i); }
-  huntCarn = carns.length; huntHerb = herbs.length;
-  if (!huntCarn || !huntHerb) { huntable = -1; return; }
-  const csN = Math.min(carns.length, 64), hsN = Math.min(herbs.length, 256);
-  const cStep = carns.length / csN, hStep = herbs.length / hsN;
-  let acc = 0;
-  for (let a = 0; a < csN; a++) {
-    const ci = carns[(a * cStep) | 0], Rc = s.radius[ci];
-    const fi = Math.pow(s.genes[ci * NG + G.size] + 0.1, sa); // fuerza = tamaño^sizeAdv (sin `aggro`, cortado)
-    let win = 0;
-    for (let b = 0; b < hsN; b++) {
-      const hj = herbs[(b * hStep) | 0], ra = s.radius[hj] / Rc;
-      if (ra >= lo && ra <= hi) { const fj = Math.pow(s.genes[hj * NG + G.size] + 0.1, sa); if (fi / (fi + fj) >= 0.5) win++; }
-    }
-    acc += win / hsN;
-  }
-  huntable = acc / csN;
-  lastValidHuntable = huntable;   // recordar el último valor con carnívoros vivos (para la autopsia)
-}
-
-// Desglose de muertes carnívoras del histórico VISIBLE (la ventana de la gráfica) → causa PROXIMAL real.
-function deathBreakdown() {
-  let combat = 0, starv = 0, age = 0, eaten = 0;
-  for (let i = 0; i < histDC.length; i++) { combat += histDC[i]; starv += histDS[i]; age += histDA[i]; eaten += histDE[i]; }
-  return { combat, starv, age, eaten, total: combat + starv + age + eaten };
-}
-
-// AUTOPSIA: al detectar que los carnívoros pasan de presentes (≥10) a casi extintos (<3), clasifica la causa probable:
-//  · poco cazable + presa abundante → refugio de tamaño;  · población al tope + presa cazable → exclusión reproductiva
-//    (los herbívoros copan los nacimientos);  · presa escasa → valle del ciclo;  · resto → mixto.
-// Además adjunta el DESGLOSE de muertes de la gráfica (causa proximal: cómo murieron) y CONGELA la gráfica.
-function updateDiagnostics() {
-  computeHuntability();
-  const carnN = huntCarn;
-  if (carnN >= 10) { carnArmed = true; autopsy = null; frozenDeath = null; }   // establecidos → re-armado y descongela
-  else if (carnArmed && carnN < 3) {                        // ESTUVIERON establecidos y ahora casi extintos → autopsia
-    let cause;
-    if (huntHerb >= 150 && lastValidHuntable >= 0 && lastValidHuntable < 0.45) cause = 'refugio de tamaño: presa abundante pero poco cazable';
-    else if (sim.tick < 5000 && huntHerb >= 150) cause = 'transitorio inicial: sobre-disparo de la cohorte sembrada (boom → agota la presa → colapsa; la presa rebota después)';
-    else if (huntHerb < 100) cause = 'valle del ciclo: escasez de presa';
-    else cause = 'mixto (combate / transición)';
-    autopsy = { tick: sim.tick, herbN: huntHerb, huntable: lastValidHuntable, cause, death: deathBreakdown() };
-    // CONGELA la gráfica de muertes en este instante (copia de los buffers) → el usuario la analiza con calma
-    // aunque la simulación siga; se descongela al re-establecerse los carnívoros o al Sembrar.
-    frozenDeath = { combat: histDC.slice(), starv: histDS.slice(), age: histDA.slice(), eaten: histDE.slice(), tick: histTick.slice(), extTick: sim.tick };
-    carnArmed = false;   // dispara una vez por episodio; se re-arma si los carnívoros vuelven a establecerse
-  }
-}
 
 function loop() {
   const now = performance.now();
@@ -294,7 +234,6 @@ function loop() {
     }
   } else tickAcc = 0;
   if (sim.tick - lastClassify >= 60) { classifySpecies(); lastClassify = sim.tick; } // especies (periódico)
-  if (sim.tick - lastHunt >= 45) { updateDiagnostics(); lastHunt = sim.tick; }       // cazabilidad + autopsia (periódico)
   snapshot();
   setTimeout(loop, 16); // ~60 Hz de fotos (independiente del render del hilo principal)
 }
@@ -334,7 +273,7 @@ onmessage = (e) => {
     case 'pickSpecies': pickSpecies(m.dir); break; // navegar por especies (◀ ▶ en el inspector)
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selLineage = selGeneration = selSpeciesId = -1;
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
-      huntable = -1; lastValidHuntable = -1; lastHunt = -1e9; carnArmed = false; autopsy = null; frozenDeath = null; clearHistory(); postWorld(); break;
+      clearHistory(); postWorld(); break;
   }
 };
 

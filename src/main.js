@@ -62,12 +62,11 @@ worker.onmessage = (e) => {
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel;
     simProxy.species = m.species; simProxy.speciesCount = m.speciesCount;
-    simProxy.huntable = m.huntable; simProxy.huntCarn = m.huntCarn; simProxy.huntHerb = m.huntHerb; simProxy.autopsy = m.autopsy;
     // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
     // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
     charts.history = m.histPop; charts.histC = m.histCarn; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histV = m.histVeg; charts.histT = m.histTick;
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
-    charts.frozenDeath = m.frozenDeath; // ≠ null → la gráfica de muertes se congela en la foto de la extinción
+    charts.bSex = m.histBS; charts.bAsex = m.histBA;
     simProxy.world.resource = m.resource;
   }
 };
@@ -85,8 +84,6 @@ const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
 const panelEl = document.getElementById('panel');         // .advanced ⇒ laboratorio; simple ⇒ vista contemplativa
-const predDiagEl = document.getElementById('predDiag');   // medidor de cazabilidad de presa
-const autopsyEl = document.getElementById('autopsy');     // aviso de autopsia al extinguirse los carnívoros
 
 function frame(now) {
   renderer.paused = !app.running; // congela la animación visual de los organismos al pausar
@@ -115,34 +112,6 @@ function frame(now) {
       : `tick ${simProxy.tick} · ${pobHtml}`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
-    // Diagnóstico de depredación: cazabilidad de presa (causa raíz) + autopsia de extinción carnívora.
-    if (predDiagEl) {
-      const h = simProxy.huntable;
-      if (h == null || h < 0) { predDiagEl.className = 'pred-diag'; predDiagEl.innerHTML = ''; }
-      else {
-        const pct = Math.round(h * 100), col = `hsl(${(h * 120) | 0},70%,55%)`;
-        predDiagEl.className = 'pred-diag on';
-        predDiagEl.innerHTML = `cazabilidad de presa <span class="pd-bar"><i style="width:${pct}%;background:${col}"></i></span> <b style="color:${col}">${pct}%</b>`;
-      }
-    }
-    if (autopsyEl) {
-      const a = simProxy.autopsy;
-      if (a) {
-        autopsyEl.className = 'autopsy on';
-        let dtxt = '';
-        const d = a.death;
-        if (d && d.total > 0) {
-          const pct = (v) => Math.round((v / d.total) * 100);
-          const parts = [['combate', d.combat], ['hambre', d.starv], ['vejez', d.age], ['cazado', d.eaten]]
-            .filter(p => p[1] > 0).sort((x, y) => y[1] - x[1]);
-          const top = parts[0];
-          const breakdown = parts.map(p => `${p[0]} ${pct(p[1])}%`).join(' · ');
-          dtxt = `<br><span class="ap-death">murieron sobre todo de <b>${top[0]}</b> · ${breakdown}</span>`;
-        }
-        autopsyEl.innerHTML = `⚠ Carnívoros extintos (tick ${a.tick}) · ${a.herbN} herbívoros, ${a.huntable >= 0 ? Math.round(a.huntable * 100) + '% cazable' : '—'} → <b>${a.cause}</b>${dtxt}`;
-      }
-      else { autopsyEl.className = 'autopsy'; autopsyEl.innerHTML = ''; }
-    }
   }
   requestAnimationFrame(frame);
 }

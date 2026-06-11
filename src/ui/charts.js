@@ -16,11 +16,9 @@ export class Charts {
     // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
     // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
     this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
-    // Muertes carnívoras por ventana, por causa (combate/hambre/vejez/cazado): también del worker.
-    this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
-    this.frozenDeath = null; // foto congelada de la gráfica de muertes en la extinción (la fija el worker)
-    // Suavizado de la gráfica de muertes: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks del worker).
-    // Muestra la TENDENCIA del último ratito en vez de picos puntuales. 5 ≈ ventana de ~440 ticks. Subir = más liso.
+    // Demografía del ecosistema por ventana (del worker): nacimientos (sexual/asexual) + muertes (cazado/atacando/hambre/vejez).
+    this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
+    // Suavizado: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks). Muestra la TENDENCIA, no picos. Subir = más liso.
     this.deathSmooth = 5;
     this.maxHistory = 600;
     this.windowTicks = 4800; // ventana visible del eje X en ticks (debe coincidir con HIST_WINDOW del worker)
@@ -50,7 +48,7 @@ export class Charts {
   // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
   clear() {
     this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
-    this.dCombat = []; this.dStarv = []; this.dAge = []; this.dEaten = [];
+    this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
   }
 
   draw() {
@@ -105,51 +103,40 @@ export class Charts {
     }
   }
 
-  // Causas de muerte de los CARNÍVOROS a lo largo del tiempo, una LÍNEA por causa (combate / hambre / vejez /
-  // cazado) → se ven las cuatro a la vez. Cada línea = nº de muertes de esa causa por ventana de muestreo. El
-  // texto de cada causa va de SU color (leyenda). Revela por qué se extinguen (suele dominar el combate).
+  // DEMOGRAFÍA del ecosistema en el tiempo, una LÍNEA por categoría. Nacimientos (sexual/asexual) a TRAZOS,
+  // muertes (cazado/atacando/hambre/vejez) SÓLIDAS → se distingue nacer de morir sin depender solo del color.
+  // Cada línea = nº de eventos de esa categoría por ventana de muestreo (media móvil = tendencia, no picos).
   _drawDeaths() {
     const ctx = this.deathCtx, c = this.deathCanvas, w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);
-    // Si hubo extinción, dibuja la FOTO CONGELADA (la fija el worker en el instante de la extinción) en vez de
-    // la serie en vivo → el usuario la analiza con calma aunque la simulación siga corriendo.
-    const fz = this.frozenDeath;
-    const T = fz ? fz.tick : this.histT, n = T.length;
-    const combat = fz ? fz.combat : this.dCombat, starv = fz ? fz.starv : this.dStarv;
-    const age = fz ? fz.age : this.dAge, eaten = fz ? fz.eaten : this.dEaten;
-    const COL = { combat: '#ff6b5a', starv: '#f0b429', age: '#7a8aa0', eaten: '#b06bff' }; // combate/hambre/vejez/cazado
-    let sc = 0, ss = 0, sa = 0, se = 0;
-    for (let i = 0; i < n; i++) { sc += combat[i]; ss += starv[i]; sa += age[i]; se += eaten[i]; }
-    const TOP = 14, ph = h - TOP - 2;
+    const T = this.histT, n = T.length;
+    const bSex = this.bSex, bAsex = this.bAsex, dEaten = this.dEaten, dCombat = this.dCombat, dStarv = this.dStarv, dAge = this.dAge;
+    const COL = { bSex: '#6fcf6a', bAsex: '#46c7c7', eaten: '#b06bff', combat: '#ff6b5a', starv: '#f0b429', age: '#7a8aa0' };
+    let tBSex = 0, tBAsex = 0, tEaten = 0, tCombat = 0, tStarv = 0, tAge = 0;
+    for (let i = 0; i < n; i++) { tBSex += bSex[i]; tBAsex += bAsex[i]; tEaten += dEaten[i]; tCombat += dCombat[i]; tStarv += dStarv[i]; tAge += dAge[i]; }
+    const TOP = 25, ph = h - TOP - 2;   // 2 filas de leyenda (nacimientos / muertes)
     if (n >= 2) {
-      // Media móvil CENTRADA de ±half muestras → suaviza el ruido y muestra la TENDENCIA (no picos puntuales).
       const half = this.deathSmooth | 0;
       const sm = (arr, i) => { const a = i - half < 0 ? 0 : i - half, b = i + half >= n ? n - 1 : i + half; let s = 0; for (let j = a; j <= b; j++) s += arr[j]; return s / (b - a + 1); };
-      // Líneas INDEPENDIENTES (no apiladas): normaliza por el valor (suavizado) máximo → la línea más alta llega arriba.
       let maxV = 0.5;
-      for (let i = 0; i < n; i++) { const a = sm(combat, i), b = sm(starv, i), d = sm(age, i), e = sm(eaten, i); if (a > maxV) maxV = a; if (b > maxV) maxV = b; if (d > maxV) maxV = d; if (e > maxV) maxV = e; }
+      const all = [bSex, bAsex, dEaten, dCombat, dStarv, dAge];
+      for (let i = 0; i < n; i++) for (let q = 0; q < all.length; q++) { const v = sm(all[q], i); if (v > maxV) maxV = v; }
       const tEnd = T[n - 1], span = this.windowTicks || 1;
       const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
       const yOf = (v) => h - (v / maxV) * ph - 2;
-      const lineOf = (arr, color) => {
-        ctx.strokeStyle = color; ctx.lineWidth = 1.3; ctx.beginPath();
+      const lineOf = (arr, color, dash) => {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.3; ctx.setLineDash(dash || []); ctx.beginPath();
         for (let i = 0; i < n; i++) { const x = xOf(i), y = yOf(sm(arr, i)); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-        ctx.stroke();
+        ctx.stroke(); ctx.setLineDash([]);
       };
-      lineOf(age, COL.age); lineOf(eaten, COL.eaten); lineOf(starv, COL.starv); lineOf(combat, COL.combat); // combate al final → encima
+      lineOf(bSex, COL.bSex, [4, 2]); lineOf(bAsex, COL.bAsex, [4, 2]);                                   // nacimientos a trazos
+      lineOf(dAge, COL.age); lineOf(dStarv, COL.starv); lineOf(dEaten, COL.eaten); lineOf(dCombat, COL.combat); // muertes sólidas
     }
-    // Etiqueta: cada causa de SU color (leyenda). Se dibuja por segmentos avanzando x.
+    // Leyenda en 2 filas: nacimientos (arriba) y muertes (abajo), cada categoría de SU color.
     ctx.font = '10px system-ui, sans-serif';
-    let x = 4;
-    const seg = (txt, color) => { ctx.fillStyle = color; ctx.fillText(txt, x, 11); x += ctx.measureText(txt).width; };
-    if (fz) {
-      ctx.strokeStyle = 'rgba(255,120,90,0.7)'; ctx.lineWidth = 1.5; ctx.strokeRect(0.75, 0.75, w - 1.5, h - 1.5); // marco: congelada
-      seg(`🔒 ext ${fz.extTick}  `, '#ffb38a');
-    }
-    seg(`combate ${sc}`, COL.combat); seg(' · ', '#7b8494');
-    seg(`hambre ${ss}`, COL.starv); seg(' · ', '#7b8494');
-    seg(`vejez ${sa}`, COL.age); seg(' · ', '#7b8494');
-    seg(`cazado ${se}`, COL.eaten);
+    const row = (items, y) => { let x = 4; for (const [txt, col] of items) { ctx.fillStyle = col; ctx.fillText(txt, x, y); x += ctx.measureText(txt).width + 7; } };
+    row([[`nac: sexual ${tBSex}`, COL.bSex], [`asexual ${tBAsex}`, COL.bAsex]], 10);
+    row([[`muerte: cazado ${tEaten}`, COL.eaten], [`atac ${tCombat}`, COL.combat], [`hambre ${tStarv}`, COL.starv], [`vejez ${tAge}`, COL.age]], 21);
   }
 
   _drawHist() {

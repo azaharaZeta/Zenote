@@ -93,9 +93,11 @@ export class Sim {
     this.deaths = 0;
     this.nextLineageId = 0;
     this.kills = 0; // presas abatidas por depredación (instrumentación)
-    // Causas de muerte ACUMULADAS de los carnívoros (diet > 0.5), para el diagnóstico del laboratorio:
-    // 'combat' = murió atacando (ataque fallido), 'starv' = inanición, 'age' = vejez, 'eaten' = lo cazaron.
-    this.carnDeath = { starv: 0, combat: 0, age: 0, eaten: 0 };
+    // Demografía ACUMULADA de TODO el ecosistema (gráfica del laboratorio). Muertes por causa:
+    // 'eaten' = cazado, 'combat' = murió atacando (ataque fallido), 'starv' = hambre, 'age' = vejez.
+    this.deathCause = { starv: 0, combat: 0, age: 0, eaten: 0 };
+    // Nacimientos por tipo: 'sexual' = recombinación de dos padres · 'asexual' = clon mutado (sin pareja).
+    this.birthCount = { sexual: 0, asexual: 0 };
 
     this._seedInitial();
     this._rebuildActive();
@@ -110,7 +112,7 @@ export class Sim {
   }
 
   _kill(i, cause) {
-    if (cause && this.diet[i] > 0.5) this.carnDeath[cause]++; // diagnóstico: causa de muerte carnívora
+    if (cause) this.deathCause[cause]++; // demografía: causa de muerte (todo el ecosistema)
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
     this.popCount--;
@@ -637,8 +639,8 @@ export class Sim {
         // su energía y su cooldown). Así encontrar pareja se vuelve una presión selectiva real.
         const child = (mate >= 0 || allowAsexual) ? this._alloc() : -1;
         if (child >= 0) {
-          if (mate >= 0) crossover(this.genes, i, mate, child, this.cfg.mut, rng);
-          else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
+          if (mate >= 0) { crossover(this.genes, i, mate, child, this.cfg.mut, rng); this.birthCount.sexual++; }
+          else { copyMutated(this.genes, i, child, this.cfg.mut, rng); this.birthCount.asexual++; } // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
           E[i] -= this.investE[i];
           const childE = Math.min(this.investE[i], this.eMax[child]);

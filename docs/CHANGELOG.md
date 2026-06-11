@@ -2,6 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-11: lab — retirada la monitorización de carnívoros (índice de cazabilidad + autopsia de extinción); la gráfica de muertes se reutiliza para la DEMOGRAFÍA de todo el ecosistema: nacimientos (sexual/asexual, a trazos) + muertes (cazado/atacando/hambre/vejez, sólidas).
 - 2026-06-11: retirado el match color↔luz (`color.matchPenalty` + campo `lightHue`) — era selección INVISIBLE (el campo de luz nunca se dibujó); el color (`hue`) pasa a gen neutro/linaje. Fuera del bucle de pasto, config y UI.
 - 2026-06-11: la velocidad por fin importa — `combat.fleeSpeed=2` (escape por velocidad relativa) + `refuge.strength` 0.9→0.3 → huir/cazar es un duelo de velocidad → la vmax sube por morfología propulsora. (UI). Antes era ~neutra (forrajear no es carrera; medido: ni comida ni cobertura la movían).
 - 2026-06-11: `repro.asexual` se mantiene ON — comprobado headless que SOLO-sexual aplana la diversidad de talla (la mezcla regresa los extremos a la media); el payoff de talla luce con asexual.
