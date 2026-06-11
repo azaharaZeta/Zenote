@@ -212,3 +212,33 @@ y da profundidad por capas. Enfoques: (A) velo de dosel (segundo buffer sobre lo
 agente según su cobertura, (C) ambas. La usuaria eligió "solo Fase 1 de momento" → la Fase 2 queda aquí para
 retomar. Recordar: el render NO toca la simulación (regla 3 de VISUAL.md). Bonus: ver los claros abrirse al
 pastar = ver el Huffaker emerger.
+
+---
+
+
+
+## Listado de borrador de Ideas (lista mantenida por programadora)
+- revisar nado: 
+  - cabeza nadadora todavía emerge
+  - Los carnívoros están desarrollando enormes garras delanteras parece que sin coste. y apenas desarrollan extremidades para nadar, pero aún así se mueven bien (cabeza nadadora, con garras enormes)
+  - 
+- revisar señuelos. 
+  - A veces emergen criaturas con racimos enormes de señuelos. no está mal en esencia, pero revisar si debería llevar un coste
+  - revisar como funciona señuelo. ¿atrae presas?. ¿deberíamos meter que también te hace más visible, de cara a reproducción, pero también para ser cazado?
+  - 
+- visor de especie - mejoras
+  - en móvil se ve menos info, está bien pero añadir dieta
+  - en el visor recordar los menus desplegados cuando se cierre y reabra o cuando se cambie a ver la siguiente especie
+
+- Señales visuales a implementar en el ecosistema:
+  -  combates
+  -  muerte por combate
+  -  muerte por vejez
+  -  muerte por hambre
+  -  mostrar la criatura fallecida (por ej: parada, en un color grisaceo, y con fundido a transparente hasta desaparecer)
+  -  nacimiento: criatura más pequeña inicialmente, creciendo hasta tamaño adulto.
+
+- Implementar infancia? 
+
+
+

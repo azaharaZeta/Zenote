@@ -193,6 +193,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .div-row { display: flex; align-items: center; gap: 6px; flex: 1 1 100%; margin-top: 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
 .div-row input[type="range"] { flex: 1 1 auto; min-width: 70px; }
 .div-row output { color: var(--text, #cdd5e0); font-variant-numeric: tabular-nums; }
+/* Reiniciar = acción DESTRUCTIVA (reseed del mundo). Separada de los toggles (va con la diversidad, en su línea)
+   y con estilo CÁLIDO propio (ámbar, NO el teal del resto de botones) → no se confunde ni se pulsa por error. */
+.reseed-btn { flex: 0 0 auto; padding: 5px 9px; min-height: 30px; background: rgba(224, 150, 74, 0.10); border: 1px solid rgba(224, 150, 74, 0.45); color: #e0a04a; font-size: 11px; letter-spacing: 0.2px; }
+.reseed-btn:hover { background: rgba(224, 150, 74, 0.22); border-color: rgba(224, 150, 74, 0.72); color: #f0b46a; }
 #panel:not(.advanced) #colorModeRow { display: none; }         /* en modo simple no se muestra "Colorear por" */
 /* Vista simple (contemplativa): sin histograma, su combo, su leyenda ni el texto de velocidad real.
    El laboratorio (.advanced) conserva el histograma como herramienta de análisis. */
