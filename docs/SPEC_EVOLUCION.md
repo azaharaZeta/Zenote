@@ -310,9 +310,14 @@ Afilar (`tipShape < 0.5`, alarga el nodo) da más alcance → liga la Capa 1 (fo
 - **Resolución estocástica:** fuerza de cada contendiente `f = (size+0.1)^combat.sizeAdvantage` (tamaño + azar;
   ya no pesa `aggro` — las ganas de atacar están en la tasa de decisión `a`). `P(gana atacante) = f_att / (f_att
   + f_def)`. Nadie gana "por regla".
-- **Al vencer:** el perdedor muere (sin cadáver); el ganador recibe `preyGain · E_perdedor · effCarn`
-  (limitado a `E_max`). Un herbívoro puro (`effCarn≈0`) no gana nada atacando → la agresión solo se
-  sostiene si la dieta carnívora coevoluciona (emergencia, no la regla "los herbívoros no atacan").
+- **Al vencer:** el perdedor muere (sin cadáver); el ganador recibe `preyGain · (E_perdedor +
+  carcassValue · eMax_perdedor) · effCarn` (limitado a `E_max`). El término `carcassValue·eMax` es la
+  **biomasa** del cuerpo (∝ masa), que alimenta ADEMÁS de la energía almacenada → comer un animal nutre
+  aunque viniera hambriento. Sin él (`carcassValue=0`, modelo previo) la ganancia = solo energía almacenada:
+  en un mundo escaso la presa cría hasta la capacidad de carga pero **magra** (poca E), y cazarla da calorías
+  vacías → los carnívoros **se extinguen rodeados de presa abundante** (medido). Un herbívoro puro (`effCarn≈0`)
+  no gana nada atacando → la agresión solo se sostiene si la dieta carnívora coevoluciona (emergencia, no la
+  regla "los herbívoros no atacan").
 - **Coste al fallar (`failDamage`):** si el ataque falla, el atacante **pierde energía**
   (`failDamage · su eMax`) y muere solo si llega a 0. Es el **freno denso-dependiente** que estabiliza
   la depredación: sin coste al fallar, los carnívoros sobre-disparan y colapsan el sistema.

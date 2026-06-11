@@ -15,15 +15,15 @@ export const config = {
     gridCols: 64,       // Columnas de la rejilla de recurso
     gridRows: 48,       // Filas de la rejilla de recurso
     R_max: 1.0,         // Recurso máximo por celda
-    R_regen: 0.0060,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
+    R_regen: 0.0035,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
-    patchiness: 0.3,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
+    patchiness: 0.75,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
                         //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
-    grazeRefuge: 0.30,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
-    forageReach: 3,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
+    grazeRefuge: 0.20,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
+    forageReach: 2,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
                         //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
                         //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
                         //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
@@ -72,6 +72,15 @@ export const config = {
     E_max_base: 71,     // Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // Fracción de energía de la presa aprovechada al cazarla
+    carcassValue: 0.25, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía: la captura rinde preyGain·(E_presa
+                        //      + carcassValue·eMax_presa). 0 = solo cuenta la energía ALMACENADA (modelo previo) → en
+                        //      mundo escaso la presa cría hasta el tope pero MAGRA (poca E) y cazarla da calorías
+                        //      vacías → los carnívoros se extinguen rodeados de presa abundante (medido headless: a
+                        //      R_regen 0.003, 3/4 semillas extinguen carnívoros). >0 = un cuerpo vale su tejido (∝
+                        //      masa) ADEMÁS de sus reservas → comer un animal alimenta aunque viniera hambriento. 0.25
+                        //      rescata el nicho carnívoro en mundo escaso (≈6% estable) conservando el gradiente
+                        //      presa-gorda-vale-más (freno L-V parcial). OJO: subirlo mucho ablanda ese freno → en
+                        //      comida abundante puede disparar oscilaciones depredador-presa. Afinar por medición.
     corpseReturn: 0.5,  // Fracción de energía que devuelve un cadáver
   },
 
@@ -197,8 +206,8 @@ export const config = {
                         //      >4 o cobertura nula → la presa escapa demasiado y los carnívoros se quedan sin comer (medido).
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
-    preyBandLo: 0.20,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
-    preyBandHi: 2.0,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
+    preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
+    preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
     morphReach: 0.4,     // (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
                          //          morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (gait<0)

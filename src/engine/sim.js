@@ -304,6 +304,7 @@ export class Sim {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
     const wrap = world.wrap, ww = world.width, wh = world.height;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
+    const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
@@ -454,7 +455,11 @@ export class Sim {
           const fj = Math.pow(this.genes[j * NG + G.size] + 0.1, sizeAdv);
           if (rng.next() < fi / (fi + fj)) {
             // Gana i: la presa muere SIN depositar cadáver; i come según su eficiencia carnívora.
-            const g = en.preyGain * E[j] * this.effCarn[i];
+            // Ganancia = preyGain·(E_presa + carcassValue·eMax_presa): el cuerpo vale su BIOMASA (∝ eMax, tejido)
+            // ADEMÁS de su energía almacenada → comer un animal alimenta aunque viniera hambriento, sin depender de
+            // lo "gorda" que esté. Aditivo (no suelo): conserva el gradiente (presa gorda vale más → retiene el freno
+            // L-V parcial). El tope eMax del depredador (abajo) evita el descontrol. Ver config.energy.carcassValue.
+            const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effCarn[i];
             E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
