@@ -2,6 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-11: `combat.preyBandLo` (suelo de banda de caza) expuesto en la UI — talla mín. y máx. de presa cazable ya se controlan por separado.
 - 2026-06-11: `headThrust` 0.15→0.06 — nadar exige propulsores (los nodos frontales frenan, no propulsan).
 - 2026-06-11: docs reestructuradas — retirado `CONFIG.md` (config.js fuente única); ideas → `ideas/` (índice+fichas+archivo); CHANGELOG; AUDIT a `archivo/`.
 - 2026-06-11: morfología Capas 1-3 — `tipShape` (forma), `morphReach`/`k_grazeWide` (función), `gaitMode`+`flapCost` (movimiento); genoma 169→185.
