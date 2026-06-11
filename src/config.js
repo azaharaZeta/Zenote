@@ -150,10 +150,6 @@ export const config = {
                         //      → la velocidad pasa a importar. Sigue siendo estabilizador L-V parcial. En vivo.
   },
 
-  // ───── Color como pigmento (sintonía con la luz local) ─────
-  color: {
-    matchPenalty: 0.6,  // Cuánto penaliza un color desajustado con la luz local (0 = neutro, 1 = máx)
-  },
 
   // ───── Edad / mortalidad ─────
   // Edad / mortalidad. La madurez (inicio de senescencia + gate de cría) y el ritmo de vida son GENES (#12):

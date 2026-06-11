@@ -7,12 +7,11 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
 ## Principios
 - **Calma y oscuridad.** Fondo oscuro (casi negro azulado o tinta) para que los
   organismos brillen. Estética de microscopio / fondo abisal / placa de Petri.
-- **Color = información.** El tono (hue) es un rasgo **adaptativo**: los organismos
-  evolucionan para sintonizar con el "color de la luz" de su región (mejor absorción;
-  camuflaje en Fase 2). Ver los organismos **igualar el color de su zona** ES ver
-  adaptación local emerger. El fondo dibuja ese campo de luz (regiones de color),
-  para que se lea la sintonía. (El linaje/ascendencia ya no se ve por color: se consulta
-  por `lineageId` en el inspector.) No usar color decorativo que compita con esa lectura.
+- **Color = linaje.** El tono (hue) es un gen **neutro** (no afecta a la física): deriva libre y se
+  hereda con mutación, así que los descendientes comparten tono → el color traza el **parentesco/linaje**
+  a ojo (familias del mismo color). (Hubo una sintonía color↔"luz local" que lo hacía adaptativo; retirada
+  2026-06-11 porque el campo de luz era invisible — acoplaba el color a una selección que no se veía; ver
+  CHANGELOG.) El verde se evita en el sembrado para no fundirse con la fosforescencia teal del sustrato.
 - **Movimiento orgánico.** Interpolar posiciones; evitar saltos. Estela/halo suave
   opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía (los
   hambrientos se atenúan: la muerte se *ve* venir).

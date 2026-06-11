@@ -304,7 +304,6 @@ export class Sim {
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
-    const matchPenalty = cfg.color.matchPenalty;
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
     const handlingTime = cfg.combat.handlingTime;
@@ -572,17 +571,14 @@ export class Sim {
       const eMaxI = this.eMax[i], effH = this.effHerb[i];
       let eFalta = eMaxI - E[i];
       if (eFalta > 0 && effH > 1e-4) {
-        const absE = this.absEff[i], hueI = this.hue[i];
+        const absE = this.absEff[i];
         const forageR = forageReach > 0 ? Math.round(forageReach * this.genes[i * NG + G.size]) : 0;
         if (forageR === 0) {
           // — una sola celda (ruta base, idéntica al modelo previo) —
           const cell = W.cellIndexAt(x[i], y[i]);
           const grazable = res[cell] - grazeRefuge * W.capacity[cell]; // solo por encima del refugio de rebrote
           if (grazable > 0) {
-            // Color como pigmento: sintonía tono-organismo ↔ luz local. Distancia circular de tono → [0, 0.5].
-            let hd = Math.abs(hueI - W.lightHue[cell]); if (hd > 0.5) hd = 1 - hd;
-            const colorMatch = 1 - matchPenalty * (hd * 2); // [1-penalty .. 1]
-            let units = grazable * absE * colorMatch;
+            let units = grazable * absE;
             const maxByNeed = eFalta / (epu * effH);
             if (units > maxByNeed) units = maxByNeed;
             E[i] += units * epu * effH;
@@ -600,9 +596,7 @@ export class Sim {
               const cell = rr * cols + cc;
               const grazable = res[cell] - grazeRefuge * W.capacity[cell];
               if (grazable <= 0) continue;
-              let hd = Math.abs(hueI - W.lightHue[cell]); if (hd > 0.5) hd = 1 - hd;
-              const colorMatch = 1 - matchPenalty * (hd * 2);
-              let units = grazable * absE * colorMatch;
+              let units = grazable * absE;
               const maxByNeed = eFalta / (epu * effH);
               if (units > maxByNeed) units = maxByNeed;
               const gain = units * epu * effH;

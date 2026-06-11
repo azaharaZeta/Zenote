@@ -37,9 +37,6 @@ las estrategias o las formas "buenas". Esas deben emerger.
 - **Rebrote** `R_regen` por celda. Con `resource.patchiness > 0` el rebrote es **logístico +
   difusión de semilla** → los **parches de recurso emergen y migran** del juego pastoreo↔rebrote
   (no son fijos). `grazeRefuge` reserva una fracción intocable por celda (evita el sobrepastoreo letal).
-- **Campo de "color de la luz":** un tono fijo por región (ruido de baja frecuencia). Define qué
-  color de pigmento absorbe mejor el recurso en cada zona (ver §3 y el gen `hue`). El paisaje
-  lumínico lo pone el programador; el color de los organismos lo decide la evolución.
 - **Temperatura:** eje escalar continuo por región con gradiente espacial (`resource.tempFreq`).
   El gen `temp_pref` es el óptimo térmico; desviarse multiplica el coste basal (`energy.k_temp`).
 - **Refugio de presa = COBERTURA graduada** (`refuge`, #7): no hay zona binaria "no cazable". La **vegetación
@@ -82,7 +79,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `diet` | 0 = herbívoro puro (come del campo), 1 = carnívoro puro (caza). Intermedio = omnívoro penalizado (`omniPenalty`). |
 | `repro_thr` | umbral de energía para criar: `lerp(expr.repro_thr)` de la referencia (§4). |
 | `invest` | energía transferida a cada cría: `lerp(expr.invest)` de la referencia. |
-| `hue` | tono del organismo. **Rasgo adaptativo:** cuanto mejor sintoniza con el "color de la luz" local, mejor absorbe el recurso (§3). Muta como cualquier gen. |
+| `hue` | tono del organismo (su color en pantalla). Gen **neutro** (no afecta a la física): deriva libre y se hereda → traza el linaje a ojo. Muta como cualquier gen. |
 | `temp_pref` | óptimo térmico; la desviación frente a la temperatura local multiplica el coste basal (`k_temp`). Segundo eje de nicho. |
 | `mature_age` | **historia de vida (#12)**: edad de madurez `Tm = lerp(expr.mature_age)`. Gatea la reproducción (no se cría antes de `Tm`) **e** inicia la senescencia (no hay muerte por vejez antes de `Tm`). Madurar pronto = criar antes (r) pero envejecer antes; tarde = retrasar la cría pero vivir más (K). |
 | `senescence` | **historia de vida (#12)**: ritmo de vida `lifeFast ∈ [0,1]`. Escala la pendiente de la mortalidad por vejez (`senesMult`, ver §3) y, por **disposable soma**, el coste basal: ser longevo (`lifeFast` bajo) cuesta más mantenerse. Crea el eje r/K vivir-rápido↔longevo sin degenerar. |
@@ -248,9 +245,7 @@ Por tick, cada organismo:
   dieta. Solo rinde a quien pasta (`effHerb`) → el carnívoro no se ensancha por esto):
   - **Eficiencia de dieta:** `omni = 1 − omniPenalty · 4·diet·(1−diet)` (0 en los extremos, máx en 0.5);
     `effHerb = (1−diet)·omni`, `effCarn = diet·omni`. El especialista no paga; el omnívoro sí.
-  - **Sintonía de color:** `colorMatch = 1 − matchPenalty · 2·distCirc(hue, luz_local)`. Pigmento
-    sintonizado capta más recurso; desajustado, menos. Aquí el color se vuelve seleccionable.
-  - Herbívoro absorbe `min(E_falta, recurso_celda · absEff · colorMatch · energyPerUnit) · effHerb`;
+  - Herbívoro absorbe `min(E_falta, recurso_celda · absEff · energyPerUnit) · effHerb`;
     el recurso de la celda baja en lo absorbido. Carnívoro: gana al cazar (§3.1).
   - **Forrajeo por talla (`forageReach`):** un cuerpo grande pasta de un ÁREA `(2·forageR+1)²` celdas, con
     `forageR = round(forageReach · size)` → **cubre más terreno** y cosecha más aunque cada celda esté pelada (ventaja

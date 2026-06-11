@@ -26,11 +26,6 @@ export class World {
     // (ver sim.js combate): zona densa = más escondite, zona pastada = presa expuesta → refugios dinámicos.
 
     // Campo de "color de la luz" del ambiente: pocas regiones grandes de tono fijo.
-    // FÍSICA del mundo: define qué color de pigmento rinde en cada zona. La evolución
-    // decide el tono de los organismos; el programador solo pone el paisaje lumínico.
-    this.lightHue = new Float32Array(this.cols * this.rows);
-    this._buildField(this.lightHue, 3);
-
     // Campo de "temperatura" [0,1] por celda (frío→cálido), segundo eje ambiental
     // independiente de la luz. El gen temp_pref se adapta a él (coste por desviarse).
     this.temp = new Float32Array(this.cols * this.rows);

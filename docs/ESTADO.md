@@ -32,7 +32,7 @@ Genoma de **185 genes/agente** (SoA, typed arrays):
 Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pastar **y atacar** emergen de los
 pesos — sin reglas ni gen `aggro`) · **morfología generativa** y **gait direccional** (colas atrás propulsan,
 frentes penalizan; ondulantes vs remeros) · **coordinación de marcha** (la natación coordinada se premia vía
-coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/térmico (camuflaje color↔luz) ·
+coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/térmico ·
 **ciclo de vida r/K** (madurez precoz+vida rápida ↔ tardía+longeva, con coste de longevidad) ·
 **energética alométrica** (almacén ∝ masa, metabolismo ∝ masa^¾ Kleiber → economía de escala) ·
 depredación estructurada por talla · **refugios móviles** (cobertura por vegetación viva → la presa se esconde en
