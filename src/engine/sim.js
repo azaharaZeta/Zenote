@@ -113,6 +113,14 @@ export class Sim {
 
   _kill(i, cause) {
     if (cause) this.deathCause[cause]++; // demografía: causa de muerte (todo el ecosistema)
+    // CARROÑA: toda muerte deja cuerpo en su celda. Muerte NATURAL (vejez/hambre/combate) = cuerpo entero =
+    // energía que quede + BIOMASA (carcassValue·eMax = tejido). CAZADO = solo SOBRAS (scrapReturn·biomasa): el
+    // depredador ya se llevó casi todo → "restos". (Fase 2: el carroñeo será un eje de dieta propio → gusano.)
+    const cfg = this.cfg, biomass = (cfg.energy.carcassValue || 0) * this.eMax[i];
+    const carcass = cause === 'eaten'
+      ? (cfg.energy.scrapReturn != null ? cfg.energy.scrapReturn : 0.15) * biomass
+      : (this.E[i] > 0 ? this.E[i] : 0) + biomass;
+    if (carcass > 0) this._depositCarrion(this.x[i], this.y[i], carcass);
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
     this.popCount--;
@@ -327,6 +335,7 @@ export class Sim {
     const baseCD = cfg.repro.cooldown;
 
     W.regen();
+    W.decayCarrion();   // los cadáveres se descomponen (y devuelven parte al pasto = ciclo de nutrientes)
 
     // Reconstruir lista activa + spatial hash (O(n), sin asignaciones).
     this._rebuildActive();
@@ -339,6 +348,7 @@ export class Sim {
 
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
     const res = W.resource, cols = W.cols, rows = W.rows;
+    const carrion = W.carrion, carrionAbsRate = cfg.resource.carrionAbsRate || 0; // carroña + ritmo de carroñeo (Fase 1: vía effCarn)
 
     for (let a = 0; a < count; a++) {
       const i = active[a];
@@ -614,6 +624,21 @@ export class Sim {
         }
       }
 
+      // Carroñeo (Fase 1): quien puede procesar carne (effCarn) absorbe del campo de CARROÑA de su celda (energía
+      // directa). Es el puente carroñero→depredador. En la Fase 2 será un eje de dieta propio → emerge el gusano.
+      const effC = this.effCarn[i];
+      if (effC > 1e-4 && E[i] < eMaxI) {
+        const ccell = W.cellIndexAt(x[i], y[i]);
+        const avail = carrion[ccell];
+        if (avail > 0) {
+          let got = avail * carrionAbsRate * effC;
+          const room = eMaxI - E[i];
+          if (got > room) got = room;
+          if (got > avail) got = avail;
+          E[i] += got; carrion[ccell] -= got;
+        }
+      }
+
       // ---------- MUERTE ----------
       if (E[i] <= 0) {
         this._kill(i, 'starv'); continue;
@@ -625,8 +650,7 @@ export class Sim {
       if (over > 0) {
         const t = over / age.scale;
         if (rng.next() < age.mortality * this.senesMult[i] * t * t) {
-          this._depositCorpse(x[i], y[i], en.corpseReturn * E[i]);
-          this._kill(i, 'age');
+          this._kill(i, 'age'); // _kill deposita el cadáver entero como carroña
           continue;
         }
       }
@@ -743,12 +767,9 @@ export class Sim {
     this.atkDrive[i] = this.atkDrive[i] * 0.92 + a * 0.08; // EMA suave → "ceño" estable del render (emergente)
   }
 
-  _depositCorpse(px, py, amount) {
+  _depositCarrion(px, py, amount) {
     if (amount <= 0) return;
     const W = this.world, cell = W.cellIndexAt(px, py);
-    const cap = W.capacity[cell];
-    // El recurso se mide en unidades; convertir energía→unidades y respetar capacidad.
-    const v = W.resource[cell] + amount / this.cfg.resource.energyPerUnit;
-    W.resource[cell] = v > cap ? cap : v;
+    W.carrion[cell] += amount; // unidades de ENERGÍA (se come directamente; decae en world.decayCarrion)
   }
 }

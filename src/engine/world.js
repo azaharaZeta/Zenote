@@ -16,6 +16,10 @@ export class World {
     // Snapshot del recurso del tick anterior: lo usa regen() para leer vecinos sin orden-dependencia
     // (rebrote emergente con difusión de semilla). Reutilizable, sin GC en el bucle.
     this._resPrev = new Float32Array(this.cols * this.rows);
+    // Campo de CARROÑA (energía de cadáveres por celda, en unidades de ENERGÍA directa). Se deposita al MORIR
+    // (cantidad según la causa, ver sim._kill), DECAE cada tick (decayCarrion → devuelve una fracción al pasto =
+    // ciclo de nutrientes cadáver→descomposición→vegetación) y la CONSUMEN los carroñeros (effCarn, ver sim.js).
+    this.carrion = new Float32Array(this.cols * this.rows);
     // Capacidad por celda: gradiente espacial FIJO que crea nichos (más rico = más R_max local).
     this.capacity = new Float32Array(this.cols * this.rows);
     this._buildGradient();
@@ -155,6 +159,19 @@ export class World {
           res[i] = r + (1 - p) * linGrow + p * logGrow;
         }
       }
+    }
+  }
+
+  // Decaimiento de la carroña (por tick). Lo que se descompone vuelve EN PARTE al pasto (`energy.corpseReturn`) =
+  // ciclo de nutrientes (cadáver→descomposición→vegetación); el resto se pierde. Independiente por celda (O(celdas)).
+  decayCarrion() {
+    const cd = this.cfg.resource.carrionDecay || 0; if (cd <= 0) return;
+    const carrion = this.carrion, res = this.resource, cap = this.capacity;
+    const ret = this.cfg.energy.corpseReturn || 0, epu = this.cfg.resource.energyPerUnit;
+    for (let i = 0; i < carrion.length; i++) {
+      const cv = carrion[i]; if (cv <= 0) continue;
+      const d = cv * cd; carrion[i] = cv - d;                        // energía que se descompone este tick
+      if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // fracción→pasto (en unidades de recurso)
     }
   }
 

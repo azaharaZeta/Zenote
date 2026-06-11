@@ -208,6 +208,7 @@ function snapshot() {
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
     histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
     resource: s.world.resource.slice(),
+    carrion: s.world.carrion.slice(),
   });
 }
 

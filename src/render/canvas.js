@@ -171,6 +171,30 @@ export class Renderer {
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;                                 // restaurar (las chispas usaron globalAlpha)
+      // (Fase 1) CARROÑA: cadáveres como manchas GRISES desaturadas (frío-azuladas, distintas de la fosforescencia
+      // teal de la vegetación) en su celda; opacidad ∝ carroña restante → se desvanecen al decaer o ser consumidas.
+      const carrion = Wld.carrion;
+      if (carrion) {
+        if (!this._carrionSprite) {                        // sprite gris suave pre-renderizado (lazy, drawImage barato por celda)
+          const S = 48, sp = document.createElement('canvas'); sp.width = sp.height = S;
+          const sx = sp.getContext('2d'), g = sx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+          g.addColorStop(0, 'rgba(150,153,165,1)'); g.addColorStop(1, 'rgba(150,153,165,0)');
+          sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._carrionSprite = sp;
+        }
+        const sprite = this._carrionSprite, ref = 35;       // energía de referencia para la opacidad (cadáver natural ≈ E + carcassValue·eMax)
+        for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
+          ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
+          for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+            const cval = carrion[cy * cols + cx];
+            if (cval < 0.5) continue;                        // celda sin carroña apreciable → salta (la mayoría)
+            let a = cval / ref; if (a > 0.5) a = 0.5;
+            ctx.globalAlpha = a;
+            const sz = cellW * 1.7;
+            ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }

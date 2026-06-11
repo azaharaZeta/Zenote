@@ -29,6 +29,14 @@ export const config = {
                         //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
                         //      Fine-tuning headless (5 semillas): 0 → todo mínimo; 2 → 1 pico; 3 (con omniPenalty 0.15) →
                         //      DOS grupos de talla (~0.25 peque + ~0.55 grande, 21% grandes) y robusto. Va con omniPenalty 0.15.
+    carrionDecay: 0.005, // (UI) Ritmo al que se descompone la CARROÑA por tick (cadáveres). Lo decaído vuelve en
+                        //      parte al pasto (energy.corpseReturn) = ciclo de nutrientes; el resto se pierde. Bajo =
+                        //      los cadáveres tardan en deshacerse (más tiempo para que un carroñero llegue); alto =
+                        //      se pudren rápido. A 0.005 y 20 t/s un cuerpo dura ~decenas de segundos. 0 = no decae.
+    carrionAbsRate: 0.15, // (UI) Ritmo de CARROÑEO: fracción de la carroña de la celda que absorbe por tick quien
+                        //      puede procesar carne (∝ effCarn). Alto = vacían el cadáver rápido. Medido headless (R_regen
+                        //      0.0035): 0 → carnívoros ~48; 0.30 → ~284 (×6, pero sobre-dispara); 0.15 = puente SUAVE.
+                        //      (Fase 1: el carroñeo lo hace effCarn; la Fase 2 lo hará un eje de dieta propio → gusano.)
   },
 
   // ───── Población ─────
@@ -81,7 +89,10 @@ export const config = {
                         //      rescata el nicho carnívoro en mundo escaso (≈6% estable) conservando el gradiente
                         //      presa-gorda-vale-más (freno L-V parcial). OJO: subirlo mucho ablanda ese freno → en
                         //      comida abundante puede disparar oscilaciones depredador-presa. Afinar por medición.
-    corpseReturn: 0.5,  // Fracción de energía que devuelve un cadáver
+    scrapReturn: 0.15,  // (UI) SOBRAS: al CAZAR una presa, fracción de su biomasa (carcassValue·eMax) que queda como
+                        //      carroña (el depredador ya se llevó casi todo) → "restos". Muertes NATURALES dejan el
+                        //      cuerpo entero (factor 1). Bajo = la caza casi no deja nada para carroñeros.
+    corpseReturn: 0.5,  // Fracción de la carroña DECAÍDA que vuelve al pasto (ciclo de nutrientes, ver world.decayCarrion); el resto se pierde
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────

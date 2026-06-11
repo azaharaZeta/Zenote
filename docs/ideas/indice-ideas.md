@@ -152,3 +152,7 @@ regulares) y con red anti-extinción — otro mecanismo, especulativo.
 - **Revisar señuelos:** a veces emergen racimos enormes de señuelos (¿debería costar más?); ¿el señuelo atrae presas?;
   ¿debería hacerte más visible (pro reproducción, pero también para ser cazado)?
 - **Visor de especie:** en móvil añadir la dieta; recordar los menús desplegados al cerrar/reabrir o al cambiar de especie.
+- **Cadáveres con FORMA (render):** hoy la carroña (Fase 1) se dibuja como mancha gris en la celda. Mostrar el cuerpo
+  real del organismo muerto en su sitio, grisáceo, deshaciéndose con el tiempo. Vía: marcadores de render efímeros
+  (el worker manda las muertes del frame con pos+nodos+causa; el render dibuja el cuerpo desaturado que se desvanece),
+  sin coste en la simulación (la carroña como CAMPO sigue siendo la mecánica). Pedido por el usuario al hacer la Fase 1.

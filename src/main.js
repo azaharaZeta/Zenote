@@ -21,6 +21,7 @@ const simProxy = {
     capacity: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     temp: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),
+    carrion: new Float32Array(config.resource.gridCols * config.resource.gridRows),
   },
   x: empty, y: empty, radius: empty, hue: empty, diet: empty, eFrac: empty,
   lineage: empty, geneSel: empty, heading: empty, spd: empty, nodes: empty, tint: empty, eye: empty, face: empty, deco: empty,
@@ -69,6 +70,7 @@ worker.onmessage = (e) => {
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
     charts.bSex = m.histBS; charts.bAsex = m.histBA;
     simProxy.world.resource = m.resource;
+    simProxy.world.carrion = m.carrion;
   }
 };
 
