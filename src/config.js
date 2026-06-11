@@ -167,7 +167,7 @@ export const config = {
   repro: {
     cooldown: 60,              // Enfriamiento entre crías (ticks)
     sexual: true,              // Reproducción sexual (recombinación de dos padres)
-    asexual: true,             // (UI) Permitir clon mutado si no hay pareja compatible cerca
+    asexual: false,             // (UI) Permitir clon mutado si no hay pareja compatible cerca
     speciesGenThreshold: 0.15, // Distancia genética máxima para cruzarse (= misma especie)
     mateRadius: 70,            // Radio (px) de búsqueda de pareja al reproducirse
   },
