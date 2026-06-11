@@ -548,7 +548,7 @@ export class Renderer {
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
     const wpy = this._ngwy || (this._ngwy = new Float32Array(NS));
     const acc = this._ngac || (this._ngac = new Float32Array(NS));  // flexión acumulada hasta el nodo
-    const waveT = t * (1 + spd * 2.5), jointAmp = 0.18 * (0.4 + spd * 0.8);
+    const waveT = t * (1 + spd * 6), jointAmp = 0.18 * (0.45 + spd * 1.6);   // freq/amp ∝ velocidad ABSOLUTA (spd ya va ÷ vMax) → lento = ondear suave, rápido = batir vigoroso. Recalibrado (antes 2.5 / 0.4+0.8 con spd relativo a la capacidad propia).
     const oscFloor = this.cfg.loco.oscFloor;                      // mismo suelo de amplitud que la física
     wpx[0] = 0; wpy[0] = 0; acc[0] = 0;
     for (let k = 1; k < NS; k++) {

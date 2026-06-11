@@ -2,6 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-11: render — la animación de los nodos (ondear/aletear) sigue ahora la velocidad ABSOLUTA (÷ `loco.vMax`), no la fracción de la capacidad propia → los lentos ondean suave y los rápidos baten fuerte (antes todos iban a tope nada más moverse: "demasiado rápido para lo poco que se desplazan"). `freq/amp` recalibradas en canvas.js.
 - 2026-06-11: lab — retirada la monitorización de carnívoros (índice de cazabilidad + autopsia); demografía de TODO el ecosistema en DOS gráficas: nacimientos (sexual/asexual) y muertes (cazado/atacando/hambre/vejez). La gráfica de tipos añade la población TOTAL en azul (el del readout 'pob').
 - 2026-06-11: retirado el match color↔luz (`color.matchPenalty` + campo `lightHue`) — era selección INVISIBLE (el campo de luz nunca se dibujó); el color (`hue`) pasa a gen neutro/linaje. Fuera del bucle de pasto, config y UI.
 - 2026-06-11: la velocidad por fin importa — `combat.fleeSpeed=2` (escape por velocidad relativa) + `refuge.strength` 0.9→0.3 → huir/cazar es un duelo de velocidad → la vmax sube por morfología propulsora. (UI). Antes era ~neutra (forrajear no es carrera; medido: ni comida ni cobertura la movían).

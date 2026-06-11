@@ -160,7 +160,7 @@ function snapshot() {
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
     heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
-    const v = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 1);
+    const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad ABSOLUTA (÷ vMax global), no fracción de su propia capacidad → la animación de nodos sigue al desplazamiento REAL
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
@@ -189,7 +189,7 @@ function snapshot() {
     const i = selectedId, g = new Float32Array(NG);
     for (let q = 0; q < NG; q++) g[q] = s.genes[i * NG + q];
     const sIds = speciesReps.map(r => r.id).sort((a, b) => a - b); // posición de la especie (navegación)
-    const vsp = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 1);
+    const vsp = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // ídem: absoluta (animación del retrato del inspector)
     sel = {
       x: s.x[i], y: s.y[i], radius: s.radius[i], hue: s.hue[i], genes: g,
       E: s.E[i], eMax: s.eMax[i], age: s.age[i], lineage: s.lineage[i], generation: s.generation[i],
