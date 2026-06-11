@@ -303,6 +303,7 @@ const LAB_SPEC = [
     { k: 'resource.absRate', label: 'Ritmo de absorción', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Velocidad a la que un organismo absorbe el recurso de su celda. Más alto = comen más rápido (pero arrasan antes la celda).' },
     { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 40, step: 1, dec: 0, d: 'Cuánta energía da cada unidad de recurso consumida. Sube la rentabilidad de pastar (parámetro de equilibrio crítico).' },
     { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = el pasto rebrota lineal y uniforme (sin parches). Subir = rebrote logístico + colonización desde los bordes → las calvas pastadas tardan en recuperarse y los parches se agotan, se reconquistan y migran SOLOS. Premia buscar y recordar (cerebro). Efecto en vivo.' },
+    { k: 'color.matchPenalty', label: 'Color y absorción de comida', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza tener un color desajustado con la luz local: reduce la absorción de comida. Presiona a pigmentarse/"camuflarse" según la luz de cada zona → el color se vuelve seleccionable.' },
   ]},
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
@@ -334,11 +335,16 @@ const LAB_SPEC = [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación/combate (Fase 2). Desactivado: solo herbívoros pastando.' },
     { k: 'combat.sizeAdvantage', label: 'Ventaja de tamaño', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto pesa el tamaño en quién gana un combate. Más alto = el grande gana casi siempre.' },
     { k: 'combat.failDamage', label: 'Daño al fallar ataque', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Energía que pierde el atacante cuando FALLA un ataque (× su energía máxima); muere solo si llega a 0. Bajo = los carnívoros sobreviven a fallos → más resilientes (pero ojo al sobre-disparo de la presa). ≥1 ≈ muerte casi segura al fallar (comportamiento clásico). Riesgo graduado en vez de binario.' },
+    { k: 'combat.fleeSpeed', label: 'Escape por velocidad', min: 0, max: 4, step: 0.5, dec: 1, d: 'La presa que nada MÁS RÁPIDO que su cazador se zafa (probabilidad ∝ cuánto más rápida es). Convierte la persecución en un duelo de velocidad → la velocidad y los propulsores (colas, aletas) pasan a importar y suben con el tiempo (carrera presa-cazador). 0 = solo se escapa por cobertura (modelo previo). OJO: necesita la "Cobertura del refugio" baja para notarse (si no, esconderse lo enmascara); demasiado alto (≥4) o sin cobertura → la presa escapa siempre y los carnívoros se quedan sin comer. Se aplica en vivo.' },
     { k: 'combat.preyBandLo', label: 'Suelo de banda de caza', min: 0, max: 1, step: 0.05, dec: 2, d: 'Mínimo ratio tamaño_presa/tamaño_depredador ATACABLE. Por debajo, la presa es demasiado pequeña para compensar (no la persigue). 0 = puede cazar cualquier cosa menor que el techo; 0.20 (def.) = ignora presas <20% de su talla; alto (≈1) = solo presas casi de su talla o mayores → fuerza especialización en presa grande. Por simetría también fija qué depredadores percibe una presa como amenaza. Se aplica en vivo.' },
     { k: 'combat.preyBandHi', label: 'Techo de banda de caza', min: 0.5, max: 3, step: 0.05, dec: 2, d: 'Máximo ratio tamaño_presa/tamaño_depredador ATACABLE. Bajo (0.9) = la presa debe ser claramente menor → depredador grande y la presa escapa CRECIENDO (refugio por tamaño → carnívoros extintos). 1.0 = caza hasta su tamaño. >1.0 = puede intentar presa MAYOR que él; la dificultad la pone el combate (gana menos, muere más al fallar) → posible pero caro. Se aplica en vivo.' },
     { k: 'combat.handlingTime', label: 'Tiempo de manejo (digestión)', min: 0, max: 120, step: 4, dec: 0, d: 'Ticks de enfriamiento tras una captura (digestión). Limita la tasa de caza y amortigua las oscilaciones depredador-presa.' },
     { k: 'combat.dietMargin', label: 'Margen de dieta (presa)', min: 0, max: 0.6, step: 0.02, dec: 2, d: 'Diferencia de dieta mínima para considerar a otro "presa" y no un igual. Evita que organismos parecidos se coman entre sí.' },
     { k: 'diet.omniPenalty', label: 'Penalización omnívora', min: 0, max: 1, step: 0.05, dec: 2, d: 'Penalización al omnívoro (dieta intermedia). Alta = especializarse (herbívoro o carnívoro puro) rinde más.' },
+  ]},
+  { cat: '🌿 Refugio de presa', items: [
+    { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Cobertura: la vegetación densa esconde a la presa, que se escabulle del ataque tanto más cuanto más tupida sea la zona (no es un "no cazable" binario). Como el pasto se come y rebrota, los refugios se MUEVEN solos. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador Lotka-Volterra).' },
+    { k: 'refuge.strength', label: 'Cobertura del refugio', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto protege la cobertura: probabilidad de que la presa escape = esto × vegetación de su celda. 0 = sin refugio (la presa puede ser barrida); alto = en zonas tupidas casi siempre escapa (los carnívoros dependen de los claros pastados). Efecto en vivo.' },
   ]},
   { cat: '🏊 Locomoción y visión', items: [
     { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 12, step: 0.1, dec: 1, d: 'Calibra la velocidad-capacidad típica que produce la morfología. Más alto = en general todos nadan más rápido.' },
@@ -347,16 +353,11 @@ const LAB_SPEC = [
     { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base. Más alto = giran más rápido hacia donde quieren ir (menos cuerpos "torpes").' },
     { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar con las partes del cuerpo DESCOORDINADAS (fases dispersas = aleteo ineficiente). 0 = no importa la coordinación; más alto = presiona a evolucionar una natación coordinada (onda limpia).' },
     { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cómo se reparte el presupuesto visual entre alcance y ángulo. Bajo = conos frontales que ven lejos (cazador); alto = panorámicas cortas (presa).' },
-    { k: 'color.matchPenalty', label: 'Penaliz. color/luz', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza tener un color desajustado con la luz local (reduce la absorción de comida). Presiona a "camuflarse" con el ambiente.' },
   ]},
   { cat: '⬡ Edad', items: [
     // La edad de madurez es ahora un GEN evolucionable (#12), no un parámetro global. Aquí solo la escala base.
     { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad BASE de morir de viejo (el gen de ritmo de vida la escala por individuo; crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
     { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta de mantener ser longevo (vivir despacio). Más alto = la vida larga sale cara → favorece estrategias rápidas. Es el contrapeso que evita que todos se vuelvan "inmortales".' },
-  ]},
-  { cat: '🌿 Refugio de presa', items: [
-    { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'Cobertura: la vegetación densa esconde a la presa, que se escabulle del ataque tanto más cuanto más tupida sea la zona (no es un "no cazable" binario). Como el pasto se come y rebrota, los refugios se MUEVEN solos. Garantiza un suelo de presas → los carnívoros no se extinguen (estabilizador Lotka-Volterra).' },
-    { k: 'refuge.strength', label: 'Cobertura del refugio', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto protege la cobertura: probabilidad de que la presa escape = esto × vegetación de su celda. 0 = sin refugio (la presa puede ser barrida); alto = en zonas tupidas casi siempre escapa (los carnívoros dependen de los claros pastados). Efecto en vivo.' },
   ]},
 ];
 

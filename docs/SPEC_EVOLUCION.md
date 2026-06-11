@@ -303,6 +303,13 @@ Afilar (`tipShape < 0.5`, alarga el nodo) da más alcance → liga la Capa 1 (fo
 - **Escape por COBERTURA (`refuge`, #7):** cuando el atacante decide atacar, la presa **se escabulle** con
   probabilidad `refuge.strength · vegetación_de_su_celda` (sin combate ni `failDamage`: no la alcanzó entre la
   maleza). Graduado y dinámico (ver §1): casi inatacable en parches densos, expuesta en claros pastados.
+- **Escape por VELOCIDAD (`combat.fleeSpeed`):** si la cobertura no la salva, la presa que nada **más rápido** que el
+  atacante se zafa, con prob. `fleeSpeed · (vmax_presa/vmax_atacante − 1)` (tope 0.95). Convierte la persecución en un
+  **duelo de velocidad** → la velocidad y la **morfología propulsora** (colas/aletas) pasan a ser selectivas (carrera
+  armamentística presa↔cazador). `fleeSpeed=0` = solo cobertura (modelo previo). Medido: con cobertura baja
+  (`refuge.strength≈0.3`) la `vmax` evoluciona al alza por MORFOLOGÍA (no por el gen de esfuerzo, que se queda en su
+  óptimo de coste); demasiado alto (o cobertura nula) → la presa escapa siempre y los carnívoros se quedan sin comer.
+  **Sin esto la velocidad es ~neutra**: forrajear no es una carrera (deriva al gradiente), así que nada la premiaba.
 - **Tiempo de manejo (`handlingTime`):** tras una captura el ganador no puede atacar durante N ticks
   (digestión). Satura la tasa de depredación → la presa amortigua → coexistencia en vez de colapso.
 - **Resolución estocástica:** fuerza de cada contendiente `f = (size+0.1)^combat.sizeAdvantage` (tamaño + azar;

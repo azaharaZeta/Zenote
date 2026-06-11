@@ -319,6 +319,7 @@ export class Sim {
     const threatLo = 1 / preyHi, threatHi = 1 / preyLo, maxRadius = cfg.expr.size.max;
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
+    const fleeSpeed = cfg.combat.fleeSpeed || 0;                            // escape por VELOCIDAD relativa (0 = off, modelo previo)
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
@@ -434,7 +435,16 @@ export class Sim {
         // vegetación VIVA en su celda (res∈[0,R_max]) → zona lush ≈ casi siempre escapa, claro pastado = expuesta.
         // Escape = NO hay combate (ni captura ni failDamage): no la alcanzó entre la maleza. Refugios DINÁMICOS;
         // el predador SÍ sigue su tick (mueve/come/cría): solo se salta esta resolución de combate.
-        const preyEscapes = wantsAttack && coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])];
+        // ESCAPE: por COBERTURA (esconderse en vegetación, #7) O por VELOCIDAD (la presa que nada más rápido que el
+        // cazador se zafa — la persecución es un duelo de velocidad). fleeSpeed=0 → solo cobertura (modelo previo, inerte).
+        let preyEscapes = false;
+        if (wantsAttack) {
+          if (coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])]) preyEscapes = true;
+          else if (fleeSpeed > 0) {
+            const vc = this.vmax[i], adv = vc > 1e-4 ? this.vmax[bestContact] / vc - 1 : 0; // ventaja de velocidad relativa de la presa
+            if (adv > 0) { let pe = fleeSpeed * adv; if (pe > 0.95) pe = 0.95; if (rng.next() < pe) preyEscapes = true; }
+          }
+        }
         if (wantsAttack && !preyEscapes) {
           const j = bestContact;
           // Fuerza = (tamaño+0.1)^sizeAdvantage. Resolución estocástica: nadie gana "por regla", emerge del

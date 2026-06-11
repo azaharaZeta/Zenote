@@ -21,12 +21,14 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Cabeza ya no es el motor (`headThrust`) | ✅ hecha | [archivo/cabeza-no-motor.md](archivo/cabeza-no-motor.md) |
 | Amplificar refugios móviles (`patchiness`) | ✅ hecha | default subido a 0.3 (knob de UI) |
 | Forrajeo por talla (payoff de talla) | ✅ hecha | [archivo/forrajeo-por-talla.md](archivo/forrajeo-por-talla.md) · mecánica en SPEC §3.1 |
+| Que la velocidad IMPORTE (escape por velocidad) | ✅ hecha | `combat.fleeSpeed=2` + `refuge.strength`↓ · mecánica SPEC §3.1 · memoria `speed-is-a-race-quantity` |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
 | Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho) |
 | Selección de presa por talla | ⬜ pendiente | análisis abajo |
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
+| Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |
 | Bandeja de entrada (sin procesar) | 📥 | abajo |
 
 ---
@@ -114,6 +116,20 @@ El render NO toca la simulación (regla 3 de VISUAL.md).
 
 Varios nodos con el mismo `parent` y `emit` parecido se solapan al dibujarse. Posible reparto angular sutil entre
 hermanos (solo render, no toca genética).
+
+---
+
+## Variabilidad temporal del recurso (boom-bust) — DESCARTADA (probada 2026-06-11)
+**Idea:** oscilar el rebrote (`R_regen`) en boom-bust para que la reserva (`eMax ∝ talla`) pague en los valles → eje r/K.
+**Probado headless** (`cycleAmp=1`, periodo 4000, asexual): falla en los dos ejes.
+- **No diversifica:** forage=0 → media de talla 0.24→0.07 (todos al mínimo); forage=3 → pierde el grupo bimodal y la
+  dieta cae (dietH 0.55→0.20). `sizeStd` plano.
+- **Mete desorden:** popSwing 0.72–0.94 — la población se desploma a 47–99 (de 1000) en cada valle, al borde de extinción.
+
+**Por qué:** el boom-bust premia sobrevivir-con-poco + repoblar-rápido = el pequeño r-estratega; la reserva del grande no
+compensa su coste alto y su cría lenta → REFUERZA el sesgo a pequeño. Revertido (código sin rastro). Lección en memoria
+`boom-bust-no-diversifica-talla`. Si alguna vez se quisiera premiar el buffer: catástrofes RARAS impredecibles (no ciclos
+regulares) y con red anti-extinción — otro mecanismo, especulativo.
 
 ---
 

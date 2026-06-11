@@ -144,8 +144,10 @@ export const config = {
   //       Estabilizador Lotka-Volterra: en vegetación densa la presa escapa al combate (refugios DINÁMICOS). ─────
   refuge: {
     enabled: true,      // (UI) Activar la cobertura/refugio de presa
-    strength: 0.9,      // (UI) Fuerza de la cobertura: prob. de escape = strength · vegetación_local (∈[0,1]).
-                        //      En vegetación máxima la presa escapa ~strength de los ataques; 0 = sin refugio. En vivo.
+    strength: 0.3,      // (UI) Fuerza de la cobertura: prob. de escape = strength · vegetación_local (∈[0,1]).
+                        //      En vegetación máxima la presa escapa ~strength de los ataques; 0 = sin refugio. BAJADO de
+                        //      0.9 a 0.3 para que el escape dependa de la VELOCIDAD (combat.fleeSpeed), no solo de esconderse
+                        //      → la velocidad pasa a importar. Sigue siendo estabilizador L-V parcial. En vivo.
   },
 
   // ───── Color como pigmento (sintonía con la luz local) ─────
@@ -192,6 +194,11 @@ export const config = {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
     failDamage: 0.2,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
+    fleeSpeed: 2,       // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
+                        //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope 0.95). Hace que huir/cazar sea un DUELO de
+                        //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
+                        //      cobertura baja (refuge.strength) o el escondite lo enmascara. 0 = solo cobertura (modelo previo).
+                        //      >4 o cobertura nula → la presa escapa demasiado y los carnívoros se quedan sin comer (medido).
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.20,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
