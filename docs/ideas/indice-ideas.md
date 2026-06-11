@@ -10,7 +10,7 @@ Enumeración de ideas del proyecto y su estado. **Cómo funciona:**
   y aquí se marca el estado. La **mecánica** de lo implementado vive en `SPEC_EVOLUCION.md` (no se duplica aquí).
 
 Otros docs: mecánica → `SPEC_EVOLUCION.md` · parámetros → `src/config.js` (comentado) · render → `VISUAL.md` ·
-auditoría histórica → `AUDIT_EVOLUCION.md` · estado/foto → `ESTADO.md` · hitos → `CHANGELOG.md` ·
+auditoría histórica → `../archivo/AUDIT_EVOLUCION.md` · estado/foto → `../ESTADO.md` · hitos → `../CHANGELOG.md` ·
 observaciones/lecciones de ecología → memoria del proyecto.
 
 ## Estado de las ideas

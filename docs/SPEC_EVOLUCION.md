@@ -8,7 +8,8 @@ parte visual es secundaria al cumplimiento de estas reglas.
 > (cabeza/segmentos/apéndices) y pasó a ser un **genoma generativo por nodos**: forma y
 > locomoción EMERGEN de la selección. Si encuentras menciones a `m_app`, `m_seg`, `mod*`,
 > `s_*`, `maxAlive` o "carroña comestible" en código o notas viejas, son del modelo
-> anterior. La progresión y el estado vivo del proyecto están en `ESTADO.md` y `AUDIT_EVOLUCION.md`.
+> anterior. El estado vivo está en `ESTADO.md` (foto) y `CHANGELOG.md` (hitos); el porqué histórico de v2.0, en
+> `archivo/AUDIT_EVOLUCION.md` (auditoría cerrada).
 
 ## 0. Filosofía de diseño
 

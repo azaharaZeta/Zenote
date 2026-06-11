@@ -34,4 +34,4 @@ los hitos. Cada cambio de modelo → `SPEC_EVOLUCION.md`; cada parámetro → `s
 
 ## 2026-06-09/10 — Auditoría evolutiva CERRADA (14/14)
 - Backlog #0-#13 cerrado (Pilar v2.0, mutación, crossover, alometría, r/K, maxAlive, muletas, refugio, constantes
-  loco, cerebro neural-only, ataque del cerebro, carroña, historia de vida, consolidar color). Detalle en `AUDIT_EVOLUCION.md`.
+  loco, cerebro neural-only, ataque del cerebro, carroña, historia de vida, consolidar color). Detalle en `archivo/AUDIT_EVOLUCION.md`.

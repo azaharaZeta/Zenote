@@ -1,7 +1,7 @@
 # Estado del proyecto — dashboard
 
 > **Documento ÍNDICE.** Foto del presente + mapa de la documentación. NO almacena detalle: la mecánica vive en
-> `SPEC_EVOLUCION.md`, los parámetros en `src/config.js` (comentado), el backlog en `AUDIT_EVOLUCION.md`, las ideas
+> `SPEC_EVOLUCION.md`, los parámetros en `src/config.js` (comentado), el backlog (histórico) en `archivo/AUDIT_EVOLUCION.md`, las ideas
 > en `ideas/indice-ideas.md`, los hitos en `CHANGELOG.md`. Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
 **Estado (2026-06-11):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
@@ -52,7 +52,7 @@ anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pasta
 - *Tuning emergente (memoria):* carnívoros frágiles con mutación baja; `omniPenalty` = dial de especialización
   (a 0 arrasan los omnívoros y no diverge la morfología) — no son bugs, son dinámicas a vigilar.
 
-## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
+## Backlog auditoría (resumen — fuente histórica: [archivo/AUDIT_EVOLUCION.md](archivo/AUDIT_EVOLUCION.md))
 **14/14 — CERRADO ✅:** #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #3 alometría, #4 r/K honesto,
 #5 maxAlive, #6 muletas energéticas, #7 refugio (cobertura graduada), #8 constantes loco, #9 cerebro neural-only,
 #10 ataque del cerebro, #11 carroña, #12 historia de vida, #13 consolidar color.
@@ -67,7 +67,7 @@ anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pasta
 | `docs/SPEC_EVOLUCION.md` | **Fuente de verdad del MODELO** | mecánica: genoma, herencia, mutación, selección, energética, física por nodos, rendimiento | cambian las REGLAS del modelo |
 | `src/config.js` | **Parámetros (fuente única)** | cada parámetro: valor, comentario, si es *(UI)*; agrupado por bloque | se añade/quita/cambia un parámetro |
 | `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad, UI, responsive | cambia el render/estética |
-| `docs/AUDIT_EVOLUCION.md` | Auditoría (histórica) | análisis física/diseño/muleta, catálogo de genes, **backlog CERRADO 14/14** | congelado (solo notas post-auditoría) |
+| `docs/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, archivada) | análisis física/diseño/muleta, catálogo de genes, **backlog CERRADO 14/14**, el *porqué* de v2.0 | congelado (no se modifica) |
 | `docs/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` | surge / avanza / cierra una idea |
 | `docs/CHANGELOG.md` | Hitos cronológicos | qué cambió y cuándo (reciente arriba) | cada hito |
 | `docs/ESTADO.md` | **Foto del presente + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs | cada hito |

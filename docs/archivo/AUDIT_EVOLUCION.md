@@ -1,5 +1,11 @@
 # Auditoría evolutiva — hacia un modelo científico simplificado (v2.0)
 
+> 📦 **DOCUMENTO HISTÓRICO — AUDITORÍA CERRADA (14/14, jun 2026). Archivado y congelado.**
+> Es el **porqué** del modelo v2.0 (la lente física/diseño/muleta, el razonamiento de cada cambio, el catálogo de
+> genes, el plan del Pilar). El **modelo actual (el qué)** vive en `../SPEC_EVOLUCION.md`; el **estado** en
+> `../ESTADO.md`; los **hitos** en `../CHANGELOG.md`; las **ideas vivas** en `../ideas/indice-ideas.md`.
+> No es un TODO: lo pendiente se trasladó a `ideas/`. Las rutas en backticks de abajo son del momento de la auditoría.
+
 **Fecha:** 2026-06-09 · rama `revision-genes`.
 
 ## Propósito
