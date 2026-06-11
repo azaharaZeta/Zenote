@@ -173,8 +173,10 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
 | `render.glow` | true | resplandor (bloom): halo por organismo + brillo global. Solo config (sin control en vivo) |
-| `render.dprCap` | 2 | tope de densidad de píxeles (DPR) — protege FPS en retina/móvil |
-| `render.quality` | 'high' | *(UI)* 'high' \| 'low'. **Baja** = sin bloom (blur), **sin halos por agente**, sin nieve marina, menos chispas, y umbrales LOD ×`lodLowMult` (más puntos) → móvil/equipos lentos |
+| `render.dprCap` | 2 | tope de densidad de píxeles (DPR) en calidad ALTA — protege FPS en retina/móvil |
+| `render.quality` | 'high' | *(UI, botón cicla baja→alta→máxima)* `'low'` \| `'high'` \| `'ultra'`. **Baja** = sin bloom, sin halos por agente, sin nieve, LOD agresivo (móvil). **Alta** = estándar bonito. **Máxima** = todo el esplendor (ver `ultra*`); opt-in, pesado |
+| `render.ultraDprCap` | 3 | tope de DPR en MÁXIMA (supersampling: render por encima del DPR del dispositivo → nítido) |
+| `render.lodUltraMult` | 0.6 | multiplicador de umbrales LOD en MÁXIMA (<1 → grafo/ojos/señuelo/onda a más distancia = más detalle). Además: doble bloom, +nieve (1280), sustrato 4× |
 | `render.lodBody` | 5 | LOD: rPx (radio en pantalla) mínimo para dibujar CUERPO (debajo = punto plano) |
 | `render.lodFull` | 9 | LOD: rPx mínimo para el GRAFO de nodos completo (entre `lodBody` y esto = cuerpo barato: elipse de volumen orientada) |
 | `render.lodEye` | 11 | LOD: rPx mínimo para los OJOS (dentro del grafo) |

@@ -199,8 +199,13 @@ export const config = {
   // ───── Render (solo visual; no afecta a la simulación) ─────
   render: {
     glow: true,               // Resplandor (bloom). Solo config (sin control en vivo)
-    dprCap: 2,                // Tope de densidad de píxeles (DPR)
-    quality: 'high',          // (UI) 'high' | 'low' (baja = sin bloom, sin halos por agente, sin nieve, LOD agresivo → móvil)
+    dprCap: 2,                // Tope de densidad de píxeles (DPR) en calidad ALTA
+    quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
+                              //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
+    // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,
+    //    más nieve, sustrato más fino). Opt-in (no se autodetecta); pesado, para equipos capaces. ──
+    ultraDprCap: 3,           // Tope de DPR en máxima (supersampling: render por encima del DPR del dispositivo → nítido)
+    lodUltraMult: 0.6,        // Multiplicador de umbrales LOD en máxima (<1 → grafo/ojos/señuelo/onda a MÁS distancia = más detalle)
     // ── LOD (nivel de detalle por RADIO EN PANTALLA, px). 3 niveles: punto < lodBody ≤ cuerpo barato < lodFull ≤ grafo
     //    completo. lodEye/lodLure/lodWave gatean detalles caros DENTRO del grafo. En calidad BAJA se multiplican por
     //    lodLowMult (umbrales más altos → más puntos/cuerpos baratos → muchos menos gradientes). Solo render. ──

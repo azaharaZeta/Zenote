@@ -99,7 +99,7 @@ export class Renderer {
     // temperatura, (A) moteado orgánico por ruido anclado al mundo, y (C) comida fosforescente +
     // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
     {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
-      const SS = cfg.render.quality === 'low' ? 2 : 3, NW = cols * SS, NH = rows * SS; // baja: 2× (menos píxeles que recalcular)
+      const SS = cfg.render.quality === 'low' ? 2 : cfg.render.quality === 'ultra' ? 4 : 3, NW = cols * SS, NH = rows * SS; // baja 2× · alta 3× · máxima 4× (sustrato más fino)
       let cv = this._abyssLow;
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
@@ -180,7 +180,11 @@ export class Renderer {
     const cssW = c.clientWidth || window.innerWidth;
     const cssH = c.clientHeight || window.innerHeight;
     // Calidad BAJA (móvil): DPR=1 (4× menos píxeles en retina) → gran ahorro en fills/blur. ALTA: hasta dprCap.
-    this.dpr = cfg.render.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, cfg.render.dprCap);
+    // MÁXIMA: supersampling (DPR del dispositivo +1, hasta ultraDprCap) → render por encima de la pantalla = nítido.
+    const q = cfg.render.quality;
+    this.dpr = q === 'low' ? 1
+      : q === 'ultra' ? Math.min(cfg.render.ultraDprCap || 3, (window.devicePixelRatio || 1) + 1)
+      : Math.min(window.devicePixelRatio || 1, cfg.render.dprCap);
     c.width = Math.round(cssW * this.dpr);
     c.height = Math.round(cssH * this.dpr);
     // Escala "cover": el mundo cubre el viewport (sin letterbox) → con el paneo en mosaico
@@ -250,6 +254,7 @@ export class Renderer {
     // ESCENARIO: Cenote abisal (único). Sustrato de penumbra + comida fosforescente + criaturas
     // luminosas. El suelo lo pinta _refreshGrass en su búfer; aquí solo se compone.
     const lowQ = cfg.render.quality === 'low';           // calidad baja (móvil): sin blooms, menos partículas, sustrato simple
+    const ultraQ = cfg.render.quality === 'ultra';       // MÁXIMA: extras de esplendor SOBRE alta (doble bloom, más nieve, …)
     const camMoved = this.camX !== this._gx || this.camY !== this._gy || this.zoom !== this._gz;
     if (this._grassTimer <= 0 || camMoved) {
       this._refreshGrass();
@@ -269,6 +274,7 @@ export class Renderer {
       ctx.globalAlpha = 0.5;
       ctx.filter = 'blur(4px)';
       ctx.drawImage(this.grass, 0, 0);
+      if (ultraQ) { ctx.globalAlpha = 0.3; ctx.filter = 'blur(12px)'; ctx.drawImage(this.grass, 0, 0); } // MÁXIMA: 2º bloom AMPLIO → halo luminoso difuso
       ctx.filter = 'none';
       ctx.restore();
     }
@@ -287,12 +293,12 @@ export class Renderer {
     // (B) NIEVE MARINA: partículas tenues a la deriva (detrito/esporas) → agua profunda viva + profundidad.
     // Capa propia, BAJO los organismos. Solo abisal. Anclada al mundo (deriva lenta con descenso + parpadeo).
     if (cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)
-      if (!this._snow) { const n = 740, sn = this._snow = new Float32Array(n * 4), hu = this._snowHue = new Float32Array(n);
+      if (!this._snow) { const n = 1280, sn = this._snow = new Float32Array(n * 4), hu = this._snowHue = new Float32Array(n);
         const PAL = [190, 200, 285, 45, 330]; // cian, azul, violeta, oro, rosa (colorcillo raro)
         for (let k = 0; k < n; k++) { sn[k * 4] = Math.random() * W; sn[k * 4 + 1] = Math.random() * H; sn[k * 4 + 2] = Math.random() * 6.283; sn[k * 4 + 3] = 0.4 + Math.random() * Math.random() * 2.1;
           hu[k] = Math.random() < 0.05 ? PAL[(Math.random() * PAL.length) | 0] : -1; } } // ~5% con color, resto azul-blanco
       const sn = this._snow, hu = this._snowHue, tt = this._animT * 0.0009;
-      const snEnd = sn.length;                                   // (solo alta: nieve completa; baja la omite)
+      const snEnd = (ultraQ ? 1280 : 740) * 4;                   // MÁXIMA: nieve completa (1280); alta: subconjunto (740); baja: nada
       ctx.globalCompositeOperation = 'lighter';
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
@@ -327,6 +333,7 @@ export class Renderer {
       ctx.globalAlpha = 0.4;   // bloom algo menor → los apagados (c_lum bajo) se leen apagados
       ctx.filter = 'blur(4px)';
       ctx.drawImage(this.fx, 0, 0);
+      if (ultraQ) { ctx.globalAlpha = 0.26; ctx.filter = 'blur(14px)'; ctx.drawImage(this.fx, 0, 0); } // MÁXIMA: 2º halo bioluminiscente AMPLIO
       ctx.filter = 'none';
       ctx.restore();
     }
@@ -357,7 +364,8 @@ export class Renderer {
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
     // fullThr ≤ grafo completo. En calidad BAJA los umbrales se multiplican (más puntos/cuerpos baratos → barato).
-    const R = this.cfg.render, lowQ = R.quality === 'low', lodMul = lowQ ? (R.lodLowMult || 2.6) : 1;
+    const R = this.cfg.render, lowQ = R.quality === 'low';
+    const lodMul = lowQ ? (R.lodLowMult || 2.6) : R.quality === 'ultra' ? (R.lodUltraMult || 0.6) : 1; // máxima: umbrales más bajos → grafo/ojos/señuelo a MÁS distancia
     const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)

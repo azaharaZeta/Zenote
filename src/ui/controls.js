@@ -158,20 +158,22 @@ export function setupControls(app) {
   const qualityBtn = $('qualityBtn');
   if (qualityBtn) {
     const LS_Q = 'zenote.quality';
+    const QLABEL = { low: 'Baja', high: 'Alta', ultra: 'Máxima' };
+    const QNEXT = { low: 'high', high: 'ultra', ultra: 'low' }; // el botón cicla baja → alta → máxima → baja
     let q; try { q = localStorage.getItem(LS_Q); } catch (e) {}
-    if (q !== 'high' && q !== 'low') {        // sin preferencia → autodetectar
+    if (q !== 'high' && q !== 'low' && q !== 'ultra') {  // sin preferencia → autodetectar (nunca MÁXIMA: es opt-in)
       const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
       q = (coarse || window.innerWidth < 820) ? 'low' : 'high';
     }
     const applyQuality = (val) => {
       cfg.render.quality = val;
-      qualityBtn.textContent = 'Calidad: ' + (val === 'low' ? 'Baja' : 'Alta');
-      renderer.resize();                      // recalcula DPR (alta↔baja) y fuerza refresco del fondo
+      qualityBtn.textContent = 'Calidad: ' + (QLABEL[val] || 'Alta');
+      renderer.resize();                      // recalcula DPR (baja/alta/máxima) y fuerza refresco del fondo
       try { charts.resize(); } catch (e) {}
     };
     applyQuality(q);
     qualityBtn.addEventListener('click', () => {
-      const val = cfg.render.quality === 'low' ? 'high' : 'low';
+      const val = QNEXT[cfg.render.quality] || 'high';
       try { localStorage.setItem(LS_Q, val); } catch (e) {}
       applyQuality(val); qualityBtn.blur();
     });

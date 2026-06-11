@@ -92,9 +92,12 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   Así al alejar (miles de bichos diminutos) casi todo son puntos baratos, y al acercar emergen forma → ojos →
   onda → señuelo con gracia. El **halo por agente** (un gradiente/bicho) solo se pinta por encima de `lodHalo` y
   en calidad alta; los puntos ya brillan por el **bloom global** de la capa de organismos. Umbrales en `config.render`.
-- **Calidad alta/baja.** Baja (móvil/equipos lentos): sin bloom (blur), **sin halos por agente**, sin nieve marina,
-  menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult` (≈×2.6 → muchos más puntos). Render medido:
-  worst-case ~2 ms/frame en alta con 4000 agentes a la vista; baja ≈ la mitad.
+- **Calidad: baja / alta / máxima** (el botón cicla las tres). **Baja** (móvil/equipos lentos): sin bloom (blur),
+  **sin halos por agente**, sin nieve marina, menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult`
+  (≈×2.6 → muchos más puntos). **Alta**: el estándar (worst-case ~2 ms/frame con 4000 agentes a la vista; baja ≈ la
+  mitad). **Máxima** (`ultra`, opt-in, pesada): todo el esplendor — **supersampling** (DPR ↑ `ultraDprCap`), **doble
+  pasada de bloom** (halo amplio luminoso) en vegetación y organismos, **más nieve** (1280), **sustrato 4×** y LOD más
+  fino (×`lodUltraMult` ≈0.6 → grafo/ojos/señuelo a más distancia). No se autodetecta; para equipos capaces.
 - **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se bajan
   efectos visuales (glow, estelas, mostrar campo de recurso) y se puede reducir
   `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
