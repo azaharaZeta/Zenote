@@ -217,7 +217,14 @@ pastar = ver el Huffaker emerger.
 
 
 
-## Listado de borrador de Ideas (lista mantenida por programadora)
+## Borrador de Ideas de usuario (pendiente procesar)
+
+- Tamaño especies
+  - herbívoros siempre tienden a tamaño minimo.
+  - no surgen herbívoros grandes
+  - cazadores deberían restringir su caza a un rango min-max respecto de sí mismos. tenemos max, ¿pero tenemos min?
+    - incluir el tamaño minimo cazable (respecto de sí mismo) en los parametros del ui.
+
 - revisar nado: 
   - cabeza nadadora todavía emerge
   - Los carnívoros están desarrollando enormes garras delanteras parece que sin coste. y apenas desarrollan extremidades para nadar, pero aún así se mueven bien (cabeza nadadora, con garras enormes)

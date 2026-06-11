@@ -98,8 +98,8 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   mitad). **Máxima** (`ultra`, opt-in, pesada): todo el esplendor — **supersampling** (DPR ↑ `ultraDprCap`), **doble
   pasada de bloom** (halo amplio luminoso) en vegetación y organismos, **más nieve** (1280), **sustrato 4×** y LOD más
   fino (×`lodUltraMult` ≈0.6 → grafo/ojos/señuelo a más distancia). No se autodetecta; para equipos capaces.
-- **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se bajan
-  efectos visuales (glow, estelas, mostrar campo de recurso) y se puede reducir
+- **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se baja la **calidad** (a Baja:
+  sin bloom, sin halos por agente, sin nieve, LOD agresivo) y se puede reducir
   `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
   no el resultado—. **No se baja `pop.maxAgents` automáticamente**, porque eso sí cambiaría
   el ecosistema; si el usuario quiere ese ajuste, que sea un control consciente y avisado.

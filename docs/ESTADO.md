@@ -4,10 +4,12 @@
 > la mecánica vive en `SPEC_EVOLUCION.md`, los parámetros en `CONFIG.md`, el backlog en `AUDIT_EVOLUCION.md`,
 > las ideas en `IDEAS.md`. Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
-**Estado (2026-06-10):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
-selección, sin reglas de estrategia ni fitness explícito). El **Pilar v2.0 — Forma y movimiento emergentes
-está COMPLETO**: el cuerpo es un genoma generativo por nodos, la física de locomoción es direccional y emerge
-de la geometría, el render dibuja desde los nodos.
+**Estado (2026-06-11):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
+selección, sin reglas de estrategia ni fitness explícito). El **Pilar v2.0 — Forma y movimiento emergentes** está
+completo, y sobre él se ha construido la **trilogía de MORFOLOGÍA evolutiva (Capas 1-3)**: forma del nodo
+(púa↔elipse↔aleta), funciones ecológicas (alcance del cazador / pastoreo del herbívoro) y modos de movimiento
+(ondular↔aletear con coste). El cuerpo es un genoma generativo por nodos; masa, arrastre, empuje, giro, forma y
+modo de nado EMERGEN de la geometría; el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
@@ -34,15 +36,21 @@ coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K)/tér
 **ciclo de vida r/K** (madurez precoz+vida rápida ↔ tardía+longeva, con coste de longevidad) ·
 **energética alométrica** (almacén ∝ masa, metabolismo ∝ masa^¾ Kleiber → economía de escala) ·
 depredación estructurada por talla · **refugios móviles** (cobertura por vegetación viva → la presa se esconde en
-parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · identidad visual por linaje.
+parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · identidad visual por linaje ·
+**morfología funcional (Capas 1-3):** la FORMA de cada nodo evoluciona (`tipShape`: púa/garra/tentáculo ↔ elipse ↔
+aleta/paleta) con compromiso físico; apéndices frontales dan **alcance de caza** (`morphReach`) y los cuerpos
+anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pastador; el **modo de propulsión** evoluciona
+(`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty` (0.05).
 
 ## Huecos / pendientes (ideas → [IDEAS.md](IDEAS.md))
-- **Backlog de auditoría CERRADO (14/14).** Lo que queda son IDEAS futuras (no backlog): uso táctico del
-  refugio + caza en manada (entradas del cerebro), selección de presa por talla, Fase 2 del dibujado
-  (organismos tras el dosel, reencuadrada en clave abisal). *Refugios móviles: amplificados* (patchiness 0.3).
-- *En pruebas:* **cabezas voladoras** — la cabeza ya no es el motor (`headThrust` bajo + sembrado renacuajo);
-  verificar en navegador que no colapsa y que emergen colas/aletas.
-- *Tuning*: carnívoros tienden a extinguirse con mutación baja (ver memoria) — no es bug, es exploración.
+- **Backlog de auditoría CERRADO (14/14). Trilogía de morfología (Capas 1-3) HECHA.** Lo que queda son IDEAS:
+  - **Giro físico** (que girar use los segmentos): hecha la señal visual del remado (C); pendiente el **par físico
+    con palanca + inercia** (B, bajo riesgo) y el giro 100% emergente del cerebro izq/der (A, arriesgado).
+  - **Afinar los pesos morfológicos** observando la evolución: `tip*`, `flap*`, `morphReach`, `k_grazeWide`, `k_flap`.
+  - Selección de presa por talla; nuevas **entradas sensoriales del cerebro** (cobertura/manada); Fase 2 del dibujado
+    (organismos tras el dosel, en clave abisal); apiñamiento de hermanos (render).
+- *Tuning emergente (memoria):* carnívoros frágiles con mutación baja; `omniPenalty` = dial de especialización
+  (a 0 arrasan los omnívoros y no diverge la morfología) — no son bugs, son dinámicas a vigilar.
 
 ## Backlog auditoría (resumen — fuente: [AUDIT_EVOLUCION.md](AUDIT_EVOLUCION.md))
 **14/14 — CERRADO ✅:** #0 Pilar completo, #1 mutación, #2 crossover ligamiento, #3 alometría, #4 r/K honesto,
@@ -71,6 +79,15 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 - **ESTADO** no almacena detalle: sintetiza y enlaza. Si algo aparece en dos sitios, sobra en uno.
 
 ## Frescura de la documentación
+**Morfología evolutiva (Capas 1-3) + calidad máxima + revisión de docs (2026-06-11):** trilogía de morfología
+completa — `tipShape` (forma del nodo: púa↔elipse↔aleta), `morphReach`/`k_grazeWide` (función ecológica: alcance
+del cazador / pastoreo del herbívoro), `gaitMode` + `flapCost` (modo de propulsión ondular↔aletear con coste).
+**Genoma 169→185** (2 campos de nodo nuevos). Render del aleteo + señal visual de giro (remado). 3ª calidad
+**Máxima** (doble bloom, supersampling, +nieve). `diet.omniPenalty` 0→**0.05** (dial de especialización). UI:
+botón **Reiniciar** movido a la cabecera (ámbar, distinto) para evitar pulsarlo por error. SPEC §2bis/§3, CONFIG,
+VISUAL e IDEAS al día; **valores de CONFIG re-sincronizados con `config.js`** (R_regen, patchiness, grazeRefuge,
+sizeAdvantage, failDamage).
+
 **Cenote + limpieza de UI (2026-06-10):** eliminado el escenario `meadow`/pradera → **Cenote abisal único**
 (quitados sprites de hierba/flores, mapa térmico de pradera y los params `ambiance`/`showResourceField`/
 `flower*`/`grassSpriteCount`); quitadas las **estelas** (`render.trails`, código muerto). **Modo simple**

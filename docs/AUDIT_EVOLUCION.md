@@ -252,6 +252,9 @@ De más fundacional / mayor retorno de realismo a más periférico.
    a ~1e-7), ✅ B2a (genoma generativo por NODOS: 8 nodos×8 campos en `genome.js`; `computeBodyPlan` lee
    los nodos; direccionalidad/giro emergen de la simetría del grafo; render intacto; verificado numéricamente);
    pendientes: B2b (migrar el RENDER al grafo de nodos), B2c (contract), B3 (gait).*
+   *Post-Pilar (2026-06-11, MORFOLOGÍA Capas 1-3 — ver `IDEAS.md`/SPEC §2bis): el bloque de nodos creció a 8×**10**
+   campos (+`tipShape` forma del nodo, +`gaitMode` modo de nado) y se ataron funciones ecológicas a la forma
+   (alcance de caza `morphReach`, pastoreo por anchura `k_grazeWide`, coste de aleteo `flapCost`). Genoma 169→**185**.*
 1. ✅ **Mutación: unificar a una tasa por locus** (quitar las 3 categorías). *La decisión menos científica.*
    *Hecho: `rate=0.05`, `sigma=0.08` (punto medio); fuera `decor*`/`form*` y el set `FORM`.* — *Capa 2*
 2. ✅ **Crossover con ligamiento** (recombinación por locus en vez de uniforme). *Hecho: `mut.recomb=0.07`

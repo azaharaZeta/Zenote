@@ -22,13 +22,13 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | `resource.gridCols` | 64 | columnas del campo de recurso |
 | `resource.gridRows` | 48 | filas |
 | `resource.R_max` | 1.0 | recurso máximo por celda (normalizado) |
-| `resource.R_regen` | 0.0016 | *(UI)* ritmo de rebrote — **regulador principal** de cuánta comida sostiene el mundo |
+| `resource.R_regen` | 0.0060 | *(UI)* ritmo de rebrote — **regulador principal** de cuánta comida sostiene el mundo |
 | `resource.gradient` | "perlin" | forma de la capacidad: "perlin" \| "center" \| "uniform" |
-| `resource.patchiness` | 0 | *(UI)* 0 = rebrote lineal (sin parches) … 1 = logístico + difusión de semilla → **parches que emergen y migran** |
+| `resource.patchiness` | 0.3 | *(UI)* 0 = rebrote lineal (sin parches) … 1 = logístico + difusión de semilla → **parches que emergen y migran** |
 | `resource.tempFreq` | 3 | frecuencia del campo térmico (bajo = zonas climáticas grandes) |
 | `resource.absRate` | 0.20 | *(UI)* ritmo de pastado/tick (antes de escalar por `metab`) |
 | `resource.energyPerUnit` | 10 | **conversión recurso→energía** (1 unidad = 10 pts). Parámetro de equilibrio más sensible (SPEC §3) |
-| `resource.grazeRefuge` | 0.11 | reserva de rebrote intocable por celda (evita el sobrepastoreo letal) |
+| `resource.grazeRefuge` | 0.30 | reserva de rebrote intocable por celda (evita el sobrepastoreo letal) |
 
 ## Población
 | Parámetro | Valor | Notas |
@@ -153,8 +153,8 @@ Frontera de diseño: el programador define la **física**; la conducta y la form
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
 | `combat.enabled` | true | *(UI)* activar depredación/combate (`false` = mundo solo-herbívoro) |
-| `combat.sizeAdvantage` | 1.4 | *(UI)* cuánto pesa el tamaño en quién gana el combate |
-| `combat.failDamage` | 0.45 | *(UI)* energía que pierde el atacante al **fallar** (× su eMax); muere solo si llega a 0. Freno denso-dependiente. ≥1 ≈ muerte segura |
+| `combat.sizeAdvantage` | 1.8 | *(UI)* cuánto pesa el tamaño en quién gana el combate |
+| `combat.failDamage` | 0.2 | *(UI)* energía que pierde el atacante al **fallar** (× su eMax); muere solo si llega a 0. Freno denso-dependiente. ≥1 ≈ muerte segura |
 | `combat.handlingTime` | 31 | enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones |
 | `combat.dietMargin` | 0.08 | diferencia de dieta mínima para considerar a otro "presa" (no un igual) |
 | `combat.preyBandLo` | 0.20 | ratio presa/depredador **mínimo** cazable (más pequeño no compensa) |
