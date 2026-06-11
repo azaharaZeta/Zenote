@@ -1,8 +1,8 @@
 # Estado del proyecto — dashboard
 
-> **Documento ÍNDICE.** Resumen ejecutivo de una ojeada + mapa de la documentación. NO almacena detalle:
-> la mecánica vive en `SPEC_EVOLUCION.md`, los parámetros en `CONFIG.md`, el backlog en `AUDIT_EVOLUCION.md`,
-> las ideas en `IDEAS.md`. Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
+> **Documento ÍNDICE.** Foto del presente + mapa de la documentación. NO almacena detalle: la mecánica vive en
+> `SPEC_EVOLUCION.md`, los parámetros en `src/config.js` (comentado), el backlog en `AUDIT_EVOLUCION.md`, las ideas
+> en `ideas/indice-ideas.md`, los hitos en `CHANGELOG.md`. Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
 **Estado (2026-06-11):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
 selección, sin reglas de estrategia ni fitness explícito). El **Pilar v2.0 — Forma y movimiento emergentes** está
@@ -42,7 +42,7 @@ aleta/paleta) con compromiso físico; apéndices frontales dan **alcance de caza
 anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pastador; el **modo de propulsión** evoluciona
 (`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty` (0.05).
 
-## Huecos / pendientes (ideas → [IDEAS.md](IDEAS.md))
+## Huecos / pendientes (ideas → [ideas/indice-ideas.md](ideas/indice-ideas.md))
 - **Backlog de auditoría CERRADO (14/14). Trilogía de morfología (Capas 1-3) HECHA.** Lo que queda son IDEAS:
   - **Giro físico** (que girar use los segmentos): hecha la señal visual del remado (C); pendiente el **par físico
     con palanca + inercia** (B, bajo riesgo) y el giro 100% emergente del cerebro izq/der (A, arriesgado).
@@ -65,38 +65,22 @@ anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pasta
 |---|---|---|---|
 | `CLAUDE.md` | Instrucciones de trabajo | reglas innegociables, pila técnica, cómo contribuir | cambia el proceso/reglas |
 | `docs/SPEC_EVOLUCION.md` | **Fuente de verdad del MODELO** | mecánica: genoma, herencia, mutación, selección, energética, física por nodos, rendimiento | cambian las REGLAS del modelo |
-| `docs/CONFIG.md` | Referencia de PARÁMETROS | cada parámetro: nombre, rango, default, si es (UI) | se añade/quita/renombra un parámetro |
-| `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, UI, responsive | cambia el render/estética |
-| `docs/AUDIT_EVOLUCION.md` | Auditoría + hoja de ruta | análisis (física/diseño/muleta), catálogo de genes, **backlog con checks**, plan del Pilar | se avanza el backlog / se decide un cambio |
-| `docs/IDEAS.md` | Ideas futuras NO planificadas | ideas estudiadas, con contexto para retomar en frío | surge o se descarta una idea |
-| `docs/ESTADO.md` | **Dashboard ejecutivo + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs | cada hito |
+| `src/config.js` | **Parámetros (fuente única)** | cada parámetro: valor, comentario, si es *(UI)*; agrupado por bloque | se añade/quita/cambia un parámetro |
+| `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad, UI, responsive | cambia el render/estética |
+| `docs/AUDIT_EVOLUCION.md` | Auditoría (histórica) | análisis física/diseño/muleta, catálogo de genes, **backlog CERRADO 14/14** | congelado (solo notas post-auditoría) |
+| `docs/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` | surge / avanza / cierra una idea |
+| `docs/CHANGELOG.md` | Hitos cronológicos | qué cambió y cuándo (reciente arriba) | cada hito |
+| `docs/ESTADO.md` | **Foto del presente + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs | cada hito |
+| memoria del proyecto | Observaciones / lecciones | dinámicas emergentes observadas (no derivables del código) | se observa algo no obvio |
 
-**Reglas anti-duplicación:**
-- **Mecánica del modelo** → SOLO en SPEC. ESTADO da un resumen y enlaza.
-- **Parámetros** → SOLO en CONFIG.
-- **Backlog / progreso** → SOLO en AUDIT. ESTADO puntea, no re-lista.
-- **Ideas no planificadas** → SOLO en IDEAS (cuando una se ejecuta, pasa a AUDIT/SPEC y se retira de IDEAS).
+**Reglas anti-duplicación (un hecho, un sitio):**
+- **Mecánica del modelo** → SOLO en SPEC. ESTADO resume y enlaza.
+- **Parámetros** → SOLO en `src/config.js` (comentado). No hay doc de parámetros (se retiró CONFIG.md por duplicar).
+- **Backlog** → AUDIT (histórico, cerrado). **Ideas vivas** → `ideas/` (índice + fichas + archivo).
+- **Mecánica de una idea hecha** → SPEC (no se duplica en su ficha). **Hitos** → CHANGELOG. **Observaciones emergentes** → memoria.
 - **ESTADO** no almacena detalle: sintetiza y enlaza. Si algo aparece en dos sitios, sobra en uno.
 
 ## Frescura de la documentación
-**Morfología evolutiva (Capas 1-3) + calidad máxima + revisión de docs (2026-06-11):** trilogía de morfología
-completa — `tipShape` (forma del nodo: púa↔elipse↔aleta), `morphReach`/`k_grazeWide` (función ecológica: alcance
-del cazador / pastoreo del herbívoro), `gaitMode` + `flapCost` (modo de propulsión ondular↔aletear con coste).
-**Genoma 169→185** (2 campos de nodo nuevos). Render del aleteo + señal visual de giro (remado). 3ª calidad
-**Máxima** (doble bloom, supersampling, +nieve). `diet.omniPenalty` 0→**0.05** (dial de especialización). UI:
-botón **Reiniciar** movido a la cabecera (ámbar, distinto) para evitar pulsarlo por error. SPEC §2bis/§3, CONFIG,
-VISUAL e IDEAS al día; **valores de CONFIG re-sincronizados con `config.js`** (R_regen, patchiness, grazeRefuge,
-sizeAdvantage, failDamage).
-
-**Cenote + limpieza de UI (2026-06-10):** eliminado el escenario `meadow`/pradera → **Cenote abisal único**
-(quitados sprites de hierba/flores, mapa térmico de pradera y los params `ambiance`/`showResourceField`/
-`flower*`/`grassSpriteCount`); quitadas las **estelas** (`render.trails`, código muerto). **Modo simple**
-simplificado (línea de stats fps·tick·pob, sin histograma ni textos de diagnóstico; `pob` en azul). **Gráfica
-de población** ahora por DIETA (herbívoros/omnívoros/carnívoros + vegetación), sin la curva de total. `CONFIG.md`
-y `VISUAL.md` actualizados a la par.
-
-**Saldada la deuda v2.0 (2026-06-10):** `SPEC_EVOLUCION.md` y `CONFIG.md` reescritos al modelo de nodos
-(genoma por nodos, física direccional, crossover con ligamiento, distancia sobre genes funcionales,
-combate con `failDamage`/banda de talla, r/K honesto); `VISUAL.md` actualizado para el render por nodos.
-Todos los docs reflejan ahora el código real. Mantenerlos al día con la regla: cada cambio de modelo →
-SPEC; cada parámetro → CONFIG; cada avance de backlog → AUDIT; cada hito → este ESTADO.
+**Hitos y cambios → [`CHANGELOG.md`](CHANGELOG.md).** Regla de mantenimiento: cada cambio de modelo → SPEC; cada
+parámetro → `src/config.js`; cada avance de idea → su ficha en `ideas/`; cada hito → CHANGELOG; cada observación
+emergente → memoria del proyecto. Si un dato vive en dos sitios, sobra en uno. Todos los docs reflejan el código real.

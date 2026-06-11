@@ -1,4 +1,4 @@
-# Especificación del motor evolutivo — "Zenote / Primordia"
+# Especificación del motor evolutivo — "Zenote"
 
 Este documento define las reglas exactas de la simulación. Es la **fuente de verdad**
 sobre genética, mutación y selección. El motor debe implementar esto fielmente; la
@@ -399,8 +399,8 @@ Estructura de archivos:
 - `ui/controls.js`, `ui/charts.js`, `main.js` — UI, gráficas, orquestación + `simProxy`.
 
 ## 6. Parámetros por defecto
-Ver `CONFIG.md` (referencia completa de parámetros, rangos y cuáles son *(UI)*). Deben poder
-cambiarse sin tocar el motor; los *(UI)* afectan a la simulación en vivo.
+Ver `src/config.js` (**fuente única**: cada parámetro con su valor, comentario y marca *(UI)*, agrupado por bloque).
+Deben poder cambiarse sin tocar el motor; los *(UI)* afectan a la simulación en vivo.
 
 ## 7. Criterios de aceptación (¿funciona la emergencia?)
 Sin tocar el código de estrategias ni de formas, debe observarse al menos:
