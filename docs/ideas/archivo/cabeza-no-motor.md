@@ -14,6 +14,9 @@ con cola ≈ v1, cabeza sola ~0.47). Sembrado "renacuajo" (cabeza + cola propuls
 Slider "Empuje de la cabeza" para tunear la presión (1 = régimen previo). Verificado numéricamente: cabeza sola
 0.47 ≪ cabeza+cola 1.0 → la cola RINDE. Más realista (un blob liso no se propulsa en fluido — concha de vieira).
 
-## Observación pendiente (ver bandeja de entrada en el índice)
-En la observación posterior se vio que **algunos cazadores "cabeza nadadora con garras enormes"** se mueven bien
-sin desarrollar apenas propulsores. A revisar si el empuje base de la cabeza o el coste de las garras necesitan ajuste.
+## Observación posterior → RESUELTA (2026-06-11)
+Se vio que algunos cazadores "cabeza nadadora con garras enormes" se movían bien sin propulsores. Análisis: los
+nodos FRONTALES (garras, emit≈0) **frenan** (`gait≈−1`), no propulsan; nadaban por el empuje base de la cabeza,
+demasiado generoso. **Resuelto bajando `loco.headThrust` 0.15→0.06** (ver `CHANGELOG.md`): sin propulsores el cuerpo
+casi no avanza (≈vMin) y un garras-only queda clavado en el suelo → nadar exige cola/aletas. Pendiente: verificación
+ecológica en navegador.

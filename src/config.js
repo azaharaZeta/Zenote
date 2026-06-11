@@ -74,8 +74,10 @@ export const config = {
   // → ver idea "cabeza nadadora" en IDEAS.md; es balance, no una regla de forma.)
   loco: {
     kThrust: 7.1,       // Calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47)
-    headThrust: 0.15,   // (UI) Empuje de la CABEZA (motor base débil): 1 = cabeza nadadora (como antes); bajo = la cabeza
-                        //      es carga y nadar bien EXIGE cola/aletas → emergen propulsores por selección. Ver bodyplan.js.
+    headThrust: 0.06,   // (UI) Empuje de la CABEZA (motor base débil): 1 = cabeza nadadora; bajo = la cabeza es carga
+                        //      y nadar bien EXIGE cola/aletas → emergen propulsores. A 0.06 un cuerpo SIN propulsores casi
+                        //      no avanza (≈vMin) y un "garras-only" queda clavado en el suelo → nadar depende del fenotipo
+                        //      propulsor (mata el residuo de "cabeza voladora"; expone el coste de mobilidad de las garras). Ver bodyplan.js.
     paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
     oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
     phaseGain: 0.5,     // (UI) B3+: cuánto penaliza la marcha DESCOORDINADA (fases dispersas) el empuje. 0 = sin
