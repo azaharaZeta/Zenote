@@ -23,6 +23,11 @@ export const config = {
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
     grazeRefuge: 0.30,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
+    forageReach: 2,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
+                        //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
+                        //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
+                        //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
+                        //      Verificado headless: 0 → talla media 0.22; 2 → 0.34 + diversidad + revive carnívoros.
   },
 
   // ───── Población ─────
@@ -60,6 +65,9 @@ export const config = {
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
+    k_haul: 0.4,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
+                        //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
+                        //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
     E_max_base: 71,     // Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // Fracción de energía de la presa aprovechada al cazarla

@@ -119,6 +119,13 @@ export function computePhenotype(sim, i) {
   // compensa a quien necesita la ráfaga (cazador que lancea); el pastador tranquilo preferirá ondular. Emergente.
   sim.flapCost[i] = en.k_flap * plan.flapWork;
 
+  // COSTE DE TRANSPORTE (A): arrastrar masa cuesta al NADAR (sim.js lo multiplica al coste de movimiento). Mantener
+  // el cuerpo ya se paga en baseCost (mass^kleiber); esto es el sobrecoste ACTIVO de DESPLAZAR un cuerpo grande o con
+  // muchos/grandes apéndices. Referencia en masa = 1 (organismo medio): masa ≤ 1 sin recargo (max(0,·) → no regala
+  // descuento a los diminutos); cada unidad de masa por encima del medio encarece el desplazamiento. FRONTERA: defino
+  // que "más masa = más caro moverla"; QUÉ cuerpo gana lo decide la selección (el aerodinámico ahorra, el complejo paga).
+  sim.haulMul[i] = 1 + en.k_haul * Math.max(0, mass - 1);
+
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);
   sim.effHerb[i] = (1 - diet) * omni;

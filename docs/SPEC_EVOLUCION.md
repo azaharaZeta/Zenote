@@ -229,12 +229,17 @@ Por tick, cada organismo:
   vivir lento cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
-- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost)`, **cuadrático en
-  la velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
+- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost) · (1 + k_haul·max(0,mass−1))`,
+  **cuadrático en la velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
   **`flapCost`** (Capa 3) = `k_flap · flapWork` (trabajo de aleteo, lateral): **aletear ENCARECE el nado** (el golpe
   activo gasta). Hace honesto el eje **ondular (crucero barato) ↔ aletear (ráfaga cara)**: el aleteo da +empuje
   (§2bis) pero cuesta, así que solo compensa a quien necesita la ráfaga (cazador que lancea); el pastador tranquilo
   prefiere ondular. Coste ligado a la propulsión de aleteo → coste↔beneficio. Solo lo paga quien aletea (neutro en 0).
+  **`haulMul`** (A, *coste de transporte*) = `1 + k_haul·max(0,mass−1)`: **arrastrar masa ENCARECE el nado** — el
+  sobrecoste ACTIVO de DESPLAZAR un cuerpo grande o con muchos/grandes apéndices (mantenerlo ya se paga en el basal,
+  `mass^kleiber`). Referencia en `mass=1` (organismo medio): por debajo no recarga; por encima paga ∝ exceso de masa.
+  El aerodinámico ahorra y el complejo paga; QUÉ forma gana lo decide la selección. Pendiente el coste por la FORMA del
+  arrastre (no solo la masa) — idea "coste de arrastre en locomoción" en `ideas/indice-ideas.md`.
 - **Alimentación** (ritmo `absEff = absRate · (0.5 + metab) · (1 + k_graze·(massMul−1)) · (1 + k_grazeWide·anchura)`;
   más masa = más superficie de pasto. **`anchura`** (Capa 2) = `1 − (elongN−1)/(elongMax−1)` ∈ [0,1]: un cuerpo
   **ancho/aplanado** (baja elongación) **barre más recurso** que uno fino/aerodinámico → premia la morfología de
@@ -247,6 +252,12 @@ Por tick, cada organismo:
     sintonizado capta más recurso; desajustado, menos. Aquí el color se vuelve seleccionable.
   - Herbívoro absorbe `min(E_falta, recurso_celda · absEff · colorMatch · energyPerUnit) · effHerb`;
     el recurso de la celda baja en lo absorbido. Carnívoro: gana al cazar (§3.1).
+  - **Forrajeo por talla (`forageReach`):** un cuerpo grande pasta de un ÁREA `(2·forageR+1)²` celdas, con
+    `forageR = round(forageReach · size)` → **cubre más terreno** y cosecha más aunque cada celda esté pelada (ventaja
+    que la escasez local NO borra). Es lo que da PAYOFF a la talla: sin esto el ingreso de pasto no escala con la talla
+    pero el coste de cría (`reproRef ∝ sizeMass`) sí → todo deriva al mínimo (medido headless: `forageReach` 0 → talla
+    media 0.22; 2 → 0.34 + diversidad + revive el nicho carnívoro). `forageReach=0` = solo su celda (modelo previo).
+    FRONTERA: defino "más grande barre más área"; QUÉ talla gana lo decide la selección.
 - **Señuelo bioluminiscente** (`lure`): órgano FUNCIONAL gateado por `orn` (`orn > 0.12`),
   prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`) y **extiende el alcance de
   captura** al cazar (`combat.lureReach`). El carnívoro lo recupera cazando → evoluciona señuelos

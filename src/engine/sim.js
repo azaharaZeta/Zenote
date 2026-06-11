@@ -58,6 +58,7 @@ export class Sim {
                                            //   (recién nacido/sembrado/tope) → evita el "salto al este" de atan2(0,0)
     this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
     this.flapCost = new Float32Array(cap); // Capa 3: coste de NADO extra por aletear (golpe activo); ver organism.js
+    this.haulMul = new Float32Array(cap);  // (A) coste de TRANSPORTE ∝ masa: multiplica el coste de NADO; ver organism.js
     this.senseR = new Float32Array(cap);   // alcance visual efectivo (emerge de sense · e_fov)
     this.visCos = new Float32Array(cap);   // cos(semiángulo del cono de visión) → visión direccional
     this.gazeX = new Float32Array(cap);    // dirección de la mirada (a la presa/amenaza, si no al frente)
@@ -302,6 +303,7 @@ export class Sim {
     const wrap = world.wrap, ww = world.width, wh = world.height;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
+    const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
     const matchPenalty = cfg.color.matchPenalty;
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
@@ -552,26 +554,52 @@ export class Sim {
       // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
       // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
       // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]); // aletear (Capa 3) encarece el nado
+      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i]; // aletear (Capa 3) encarece el nado; haulMul (A): transporte ∝ masa
 
-      // Alimentación herbívora: absorber del campo de recurso de la celda actual.
+      // Alimentación herbívora: absorber del campo de recurso. forageReach>0 → un cuerpo GRANDE pasta de un
+      // ÁREA (forageR = forageReach·size celdas alrededor) → ventaja de forrajeo que la escasez local NO borra
+      // (cubre más terreno). FRONTERA: defino que "más grande barre más área"; la selección decide. 0 = inerte.
       const eMaxI = this.eMax[i], effH = this.effHerb[i];
-      const eFalta = eMaxI - E[i];
+      let eFalta = eMaxI - E[i];
       if (eFalta > 0 && effH > 1e-4) {
-        const cell = W.cellIndexAt(x[i], y[i]);
-        // Solo se puede pastar lo que está por encima del refugio (reserva de rebrote).
-        const grazable = res[cell] - grazeRefuge * W.capacity[cell];
-        if (grazable > 0) {
-          // Color como pigmento: cuanto mejor sintoniza el tono del organismo con la luz
-          // local, más recurso capta. Distancia circular de tono → [0, 0.5].
-          let hd = Math.abs(this.hue[i] - W.lightHue[cell]);
-          if (hd > 0.5) hd = 1 - hd;
-          const colorMatch = 1 - matchPenalty * (hd * 2); // [1-penalty .. 1]
-          let units = grazable * this.absEff[i] * colorMatch;
-          const maxByNeed = eFalta / (epu * effH);
-          if (units > maxByNeed) units = maxByNeed;
-          E[i] += units * epu * effH;
-          res[cell] -= units; // baja en unidades de recurso (nunca por debajo del refugio)
+        const absE = this.absEff[i], hueI = this.hue[i];
+        const forageR = forageReach > 0 ? Math.round(forageReach * this.genes[i * NG + G.size]) : 0;
+        if (forageR === 0) {
+          // — una sola celda (ruta base, idéntica al modelo previo) —
+          const cell = W.cellIndexAt(x[i], y[i]);
+          const grazable = res[cell] - grazeRefuge * W.capacity[cell]; // solo por encima del refugio de rebrote
+          if (grazable > 0) {
+            // Color como pigmento: sintonía tono-organismo ↔ luz local. Distancia circular de tono → [0, 0.5].
+            let hd = Math.abs(hueI - W.lightHue[cell]); if (hd > 0.5) hd = 1 - hd;
+            const colorMatch = 1 - matchPenalty * (hd * 2); // [1-penalty .. 1]
+            let units = grazable * absE * colorMatch;
+            const maxByNeed = eFalta / (epu * effH);
+            if (units > maxByNeed) units = maxByNeed;
+            E[i] += units * epu * effH;
+            res[cell] -= units; // baja en unidades de recurso (nunca por debajo del refugio)
+          }
+        } else {
+          // — barrido de área (2·forageR+1)² celdas: el grande cubre más terreno y deplea más ancho —
+          const cols = W.cols, rows = W.rows;
+          let col = (x[i] / W.cellW) | 0; if (col < 0) col = 0; else if (col >= cols) col = cols - 1;
+          let row = (y[i] / W.cellH) | 0; if (row < 0) row = 0; else if (row >= rows) row = rows - 1;
+          const c0 = col - forageR < 0 ? 0 : col - forageR, c1 = col + forageR >= cols ? cols - 1 : col + forageR;
+          const r0 = row - forageR < 0 ? 0 : row - forageR, r1 = row + forageR >= rows ? rows - 1 : row + forageR;
+          for (let rr = r0; rr <= r1 && eFalta > 0; rr++) {
+            for (let cc = c0; cc <= c1 && eFalta > 0; cc++) {
+              const cell = rr * cols + cc;
+              const grazable = res[cell] - grazeRefuge * W.capacity[cell];
+              if (grazable <= 0) continue;
+              let hd = Math.abs(hueI - W.lightHue[cell]); if (hd > 0.5) hd = 1 - hd;
+              const colorMatch = 1 - matchPenalty * (hd * 2);
+              let units = grazable * absE * colorMatch;
+              const maxByNeed = eFalta / (epu * effH);
+              if (units > maxByNeed) units = maxByNeed;
+              const gain = units * epu * effH;
+              E[i] += gain; eFalta -= gain;
+              res[cell] -= units;
+            }
+          }
         }
       }
 

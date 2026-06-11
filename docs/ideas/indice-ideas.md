@@ -20,7 +20,9 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Morfología evolutiva por nodos (Capas 1-3) | ✅ hecha | [archivo/morfologia-nodos-capas-1-3.md](archivo/morfologia-nodos-capas-1-3.md) · mecánica en SPEC §2bis/§3 |
 | Cabeza ya no es el motor (`headThrust`) | ✅ hecha | [archivo/cabeza-no-motor.md](archivo/cabeza-no-motor.md) |
 | Amplificar refugios móviles (`patchiness`) | ✅ hecha | default subido a 0.3 (knob de UI) |
+| Forrajeo por talla (payoff de talla) | ✅ hecha | [archivo/forrajeo-por-talla.md](archivo/forrajeo-por-talla.md) · mecánica en SPEC §3.1 |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
+| Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho) |
 | Selección de presa por talla | ⬜ pendiente | análisis abajo |
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
@@ -51,6 +53,29 @@ optimización de fitness que debe EMERGER.
 
 **Relación:** `combat.failDamage` ataca la misma fragilidad carnívora desde el otro lado (suaviza la consecuencia de
 la mala pelea); medir su efecto antes de decidir si este hace falta.
+
+---
+
+## Coste de ARRASTRE en locomoción — el arrastre debe COSTAR, no solo frenar
+*(pendiente, 2026-06-11 · "opción B" del análisis de energética; la "opción A", `k_haul`, ya está hecha)*
+
+**Idea:** hoy el arrastre (`Dmul`, emergente de la forma) solo BAJA la velocidad (`v = …·stream/Dmul`); no cuesta
+energía. Como el coste de nado va con `dist² ∝ v²`, un cuerpo con mucho arrastre nada **más barato** (va lento → menos
+`dist²` → menos gasto): el arrastre se premia energéticamente y solo se castiga con lentitud.
+
+**Qué arregla A (ya hecho) y qué NO:** A (`energy.k_haul`) hace que arrastrar **masa** cueste al moverse. Pero masa ≠
+arrastre: un cuerpo grande pero aerodinámico (poca `Dmul`) y otro de igual masa pero con apéndices anchos (mucha `Dmul`)
+pagan **lo mismo** con A. B distinguiría la FORMA hidrodinámica del mero bulto.
+
+**Vía (si se retoma):** cachear una proxy de arrastre por agente (`Dmul` de `reducePlan`, hoy no se guarda en SoA) y
+multiplicar el coste de nado por `(1 + k_drag·(Dmul − Dmul_ref))`. Más realista (una forma con resistencia es lenta **y**
+agotadora) y cierra el incentivo perverso del arrastre gratis.
+
+**Coste/riesgo:** moderado — un `Float32Array` nuevo seteado en `organism.js` + recalibrar. Cuidado de no penalizar
+TRIPLE al cuerpo ancho (ya es lento, ya paga A por masa, y pagaría B por arrastre): medir antes de defaults agresivos.
+
+**Relación:** complementa A; juntos cubren "más grande / más apéndices / más arrastre = más gasto al moverse". Liga con
+la bandeja *"Revisar nado"* (garras frontales que nadaban sin coste aparente).
 
 ---
 
@@ -95,11 +120,13 @@ hermanos (solo render, no toca genética).
 ## Bandeja de entrada (sin procesar)
 *Ideas crudas del usuario, a analizar y convertir en ideas con su pitch cuando se aborden.*
 
-- **Tamaño de especies:** los herbívoros tienden siempre al tamaño mínimo; no surgen herbívoros grandes. Cazadores
-  deberían restringir su caza a un rango min-max respecto de sí mismos (tenemos max `preyBandHi`; ¿tenemos min? →
-  exponer **talla mínima cazable** en la UI).
-- **Revisar nado:** ¿la "cabeza nadadora" todavía emerge? Cazadores desarrollan garras delanteras enormes que parecen
-  sin coste y apenas extremidades para nadar, pero se mueven bien — revisar coste/balance.
+- **Tamaño de especies:** RESUELTO (2026-06-11). "Los herbívoros siempre al tamaño mínimo" era ESTRUCTURAL: el pasto
+  no escalaba con la talla pero la cría sí (`reproRef ∝ sizeMass`) → deriva al mínimo. Lo arregla el **forrajeo por
+  talla** (`resource.forageReach`: el grande pasta de un área) → ahora emergen grandes + diversidad (ver
+  `archivo/forrajeo-por-talla.md` + SPEC §3.1). La banda de caza min-max también quedó completa (`combat.preyBandLo`/`preyBandHi`).
+- **Revisar nado:** ¿la "cabeza nadadora" todavía emerge? Cazadores con garras delanteras enormes que parecían sin
+  coste y apenas propulsores. Atacado en parte: `headThrust`→0.06 (la cabeza no es motor) + (A) coste de transporte ∝
+  masa (garras grandes = más masa = más coste de nado). El remate fino es la idea "coste de arrastre" (arriba).
 - **Revisar señuelos:** a veces emergen racimos enormes de señuelos (¿debería costar más?); ¿el señuelo atrae presas?;
   ¿debería hacerte más visible (pro reproducción, pero también para ser cazado)?
 - **Visor de especie:** en móvil añadir la dieta; recordar los menús desplegados al cerrar/reabrir o al cambiar de especie.
