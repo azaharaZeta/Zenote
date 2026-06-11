@@ -39,6 +39,7 @@ const charts = new Charts(
   document.getElementById('histChart'),
   simProxy,
   document.getElementById('deathChart'),
+  document.getElementById('birthChart'),
 );
 
 const app = { sim: simProxy, worker, renderer, charts, cfg: config, running: true, maxSpeed: false, followSel: false };

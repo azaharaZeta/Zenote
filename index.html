@@ -40,6 +40,7 @@
       </label>
     </div>
 
+    <!-- Fila 1: población + histograma (dos por fila) -->
     <div class="charts">
       <div class="chart-pair">
         <canvas id="popChart" class="chart"></canvas>
@@ -48,11 +49,6 @@
       <label class="inline">Histograma de
         <select id="geneSel"></select>
       </label>
-    </div>
-
-    <!-- Gráfica de demografía (nacimientos/muertes de todo el ecosistema): solo en modo laboratorio -->
-    <div class="death-chart">
-      <canvas id="deathChart" class="chart"></canvas>
     </div>
 
     <div class="ctrl">
@@ -66,6 +62,12 @@
         </select>
       </div>
       <div id="legend" class="legend"></div>
+    </div>
+
+    <!-- Fila 2: demografía (nacimientos | muertes, dos por fila): solo en modo laboratorio -->
+    <div class="death-chart">
+      <canvas id="birthChart" class="chart"></canvas>
+      <canvas id="deathChart" class="chart"></canvas>
     </div>
 
     <div class="ctrl" id="speedBlock">
