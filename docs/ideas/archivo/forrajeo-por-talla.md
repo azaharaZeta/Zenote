@@ -25,7 +25,16 @@ engañaba; sin testear habríamos enviado un arreglo inútil.
 `forageR = round(forageReach · size)`. Es una ventaja que la **escasez NO borra** (cubre más terreno). Medido:
 - div=1, 6000t: `forageReach` 0→0.21, 1→0.238, 2→**0.354 (sube)**, 3→0.353 (satura).
 - Arranque clonal real (div=0, 12000t): 0→0.219 (deriva abajo), 2→**0.344** + diversidad (p10–p90 0.28–0.45, max 1.0)
-  + revive el nicho carnívoro (1→145). Sin coste de tick (1.54 ms/tick vs 1.69 del control). **Default = 2.**
+  + revive el nicho carnívoro (1→145). Sin coste de tick (1.54 ms/tick vs 1.69 del control).
+
+## Fine-tuning (barrido + head-to-head, 2026-06-11)
+Barrido 2D `forageReach × omniPenalty` (3 semillas) + head-to-head de los 2 finalistas (5 semillas, 12000 ticks, div=0):
+- `omniPenalty=0.05` maximiza la diversidad de DIETA; subirlo la baja. Pero `forageReach=3` con `omni=0.05` tuvo una
+  semilla con colapso → **`omni=0.15` lo ESTABILIZA** (más especialización = nichos más estables).
+- **Ganador: `forageReach=3 · omniPenalty=0.15`** — distribución BIMODAL de talla (~53% en 0.2–0.3 + ~17% en 0.5–0.6),
+  p90 0.56, 21% de grandes (vs 4% con forage=2), robusto (0 extinciones, minPop 996 en 5 semillas). `forage=2·omni=0.05`
+  da 1 solo pico (p90 0.46, 4% grandes): más rico en dieta pero población de talla uniforme.
+- **Defaults fijados: `forageReach=3`, `omniPenalty=0.15`.**
 
 ## Lección (→ memoria)
 La grandeza/diversidad de talla exige un payoff que **sobreviva a la saturación de recurso** (área de forrajeo), no

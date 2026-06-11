@@ -256,7 +256,7 @@ Por tick, cada organismo:
     `forageR = round(forageReach · size)` → **cubre más terreno** y cosecha más aunque cada celda esté pelada (ventaja
     que la escasez local NO borra). Es lo que da PAYOFF a la talla: sin esto el ingreso de pasto no escala con la talla
     pero el coste de cría (`reproRef ∝ sizeMass`) sí → todo deriva al mínimo (medido headless: `forageReach` 0 → talla
-    media 0.22; 2 → 0.34 + diversidad + revive el nicho carnívoro). `forageReach=0` = solo su celda (modelo previo).
+    media 0.22; 3 (default, con omniPenalty 0.15) → DOS grupos de talla (~0.25 y ~0.55, 21% grandes) + carnívoros). `forageReach=0` = solo su celda (modelo previo).
     FRONTERA: defino "más grande barre más área"; QUÉ talla gana lo decide la selección.
 - **Señuelo bioluminiscente** (`lure`): órgano FUNCIONAL gateado por `orn` (`orn > 0.12`),
   prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`) y **extiende el alcance de

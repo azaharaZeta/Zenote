@@ -23,11 +23,12 @@ export const config = {
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
     grazeRefuge: 0.30,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
-    forageReach: 2,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
+    forageReach: 3,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
                         //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
                         //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
                         //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
-                        //      Verificado headless: 0 → talla media 0.22; 2 → 0.34 + diversidad + revive carnívoros.
+                        //      Fine-tuning headless (5 semillas): 0 → todo mínimo; 2 → 1 pico; 3 (con omniPenalty 0.15) →
+                        //      DOS grupos de talla (~0.25 peque + ~0.55 grande, 21% grandes) y robusto. Va con omniPenalty 0.15.
   },
 
   // ───── Población ─────
@@ -133,9 +134,10 @@ export const config = {
 
   // ───── Dieta ─────
   diet: {
-    omniPenalty: 0.05, // (UI) Penalización por dieta intermedia. 0 = omnívoros arrasan (generalista gratis, sin
+    omniPenalty: 0.15, // (UI) Penalización por dieta intermedia. 0 = omnívoros arrasan (generalista gratis, sin
                        //      divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y
-                       //      cazadores con alcance (Capa 1/2). 0.05 = empujón suave que ya restaura los especialistas.
+                       //      cazadores con alcance (Capa 1/2). 0.15 = especialización marcada; además ESTABILIZA el
+                       //      forrajeo por talla (forageReach 3) → sin esto una semilla colapsaba. (Antes 0.05.)
   },
 
   // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.

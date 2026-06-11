@@ -2,7 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
-- 2026-06-11: forrajeo por talla (`resource.forageReach`, def. 2) — el grande pasta de un área → da payoff a la talla → emergen herbívoros grandes + diversidad (antes todo derivaba al mínimo). Verificado headless. (UI)
+- 2026-06-11: forrajeo por talla (`resource.forageReach`, def. 3) + `omniPenalty` 0.05→0.15 — el grande pasta de un área → payoff a la talla → DOS grupos de talla (peque+grande) robustos. Fine-tuning headless (5 semillas, head-to-head). (UI)
 - 2026-06-11: (A) coste de transporte ∝ masa (`energy.k_haul`) — nadar un cuerpo grande/con más apéndices gasta más, no solo mantenerlo. (UI)
 - 2026-06-11: `combat.preyBandLo` (suelo de banda de caza) expuesto en la UI — talla mín. y máx. de presa cazable ya se controlan por separado.
 - 2026-06-11: `headThrust` 0.15→0.06 — nadar exige propulsores (los nodos frontales frenan, no propulsan).
