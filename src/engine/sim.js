@@ -69,7 +69,8 @@ export class Sim {
     this.morphReach = new Float32Array(cap); // Capa 2: alcance de captura por apéndices frontales (px); ver organism.js
     this.absEff = new Float32Array(cap);
     this.effHerb = new Float32Array(cap);
-    this.effCarn = new Float32Array(cap);
+    this.effHunt = new Float32Array(cap); // eficiencia cazando presa VIVA (eje caza↔carroña, Fase 2)
+    this.effScav = new Float32Array(cap); // eficiencia CARROÑEANDO cadáveres (sube con cuerpo fino → gusano)
     this.investE = new Float32Array(cap);
     this.reproNeedE = new Float32Array(cap);
     this.matureAge = new Float32Array(cap); // (#12) edad de madurez: gatea la cría + inicio de la senescencia
@@ -217,6 +218,7 @@ export class Sim {
       this.genes[b + G.repro_thr] = jit(0.6); this.genes[b + G.invest] = jit(0.4);
       // Conducta: herbívoro tranquilo (la dieta emerge; las ganas de atacar emergen del cerebro)
       this.genes[b + G.diet] = jit(0.08);
+      this.genes[b + G.scav] = jit(0.12); // eje caza↔carroña: sesgo cazador por defecto (neutro en herbívoros, meat≈0)
       this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
       // Historia de vida (#12): arranque a rango medio (≈madurez 308 ticks, ritmo medio) → r/K emerge por deriva
       this.genes[b + G.mature_age] = jit(0.4); this.genes[b + G.senescence] = jit(0.5);
@@ -238,11 +240,21 @@ export class Sim {
       // la coexistencia depredador-presa sin inyectar complejidad.
       if (n < nCarn) {
         this.genes[b + G.diet] = jit(0.8);
-        this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
-        this.genes[b + G.repro_thr] = jit(0.35);
-        // Kit de CAZADOR VIABLE (solo ecología; la FORMA cazadora emerge de los nodos): ventaja de TAMAÑO
-        // (el combate exige depredador > presa) y esfuerzo alto para nadar rápido tras la presa.
-        this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
+        // Cohorte comecarne dividida en las DOS proto-estrategias del eje caza↔carroña (cruza el valle de arranque,
+        // igual que la dieta; la morfología fina del gusano sigue EMERGIENDO por selección). CAZADOR (par): grande,
+        // rápido, visión frontal estrecha. CARROÑERO proto-gusano (impar): cuerpo BARATO (pequeño, lento, visión
+        // ancha, cría pronto) → puede vivir de la carroña ESCASA, donde un cuerpo caro de cazador moriría de hambre.
+        if (n % 2) {
+          this.genes[b + G.scav] = jit(0.85);
+          this.genes[b + G.size] = jit(0.2);  this.genes[b + G.speed] = jit(0.3);
+          this.genes[b + G.sense] = jit(0.4); this.genes[b + G.e_fov] = jit(0.55);
+          this.genes[b + G.repro_thr] = jit(0.4);
+        } else {
+          this.genes[b + G.scav] = jit(0.12);
+          this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
+          this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
+          this.genes[b + G.repro_thr] = jit(0.35);
+        }
       }
       // --- NODOS (B2): cuerpo generativo. La RAÍZ (cabeza) siempre; los nodos 1..7 con presencia DECRECIENTE
       //     (≈50% el 1º, ≈29% el 2º-3º, ≈9% el resto) → variedad inmediata (cabezas, cadenas y tentáculos)
@@ -286,6 +298,27 @@ export class Sim {
         this.genes[nb + 7] = rng.next();                       // osc_phase
         this.genes[nb + 8] = jit(0.5);                         // tipShape: elipse neutra (la forma diversifica por deriva)
         this.genes[nb + 9] = jit(0);                           // gaitMode: ondular puro (el aleteo emerge por deriva)
+      }
+      // PROTO-GUSANO (cohorte carroñera, impar): sustituye el cuerpo por una CADENA AXIAL de segmentos → arranca
+      // ELONGADO, cruzando el valle morfológico (como el kit cazador cruza el de la dieta; la forma sigue evolucionando
+      // y `k_scavThin` la mantiene). elongN pondera por ÁREA → segmentos AXIALES SUSTANCIALES (aspect medio, no hilos)
+      // y angle≈π (atrás, axial → estira el eje y PROPULSA). parentGene 0.9 → cada nodo cuelga del anterior (cadena).
+      if (n < nCarn && (n % 2) === 1) {
+        this.genes[b + G.n0_aspect] = jit(0.55);               // cabeza algo estrecha (cuerpo de gusano)
+        for (let k = 1; k < NODE_COUNT; k++) {
+          const nb = b + G['n' + k + '_present'];
+          const seg = k <= 5;                                  // 5 segmentos en cadena; el resto ausente
+          this.genes[nb + 0] = seg ? 1 : jit(0);               // present
+          this.genes[nb + 1] = 0.9;                            // parent → nodo anterior (cadena: floor(0.9·k)=k−1)
+          this.genes[nb + 2] = jit(0.65);                      // size (segmento sustancial → área → elonga el eje)
+          this.genes[nb + 3] = jit(0.45);                      // aspect medio (ni hilo ni lóbulo: segmento de anguila)
+          this.genes[nb + 4] = jit(0.95);                      // angle ≈ π (axial atrás → estira el eje + propulsa)
+          this.genes[nb + 5] = jit(0.9);                       // attach en la punta (la cadena se extiende)
+          this.genes[nb + 6] = jit(0.55);                      // osc_amp (ondula → nado anguiliforme)
+          this.genes[nb + 7] = blend(baseOsc, rng.next());     // osc_phase coordinada (a div=0)
+          this.genes[nb + 8] = jit(0.5);                       // tipShape neutro
+          this.genes[nb + 9] = jit(0);                         // gaitMode ondular
+        }
       }
       computePhenotype(this, i);
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;
@@ -360,8 +393,12 @@ export class Sim {
       const cx = ci % cols, cy = (ci / cols) | 0;
       const xl = cx > 0 ? ci - 1 : ci, xr = cx < cols - 1 ? ci + 1 : ci;
       const yt = cy > 0 ? ci - cols : ci, yb = cy < rows - 1 ? ci + cols : ci;
-      let dfx = res[xr] - res[xl];
-      let dfy = res[yb] - res[yt];
+      // Gradiente DEPENDIENTE DE DIETA: cada organismo asciende hacia lo que PUEDE comer — vegetación
+      // (effHerb·∇recurso) y/o carroña (effScav·∇carroña, escalada a unidades de recurso) → el carroñero navega
+      // hacia los cadáveres con la MISMA conducta de búsqueda ya evolucionada (sin añadir entrada al cerebro).
+      const effHi = this.effHerb[i], cS = this.effScav[i] / (epu * 3);
+      let dfx = effHi * (res[xr] - res[xl]) + cS * (carrion[xr] - carrion[xl]);
+      let dfy = effHi * (res[yb] - res[yt]) + cS * (carrion[yb] - carrion[yt]);
       const fmag = Math.hypot(dfx, dfy) || 1;
       dfx /= fmag; dfy /= fmag;
 
@@ -469,7 +506,7 @@ export class Sim {
             // ADEMÁS de su energía almacenada → comer un animal alimenta aunque viniera hambriento, sin depender de
             // lo "gorda" que esté. Aditivo (no suelo): conserva el gradiente (presa gorda vale más → retiene el freno
             // L-V parcial). El tope eMax del depredador (abajo) evita el descontrol. Ver config.energy.carcassValue.
-            const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effCarn[i];
+            const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effHunt[i];
             E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
@@ -482,7 +519,7 @@ export class Sim {
             const dmg = failDamage * this.eMax[i];
             const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
             E[i] -= dmg;
-            const g = en.preyGain * bite * this.effCarn[j]; // j aprovecha SOLO el bocado real (herbívoro effCarn≈0 → nada)
+            const g = en.preyGain * bite * this.effHunt[j]; // j aprovecha SOLO el bocado real (no-cazador effHunt≈0 → nada)
             E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
             this.attackCD[j] = handlingTime;
             if (E[i] <= 0) {
@@ -624,9 +661,9 @@ export class Sim {
         }
       }
 
-      // Carroñeo (Fase 1): quien puede procesar carne (effCarn) absorbe del campo de CARROÑA de su celda (energía
-      // directa). Es el puente carroñero→depredador. En la Fase 2 será un eje de dieta propio → emerge el gusano.
-      const effC = this.effCarn[i];
+      // Carroñeo (Fase 2): se rige por effScav (eje caza↔carroña). El carroñero especializado (scav alto) y de
+      // cuerpo fino lo vacía rápido; el cazador puro (scav bajo) apenas aprovecha la carroña → nichos divergentes.
+      const effC = this.effScav[i];
       if (effC > 1e-4 && E[i] < eMaxI) {
         const ccell = W.cellIndexAt(x[i], y[i]);
         const avail = carrion[ccell];

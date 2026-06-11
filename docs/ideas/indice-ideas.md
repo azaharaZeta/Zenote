@@ -22,6 +22,8 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Amplificar refugios móviles (`patchiness`) | ✅ hecha | default subido a 0.3 (knob de UI) |
 | Forrajeo por talla (payoff de talla) | ✅ hecha | [archivo/forrajeo-por-talla.md](archivo/forrajeo-por-talla.md) · mecánica en SPEC §3.1 |
 | Que la velocidad IMPORTE (escape por velocidad) | ✅ hecha | `combat.fleeSpeed=2` + `refuge.strength`↓ · mecánica SPEC §3.1 · memoria `speed-is-a-race-quantity` |
+| Cazar viable en escasez (biomasa de la presa) | ✅ hecha | `energy.carcassValue` · SPEC §3.1 · memoria `lean-prey-starves-predators` |
+| Carroña + GUSANO carroñero (Fases 1-2) | ✅ hecha | campo `carrion` + gen `scav` (caza↔carroña) + proto-gusano sembrado · SPEC §3bis · memoria `morphology-valley-needs-seeding` · pdte: cadáveres con forma (abajo) |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
 | Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho) |
 | Selección de presa por talla | ⬜ pendiente | análisis abajo |

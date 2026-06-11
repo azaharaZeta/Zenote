@@ -70,6 +70,9 @@ export const config = {
     k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
     k_grazeWide: 0.5,   // (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
                         //          más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico
+    k_scavThin: 1.0,    // (UI) (Fase 2) CARROÑEO extra ∝ lo FINO/elongado del cuerpo: effScav·(1+k_scavThin·elongación).
+                        //          Rastrear carroña dispersa premia el crucero barato → emerge el GUSANO (reverso del
+                        //          pastador ANCHO). 0 = el carroñero no gana por ser fino (no diverge la forma). Afinar midiendo.
     k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
     k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
@@ -158,6 +161,10 @@ export const config = {
                        //      divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y
                        //      cazadores con alcance (Capa 1/2). 0.15 = especialización marcada; además ESTABILIZA el
                        //      forrajeo por talla (forageReach 3) → sin esto una semilla colapsaba. (Antes 0.05.)
+    scavPenalty: 0.20, // (UI) (Fase 2) Penalización al GENERALISTA del eje caza↔carroña (gen `scav`): un comecarne
+                       //      50/50 caza-carroña paga; 0 = sin coste (puede cazar Y carroñear igual de bien → no diverge
+                       //      el gusano); >0 fuerza a especializar en CAZADOR (presa viva) o CARROÑERO (cadáveres). Análogo
+                       //      a omniPenalty pero dentro de la carne. Afinar por medición (head-to-head headless).
   },
 
   // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.

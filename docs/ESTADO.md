@@ -13,11 +13,11 @@ modo de nado EMERGEN de la geometría; el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **185 genes/agente** (SoA, typed arrays):
+Genoma de **186 genes/agente** (SoA, typed arrays):
 
 | Bloque | Genes | Codifica |
 |---|---|---|
-| Ecología | 11 | size, speed(esfuerzo), sense, metab, diet, repro_thr, invest, hue, temp_pref, **mature_age, senescence** (ciclo de vida) |
+| Ecología | 12 | size, speed(esfuerzo), sense, metab, diet, **scav (caza↔carroña)**, repro_thr, invest, hue, temp_pref, **mature_age, senescence** (ciclo de vida) |
 | Identidad / display | 11 | e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
 | Cuerpo por NODOS | 80 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase, **tipShape**, **gaitMode**} → grafo generativo |
 | Cerebro | 83 | MLP recurrente (Elman); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
@@ -40,7 +40,11 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 **morfología funcional (Capas 1-3):** la FORMA de cada nodo evoluciona (`tipShape`: púa/garra/tentáculo ↔ elipse ↔
 aleta/paleta) con compromiso físico; apéndices frontales dan **alcance de caza** (`morphReach`) y los cuerpos
 anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pastador; el **modo de propulsión** evoluciona
-(`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty` (0.05).
+(`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty` (0.15).
+· **CARROÑA y GUSANO carroñero:** toda muerte deja cadáver (campo `carrion`, decae→pasto = ciclo de nutrientes); el
+gen `scav` reparte la carne en CAZAR↔CARROÑEAR (`effHunt`/`effScav`, `scavPenalty`) y el carroñeo rinde con cuerpo
+FINO (`k_scavThin`) → emerge un **gusano** pequeño y elongado que ronda los cadáveres (proto-forma sembrada para
+cruzar el valle morfológico; mantenida por inercia + streamlining). Tres nichos comecarne+pastador coexisten.
 
 ## Huecos / pendientes (ideas → [ideas/indice-ideas.md](ideas/indice-ideas.md))
 - **Backlog de auditoría CERRADO (14/14). Trilogía de morfología (Capas 1-3) HECHA.** Lo que queda son IDEAS:

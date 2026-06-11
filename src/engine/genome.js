@@ -3,7 +3,7 @@
 
 const BASE_GENES = [
   // Ecología / fisiología (núcleo de nichos). Conducta (moverse Y atacar) = cerebro neuronal, no genes-atajo.
-  'size', 'speed', 'sense', 'metab', 'diet', 'repro_thr', 'invest', 'hue', 'temp_pref',
+  'size', 'speed', 'sense', 'metab', 'diet', 'scav', 'repro_thr', 'invest', 'hue', 'temp_pref',
   // HISTORIA DE VIDA (#12): edad de madurez (gatea cría + inicio de senescencia) y ritmo de vida (senescencia
   // + coste de longevidad). Juntos crean el eje r/K emergente (vivir rápido y morir joven ↔ lento y longevo).
   'mature_age', 'senescence',
@@ -56,6 +56,7 @@ export const GENE_LABELS = {
   sense: 'Visión',
   metab: 'Metabolismo',
   diet: 'Dieta',
+  scav: 'Caza ↔ carroña',
   repro_thr: 'Umbral de reproducción',
   invest: 'Inversión en crías',
   hue: 'Color (linaje)',

@@ -334,7 +334,16 @@ La carroña **decae** cada tick (`resource.carrionDecay`); lo descompuesto vuelv
 (`energy.corpseReturn`) → **ciclo de nutrientes** (cadáver→descomposición→vegetación). La **consume** quien puede
 procesar carne (`effCarn`, ritmo `resource.carrionAbsRate`) → puente carroñero que da colchón a los carnívoros en la
 escasez (medido: a R_regen 0.0035 multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
-*(Fase 2 pendiente: el carroñeo como EJE DE DIETA propio, no vía `effCarn` → emerge el GUSANO carroñero de cuerpo fino.)*
+
+**Eje CAZA ↔ CARROÑA (Fase 2, gen `scav`):** la capacidad carnívora (`meat = diet·omni`) se reparte entre cazar
+presa VIVA (`effHunt = meat·(1−scav)·spec`) y CARROÑEAR cadáveres (`effScav = meat·scav·spec·(1+k_scavThin·thin)`),
+con `spec = 1 − scavPenalty·4·scav·(1−scav)` que penaliza al generalista → especializa en CAZADOR o CARROÑERO. El
+carroñeo rinde más con cuerpo FINO/elongado (`k_scavThin·thin`, reverso del pastador ANCHO). La predación usa
+`effHunt`; el carroñeo, `effScav`. El gradiente de comida del cerebro es DEPENDIENTE de dieta (`effHerb·∇recurso +
+effScav·∇carroña`) → el carroñero navega hacia los cadáveres con la conducta de búsqueda ya evolucionada. EMERGE el
+GUSANO: carroñero pequeño y elongado. La proto-forma (cadena axial de nodos) se SIEMBRA en media cohorte comecarne
+para cruzar el valle morfológico (el nicho solo no basta para una forma compleja); cruzado, se mantiene por inercia +
+streamlining. Especies/herencia: `scav` es gen base → cuenta en la distancia genética (un carroñero es otra especie).
 
 ## 4. Reproducción y herencia
 

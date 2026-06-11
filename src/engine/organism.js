@@ -129,7 +129,17 @@ export function computePhenotype(sim, i) {
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);
   sim.effHerb[i] = (1 - diet) * omni;
-  sim.effCarn[i] = diet * omni;
+  // Eje CAZA↔CARROÑA (Fase 2): el gen `scav` reparte la capacidad carnívora (meat = diet·omni) entre cazar presa
+  // VIVA (effHunt) y CARROÑEAR cadáveres (effScav), con penalización al generalista (scavPenalty) → especializa.
+  // El carroñeo RINDE MÁS con cuerpo FINO/elongado (k_scavThin·thin): rastrear carroña dispersa premia el crucero
+  // barato → emerge la morfología de GUSANO. FRONTERA: defino "fino carroñea mejor" (reverso del pastador ANCHO
+  // `k_grazeWide` y del cazador con ALCANCE `morphReach`); QUÉ cuerpo gana lo decide la selección.
+  const scav = g[b + G.scav];
+  const meat = diet * omni;
+  const spec = 1 - cfg.diet.scavPenalty * 4 * scav * (1 - scav);
+  const thin = 1 - breadth;                                  // 0 = ancho/redondo · 1 = fino/elongado (breadth ya calculado arriba)
+  sim.effHunt[i] = meat * (1 - scav) * spec;
+  sim.effScav[i] = meat * scav * spec * (1 + en.k_scavThin * thin);
 
   // Reproducción: umbral de energía = max(repro_thr, invest) para no morir al parir.
   const reproFrac = lerp(e.repro_thr.min, e.repro_thr.max, g[b + G.repro_thr]);
