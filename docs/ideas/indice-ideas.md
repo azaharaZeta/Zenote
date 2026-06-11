@@ -120,6 +120,12 @@ hermanos (solo render, no toca genética).
 ## Bandeja de entrada (sin procesar)
 *Ideas crudas del usuario, a analizar y convertir en ideas con su pitch cuando se aborden.*
 
+- **Diversidad de talla bajo reproducción SEXUAL:** la repro solo-sexual APLANA la diversidad de talla (la mezcla
+  grande×pequeño regresa los extremos a la media; medido headless — memoria `sexual-repro-flattens-size`). Para
+  recuperarla sin volver a asexual: bajar `repro.speciesGenThreshold` (y/o `mateRadius`) para que los grupos de talla
+  ESPECIEN y dejen de cruzarse. No probado; riesgo de Allee si el umbral es muy bajo (no se encuentra pareja → bajones).
+  Bajo sexual, además, `omniPenalty` rinde mejor a 0.05 (más diversidad de dieta) que a 0.15.
+
 - **Tamaño de especies:** RESUELTO (2026-06-11). "Los herbívoros siempre al tamaño mínimo" era ESTRUCTURAL: el pasto
   no escalaba con la talla pero la cría sí (`reproRef ∝ sizeMass`) → deriva al mínimo. Lo arregla el **forrajeo por
   talla** (`resource.forageReach`: el grande pasta de un área) → ahora emergen grandes + diversidad (ver

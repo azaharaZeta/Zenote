@@ -2,6 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-11: `repro.asexual` se mantiene ON — comprobado headless que SOLO-sexual aplana la diversidad de talla (la mezcla regresa los extremos a la media); el payoff de talla luce con asexual.
 - 2026-06-11: forrajeo por talla (`resource.forageReach`, def. 3) + `omniPenalty` 0.05→0.15 — el grande pasta de un área → payoff a la talla → DOS grupos de talla (peque+grande) robustos. Fine-tuning headless (5 semillas, head-to-head). (UI)
 - 2026-06-11: (A) coste de transporte ∝ masa (`energy.k_haul`) — nadar un cuerpo grande/con más apéndices gasta más, no solo mantenerlo. (UI)
 - 2026-06-11: `combat.preyBandLo` (suelo de banda de caza) expuesto en la UI — talla mín. y máx. de presa cazable ya se controlan por separado.
