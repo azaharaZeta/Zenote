@@ -274,7 +274,7 @@ export const config = {
     // (nunca sobre-renderiza). NO cambia el DETALLE (LOD por tamaño percibido), solo la NITIDEZ. Más bajo = más rápido y
     // más borroso; 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Control
     // "Resolución" junto al botón de Calidad (solo en modo laboratorio).
-    maxInternalPx: 800,
+    maxInternalPx: 1280,
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,
