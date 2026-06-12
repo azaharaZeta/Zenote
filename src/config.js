@@ -68,7 +68,7 @@ export const config = {
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
     k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
-    k_grazeWide: 0.5,   // (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
+    k_grazeWide: 0.5,   // (UI) (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
                         //          más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico
     k_scavThin: 1.0,    // (UI) (Fase 2) CARROÑEO extra ∝ lo FINO/elongado del cuerpo: effScav·(1+k_scavThin·elongación).
                         //          Rastrear carroña dispersa premia el crucero barato → emerge el GUSANO (reverso del
@@ -95,7 +95,7 @@ export const config = {
     scrapReturn: 0.15,  // (UI) SOBRAS: al CAZAR una presa, fracción de su biomasa (carcassValue·eMax) que queda como
                         //      carroña (el depredador ya se llevó casi todo) → "restos". Muertes NATURALES dejan el
                         //      cuerpo entero (factor 1). Bajo = la caza casi no deja nada para carroñeros.
-    corpseReturn: 0.5,  // Fracción de la carroña DECAÍDA que vuelve al pasto (ciclo de nutrientes, ver world.decayCarrion); el resto se pierde
+    corpseReturn: 0.5,  // (UI) Fracción de la carroña DECAÍDA que vuelve al pasto (ciclo de nutrientes, ver world.decayCarrion); el resto se pierde
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
@@ -227,7 +227,7 @@ export const config = {
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
     preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
-    morphReach: 0.4,     // (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
+    morphReach: 0.4,     // (UI) (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
                          //          morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (gait<0)
   },
 
