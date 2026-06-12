@@ -88,10 +88,10 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
 - **Coordenadas de entrada → mundo.** El tap/clic llega en píxeles de pantalla; se
   invierte la transformación (`scale`, letterbox, DPR) para obtener la coord. lógica y
   buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
-- **LOD por RADIO EN PÍXELES DEL BUFFER (3 niveles).** El coste de dibujar un bicho se escala con su tamaño en píxeles
-  (`rPx` = radio en **píxeles del BUFFER interno**, NO de la pantalla real → la resolución de pantalla (4K, 8K…) no
-  afecta a NADA: todo el render vive en el espacio del buffer y al final el CSS reescala. Bajar `maxInternalPx` reduce
-  rasterización Y detalle/construcción a la vez), no con el zoom directamente: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
+- **LOD por TAMAÑO APARENTE = CALIDAD × ZOOM (3 niveles), NUNCA resolución.** El nivel de detalle NO usa la resolución
+  (ni la nativa ni `maxInternalPx`): `rPx = radio_mundo × zoom × LOD_REF` (referencia FIJA, canvas.js). Depende SOLO de
+  la CALIDAD (baja: umbrales ×2.6 → más puntos · alta: ×1 · **máxima: SIN LOD, todo a grafo completo**) y del ZOOM. Bajar `maxInternalPx` cambia
+  la NITIDEZ del pegote final, jamás el detalle. Tiers: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
   orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos completo** (`rPx ≥ lodFull`), y DENTRO
   del grafo los detalles caros entran por umbral propio (ojos `lodEye`, onda+contorno `lodWave`, señuelo `lodLure`).
   Así al alejar (miles de bichos diminutos) casi todo son puntos baratos, y al acercar emergen forma → ojos →
@@ -102,9 +102,10 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
 - **Calidad: baja / alta / máxima** (el botón cicla las tres). **Baja** (móvil/equipos lentos): sin bloom (blur),
   **sin halos por agente**, sin nieve marina, menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult`
   (≈×2.6 → muchos más puntos). **Alta**: el estándar (worst-case ~2 ms/frame con 4000 agentes a la vista; baja ≈ la
-  mitad). **Máxima** (`ultra`, opt-in, pesada): todo el esplendor — **supersampling** (DPR ↑ `ultraDprCap`), **doble
-  pasada de bloom** (halo amplio luminoso) en vegetación y organismos, **más nieve** (1280), **sustrato 4×** y LOD más
-  fino (×`lodUltraMult` ≈0.6 → grafo/ojos/señuelo a más distancia). No se autodetecta; para equipos capaces.
+  mitad). **Máxima** (`ultra`, opt-in, pesada): todo el esplendor — **SIN LOD** (TODAS las criaturas a grafo completo "a
+  pelo", por grandes o pequeñas que se vean; `ultraFull` en canvas.js salta los tiers y los gates internos),
+  **supersampling** (DPR ↑ `ultraDprCap`), **doble pasada de bloom** en vegetación y organismos, **más nieve** (1280),
+  **sustrato 4×**. No se autodetecta; para equipos capaces (con 2000 agentes es lo más caro que hay). No es para móvil.
 - **Dibujado BAJO DEMANDA + cap de FPS.** `frame()` (main.js) solo redibuja si cambió el **tick**, la **cámara** o la
   **selección**: entre ticks el frame es IDÉNTICO (posiciones y `_animT` solo avanzan con el delta de ticks) → redibujar
   sería desperdicio. Y nunca más de `render.maxFPS` veces/s (def. 60; 0 = sin límite; slider "FPS máx" en el lab). El

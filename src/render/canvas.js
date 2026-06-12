@@ -8,6 +8,12 @@ import { makeRng } from '../util/rng.js';
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
 function lineageHue(id) { return (Math.imul(id + 1, 2654435761) >>> 0) % 360; }
 
+// Escala de REFERENCIA del LOD (nivel de detalle). El LOD depende SOLO de la CALIDAD (lodMul) y el ZOOM — NUNCA de la
+// resolución (ni la nativa del dispositivo ni `maxInternalPx`). El "tamaño aparente" con el que se decide el detalle es
+// `LOD_REF · zoom · radio_mundo`; la resolución solo cambia la NITIDEZ del pegote final, no QUÉ se dibuja. 1 = el mundo
+// (px lógicos) en unidades de referencia a zoom 1. Los umbrales `config.render.lod*` se calibran contra esto.
+const LOD_REF = 1;
+
 export class Renderer {
   constructor(canvas, sim, cfg) {
     this.canvas = canvas;
@@ -252,10 +258,10 @@ export class Renderer {
     this.dpr = dpr;
     // Ratio REAL backing-store↔CSS (≤ dpr cuando el cap actúa) → el paneo/pick deben usar ESTE, no dpr.
     this.pxRatio = cssW > 0 ? c.width / cssW : dpr;
-    // TODO el render trabaja en el ESPACIO DEL BUFFER (resolución interna), nunca en la pantalla real: el LOD usa el
-    // radio en PÍXELES DEL BUFFER (ver _drawAgents) → la pantalla (4K, 8K…) NO afecta a NINGÚN coste; al final el CSS
-    // reescala el buffer a la pantalla (un único "pegote" escalado). Bajar la resolución abarata rasterización Y
-    // construcción (menos criaturas a detalle completo). El paneo/pick cruzan a coords de CSS vía pxRatio.
+    // TODO el render trabaja en el ESPACIO DEL BUFFER (resolución interna); al final el CSS reescala a la pantalla
+    // (un "pegote" escalado) → la pantalla real (4K, 8K…) no entra en ningún cálculo. El LOD (nivel de detalle) depende
+    // SOLO de la CALIDAD y el ZOOM, NUNCA de la resolución (ver _drawAgents / LOD_REF): bajar `maxInternalPx` abarata la
+    // RASTERIZACIÓN (menos píxeles), NO el detalle. El paneo/pick cruzan a coords de CSS vía pxRatio.
     // Escala "cover": el mundo cubre el viewport (sin letterbox); el zoom multiplica sobre esta base.
     this.coverScale = Math.max(c.width / cfg.world.width, c.height / cfg.world.height);
     // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
@@ -435,15 +441,17 @@ export class Renderer {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
-    const sc = this._scale();
-    this._drawScale = sc;              // escala mundo→BUFFER (px del buffer). El LOD usa el tamaño en PÍXELES DEL BUFFER
-                                       //   (no de la pantalla) → la resolución real es irrelevante; bajar el buffer simplifica el dibujo.
+    // El LOD NO usa la resolución (ni nativa ni maxInternalPx): SOLO calidad (lodMul, abajo) × ZOOM. `lodSc` = tamaño
+    // APARENTE (referencia fija × zoom), independiente del buffer → mover la Resolución NO cambia el detalle, solo la
+    // nitidez. El DIBUJO real lo escala el ctx (transform del buffer, fijado en draw()); aquí solo se decide QUÉ dibujar.
+    const lodSc = LOD_REF * this.zoom;
+    this._drawScale = lodSc;
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
     // fullThr ≤ grafo completo. En calidad BAJA los umbrales se multiplican (más puntos/cuerpos baratos → barato).
-    const R = this.cfg.render, lowQ = R.quality === 'low';
-    const lodMul = lowQ ? (R.lodLowMult || 2.6) : R.quality === 'ultra' ? (R.lodUltraMult || 0.6) : 1; // máxima: umbrales más bajos → grafo/ojos/señuelo a MÁS distancia
+    const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra'; // MÁXIMA = SIN LOD: TODO a grafo completo "a pelo" (opt-in, "todo el esplendor") → se salta el LOD entero.
+    const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos/baratos); alta = 1. (Máxima ignora el LOD, ver ultraFull.)
     const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
@@ -487,12 +495,12 @@ export class Renderer {
           l -= sim.diet[i] * 5;
         }
       }
-      const rPx = r * sc;                              // radio en PÍXELES DEL BUFFER → nivel de detalle (LOD). La pantalla real no entra.
+      const rPx = r * lodSc;                           // tamaño APARENTE (radio mundo × zoom × ref fija) → nivel de detalle (LOD). NO depende de la resolución.
       const hasNodes = nodes && nodes.length;
-      const tier = !hasNodes || rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo
+      const tier = !hasNodes ? 0 : ultraFull ? 2 : rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo · MÁXIMA → siempre 2 (sin LOD)
       // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos
       // (los puntos ya brillan con el bloom GLOBAL de la capa de organismos; no necesitan su propio halo).
-      if (glow && !lowQ && rPx > haloThr) {
+      if (glow && !lowQ && (ultraFull || rPx > haloThr)) {
         // HALO pre-renderizado por CUBO DE TONO (#3) en vez de un createRadialGradient + fill por agente: drawImage
         // es mucho más barato. El radio y la INTENSIDAD siguen variando por agente (luminosidad → gr y globalAlpha);
         // el tono se cubica (±15°, imperceptible en un glow difuso). El bloom global sigue sumando sobre estos halos.
@@ -508,7 +516,7 @@ export class Renderer {
       if (tier === 2) {
         // GRAFO completo: cabeza+nodos, ojos, señuelo, volumen, onda viajera (con sus propios gates internos por rPx).
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                            eye, i * 4, face, i * 3, rPx > eThr, tint, i, deco, i * 7);
+                            eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7);
       } else if (tier === 1) {
         // CUERPO BARATO: elipse orientada al rumbo con volumen (1 gradiente), sin nodos/ojos/señuelo/onda.
         this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]);
@@ -545,7 +553,7 @@ export class Renderer {
     // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
     // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
     const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1);
-    const full = this._forceFull === true;       // RETRATO del inspector: vista de detalle → sin recortes LOD (ver drawPortrait).
+    const full = this._forceFull === true || Rc.quality === 'ultra'; // RETRATO (drawPortrait) o calidad MÁXIMA → sin recortes LOD internos (onda/señuelo/textura/gradiente/contorno): todo a pelo.
     const doWave = full || rPxG > (Rc.lodWave || 0);    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
     const doLure = full || rPxG > (Rc.lodLure || 0);
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)

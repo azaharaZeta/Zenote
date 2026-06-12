@@ -284,7 +284,7 @@ export const config = {
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,
     //    más nieve, sustrato más fino). Opt-in (no se autodetecta); pesado, para equipos capaces. ──
     ultraDprCap: 3,           // Tope de DPR en máxima (supersampling: render por encima del DPR del dispositivo → nítido)
-    lodUltraMult: 0.6,        // Multiplicador de umbrales LOD en máxima (<1 → grafo/ojos/señuelo/onda a MÁS distancia = más detalle)
+    lodUltraMult: 0.6,        // (EN DESUSO) antes bajaba los umbrales LOD en máxima; ahora MÁXIMA salta el LOD por completo (todo a grafo completo, ver canvas.js ultraFull) → este valor ya no se usa.
     // ── LOD (nivel de detalle por RADIO EN PANTALLA, px). 3 niveles: punto < lodBody ≤ cuerpo barato < lodFull ≤ grafo
     //    completo. lodEye/lodLure/lodWave gatean detalles caros DENTRO del grafo. En calidad BAJA se multiplican por
     //    lodLowMult (umbrales más altos → más puntos/cuerpos baratos → muchos menos gradientes). Solo render. ──
