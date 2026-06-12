@@ -275,7 +275,18 @@ onmessage = (e) => {
     case 'running': running = m.value; break;
     case 'maxSpeed': maxSpeed = m.value; break;
     case 'tps': config.sim.targetTPS = m.value; break;
-    case 'set': setPath(config, m.key, m.value); break;
+    case 'set':
+      // PECERA CERRADA: 'energía por unidad' (epu) es el tipo de cambio vegetación↔materia y entra en el balance
+      // (M = N + Σres·epu + …). Cambiarlo en vivo reescalaría la materia de la vegetación EN PIE → un salto puntual.
+      // Lo ABSORBE el pool de nutriente: N -= Σres·Δepu → la MATERIA total no salta (se reparte distinto, no se crea/borra).
+      if (m.key === 'resource.energyPerUnit' && config.world.closedMatter) {
+        const oldEpu = config.resource.energyPerUnit;
+        let sres = 0; const r = sim.world.resource; for (let i = 0; i < r.length; i++) sres += r[i];
+        let nN = sim.world.N + sres * (oldEpu - m.value);   // compensa el cambio del término Σres·epu
+        sim.world.N = nN > 0 ? nN : 0;                       // si epu sube tanto que agotaría N, clamp a 0 (salto residual mínimo)
+      }
+      setPath(config, m.key, m.value);
+      break;
     case 'gene': geneIdx = m.index; break;
     case 'pick': setSelected(pick(m.wx, m.wy)); break;
     case 'deselect': setSelected(-1); break;       // cerrar la vista de especie (botón ✕ del inspector)
