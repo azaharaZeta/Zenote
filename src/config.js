@@ -293,7 +293,7 @@ export const config = {
     lodFull: 9,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
     lodEye: 11,               // rPx mínimo para dibujar OJOS (dentro del grafo)
     lodLure: 22,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
-    lodWave: 18,              // rPx mínimo para la ONDA viajera + 2ª pasada de contorno (si no, cuerpo en reposo, 1 pasada)
+    lodWave: 16,              // rPx mínimo para la ONDA viajera (MOVIMIENTO). El contorno ya NO depende de esto (va con el grafo). (18→16: se mueve un pelín antes.)
     lodHalo: 6,               // rPx mínimo para el HALO por agente (los puntos diminutos no lo necesitan; el bloom global ya brilla)
     lodLowMult: 2.6,          // Multiplicador de TODOS los umbrales LOD (criatura Y nodo) en calidad baja (más agresivo). Alta = ×1.
     // Umbrales por NODO (tamaño del NODO, no de la criatura) → detalle fino dentro del grafo:

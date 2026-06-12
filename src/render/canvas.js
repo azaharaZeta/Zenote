@@ -556,7 +556,7 @@ export class Renderer {
     // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
     const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1), lm = this._lodMul || 1; // lm = multiplicador de calidad (los gates lo aplican igual que el tier)
     const full = this._forceFull === true || Rc.quality === 'ultra'; // RETRATO (drawPortrait) o calidad MÁXIMA → sin recortes LOD internos (onda/señuelo/textura/gradiente/contorno): todo a pelo.
-    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
+    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // ONDA = solo el MOVIMIENTO (flexión); el contorno se dibuja SIEMPRE (ya no atado a esto). Si no: cuerpo en reposo.
     const doLure = full || rPxG > (Rc.lodLure || 0) * lm;
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
@@ -688,7 +688,7 @@ export class Renderer {
         turnLean = d * 0.5;                                       // ganancia del remado (solo visual)
       }
     }
-    for (let mode = doWave ? 0 : 1; mode <= 1; mode++) {          // LOD: a tamaño pequeño solo pasada de cuerpo (sin contorno)
+    for (let mode = 0; mode <= 1; mode++) {                        // 2 pasadas SIEMPRE: 0 = CONTORNO (outline, va con el grafo; gateado por nodo vía lodOutline), 1 = CUERPO. El contorno ya NO depende de la onda.
       for (let k = NS - 1; k >= 0; k--) {                         // de atrás (hojas) hacia delante (raíz encima)
         if (!pres[k]) continue;
         const lateral = k > 0 && Math.min(pa[k], Math.PI - pa[k]) > EPS_AXIS; // mismo umbral que la física (bodyplan.js)

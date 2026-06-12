@@ -92,10 +92,10 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   (ni la nativa ni `maxInternalPx`): `rPx = radio_mundo × zoom × LOD_REF` (referencia FIJA, canvas.js). Depende SOLO de
   la CALIDAD (baja: umbrales ×2.6 → más puntos · alta: ×1 · **máxima: SIN LOD, todo a grafo completo**) y del ZOOM. Bajar `maxInternalPx` cambia
   la NITIDEZ del pegote final, jamás el detalle. Tiers: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
-  orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos completo** (`rPx ≥ lodFull`), y DENTRO
-  del grafo los detalles caros entran por umbral propio (ojos `lodEye`, onda+contorno `lodWave`, señuelo `lodLure`).
-  Así al alejar (miles de bichos diminutos) casi todo son puntos baratos, y al acercar emergen forma → ojos →
-  onda → señuelo con gracia. El **halo por agente** (un **sprite pre-renderizado por cubo de tono**, no un gradiente
+  orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos + CONTORNO** (`rPx ≥ lodFull`; el outline va
+  SIEMPRE con el grafo, ya NO atado a la onda), y dentro del grafo los detalles entran por umbral propio (ojos `lodEye`,
+  MOVIMIENTO/onda `lodWave`, señuelo `lodLure`). Al alejar casi todo son puntos baratos; al acercar emergen
+  forma+contorno → ojos → movimiento → señuelo con gracia. El **halo por agente** (un **sprite pre-renderizado por cubo de tono**, no un gradiente
   por bicho → barato) solo se pinta por encima de `lodHalo` y en calidad alta; los puntos ya brillan por el **bloom
   global** de la capa de organismos. El **bloom es _downsampled_**: se desenfoca una miniatura a ¼ del backing store y
   se reescala aditivamente (mismo halo de baja frecuencia, ~1/16 del coste de blurear a pantalla completa). Umbrales en `config.render`.
