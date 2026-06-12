@@ -739,10 +739,13 @@ export class Renderer {
         ctx.closePath(); ctx.fill();
         const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
         const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
-        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 7);
-        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.18, `hsla(${h2},95%,68%,0.22)`);
-        hg.addColorStop(0.45, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
-        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 7, 0, 6.2832); ctx.fill();
+        // HALO del bulbo CEÑIDO a br*4 (antes br*7): el anillo exterior (br*4–7) tenía alpha <0.055 → casi invisible,
+        // pero era el grueso del relleno (coste ∝ r²). Recortado, el glow VISIBLE (br*0–3) queda igual (los stops se
+        // reescalan a los mismos radios absolutos) y el bloom global suma encima → mismo aspecto, ~⅔ menos coste de halo.
+        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 4);
+        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.3, `hsla(${h2},95%,68%,0.22)`);
+        hg.addColorStop(0.78, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 4, 0, 6.2832); ctx.fill();
         const bg2 = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
         bg2.addColorStop(0, `hsl(${h2},95%,84%)`); bg2.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
         ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
