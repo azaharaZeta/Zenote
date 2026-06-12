@@ -21,5 +21,5 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8731
-    print(f"Primordia dev server (no-cache) en http://localhost:{port}")
+    print(f"Zenote dev server (no-cache) en http://localhost:{port}")
     ThreadingHTTPServer(("", port), NoCacheHandler).serve_forever()

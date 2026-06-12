@@ -18,11 +18,13 @@ export const config = {
     matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
                          //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
                          //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
-    closedRegen: 0.0017, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
-                         //      el modelo abierto, sin tocarlo). 0.0017 = régimen CONTEMPLATIVO (subido un pelín desde 0.0016 para robustecer
-                         //      el gremio carnívoro: mundo algo menos magro → los carroñeros arrancan en más siembras). Pop estable ~700-900.
-                         //      El modelo cerrado tiene DOS atractores (con-web ↔ solo-herbívoro): bajar (0.0012) → ~350 plácido solo-herbívoro;
-                         //      subir mucho (≥0.0019) acerca a saturar el tope. Afinado headless multi-seed. En vivo.
+    closedRegen: 0.0034, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
+                         //      el modelo abierto, sin tocarlo). 0.0034 = régimen de RED TRÓFICA: herbívoros + carroñeros + CAZADORES de
+                         //      presa viva coexisten (medido headless multi-seed: trío estable en 4/6 siembras; los cazadores son una
+                         //      minoría ápice fluctuante). EXIGE pop.maxAgents≈2000 (la productividad sube la pop a ~1000-2000; con el tope
+                         //      en 1000 satura y se distorsiona). Va de la mano de combat.fleeSpeed 1.2 + diet.scavPenalty 0.30 (afinado
+                         //      para el trío). DOS atractores: bajar a ~0.0017 → pecera magra y contemplativa (~700-900) pero el gremio
+                         //      CAZADOR es FRÁGIL (colapsa en varias siembras → solo herbívoro/carroñero); 0.0012 → ~350 plácido solo-herbívoro. En vivo.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
@@ -57,9 +59,11 @@ export const config = {
   // ───── Población ─────
   pop: {
     initial: 400,            // Nº de fundadores al sembrar
-    maxAgents: 1000,         // (UI ↻) Tope físico del pool (límite duro de memoria) · ÚNICO límite de población (la capacidad de
-                             //      carga la pone el recurso/materia, no este número — ver auditoría #5). Cambiarlo requiere Reiniciar
-                             //      (re-asigna los arrays SoA + speciesOf en el worker). Slider del lab para experimentar.
+    maxAgents: 2000,         // (UI ↻) Tope físico del pool (límite duro de memoria) · ÚNICO límite de población (la capacidad de
+                             //      carga la pone el recurso/materia, no este número — ver auditoría #5). SUBIDO 1000→2000 para dar HOLGURA a la
+                             //      red trófica de la pecera (closedRegen 0.0034 lleva la pop a ~1000-2000; con 1000 saturaba). Afecta también al
+                             //      modelo abierto (más CPU, pop posible mayor; ~460 t/s a 1000 agentes en 1 hilo → margen de sobra). Cambiarlo
+                             //      requiere Reiniciar (re-asigna los arrays SoA + speciesOf en el worker). Slider del lab para experimentar.
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
     carnivoreSeedFrac: 0.20, // (UI ↻) Fracción de fundadores sembrados como proto-carnívoros. Es condición INICIAL (cruza el valle
@@ -179,10 +183,11 @@ export const config = {
                        //      divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y
                        //      cazadores con alcance (Capa 1/2). 0.15 = especialización marcada; además ESTABILIZA el
                        //      forrajeo por talla (forageReach 3) → sin esto una semilla colapsaba. (Antes 0.05.)
-    scavPenalty: 0.20, // (UI) (Fase 2) Penalización al GENERALISTA del eje caza↔carroña (gen `scav`): un comecarne
+    scavPenalty: 0.30, // (UI) (Fase 2) Penalización al GENERALISTA del eje caza↔carroña (gen `scav`): un comecarne
                        //      50/50 caza-carroña paga; 0 = sin coste (puede cazar Y carroñear igual de bien → no diverge
                        //      el gusano); >0 fuerza a especializar en CAZADOR (presa viva) o CARROÑERO (cadáveres). Análogo
-                       //      a omniPenalty pero dentro de la carne. Afinar por medición (head-to-head headless).
+                       //      a omniPenalty pero dentro de la carne. SUBIDO 0.20→0.30: mantiene una especie CAZADORA distinta en
+                       //      la pecera (si no, el comecarne deriva todo a carroñero) → clave para el trío trófico. Medido headless.
   },
 
   // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.
@@ -235,10 +240,12 @@ export const config = {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
     failDamage: 0.2,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
-    fleeSpeed: 2,       // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
+    fleeSpeed: 1.2,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
                         //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope 0.95). Hace que huir/cazar sea un DUELO de
                         //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
                         //      cobertura baja (refuge.strength) o el escondite lo enmascara. 0 = solo cobertura (modelo previo).
+                        //      BAJADO 2→1.2: caza algo más fácil → sostiene el nicho CAZADOR de presa viva en la pecera (red trófica;
+                        //      bajar a 1.0 lo hace boom-bust, menos robusto — medido). Afecta también al modelo abierto.
                         //      >4 o cobertura nula → la presa escapa demasiado y los carnívoros se quedan sin comer (medido).
     handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)

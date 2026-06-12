@@ -1,4 +1,4 @@
-# Guía visual — "Primordia"
+# Guía visual — "Zenote"
 
 El objetivo emocional es **fascinación contemplativa**. Debe apetecer mirarlo
 moverse durante minutos, como un acuario o una lámpara de lava. La belleza viene

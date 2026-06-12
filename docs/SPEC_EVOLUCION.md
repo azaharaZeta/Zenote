@@ -374,10 +374,14 @@ materia — como un ecosistema real). **Moneda única** (materia = unidades de e
 - **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgents`. El
   sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
 - **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";
-  el seed decide → cada Sembrar varía. Régimen contemplativo por defecto `closedRegen=0.0017` (pop ~700-900 estable,
-  carroñeros en la mayoría de siembras, sin saturar). Bajar (0.0012)→~350 plácido solo-herbívoro; subir mucho→satura.
-  Los CAZADORES de presa viva apenas emergen en cerrado (mundo magro → solo el carroñeo es viable); el comecarne de la
-  pecera es sobre todo CARROÑERO. La siembra de proto-carnívoros (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
+  el seed decide → cada Sembrar varía. Por defecto `closedRegen=0.0034` + `pop.maxAgents=2000` + `combat.fleeSpeed=1.2`
+  + `diet.scavPenalty=0.30` → régimen de **RED TRÓFICA**: herbívoros + carroñeros + CAZADORES de presa viva coexisten
+  (trío estable en ~4/6 siembras; los cazadores son una minoría ÁPICE fluctuante, los carroñeros el grueso del comecarne,
+  los herbívoros la base). CLAVE: cazar presa viva exige productividad alta (mundo magro → solo el carroñeo rinde), y esa
+  productividad sube la pop → exige holgura de pool (`maxAgents` 2000; con 1000 satura y se distorsiona). Bajar a
+  `closedRegen≈0.0017` → pecera magra y contemplativa (~700-900) pero el gremio CAZADOR es FRÁGIL (colapsa en varias
+  siembras → solo herbívoro/carroñero); 0.0012 → ~350 plácido solo-herbívoro. La siembra de proto-carnívoros
+  (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
 - **Guard de `energyPerUnit`** (epu): es el tipo de cambio recurso↔materia y entra en el balance. Cambiarlo EN VIVO
   reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`) cuando
   `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
