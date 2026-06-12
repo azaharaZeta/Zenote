@@ -16,8 +16,14 @@ export const config = {
                          //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
                          //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
     matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
-                         //      de los fundadores + el RESTO como nutriente libre N. REGULADOR de la capacidad de carga (sustituye al
-                         //      sol como límite del total). Bajo = pecera pequeña (pocos organismos); alto = más biomasa sostenible.
+                         //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
+                         //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
+    closedRegen: 0.0016, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
+                         //      el modelo abierto, sin tocarlo). 0.0016 = régimen CONTEMPLATIVO afinado headless con runs LARGOS y MULTI-SEED:
+                         //      pop ~610-790 estable, NUNCA satura el tope (3/3 seeds, a diferencia de 0.0018 que sí), y el web trófico
+                         //      (herbívoros + carroñeros) emerge en ~2/3 de las siembras; el resto = estanque herbívoro plácido → cada Sembrar
+                         //      es distinto. El modelo cerrado tiene DOS atractores (pequeño-numeroso-con-web ↔ grande-escaso-herbívoro): el
+                         //      seed decide. Bajar (0.0012) → ~350 plácido y SIEMPRE solo-herbívoro; subir (≥0.0018) → puede saturar. En vivo.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────

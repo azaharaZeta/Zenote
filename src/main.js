@@ -27,7 +27,7 @@ const simProxy = {
   lineage: empty, geneSel: empty, heading: empty, spd: empty, nodes: empty, tint: empty, eye: empty, face: empty, deco: empty,
   species: empty, role: empty, speciesCount: 0,
   active: identity, activeCount: 0,
-  popCount: 0, tick: 0, births: 0, deaths: 0, carn: 0,
+  popCount: 0, tick: 0, births: 0, deaths: 0, carn: 0, N: 0,
   histBins: new Float32Array(24),
   sel: null,
 };
@@ -62,7 +62,7 @@ worker.onmessage = (e) => {
     simProxy.heading = m.heading; simProxy.spd = m.spd; simProxy.tint = m.tint; simProxy.eye = m.eye; simProxy.face = m.face; simProxy.deco = m.deco; simProxy.nodes = m.nodes;
     simProxy.activeCount = m.n; simProxy.popCount = m.pop;
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
-    simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel;
+    simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;
     simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount;
     // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
     // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
@@ -110,7 +110,10 @@ function frame(now) {
     const pad = (v, n) => String(v).padStart(n);
     fpsEl.textContent = `${pad(fps, 3)} FPS · ${pad(tps, 4)} t/s`;
     // El tick va en su propio span (con el separador) para poder ocultarlo SOLO en modo simple (CSS). pob en azul.
-    statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span><span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
+    // En PECERA CERRADA se muestra también el nutriente libre N (verde) — la materia circulando, el "pulmón" de la pecera
+    // (visible en ambos modos: es el payoff contemplativo de ver la materia fluir). Si N→0 la fotosíntesis se ahoga.
+    const nutr = app.cfg.world.closedMatter ? `<span style="color:#6fae8a"> · N ${pad(Math.round(simProxy.N), 5)}</span>` : '';
+    statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span>${nutr}<span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
   }

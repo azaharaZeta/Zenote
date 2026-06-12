@@ -210,7 +210,7 @@ function snapshot() {
     };
   }
   postMessage({
-    type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn,
+    type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.N,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount, role,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).

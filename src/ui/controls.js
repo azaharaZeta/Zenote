@@ -132,15 +132,16 @@ export function setupControls(app) {
   if (colorSel) colorSel.addEventListener('change', () => { renderer.colorMode = colorSel.value; updateLegend(); });
   updateLegend();
 
-  // ---- Reseed ----
-  $('reseed').addEventListener('click', () => {
+  // ---- Reseed (expuesto en app.reseed → el toggle de "Pecera sellada" lo llama para re-sembrar al activarse) ----
+  app.reseed = () => {
     const si = $('seedInput');                       // campo semilla oculto de momento → si no existe/vacío, semilla aleatoria
     const raw = si ? si.value.trim() : '';
     const seed = raw === '' ? null : (Number.isFinite(+raw) ? +raw : hashStr(raw));
     send({ type: 'reset', seed });   // el motor (worker) re-siembra y reenvía el mundo
     charts.clear();
     renderer.resize();
-  });
+  };
+  $('reseed').addEventListener('click', app.reseed);
 
   // ---- Slider de DIVERSIDAD del sembrado (junto a Sembrar): monótono ↔ variado. Aplica al próximo Sembrar. ----
   const divSlider = $('divSlider'), divVal = $('divVal');
@@ -364,6 +365,11 @@ export function setupControls(app) {
 // Fuente única de verdad: lee los valores iniciales de la config (defaults de config.js) y, al mover un
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
+  { cat: '🫧 Pecera sellada (materia)', items: [
+    { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: en vez de que el sol cree biomasa de la nada (modelo abierto), la materia total es CONSTANTE y circula (nutriente libre N → pasto → organismos → carroña → N). El sol solo deja a las plantas captar nutriente; metabolismo, muerte y pérdidas lo DEVUELVEN al ciclo; nacer consume nutriente y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia, no el sol). Al activar/desactivar se RE-SIEMBRA el mundo. Verás el nutriente libre N en la cabecera. Régimen por defecto: pecera VIVA ~650-790 que NO satura; cada siembra varía (a veces con carroñeros, a veces estanque herbívoro tranquilo).' },
+    { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, min: 35000, max: 150000, step: 5000, dec: 0, d: 'Materia total de la pecera (solo modo cerrado). Se reparte en vegetación + organismos + el resto como nutriente libre N (buffer). Más alto = más biomasa y más buffer; el sobrante por encima de la capacidad ecológica queda como N libre. Requiere volver a Sembrar (↻).' },
+    { k: 'world.closedRegen', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.004, step: 0.0001, dec: 4, d: 'Ritmo al que las plantas captan nutriente libre y crecen, SOLO en pecera (separado de la "Comida disponible" del modo abierto, que no se toca). Es el regulador de la POBLACIÓN: 0.0016 (def.) = ~610-790 estable sin saturar, con carroñeros en ~2 de cada 3 siembras (el resto, estanque herbívoro plácido); bajar (0.0012) → ~350 tranquilo y SIEMPRE solo-herbívoros (los depredadores exigen una productividad mínima de presa); subir (≥0.0018) → puede saturar el tope. Se aplica en vivo.' },
+  ]},
   { cat: '🍃 Comida y recurso', items: [
     { k: 'resource.R_regen', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Ritmo al que rebrota la comida por tick. Es el regulador principal de cuántos organismos sostiene el mundo: más alto = más comida = más población.' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que NO se puede pastar (queda como semilla). Más alto = la vegetación nunca se agota del todo y frena el sobrepastoreo.' },
@@ -441,6 +447,8 @@ function setupLab(app, send) {
   const cfg = app.cfg;
   const $ = (id) => document.getElementById(id);
   const get = (path) => { const ks = path.split('.'); let t = cfg; for (const k of ks) t = t[k]; return t; };
+  // Espeja el cambio en la config del HILO PRINCIPAL (no solo en el worker) → el readout (N) y el render leen el valor real.
+  const setLocal = (path, v) => { const ks = path.split('.'); let t = cfg; for (let i = 0; i < ks.length - 1; i++) t = t[ks[i]]; t[ks[ks.length - 1]] = v; };
 
   // ---- Tooltip informativo compartido: escritorio = hover con RETARDO; móvil = TAP en el icono ⓘ. ----
   // Un único elemento reposicionable (no 44 divs). El tap lo "fija" hasta tocar fuera; el hover lo muestra
@@ -499,10 +507,10 @@ function setupLab(app, send) {
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
-          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); paintT(); });
+          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (it.reseedOnChange && app.reseed) app.reseed(); });
           lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); } paintT(); };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (it.reseedOnChange && app.reseed) app.reseed(); } paintT(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
           grid.appendChild(row);
@@ -521,12 +529,12 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); paint(); });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
           const reset = () => {
-            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); paint();
+            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); setLocal(it.k, +def); paint();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);

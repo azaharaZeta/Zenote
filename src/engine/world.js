@@ -174,7 +174,8 @@ export class World {
   // por celda con la MISMA dinámica que regen() (lineal o logística+difusión) y suma la materia que pediría; (B) si N no
   // llega para todo, ESCALA el crecimiento por igual (factor f, sin sesgo de orden de barrido) y resta de N lo captado.
   _regenClosed() {
-    const dr = this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit;
+    const wc = this.cfg.world;                              // tasa de fotosíntesis PROPIA del modo cerrado (no pisa resource.R_regen del abierto)
+    const dr = wc.closedRegen != null ? wc.closedRegen : this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit;
     const cap = this.capacity, res = this.resource, grow = this._grow;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
     const cols = this.cols, rows = this.rows;
