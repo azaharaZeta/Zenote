@@ -604,14 +604,22 @@ export class Renderer {
       let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
       let wT = ryy * (1.30 + sShape * 1.15);                   // medio-ancho punta (abrir engorda)
       if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
-      if (mode === 0) {                                        // PASADA contorno: misma silueta agrandada
+      const nodePx = rxx * ds;                                 // tamaño del nodo en px del BUFFER → gatea detalles invisibles a tamaño pequeño
+      if (mode === 0) {                                        // PASADA contorno (outline oscuro): misma silueta agrandada
+        if (!full && nodePx < 4) return;                       // invisible en nodos diminutos → se omite (medido: ~9 ms con muchos grafos)
         ctx.fillStyle = coreOut;
         silPath(cx, cy, rot, rxx + outW, wB + outW, wT + outW); ctx.fill();
-      } else {                                                 // PASADA cuerpo: degradado de volumen + textura
-        const rad = Math.max(rxx, wB, wT);
-        const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
-        g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
-        ctx.fillStyle = g; silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
+      } else {                                                 // PASADA cuerpo: volumen (gradiente) + textura
+        // El gradiente radial por nodo es el coste #1 del dibujado (~11 ms con muchos grafos) e IMPERCEPTIBLE en nodos
+        // pequeños → relleno PLANO por debajo de ~5 px (mismo aspecto), gradiente de volumen solo donde se nota.
+        if (!full && nodePx < 5) { ctx.fillStyle = coreMid; }
+        else {
+          const rad = Math.max(rxx, wB, wT);
+          const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
+          g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
+          ctx.fillStyle = g;
+        }
+        silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
         if (full || rxx * ds > 10) {                           // TEXTURA: bandas transversales sutiles (clip a la silueta). `full` (retrato) → siempre
           ctx.save(); silPath(cx, cy, rot, rxx, wB, wT); ctx.clip();
           const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
