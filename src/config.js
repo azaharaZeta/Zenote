@@ -268,6 +268,12 @@ export const config = {
   render: {
     glow: true,               // Resplandor (bloom). Solo config (sin control en vivo)
     dprCap: 2,                // Tope de densidad de píxeles (DPR) en calidad ALTA
+    // (UI) CAP de RESOLUCIÓN INTERNA (borde largo, px del backing store): el render corre por DEBAJO de la pantalla y
+    // el CSS reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda
+    // ACOTADO e independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO
+    // (nunca sobre-renderiza). CLAVE para 4K (medido: 4K→1600 = 8.5× más rápido). Más bajo = más rápido y más borroso;
+    // 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea pero SIN pasar de este tope). Slider en el lab ("🖥️ Render").
+    maxInternalPx: 1920,
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,

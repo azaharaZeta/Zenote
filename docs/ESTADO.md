@@ -27,11 +27,13 @@ Genoma de **186 genes/agente** (SoA, typed arrays):
 - **Herencia**: sexual (crossover con ligamiento) + asexual fallback; mutación única por locus; especies por
   distancia genética (ecología + forma de nodos).
 - **Fitness 100% emergente** (sobrevivir + criar). Motor en Web Worker; render Canvas 2D desde los nodos.
-- **Mundo opcional CERRADO en materia** (`world.closedMatter`, "pecera"): la materia total se CONSERVA y circula
-  (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA, frente al modelo abierto por defecto (el sol
-  crea biomasa de la nada). Nació de una auditoría de energía (el abierto no conserva: ~17% de la entrada es biomasa
-  conjurada; la pop se clava en `maxAgents`). Régimen contemplativo afinado (`closedRegen`); el nutriente libre `N` se
-  ve en la cabecera. Mecánica → [SPEC §3ter](SPEC_EVOLUCION.md); lección → memoria `energy-ledger-not-conserved`.
+- **Mundo CERRADO en materia** (`world.closedMatter`, "pecera") — **modo POR DEFECTO** (la app arranca en la pecera):
+  la materia total se CONSERVA y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA. El
+  modelo abierto (el sol crea biomasa de la nada) queda como alternativa (toggle del lab). Nació de una auditoría de
+  energía (el abierto no conserva: ~17% de la entrada es biomasa conjurada; la pop se clava en `maxAgents`). Régimen de
+  **RED TRÓFICA** por defecto (`closedRegen` 0.0034 + `maxAgents` 2000 + `fleeSpeed` 1.2 + `scavPenalty` 0.30 →
+  herbívoros + carroñeros + cazadores coexisten, trío en ~4/6 siembras; los cazadores, minoría ápice fluctuante); el
+  nutriente libre `N` se ve en la cabecera. Mecánica → [SPEC §3ter](SPEC_EVOLUCION.md); lección → memoria `energy-ledger-not-conserved`.
 
 ## Qué EMERGE (no cableado)
 Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pastar **y atacar** emergen de los

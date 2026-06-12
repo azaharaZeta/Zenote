@@ -15,6 +15,7 @@ export class Renderer {
     this.sim = sim;
     this.cfg = cfg;
     this.dpr = 1;
+    this.lodBoost = 1;   // factor del LOD: el detalle depende del tamaño PERCIBIDO en pantalla, no de la resolución interna (ver resize)
     this.colorMode = 'real';        // real | diet | lineage | gene | energy (solo render)
     this.geneIndex = 0;             // gen activo para el modo 'gene' (sincronizado con el histograma)
     // Cámara: zoom (1 = el mundo cubre la pantalla) y centro en coords del mundo.
@@ -33,7 +34,13 @@ export class Renderer {
     // el suelo opaco se redibujaba encima y borraba el rastro).
     this.fx = document.createElement('canvas');
     this.fxCtx = this.fx.getContext('2d');
+    // Búfer de BLOOM a baja resolución (¼ del backing store, dimensionado en resize): desenfocar una miniatura y
+    // reescalarla aditivamente cuesta ~16× menos que blurear a pantalla completa, con el mismo halo (el glow es de
+    // baja frecuencia). Ver _bloomPass.
+    this._bloom = document.createElement('canvas');
+    this._bloomCtx = this._bloom.getContext('2d');
     this._grassTimer = 0;
+    this._abyssTimer = 0;          // #4: el ruido del sustrato es del MUNDO (no de la cámara) → se recomputa por TIMER, no al panear/seguir
     this._gx = NaN; this._gy = NaN; this._gz = NaN; // estado de cámara del último render de hierba
     this._initTufts();
 
@@ -79,6 +86,27 @@ export class Renderer {
     return c;
   }
 
+  // Sprite de HALO (glow radial) cacheado por CUBO DE TONO (#3): evita crear un createRadialGradient + fill por
+  // agente y frame (drawImage es mucho más barato). La forma de la alpha es fija; la INTENSIDAD por agente la pone
+  // globalAlpha; el tono se cubica en 12 (±15°, imperceptible en un glow difuso). Lazy por cubo.
+  _haloSprite(h) {
+    if (!this._halos) this._halos = new Array(12);
+    let b = (h / 30) | 0; if (b < 0) b = 0; else if (b > 11) b = 11;
+    let sp = this._halos[b];
+    if (!sp) {
+      const S = 64, hue = b * 30 + 15;
+      sp = document.createElement('canvas'); sp.width = sp.height = S;
+      const x = sp.getContext('2d'), r = S / 2;
+      const g = x.createRadialGradient(r, r, r * 0.12, r, r, r);
+      g.addColorStop(0, `hsla(${hue},70%,68%,1)`);
+      g.addColorStop(0.45, `hsla(${hue},70%,68%,0.32)`);
+      g.addColorStop(1, `hsla(${hue},70%,68%,0)`);
+      x.fillStyle = g; x.beginPath(); x.arc(r, r, r, 0, 6.2832); x.fill();
+      this._halos[b] = sp;
+    }
+    return sp;
+  }
+
   // Re-renderiza el SUSTRATO abisal (nebulosa + comida fosforescente + plancton) en el búfer de
   // pantalla con la cámara aplicada (nítido a cualquier zoom) y teselando el toro. Solo dibuja las
   // motas visibles (culling). Se llama solo si cambia cámara o recurso.
@@ -104,7 +132,9 @@ export class Renderer {
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
+        this._abyssTimer = 0; // realloc (cambio de calidad) → fuerza recomputar el ruido
       }
+      if (this._abyssTimer <= 0) {   // #4: el ruido del sustrato es del MUNDO (no de la cámara) → recomputar por TIMER, no en cada paneo/seguimiento
       const d = this._abyssImg.data;
       const hash = (ix, iy, sd) => { let h = (ix * 374761393 + iy * 668265263 + sd * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
       // value-noise PERIÓDICO: rejilla px×py que ENVUELVE (módulo) → tesela sin costura en el toro. u,v ∈ [0,1).
@@ -144,6 +174,9 @@ export class Renderer {
         d[o + 3] = 255;
       }
       this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
+      this._abyssTimer = 18;
+      }
+      this._abyssTimer--;
       ctx.imageSmoothingEnabled = true;
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
@@ -203,24 +236,58 @@ export class Renderer {
     const cfg = this.cfg, c = this.canvas;
     const cssW = c.clientWidth || window.innerWidth;
     const cssH = c.clientHeight || window.innerHeight;
-    // Calidad BAJA (móvil): DPR=1 (4× menos píxeles en retina) → gran ahorro en fills/blur. ALTA: hasta dprCap.
-    // MÁXIMA: supersampling (DPR del dispositivo +1, hasta ultraDprCap) → render por encima de la pantalla = nítido.
+    // Calidad BAJA (móvil): DPR=1. ALTA: hasta dprCap. MÁXIMA: supersampling (DPR+1, hasta ultraDprCap).
     const q = cfg.render.quality;
-    this.dpr = q === 'low' ? 1
+    const dpr = q === 'low' ? 1
       : q === 'ultra' ? Math.min(cfg.render.ultraDprCap || 3, (window.devicePixelRatio || 1) + 1)
       : Math.min(window.devicePixelRatio || 1, cfg.render.dprCap);
-    c.width = Math.round(cssW * this.dpr);
-    c.height = Math.round(cssH * this.dpr);
-    // Escala "cover": el mundo cubre el viewport (sin letterbox) → con el paneo en mosaico
-    // nunca se ve el borde del ecosistema. El zoom multiplica sobre esta base.
+    // Backing store DESEADO (CSS × dpr) y CAP de resolución interna (borde largo): renderizamos por DEBAJO de la
+    // pantalla y el CSS reescala (el blur abisal disimula el upscaling) → coste por píxel ACOTADO e independiente del
+    // tamaño/DPR de pantalla (clave para 4K). Ver render.maxInternalPx. 0/ausente = sin cap (comportamiento previo).
+    let bw = Math.round(cssW * dpr), bh = Math.round(cssH * dpr);
+    const uncappedMax = Math.max(bw, bh);   // resolución SIN cap → referencia del LOD (el detalle NO debe cambiar con el cap)
+    // TECHO de resolución interna (escalar, px del borde largo) — se aplica a TODAS las calidades, incl. Máxima
+    // (ultra supersamplea hasta el DPR objetivo pero NUNCA por encima de este tope; sube el slider a 3840 = sin tope).
+    const cap = cfg.render.maxInternalPx;
+    if (cap && Math.max(bw, bh) > cap) { const k = cap / Math.max(bw, bh); bw = Math.round(bw * k); bh = Math.round(bh * k); }
+    c.width = bw; c.height = bh;
+    this.dpr = dpr;
+    // Ratio REAL backing-store↔CSS (≤ dpr cuando el cap actúa) → el paneo/pick deben usar ESTE, no dpr.
+    this.pxRatio = cssW > 0 ? c.width / cssW : dpr;
+    // LOD = nivel de DETALLE según el tamaño PERCIBIDO en pantalla, NO la resolución interna: bajar el cap baja la
+    // NITIDEZ, no el detalle (mismo nº de nodos/ojos/señuelo, solo con menos píxeles). `lodBoost` reescala el rPx del
+    // LOD a la resolución SIN cap (=1 si no hay cap). El DIBUJO sigue usando la escala real; esto solo decide QUÉ se dibuja.
+    this.lodBoost = Math.max(bw, bh) > 0 ? uncappedMax / Math.max(bw, bh) : 1;
+    // Escala "cover": el mundo cubre el viewport (sin letterbox); el zoom multiplica sobre esta base.
     this.coverScale = Math.max(c.width / cfg.world.width, c.height / cfg.world.height);
-    // El búfer de sustrato va a resolución de pantalla; forzar re-render tras redimensionar.
+    // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
     this.grass.width = c.width; this.grass.height = c.height;
     this.fx.width = c.width; this.fx.height = c.height;
-    this._gz = NaN;
+    this._bloom.width = Math.max(1, c.width >> 2); this._bloom.height = Math.max(1, c.height >> 2);
+    this._gz = NaN; this._abyssTimer = 0;   // recomputa el ruido del sustrato tras resize/reseed/cambio de calidad
   }
 
   _scale() { return this.coverScale * this.zoom; }
+
+  // BLOOM downsampled (#2): desenfoca una MINIATURA (¼) de `src` y la reescala aditivamente al canvas → mismo
+  // halo de baja frecuencia que un blur a pantalla completa, a ~1/16 del coste. `blurPx` se aplica sobre la
+  // miniatura (la reducción + el reescalado ya difuminan, así que basta poco). 'lighter' = aditivo.
+  _bloomPass(src, alpha, blurPx) {
+    const ctx = this.ctx, c = this.canvas, bw = this._bloom.width, bh = this._bloom.height, bctx = this._bloomCtx;
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.clearRect(0, 0, bw, bh);
+    bctx.imageSmoothingEnabled = true;
+    bctx.filter = blurPx ? `blur(${blurPx}px)` : 'none';   // blur sobre la miniatura (barato)
+    bctx.drawImage(src, 0, 0, bw, bh);                      // downscale (ya difumina por sí mismo)
+    bctx.filter = 'none';
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(this._bloom, 0, 0, bw, bh, 0, 0, c.width, c.height); // upscale aditivo
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
 
   // Píxel de pantalla (CSS) → coordenada del mundo (envuelta al toro). Para click/tap.
   screenToWorld(clientX, clientY) {
@@ -236,8 +303,8 @@ export class Renderer {
   // Paneo: desplaza la cámara (en píxeles CSS arrastrados), envolviendo el toro.
   panByScreen(dxCss, dyCss) {
     const s = this._scale(), W = this.cfg.world.width, H = this.cfg.world.height;
-    this.camX = (((this.camX - dxCss * this.dpr / s) % W) + W) % W;
-    this.camY = (((this.camY - dyCss * this.dpr / s) % H) + H) % H;
+    this.camX = (((this.camX - dxCss * this.pxRatio / s) % W) + W) % W;
+    this.camY = (((this.camY - dyCss * this.pxRatio / s) % H) + H) % H;
   }
 
   // Zoom centrado en el cursor (mantiene fijo el punto del mundo bajo el puntero).
@@ -293,14 +360,8 @@ export class Renderer {
     // BLOOM de la VEGETACIÓN: copia desenfocada y aditiva → los charcos de comida fosforescente (abisal)
     // y la vegetación irradian luz. Solo donde brilla suma; el fondo oscuro apenas cambia.
     if (cfg.render.glow && !lowQ) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.5;
-      ctx.filter = 'blur(4px)';
-      ctx.drawImage(this.grass, 0, 0);
-      if (ultraQ) { ctx.globalAlpha = 0.3; ctx.filter = 'blur(12px)'; ctx.drawImage(this.grass, 0, 0); } // MÁXIMA: 2º bloom AMPLIO → halo luminoso difuso
-      ctx.filter = 'none';
-      ctx.restore();
+      this._bloomPass(this.grass, 0.5, 1.2);                       // bloom downsampled (#2): ¼ res + reescalado aditivo
+      if (ultraQ) this._bloomPass(this.grass, 0.3, 3);             // MÁXIMA: 2º bloom AMPLIO → halo luminoso difuso
     }
 
     // ---- Capa de ORGANISMOS (FX): se borra y se redibuja entera cada frame. ----
@@ -352,14 +413,8 @@ export class Renderer {
     // BLOOM de ORGANISMOS + BULBOS: copia desenfocada y aditiva → todo lo luminoso (halos, bulbos
     // de los señuelos, puntas) "sangra" luz. Da el aspecto bioluminiscente potente.
     if (cfg.render.glow && !lowQ) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.4;   // bloom algo menor → los apagados (c_lum bajo) se leen apagados
-      ctx.filter = 'blur(4px)';
-      ctx.drawImage(this.fx, 0, 0);
-      if (ultraQ) { ctx.globalAlpha = 0.26; ctx.filter = 'blur(14px)'; ctx.drawImage(this.fx, 0, 0); } // MÁXIMA: 2º halo bioluminiscente AMPLIO
-      ctx.filter = 'none';
-      ctx.restore();
+      this._bloomPass(this.fx, 0.4, 1.2);                          // bloom downsampled (#2)
+      if (ultraQ) this._bloomPass(this.fx, 0.26, 3.5);             // MÁXIMA: 2º halo bioluminiscente AMPLIO
     }
 
     // Viñeta → profundidad y foco al centro (sella la penumbra abisal). Cacheada por tamaño.
@@ -383,7 +438,8 @@ export class Renderer {
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
     const sc = this._scale();
-    this._drawScale = sc;              // escala mundo→pantalla, para que el ojo sepa su tamaño REAL en píxeles (LOD)
+    const lodSc = sc * (this.lodBoost || 1);  // escala para el LOD: INVARIANTE al cap de resolución → el detalle (nodos/
+    this._drawScale = lodSc;                   //   ojos/señuelo) depende del tamaño PERCIBIDO, no de los píxeles internos. El DIBUJO usa sc.
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
@@ -433,27 +489,22 @@ export class Renderer {
           l -= sim.diet[i] * 5;
         }
       }
-      const rPx = r * sc;                              // radio EN PANTALLA (px) → decide el nivel de detalle (LOD)
+      const rPx = r * lodSc;                           // radio PERCIBIDO en pantalla → nivel de detalle (LOD); invariante al cap de resolución
       const hasNodes = nodes && nodes.length;
       const tier = !hasNodes || rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo
       // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos
       // (los puntos ya brillan con el bloom GLOBAL de la capa de organismos; no necesitan su propio halo).
       if (glow && !lowQ && rPx > haloThr) {
-        // Halo con DEGRADADO de transparencia. El RADIO y la INTENSIDAD varían con el ornamento (orn):
-        // bioluminiscencia como exhibición → unos brillan amplios e intensos, otros tenues y ceñidos.
-        // El centro (orn bajo, lo común) queda moderado para no fundir halos vecinos ("hormiguero").
+        // HALO pre-renderizado por CUBO DE TONO (#3) en vez de un createRadialGradient + fill por agente: drawImage
+        // es mucho más barato. El radio y la INTENSIDAD siguen variando por agente (luminosidad → gr y globalAlpha);
+        // el tono se cubica (±15°, imperceptible en un glow difuso). El bloom global sigue sumando sobre estos halos.
         const cLumG = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
         const gr = r * (1.65 + cLumG * cLumG * 3.0); // halo algo mayor
-        const gl = Math.min(82, l + 26);
-        const a0 = 0.21 + cLumG * cLumG * 0.48; // suelo y empuje subidos → glow más visible
-        const gg = ctx.createRadialGradient(x, y, r * 0.25, x, y, gr);
-        gg.addColorStop(0, `hsla(${h},${s}%,${gl}%,${a0})`);
-        gg.addColorStop(0.45, `hsla(${h},${s}%,${gl}%,${a0 * 0.32})`);
-        gg.addColorStop(1, `hsla(${h},${s}%,${gl}%,0)`);
-        ctx.fillStyle = gg;
-        ctx.beginPath();
-        ctx.arc(x, y, gr, 0, 6.2832);
-        ctx.fill();
+        let a0 = 0.21 + cLumG * cLumG * 0.48; if (a0 > 1) a0 = 1; // intensidad por agente (vía globalAlpha)
+        const spr = this._haloSprite(h);
+        ctx.globalAlpha = a0;
+        ctx.drawImage(spr, x - gr, y - gr, gr * 2, gr * 2);
+        ctx.globalAlpha = 1;
       }
       // LOD de 3 niveles según tamaño en pantalla.
       if (tier === 2) {

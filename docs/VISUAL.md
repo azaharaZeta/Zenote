@@ -77,20 +77,27 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   `ctx.setTransform` (o `translate`+`scale`) para encajar el mundo completo con letterbox
   (barras vacías) si la relación de aspecto difiere. Nunca se estira de forma anisotrópica
   ni se cambia `world.width/height` para "rellenar". El toro se sigue viendo entero.
-- **DevicePixelRatio con tope.** Resolución del canvas = `cssPx * min(devicePixelRatio,
-  render.dprCap)`. El tope (p.ej. 2) evita que una pantalla retina de móvil dispare el
-  número de píxeles a dibujar y hunda los FPS. Reaccionar a `resize` y a cambios de
-  orientación recalculando tamaño y `scale` (con debounce).
+- **DevicePixelRatio con tope + CAP de resolución interna.** Resolución del canvas =
+  `min(cssPx · min(devicePixelRatio, render.dprCap), render.maxInternalPx)`. Sobre el tope de DPR hay un **cap del borde
+  largo del backing store** (`render.maxInternalPx`, **escalar, def. 1920**; se aplica a **TODAS las calidades** —Máxima
+  supersamplea pero sin pasar del tope—; **ajustable en vivo en el lab** → "🖥️ Render"): se renderiza por DEBAJO de la pantalla y el CSS
+  reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda ACOTADO e
+  independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO (nunca
+  sobre-renderiza). CLAVE para 4K (medido: a igualdad de agentes, 4K→1600 = 8.6× más rápido). El paneo/pick usan el
+  ratio REAL backing↔CSS (`renderer.pxRatio`), no `devicePixelRatio`. Reaccionar a `resize`/orientación (con debounce).
 - **Coordenadas de entrada → mundo.** El tap/clic llega en píxeles de pantalla; se
   invierte la transformación (`scale`, letterbox, DPR) para obtener la coord. lógica y
   buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
 - **LOD por RADIO EN PANTALLA (3 niveles).** El coste de dibujar un bicho se escala con su tamaño en píxeles
-  (`rPx`), no con el zoom directamente: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
+  (`rPx` = tamaño **PERCIBIDO** en pantalla, **invariante al cap `maxInternalPx`** vía `renderer.lodBoost`: bajar el cap
+  baja la NITIDEZ, no el DETALLE), no con el zoom directamente: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
   orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos completo** (`rPx ≥ lodFull`), y DENTRO
   del grafo los detalles caros entran por umbral propio (ojos `lodEye`, onda+contorno `lodWave`, señuelo `lodLure`).
   Así al alejar (miles de bichos diminutos) casi todo son puntos baratos, y al acercar emergen forma → ojos →
-  onda → señuelo con gracia. El **halo por agente** (un gradiente/bicho) solo se pinta por encima de `lodHalo` y
-  en calidad alta; los puntos ya brillan por el **bloom global** de la capa de organismos. Umbrales en `config.render`.
+  onda → señuelo con gracia. El **halo por agente** (un **sprite pre-renderizado por cubo de tono**, no un gradiente
+  por bicho → barato) solo se pinta por encima de `lodHalo` y en calidad alta; los puntos ya brillan por el **bloom
+  global** de la capa de organismos. El **bloom es _downsampled_**: se desenfoca una miniatura a ¼ del backing store y
+  se reescala aditivamente (mismo halo de baja frecuencia, ~1/16 del coste de blurear a pantalla completa). Umbrales en `config.render`.
 - **Calidad: baja / alta / máxima** (el botón cicla las tres). **Baja** (móvil/equipos lentos): sin bloom (blur),
   **sin halos por agente**, sin nieve marina, menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult`
   (≈×2.6 → muchos más puntos). **Alta**: el estándar (worst-case ~2 ms/frame con 4000 agentes a la vista; baja ≈ la
