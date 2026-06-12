@@ -203,6 +203,39 @@ export function setupControls(app) {
   };
   hideBtn.addEventListener('click', () => setHidden(true));
   showBtn.addEventListener('click', () => setHidden(false));
+
+  // ---- Móvil: deslizar la HOJA hacia ABAJO la oculta (gesto típico de bottom-sheet), además del botón "contemplar".
+  //      Arranca desde el "asa" o cualquier zona NO interactiva del panel; respeta sliders/botones y el scroll del lab
+  //      (solo desde arriba, scrollTop 0). La hoja sigue al dedo; al soltar, si bajó del umbral → setHidden(true). ----
+  {
+    let startY = 0, dragY = 0, dragging = false;
+    const onMobile = () => window.matchMedia('(max-width: 700px)').matches;
+    const isCtrl = (t) => t && t.closest && t.closest('input, button, select, textarea, a, .lab-slider');
+    panel.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' || !onMobile()) return;       // gesto solo táctil/móvil
+      if (isCtrl(e.target) || panel.scrollTop > 0) return;        // no robar controles ni el scroll del lab
+      dragging = true; startY = e.clientY; dragY = 0;
+      panel.style.transition = 'none';                            // seguir el dedo sin lag
+      try { panel.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    panel.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      dragY = e.clientY - startY;
+      if (dragY <= 0) { dragY = 0; panel.style.transform = ''; return; } // solo hacia abajo
+      e.preventDefault();
+      panel.style.transform = `translateY(${dragY}px)`;           // la hoja sigue al dedo
+    }, { passive: false });
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      panel.style.transition = '';                                // restaura la transición del CSS (0.3s)
+      if (dragY > 90) setHidden(true);                            // bajó lo suficiente → ocultar (= "contemplar ✕")
+      panel.style.transform = '';                                 // quita el inline → anima a 0 (o, si .hidden, a translateY(100%))
+      dragY = 0;
+    };
+    panel.addEventListener('pointerup', endDrag);
+    panel.addEventListener('pointercancel', endDrag);
+  }
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return; // no robar teclas a los campos
     if (e.key === 'h' || e.key === 'H') setHidden(!panel.classList.contains('hidden'));
