@@ -181,6 +181,23 @@ export function setupControls(app) {
     });
   }
 
+  // ---- Resolución interna (render): slider junto al botón de Calidad (solo en modo laboratorio, ver CSS .res-ctrl).
+  // TECHO del backing store (px del borde largo); el CSS reescala a la pantalla. Cambia la NITIDEZ, no el detalle
+  // (el LOD va por tamaño percibido). Se aplica EN VIVO vía renderer.resize(). No se persiste (default = config). ----
+  const resSlider = $('resSlider'), resVal = $('resVal');
+  if (resSlider) {
+    resSlider.value = cfg.render.maxInternalPx;                 // valor inicial desde config
+    const syncRes = () => { if (resVal) resVal.textContent = resSlider.value; };
+    syncRes();
+    resSlider.addEventListener('input', () => {
+      const v = +resSlider.value;
+      cfg.render.maxInternalPx = v;                              // config del hilo principal (lo lee el render)
+      send({ type: 'set', key: 'render.maxInternalPx', value: v }); // espejo en el worker (consistencia)
+      syncRes();
+      renderer.resize();                                         // aplica el nuevo tope en vivo
+    });
+  }
+
   // ---- Modo contemplación (oculta toda la UI) ----
   // El control de velocidad sigue accesible: reubicamos el nodo #speedBlock a una barra flotante
   // (#floatControls) mientras el panel está oculto, y lo devolvemos a su sitio al reabrirlo. Los
@@ -445,9 +462,6 @@ const LAB_SPEC = [
     { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad BASE de morir de viejo (el gen de ritmo de vida la escala por individuo; crece con la edad pasada la madurez). Más alto = vidas más cortas.' },
     { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta de mantener ser longevo (vivir despacio). Más alto = la vida larga sale cara → favorece estrategias rápidas. Es el contrapeso que evita que todos se vuelvan "inmortales".' },
   ]},
-  { cat: '🖥️ Render', items: [
-    { k: 'render.maxInternalPx', label: 'Resolución interna (tope)', applyResize: true, min: 640, max: 3840, step: 80, dec: 0, d: 'Tope del borde largo (px) al que se RENDERIZA por dentro; el CSS lo reescala a tu pantalla. Palanca clave de rendimiento gráfico: en pantallas grandes (4K) se renderiza a este tamaño y se estira (el desenfoque abisal lo disimula) → el coste no se dispara; en pantallas más pequeñas se usa su resolución nativa (nunca sobre-renderiza). Más bajo = más rápido y más borroso; más alto = más nítido y caro (3840 ≈ sin tope, 4K nativo). Se aplica a TODAS las calidades, incluida Máxima (que supersamplea sin pasar de este tope). OJO: solo cambia los FPS si vas *render-bound* (4K, GPU floja, ventana grande); los ticks/s son de la simulación (otro hilo) y no dependen de esto. Se aplica en vivo.' },
-  ]},
 ];
 
 function setupLab(app, send) {
@@ -536,12 +550,12 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); if (it.applyResize && app.renderer) app.renderer.resize(); });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
           const reset = () => {
-            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); setLocal(it.k, +def); paint(); if (it.applyResize && app.renderer) app.renderer.resize();
+            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); setLocal(it.k, +def); paint();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);

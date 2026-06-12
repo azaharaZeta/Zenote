@@ -271,9 +271,10 @@ export const config = {
     // (UI) CAP de RESOLUCIÓN INTERNA (borde largo, px del backing store): el render corre por DEBAJO de la pantalla y
     // el CSS reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda
     // ACOTADO e independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO
-    // (nunca sobre-renderiza). CLAVE para 4K (medido: 4K→1600 = 8.5× más rápido). Más bajo = más rápido y más borroso;
-    // 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea pero SIN pasar de este tope). Slider en el lab ("🖥️ Render").
-    maxInternalPx: 1920,
+    // (nunca sobre-renderiza). NO cambia el DETALLE (LOD por tamaño percibido), solo la NITIDEZ. Más bajo = más rápido y
+    // más borroso; 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Control
+    // "Resolución" junto al botón de Calidad (solo en modo laboratorio).
+    maxInternalPx: 800,
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,

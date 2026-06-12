@@ -79,8 +79,8 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   ni se cambia `world.width/height` para "rellenar". El toro se sigue viendo entero.
 - **DevicePixelRatio con tope + CAP de resolución interna.** Resolución del canvas =
   `min(cssPx · min(devicePixelRatio, render.dprCap), render.maxInternalPx)`. Sobre el tope de DPR hay un **cap del borde
-  largo del backing store** (`render.maxInternalPx`, **escalar, def. 1920**; se aplica a **TODAS las calidades** —Máxima
-  supersamplea pero sin pasar del tope—; **ajustable en vivo en el lab** → "🖥️ Render"): se renderiza por DEBAJO de la pantalla y el CSS
+  largo del backing store** (`render.maxInternalPx`, **escalar, def. 800**; se aplica a **TODAS las calidades** —Máxima
+  supersamplea pero sin pasar del tope—; control **"Resolución" junto al botón de Calidad, solo en modo laboratorio**): se renderiza por DEBAJO de la pantalla y el CSS
   reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda ACOTADO e
   independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO (nunca
   sobre-renderiza). CLAVE para 4K (medido: a igualdad de agentes, 4K→1600 = 8.6× más rápido). El paneo/pick usan el
