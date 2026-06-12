@@ -167,8 +167,11 @@ export class Charts {
     const bw = w / nb;
     for (let i = 0; i < nb; i++) {
       const bh = (bins[i] / max) * (h - 14);
-      // color del bin = el propio valor del gen (continuo), guiño visual.
-      ctx.fillStyle = `hsl(${(i / nb) * 200 + 160},55%,55%)`;
+      // Color del bin = el VALOR del gen (centro del bin), con el MISMO mapeo que los organismos en modo 'gene'
+      // (canvas.js _drawAgents) y la leyenda (controls.js): hsl((1−v)·120, 80%, 52%) → VERDE(0)→amarillo→ROJO(1).
+      // La franja del histograma COINCIDE con el color de los bichos y la leyenda (mismo degradado).
+      const gv = (i + 0.5) / nb;
+      ctx.fillStyle = `hsl(${(1 - gv) * 120},80%,52%)`;
       ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);
     }
     ctx.font = '10px system-ui, sans-serif';

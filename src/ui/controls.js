@@ -122,7 +122,7 @@ export function setupControls(app) {
     if (!legendEl) return;
     const m = renderer.colorMode;
     if (m === 'diet') legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 85, 52)) + '<span>herbívoro</span><span>carnívoro</span>';            // h=(1-diet)*120
-    else if (m === 'gene') legendEl.innerHTML = bar(ramp(u => (1 - u) * 250, 80, 52)) + `<span>${GENE_LABELS[GENES[renderer.geneIndex]]}: bajo</span><span>alto</span>`; // h=(1-gen)*250
+    else if (m === 'gene') legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 80, 52)) + `<span>${GENE_LABELS[GENES[renderer.geneIndex]]}: bajo</span><span>alto</span>`; // h=(1-gen)*120 → verde(bajo)→rojo(alto)
     else if (m === 'energy') legendEl.innerHTML = bar(ramp(u => u * 130, 85, 50)) + '<span>hambriento</span><span>lleno</span>';                 // h=ef*130
     else if (m === 'lineage') legendEl.innerHTML = '<em>un color por linaje fundador (familias / proto-especies)</em>';
     else if (m === 'species') legendEl.innerHTML = '<em>un color por ESPECIE (clúster genético; se cruzan entre sí)</em>';

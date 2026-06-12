@@ -409,7 +409,7 @@ export class Renderer {
         case 'diet':    h = (1 - sim.diet[i]) * 120; s = 85; l = 52; break;        // verde→rojo
         case 'lineage': h = lineageHue(sim.lineage[i]); s = 70; l = 55; break;      // 1 color por linaje
         case 'species': h = lineageHue(sim.species[i] | 0); s = 78; l = 55; break;  // 1 color por ESPECIE
-        case 'gene':    h = (1 - sim.geneSel[i]) * 250; s = 80; l = 52; break;      // azul(bajo)→rojo(alto)
+        case 'gene':    h = (1 - sim.geneSel[i]) * 120; s = 80; l = 52; break;      // VERDE(bajo)→amarillo→ROJO(alto) · mismo mapeo que histograma (charts.js) y leyenda (controls.js)
         case 'energy':  h = ef * 130; s = 85; l = 50; break;                         // rojo(hambre)→verde
         // Visión real: el gen `hue` da el tono (el verde se evita en el sembrado, para no fundirse con la fosforescencia teal del sustrato).
         // COLORES COMO EN LA NATURALEZA: saturación base BAJA (tonos terrosos/apagados → cripsis); la
