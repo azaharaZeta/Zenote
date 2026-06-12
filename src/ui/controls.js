@@ -211,6 +211,9 @@ export function setupControls(app) {
 
   // ---- Barra de zoom clásica (sincronizada con rueda/pinza/doble-clic) ----
   const zoomEl = $('zoomSlider'), zoomValEl = $('zoomVal');
+  // En MÓVIL arranca con algo de zoom (≈1.8×, hacia el centro del mundo) → se ven los bichos al ENTRAR, no
+  // diminutos y de lejos. Solo es el valor INICIAL (el usuario lo cambia con la barra/pinza); escritorio → 1× (mundo entero).
+  if (window.innerWidth <= 700 && renderer.zoom === 1) renderer.zoom = 1.8;
   const syncZoom = () => {
     if (!zoomEl) return;
     zoomEl.value = renderer.zoom;

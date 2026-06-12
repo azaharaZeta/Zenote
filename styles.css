@@ -189,10 +189,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .reseed-btn { flex: 0 0 auto; padding: 5px 9px; min-height: 30px; background: rgba(224, 150, 74, 0.10); border: 1px solid rgba(224, 150, 74, 0.45); color: #e0a04a; font-size: 11px; letter-spacing: 0.2px; }
 .reseed-btn:hover { background: rgba(224, 150, 74, 0.22); border-color: rgba(224, 150, 74, 0.72); color: #f0b46a; }
 #panel:not(.advanced) #colorModeRow { display: none; }         /* en modo simple no se muestra "Colorear por" */
-/* Vista simple (contemplativa): sin histograma, su combo, su leyenda ni el texto de velocidad real.
-   El laboratorio (.advanced) conserva el histograma como herramienta de análisis. */
-#panel:not(.advanced) #histChart,
-#panel:not(.advanced) .charts .inline,
+/* Vista simple (contemplativa) = SOLO ver bichos: sin GRÁFICAS (población/histograma), sin la fila de SEMILLA/
+   DIVERSIDAD inicial, sin leyenda ni el texto de velocidad real. El laboratorio (.advanced) lo conserva todo. */
+#panel:not(.advanced) .charts,
+#panel:not(.advanced) #seedRow,
 #panel:not(.advanced) #legend,
 #panel:not(.advanced) #speedReal { display: none; }
 
@@ -276,6 +276,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
   #inspector .insp-sub, #inspector .insp-card, #inspector .ginfo { display: none; } /* genoma detallado: fuera en móvil (cabe la barra) */
   .chart-pair { display: flex; gap: 8px; }
   .chart-pair .chart { flex: 1; min-width: 120px; margin-bottom: 0; }
+  /* Menú SIMPLE en móvil: es una hoja inferior → que NO se coma media pantalla. Márgenes apretados, sin ayuda y
+     tope de altura más bajo (el laboratorio mantiene su 60vh y su propio compactado). Deja ver el cenote.
+     (La gráfica y la fila de diversidad ya NO están en modo simple — se ocultan arriba, a cualquier tamaño.) */
+  #panel:not(.advanced) { max-height: 48vh; }
+  #panel:not(.advanced) .readout { margin: 5px 0; font-size: 10px; }
+  #panel:not(.advanced) .row { margin: 7px 0; }
+  #panel:not(.advanced) .ctrl { margin-top: 7px; }
+  #panel:not(.advanced) .ctrl label { margin: 4px 0 2px; }
+  #panel:not(.advanced) .mode-btn { margin: 5px 0 2px; }
+  #panel:not(.advanced) .hint { display: none; }          /* la ayuda no cabe (queda en escritorio/lab) */
 }
 
 /* ---- Menú principal / intro ---- */
