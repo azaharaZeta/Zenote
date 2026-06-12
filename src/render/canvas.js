@@ -489,8 +489,9 @@ export class Renderer {
     // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
     // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
     const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1);
-    const doWave = rPxG > (Rc.lodWave || 0);    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
-    const doLure = rPxG > (Rc.lodLure || 0);
+    const full = this._forceFull === true;       // RETRATO del inspector: vista de detalle → sin recortes LOD (ver drawPortrait).
+    const doWave = full || rPxG > (Rc.lodWave || 0);    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
+    const doLure = full || rPxG > (Rc.lodLure || 0);
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
     const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
@@ -555,7 +556,7 @@ export class Renderer {
         const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
         g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
         ctx.fillStyle = g; silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
-        if (rxx * ds > 10) {                                   // TEXTURA: bandas transversales sutiles (clip a la silueta)
+        if (full || rxx * ds > 10) {                           // TEXTURA: bandas transversales sutiles (clip a la silueta). `full` (retrato) → siempre
           ctx.save(); silPath(cx, cy, rot, rxx, wB, wT); ctx.clip();
           const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
           ctx.strokeStyle = inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
@@ -758,7 +759,9 @@ export class Renderer {
       pctx.beginPath(); pctx.arc(px, py, gr, 0, 6.2832); pctx.fill();
     }
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
+    this._forceFull = true;                              // retrato = vista de DETALLE: sin recortes LOD (señuelo/"antenas", 2ª pasada de contorno, textura), pase el canvas el tamaño que pase
     this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
+    this._forceFull = false;
   }
 
   // Resalta el organismo seleccionado (anillo). Recibe el objeto `sel` del worker
