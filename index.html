@@ -12,8 +12,9 @@
   <!-- Botón para reabrir el panel en modo contemplación -->
   <button id="show" title="Mostrar panel (H)">☰</button>
 
-  <!-- Barra flotante: aloja el control de velocidad en modo contemplación (el nodo #speedBlock se reubica aquí) -->
-  <div id="floatControls"></div>
+  <!-- Barra flotante: aloja el control de velocidad en modo contemplación (el nodo #speedBlock se reubica aquí).
+       El asa permite REABRIR el menú arrastrándola hacia arriba (la barra es el estado "colapsado" del menú). -->
+  <div id="floatControls"><div class="float-grab" aria-hidden="true"></div></div>
 
   <aside id="panel">
     <div class="sheet-grab" aria-hidden="true"></div>

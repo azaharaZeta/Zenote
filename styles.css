@@ -140,6 +140,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
 #floatControls.visible { display: block; }
+#floatControls { transition: transform 0.25s ease; }   /* para el "tirón" elástico al arrastrar el asa hacia arriba */
+.float-grab { display: none; }                          /* asa para REABRIR el menú (solo móvil; ver media query) */
 #floatControls #speedBlock { margin: 0; }
 #floatControls #speedBlock > label, #floatControls #speedReal { display: none; } /* solo botones + slider */
 #floatControls .speed-row { margin: 0; }
@@ -267,8 +269,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
     border-radius: 16px 16px 0 0;
   }
   #panel.hidden { transform: translateY(100%); }
-  /* Asa de la hoja inferior: afordancia para arrastrar hacia abajo y ocultar (gesto típico de móvil). */
+  /* Asas (hoja inferior y barra de velocidad): afordancia para arrastrar y ocultar/reabrir (gesto típico de móvil). */
   .sheet-grab { display: block; width: 40px; height: 4px; margin: 0 auto 8px; border-radius: 3px;
+                background: rgba(255,255,255,0.22); touch-action: none; }
+  .float-grab { display: block; width: 40px; height: 4px; margin: 0 auto 7px; border-radius: 3px;
                 background: rgba(255,255,255,0.22); touch-action: none; }
   /* Inspector en móvil: BARRA HORIZONTAL arriba (a lo ancho, baja) → no tapa el centro ni el organismo.
      Retrato pequeño + especie/navegación en línea 1; nº de individuos + energía en línea 2. Genoma detallado oculto. */

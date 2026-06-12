@@ -236,6 +236,37 @@ export function setupControls(app) {
     panel.addEventListener('touchend', endDrag);
     panel.addEventListener('touchcancel', endDrag);
   }
+
+  // ---- Móvil: REABRIR el menú arrastrando hacia ARRIBA la barra de velocidad (su estado colapsado). Igual que el
+  //      gesto de cerrar, se engancha a TODA la barra (no al asa de 4px, imposible de acertar con el dedo); el asa
+  //      es solo la pista visual. Respeta el slider y los botones. Mismo umbral; "tirón" elástico de feedback. ----
+  {
+    let sY = 0, up = 0, drg = false;
+    const isCtrl = (t) => t && t.closest && t.closest('input, button, select, textarea, a');
+    floatHost.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1 || isCtrl(e.target)) return;  // no robar el slider/botones de la barra
+      drg = true; sY = e.touches[0].clientY; up = 0;
+      floatHost.style.transition = 'none';
+    }, { passive: true });
+    floatHost.addEventListener('touchmove', (e) => {
+      if (!drg) return;
+      up = sY - e.touches[0].clientY;                          // arriba = positivo
+      if (up <= 0) { up = 0; floatHost.style.transform = ''; return; }
+      e.preventDefault();
+      const lift = Math.min(up * 0.4, 16);                     // tirón elástico (tope 16px) → feedback al arrastrar
+      floatHost.style.transform = `translateX(-50%) translateY(${-lift}px)`;
+    }, { passive: false });
+    const endUp = () => {
+      if (!drg) return;
+      drg = false;
+      floatHost.style.transition = '';                         // restaura la transición → la barra vuelve a su sitio
+      floatHost.style.transform = '';                          // (al rest: CSS translateX(-50%))
+      if (up > 90) setHidden(false);                           // tiró bastante hacia arriba → reabrir el menú (= botón ☰)
+      up = 0;
+    };
+    floatHost.addEventListener('touchend', endUp);
+    floatHost.addEventListener('touchcancel', endUp);
+  }
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return; // no robar teclas a los campos
     if (e.key === 'h' || e.key === 'H') setHidden(!panel.classList.contains('hidden'));
