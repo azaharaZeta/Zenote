@@ -15,7 +15,6 @@ export class Renderer {
     this.sim = sim;
     this.cfg = cfg;
     this.dpr = 1;
-    this.lodBoost = 1;   // factor del LOD: el detalle depende del tamaño PERCIBIDO en pantalla, no de la resolución interna (ver resize)
     this.colorMode = 'real';        // real | diet | lineage | gene | energy (solo render)
     this.geneIndex = 0;             // gen activo para el modo 'gene' (sincronizado con el histograma)
     // Cámara: zoom (1 = el mundo cubre la pantalla) y centro en coords del mundo.
@@ -245,7 +244,6 @@ export class Renderer {
     // pantalla y el CSS reescala (el blur abisal disimula el upscaling) → coste por píxel ACOTADO e independiente del
     // tamaño/DPR de pantalla (clave para 4K). Ver render.maxInternalPx. 0/ausente = sin cap (comportamiento previo).
     let bw = Math.round(cssW * dpr), bh = Math.round(cssH * dpr);
-    const uncappedMax = Math.max(bw, bh);   // resolución SIN cap → referencia del LOD (el detalle NO debe cambiar con el cap)
     // TECHO de resolución interna (escalar, px del borde largo) — se aplica a TODAS las calidades, incl. Máxima
     // (ultra supersamplea hasta el DPR objetivo pero NUNCA por encima de este tope; sube el slider a 3840 = sin tope).
     const cap = cfg.render.maxInternalPx;
@@ -254,10 +252,10 @@ export class Renderer {
     this.dpr = dpr;
     // Ratio REAL backing-store↔CSS (≤ dpr cuando el cap actúa) → el paneo/pick deben usar ESTE, no dpr.
     this.pxRatio = cssW > 0 ? c.width / cssW : dpr;
-    // LOD = nivel de DETALLE según el tamaño PERCIBIDO en pantalla, NO la resolución interna: bajar el cap baja la
-    // NITIDEZ, no el detalle (mismo nº de nodos/ojos/señuelo, solo con menos píxeles). `lodBoost` reescala el rPx del
-    // LOD a la resolución SIN cap (=1 si no hay cap). El DIBUJO sigue usando la escala real; esto solo decide QUÉ se dibuja.
-    this.lodBoost = Math.max(bw, bh) > 0 ? uncappedMax / Math.max(bw, bh) : 1;
+    // TODO el render trabaja en el ESPACIO DEL BUFFER (resolución interna), nunca en la pantalla real: el LOD usa el
+    // radio en PÍXELES DEL BUFFER (ver _drawAgents) → la pantalla (4K, 8K…) NO afecta a NINGÚN coste; al final el CSS
+    // reescala el buffer a la pantalla (un único "pegote" escalado). Bajar la resolución abarata rasterización Y
+    // construcción (menos criaturas a detalle completo). El paneo/pick cruzan a coords de CSS vía pxRatio.
     // Escala "cover": el mundo cubre el viewport (sin letterbox); el zoom multiplica sobre esta base.
     this.coverScale = Math.max(c.width / cfg.world.width, c.height / cfg.world.height);
     // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
@@ -438,8 +436,8 @@ export class Renderer {
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
     const sc = this._scale();
-    const lodSc = sc * (this.lodBoost || 1);  // escala para el LOD: INVARIANTE al cap de resolución → el detalle (nodos/
-    this._drawScale = lodSc;                   //   ojos/señuelo) depende del tamaño PERCIBIDO, no de los píxeles internos. El DIBUJO usa sc.
+    this._drawScale = sc;              // escala mundo→BUFFER (px del buffer). El LOD usa el tamaño en PÍXELES DEL BUFFER
+                                       //   (no de la pantalla) → la resolución real es irrelevante; bajar el buffer simplifica el dibujo.
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
@@ -489,7 +487,7 @@ export class Renderer {
           l -= sim.diet[i] * 5;
         }
       }
-      const rPx = r * lodSc;                           // radio PERCIBIDO en pantalla → nivel de detalle (LOD); invariante al cap de resolución
+      const rPx = r * sc;                              // radio en PÍXELES DEL BUFFER → nivel de detalle (LOD). La pantalla real no entra.
       const hasNodes = nodes && nodes.length;
       const tier = !hasNodes || rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo
       // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos

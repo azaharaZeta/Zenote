@@ -198,6 +198,17 @@ export function setupControls(app) {
     });
   }
 
+  // ---- Límite de FPS del render (solo laboratorio, junto a Resolución). Render-only: frame() (main.js) lee
+  // config.render.maxFPS en vivo cada frame (no toca el worker ni hace resize). Combinado con el dibujado bajo
+  // demanda, evita malgastar GPU/CPU redibujando frames idénticos. ----
+  const fpsCapSlider = $('fpsCapSlider'), fpsCapVal = $('fpsCapVal');
+  if (fpsCapSlider) {
+    fpsCapSlider.value = cfg.render.maxFPS;
+    const syncFps = () => { if (fpsCapVal) fpsCapVal.textContent = fpsCapSlider.value; };
+    syncFps();
+    fpsCapSlider.addEventListener('input', () => { cfg.render.maxFPS = +fpsCapSlider.value; syncFps(); });
+  }
+
   // ---- Modo contemplación (oculta toda la UI) ----
   // El control de velocidad sigue accesible: reubicamos el nodo #speedBlock a una barra flotante
   // (#floatControls) mientras el panel está oculto, y lo devolvemos a su sitio al reabrirlo. Los

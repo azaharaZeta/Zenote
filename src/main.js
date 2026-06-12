@@ -86,35 +86,43 @@ window.addEventListener('resize', () => {
 
 // --- Bucle de RENDER (solo dibuja; el worker simula) ---
 let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
+// DIBUJADO BAJO DEMANDA (A) + CAP DE FPS (B). Entre ticks, posiciones y animación NO avanzan (la animación usa
+// _animT, que solo crece con el delta de ticks) → un frame redibujado sin tick nuevo es IDÉNTICO: redibujarlo es
+// desperdicio (pantallas a 120 Hz, o velocidad máxima donde los datos cambian ~4/s). Redibujamos solo si cambió el
+// tick, la cámara (pan/zoom/seguir) o la selección, y nunca más de `render.maxFPS` veces/s. El motor (t/s) es ajeno.
+let lastDrawTick = -1, lastCamX = NaN, lastCamY = NaN, lastZoom = NaN, lastSelKey = '', lastDrawT = 0;
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
 
 function frame(now) {
   renderer.paused = !app.running; // congela la animación visual de los organismos al pausar
-  // Cámara que SIGUE al organismo seleccionado. Soltar SOLO si el seguido ya se vio y luego
-  // desapareció (murió); NO durante la latencia del pick (sel tarda 1-2 frames en llegar del worker).
-  if (app.followSel && simProxy.sel) { renderer.camX = simProxy.sel.x; renderer.camY = simProxy.sel.y; app._selSeen = true; }
-  else if (app.followSel && app._selSeen && !simProxy.sel) { app.followSel = false; app._selSeen = false; }
-  renderer.draw();
-  if (simProxy.sel) renderer.highlight(simProxy.sel);
-  charts.draw();   // el histórico ya lo acumula el worker (muestreo por ticks); aquí solo se pinta
-  updateInspector(app);
-
-  frames++;
+  // (B) Cap de FPS: no redibujar más de maxFPS veces/s (0 = sin límite). −0.5 ms de holgura por el jitter de rAF.
+  const maxFPS = config.render.maxFPS || 0;
+  if (!(maxFPS > 0 && now - lastDrawT < 1000 / maxFPS - 0.5)) {
+    // Cámara que SIGUE al organismo seleccionado. Soltar SOLO si el seguido ya se vio y luego desapareció (murió).
+    if (app.followSel && simProxy.sel) { renderer.camX = simProxy.sel.x; renderer.camY = simProxy.sel.y; app._selSeen = true; }
+    else if (app.followSel && app._selSeen && !simProxy.sel) { app.followSel = false; app._selSeen = false; }
+    // (A) ¿cambió algo desde el último dibujo? tick nuevo, cámara movida o selección distinta. Si no, NO se redibuja.
+    const selKey = simProxy.sel ? (simProxy.sel.lineage + '/' + simProxy.sel.generation) : '';
+    if (simProxy.tick !== lastDrawTick || renderer.camX !== lastCamX || renderer.camY !== lastCamY || renderer.zoom !== lastZoom || selKey !== lastSelKey) {
+      renderer.draw();
+      if (simProxy.sel) renderer.highlight(simProxy.sel);
+      charts.draw();   // el histórico ya lo acumula el worker (muestreo por ticks); aquí solo se pinta
+      updateInspector(app);
+      lastDrawTick = simProxy.tick; lastCamX = renderer.camX; lastCamY = renderer.camY; lastZoom = renderer.zoom; lastSelKey = selKey;
+      lastDrawT = now; frames++;
+    }
+  }
   if (now - lastFpsT > 500) {
     const dt = now - lastFpsT;
-    fps = Math.round((frames * 1000) / dt);
+    fps = Math.round((frames * 1000) / dt);   // FPS = DIBUJOS reales/s (bajo demanda): a velocidad normal ≈ t/s; a máx, ~snapshots/s
     tps = Math.round(((simProxy.tick - lastTickCount) * 1000) / dt);
     frames = 0; lastTickCount = simProxy.tick; lastFpsT = now;
-    // Readout COMÚN a ambos modos (simple y laboratorio): fps · t/s · población · tick (sin nacimientos/muertes).
-    // Ancho FIJO por valor (padStart + `.readout` en monospace/white-space:pre) → los números no "bailan" al cambiar.
-    // La población va en AZUL (mismo color que el resto de la UI usa para 'pob').
+    // Readout COMÚN a ambos modos: fps · t/s · población · tick. Ancho FIJO (padStart + monospace) → no "bailan".
     const pad = (v, n) => String(v).padStart(n);
     fpsEl.textContent = `${pad(fps, 3)} FPS · ${pad(tps, 4)} t/s`;
-    // El tick va en su propio span (con el separador) para poder ocultarlo SOLO en modo simple (CSS). pob en azul.
-    // En PECERA CERRADA se muestra también el nutriente libre N (verde) — la materia circulando, el "pulmón" de la pecera
-    // (visible en ambos modos: es el payoff contemplativo de ver la materia fluir). Si N→0 la fotosíntesis se ahoga.
+    // En PECERA CERRADA se muestra también el nutriente libre N (verde). pob en azul; tick en su span (oculto en simple).
     const nutr = app.cfg.world.closedMatter ? `<span style="color:#6fae8a"> · N ${pad(Math.round(simProxy.N), 5)}</span>` : '';
     statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span>${nutr}<span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';

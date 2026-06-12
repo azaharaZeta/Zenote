@@ -275,6 +275,10 @@ export const config = {
     // más borroso; 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Control
     // "Resolución" junto al botón de Calidad (solo en modo laboratorio).
     maxInternalPx: 1280,
+    // (UI) Tope de FPS del RENDER (0 = sin límite). El motor (t/s) NO depende de esto. Con el dibujado BAJO DEMANDA
+    // (solo se redibuja si cambió el tick/cámara/selección) evita malgastar GPU+CPU en frames idénticos (pantallas a
+    // 120 Hz, o velocidad máxima donde los datos cambian ~4/s). 60 = fluido sin malgastar; baja a 30 para más ahorro.
+    maxFPS: 60,
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,
