@@ -8,6 +8,16 @@ export const config = {
     width: 1200,   // Ancho del mundo (px lógicos; fijo, no depende de la pantalla)
     height: 800,   // Alto del mundo
     wrap: true,    // Mundo toroidal (los bordes envuelven)
+    // ── PROTOTIPO: ECOSISTEMA CERRADO EN MATERIA (pecera sellada) ──
+    closedMatter: false, // (↻) false = modelo ABIERTO (el sol CREA biomasa de la nada; ver auditoría de energía). true = la
+                         //      MATERIA total es CONSTANTE: el sol solo deja a las plantas convertir NUTRIENTE LIBRE (pool N) en
+                         //      biomasa; metabolismo/nado/pérdidas/muerte la DEVUELVEN al ciclo (no se evapora); NACER consume
+                         //      nutriente del pool y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia,
+                         //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
+                         //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
+    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
+                         //      de los fundadores + el RESTO como nutriente libre N. REGULADOR de la capacidad de carga (sustituye al
+                         //      sol como límite del total). Bajo = pecera pequeña (pocos organismos); alto = más biomasa sostenible.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────

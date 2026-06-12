@@ -17,7 +17,8 @@ export class Charts {
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
     // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
-    this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
+    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
+    // (histC = CAZADORES, histScav = CARROÑEROS: los dos tipos de comecarne, ver worker.sampleHistory.)
     // Demografía del ecosistema por ventana (del worker): nacimientos (sexual/asexual) + muertes (cazado/atacando/hambre/vejez).
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
     // Suavizado: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks). Muestra la TENDENCIA, no picos. Subir = más liso.
@@ -51,7 +52,7 @@ export class Charts {
 
   // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
   clear() {
-    this.history = []; this.histC = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
+    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
   }
 
@@ -67,7 +68,7 @@ export class Charts {
     ctx.clearRect(0, 0, w, h);
     const hist = this.history;
     if (hist.length < 2) return;
-    const histC = this.histC, histH = this.histH, histO = this.histO, histT = this.histT;
+    const histC = this.histC, histScav = this.histScav || [], histH = this.histH, histO = this.histO, histT = this.histT;
     let max = 1;
     for (let i = 0; i < hist.length; i++) if (hist[i] > max) max = hist[i]; // normaliza por el TOTAL → las curvas muestran proporciones
     // Eje X en TICKS: ventana fija (windowTicks) anclada a la derecha (el último tick = "ahora").
@@ -85,11 +86,13 @@ export class Charts {
       }
       ctx.stroke();
     };
-    // 4 series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros / carnívoros).
+    // Series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros) + los dos tipos de
+    // comecarne (CAZADORES rojo / CARROÑEROS violeta) + población total.
     if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN (fracción 0-1, escala propia) en verde, al fondo
     if (histH.length) line(histH, '#5ab3d1');               // herbívoros (cian-teal)
     if (histO.length) line(histO, '#f0b429');               // omnívoros (ámbar)
-    if (histC.length) line(histC, '#ff6b5a');               // carnívoros (rojo)
+    if (histC.length) line(histC, '#ff6b5a');               // CAZADORES (rojo) — comecarne que caza presa viva
+    if (histScav.length) line(histScav, '#b07be0');         // CARROÑEROS (violeta) — comecarne que vive de la carroña
     line(hist, '#5a7cd1', max, 2);                          // POBLACIÓN TOTAL en azul ('pob') al FINAL y más gruesa → envolvente visible (si no, en mundo herbívoro la tapa la línea herb)
     const last = (a) => a.length ? a[a.length - 1] | 0 : 0;
     const vegNow = this.histV.length ? (this.histV[this.histV.length - 1] * 100) | 0 : 0;
@@ -97,8 +100,8 @@ export class Charts {
     // Leyenda en 2 FILAS de 2 (no cabe en una a este ancho). Monospace + padStart ⇒ posiciones fijas.
     const rows = [
       [[`pob ${String(last(hist)).padStart(4)}`, '#5a7cd1'], [`carn ${String(last(histC)).padStart(4)}`, '#ff6b5a']],
-      [[`omni ${String(last(histO)).padStart(4)}`, '#f0b429'], [`herb ${String(last(histH)).padStart(4)}`, '#5ab3d1']],
-      [[`veg ${String(vegNow).padStart(3)}%`, '#6fcf6a']],
+      [[`carroñ ${String(last(histScav)).padStart(3)}`, '#b07be0'], [`omni ${String(last(histO)).padStart(4)}`, '#f0b429']],
+      [[`herb ${String(last(histH)).padStart(4)}`, '#5ab3d1'], [`veg ${String(vegNow).padStart(3)}%`, '#6fcf6a']],
     ];
     for (let r = 0; r < rows.length; r++) {
       let tx = 4;

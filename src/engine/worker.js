@@ -48,8 +48,9 @@ const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id esta
 // muestreara por frame, saldrían 4-5 puntos y la curva se vería rota). El worker ve cada tick, así que aquí
 // el muestreo es fiel. HIST_WINDOW debe coincidir con charts.windowTicks. ----
 const HIST_K = 40, HIST_WINDOW = 4800;
-const histPop = [], histCarn = [], histVeg = [], histTick = [];
-const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / carnívoros (>0.6)
+const histPop = [], histCarn = [], histScav = [], histVeg = [], histTick = [];
+const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / comecarne (>0.6),
+                                      // y los comecarne se parten en CAZADORES (histCarn) y CARROÑEROS (histScav) por effScav>effHunt.
 const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana: muertes combate/hambre/vejez/cazado + nacimientos sexual/asexual
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 function vegFrac() {
@@ -58,9 +59,11 @@ function vegFrac() {
   return sc > 0 ? sr / sc : 0;
 }
 function sampleHistory() {
-  const s = sim, act = s.active, n = s.activeCount; let carn = 0, herb = 0, omni = 0;
-  for (let k = 0; k < n; k++) { const d = s.diet[act[k]]; if (d > 0.6) carn++; else if (d < 0.4) herb++; else omni++; }
-  histPop.push(s.popCount); histCarn.push(carn); histHerb.push(herb); histOmni.push(omni); histVeg.push(vegFrac()); histTick.push(s.tick);
+  const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
+  for (let k = 0; k < n; k++) { const i = act[k], d = s.diet[i];
+    if (d > 0.6) { if (s.effScav[i] > s.effHunt[i]) scav++; else carn++; }  // comecarne: CARROÑERO vs CAZADOR (eje scav)
+    else if (d < 0.4) herb++; else omni++; }
+  histPop.push(s.popCount); histCarn.push(carn); histScav.push(scav); histHerb.push(herb); histOmni.push(omni); histVeg.push(vegFrac()); histTick.push(s.tick);
   const cd = s.deathCause, bc = s.birthCount, L = histLastCD;
   histDC.push(Math.max(0, cd.combat - L.combat)); histDS.push(Math.max(0, cd.starv - L.starv));
   histDA.push(Math.max(0, cd.age - L.age)); histDE.push(Math.max(0, cd.eaten - L.eaten));
@@ -68,12 +71,12 @@ function sampleHistory() {
   histLastCD = { starv: cd.starv, combat: cd.combat, age: cd.age, eaten: cd.eaten, sexual: bc.sexual, asexual: bc.asexual };
   const t0 = s.tick - HIST_WINDOW;
   while (histTick.length > 1 && histTick[0] < t0) {
-    histPop.shift(); histCarn.shift(); histHerb.shift(); histOmni.shift(); histVeg.shift(); histTick.shift();
+    histPop.shift(); histCarn.shift(); histScav.shift(); histHerb.shift(); histOmni.shift(); histVeg.shift(); histTick.shift();
     histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift(); histBS.shift(); histBA.shift();
   }
 }
 function clearHistory() {
-  for (const a of [histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
+  for (const a of [histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
   lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 }
 function classifySpecies() {
@@ -149,6 +152,7 @@ function snapshot() {
   const hT = config.combat.handlingTime || 1;
   const hist = new Float32Array(HIST_BINS);
   const species = new Float32Array(n);                            // especie (id) por agente
+  const role = new Uint8Array(n);                                 // OFICIO dominante (color 'role'): 0 herbívoro · 1 carroñero · 2 cazador
   let carn = 0;
   for (let k = 0; k < n; k++) {
     const i = act[k];
@@ -159,6 +163,10 @@ function snapshot() {
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
+    // OFICIO dominante = argmax(effHerb, effHunt, effScav) → 2 cazador · 1 carroñero · 0 herbívoro (mismo criterio
+    // que la gráfica de población; los omnívoros caen en el oficio en el que son mejores). Para el color 'role'.
+    const eh = s.effHerb[i], eu = s.effHunt[i], es = s.effScav[i];
+    role[k] = (eu > eh && eu >= es) ? 2 : (es > eh ? 1 : 0);
     heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
     const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad ABSOLUTA (÷ vMax global), no fracción de su propia capacidad → la animación de nodos sigue al desplazamiento REAL
     spd[k] = v > 1 ? 1 : v;
@@ -204,9 +212,9 @@ function snapshot() {
   postMessage({
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
-    species, speciesCount,
+    species, speciesCount, role,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
-    histPop, histCarn, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
+    histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
     resource: s.world.resource.slice(),
     carrion: s.world.carrion.slice(),
   });

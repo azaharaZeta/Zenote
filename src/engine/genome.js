@@ -81,10 +81,11 @@ export const GENE_LABELS = {
 export const GENE_GROUPS = [
   { label: 'Cuerpo y energía',     genes: ['size', 'metab', 'repro_thr', 'invest'] },
   { label: 'Ciclo de vida',        genes: ['mature_age', 'senescence'] },
-  { label: 'Dieta',                genes: ['diet'] },
+  { label: 'Dieta',                genes: ['diet', 'scav'] },
   { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
-  { label: 'Color y ornamento',    genes: ['hue', 'temp_pref', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
+  { label: 'Térmico',              genes: ['temp_pref'] },
+  { label: 'Color y ornamento',    genes: ['hue', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
 ];
 // B2: grupo de los genes de nodo (cuerpo generativo). Se añade tras construir el bloque (NODE0/NODE_COUNT).
 GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0 + NODE_COUNT * NODE_STRIDE) });

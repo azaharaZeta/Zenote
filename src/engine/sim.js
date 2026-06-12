@@ -64,6 +64,8 @@ export class Sim {
     this.gazeX = new Float32Array(cap);    // dirección de la mirada (a la presa/amenaza, si no al frente)
     this.gazeY = new Float32Array(cap);    // — solo para el render (pupila reactiva), no afecta a la sim
     this.eMax = new Float32Array(cap);
+    this.bodyMatter = new Float32Array(cap); // CERRADO EN MATERIA: materia estructural BLOQUEADA en el cuerpo (= carcassValue·eMax);
+                                             //   se retira del pool N al nacer y se devuelve (a carroña) al morir. Inerte en modelo abierto.
     this.baseCost = new Float32Array(cap);
     this.lure = new Float32Array(cap);     // prominencia del señuelo (anglerfish): coste + alcance de caza
     this.morphReach = new Float32Array(cap); // Capa 2: alcance de captura por apéndices frontales (px); ver organism.js
@@ -102,6 +104,16 @@ export class Sim {
 
     this._seedInitial();
     this._rebuildActive();
+
+    // CERRADO EN MATERIA: el nutriente libre inicial = presupuesto de materia − la ya BLOQUEADA (vegetación llena +
+    // E y cuerpo de los fundadores). A partir de aquí N + vegetación + (E+cuerpo)·vivos + carroña se CONSERVA.
+    if (cfg.world.closedMatter) {
+      const epu = cfg.resource.energyPerUnit;
+      let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
+      let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
+      this.world.N = cfg.world.matterBudget - res * epu - bio;
+      if (this.world.N < 0) this.world.N = 0; // presupuesto demasiado bajo → arranca sin nutriente libre (matter-starved)
+    }
   }
 
   _alloc() {
@@ -117,10 +129,19 @@ export class Sim {
     // CARROÑA: toda muerte deja cuerpo en su celda. Muerte NATURAL (vejez/hambre/combate) = cuerpo entero =
     // energía que quede + BIOMASA (carcassValue·eMax = tejido). CAZADO = solo SOBRAS (scrapReturn·biomasa): el
     // depredador ya se llevó casi todo → "restos". (Fase 2: el carroñeo será un eje de dieta propio → gusano.)
-    const cfg = this.cfg, biomass = (cfg.energy.carcassValue || 0) * this.eMax[i];
-    const carcass = cause === 'eaten'
-      ? (cfg.energy.scrapReturn != null ? cfg.energy.scrapReturn : 0.15) * biomass
-      : (this.E[i] > 0 ? this.E[i] : 0) + biomass;
+    const cfg = this.cfg;
+    let carcass;
+    if (cfg.world.closedMatter) {
+      // CERRADO: el cuerpo deposita su materia REAL (E que quede + cuerpo estructural `bodyMatter`), no una biomasa
+      // conjurada. La presa CAZADA ('eaten') ya la repartió el bloque de depredación (predador + restos + pool) →
+      // aquí NO se deposita nada (evita doble conteo). Conserva: nada de materia se crea ni se pierde al morir.
+      carcass = cause === 'eaten' ? 0 : (this.E[i] > 0 ? this.E[i] : 0) + this.bodyMatter[i];
+    } else {
+      const biomass = (cfg.energy.carcassValue || 0) * this.eMax[i];
+      carcass = cause === 'eaten'
+        ? (cfg.energy.scrapReturn != null ? cfg.energy.scrapReturn : 0.15) * biomass
+        : (this.E[i] > 0 ? this.E[i] : 0) + biomass;
+    }
     if (carcass > 0) this._depositCarrion(this.x[i], this.y[i], carcass);
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
@@ -163,6 +184,7 @@ export class Sim {
       // Cerebro competente de partida; carnívoros fundadores con sesgo de ataque alto (cazan en contacto desde ya).
       seedBrain(this.genes, i, rng, (!dietLow && n < nCarn) ? 0.27 : 0);
       computePhenotype(this, i);
+      this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
       this.x[i] = rng.next() * W.width;
       this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
@@ -321,6 +343,7 @@ export class Sim {
         }
       }
       computePhenotype(this, i);
+      this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
       this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;
       this.vx[i] = 0; this.vy[i] = 0;
       this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
@@ -366,6 +389,7 @@ export class Sim {
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
+    const closed = world.closedMatter; // CERRADO EN MATERIA: re-enruta toda pérdida al pool de nutriente (W.N) en vez de evaporarla
 
     W.regen();
     W.decayCarrion();   // los cadáveres se descomponen (y devuelven parte al pasto = ciclo de nutrientes)
@@ -506,8 +530,23 @@ export class Sim {
             // ADEMÁS de su energía almacenada → comer un animal alimenta aunque viniera hambriento, sin depender de
             // lo "gorda" que esté. Aditivo (no suelo): conserva el gradiente (presa gorda vale más → retiene el freno
             // L-V parcial). El tope eMax del depredador (abajo) evita el descontrol. Ver config.energy.carcassValue.
-            const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effHunt[i];
-            E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
+            if (closed) {
+              // CERRADO: la presa aporta su materia REAL (E almacenada + cuerpo `bodyMatter`), no biomasa conjurada.
+              // El depredador extrae preyGain·effHunt; lo NO extraído queda como RESTOS (carroña local) y lo que rebosa
+              // su tope va al pool → la materia de la presa se conserva exactamente (predador + restos + nutriente).
+              const Mj = (E[j] > 0 ? E[j] : 0) + this.bodyMatter[j];
+              const g = en.preyGain * Mj * this.effHunt[i];
+              const remainder = Mj - g;                                   // ineficiencia trófica + lo no comido → restos
+              let stored = g, room = this.eMax[i] - E[i]; if (room < 0) room = 0;
+              if (stored > room) { W.N += (stored - room); stored = room; } // rebosa el tope → nutriente
+              E[i] += stored;
+              if (remainder > 0) this._depositCarrion(x[j], y[j], remainder);
+            } else {
+              // ABIERTO (modelo previo): ganancia = preyGain·(E_presa + carcassValue·eMax_presa). El término eMax es
+              // biomasa CONJURADA (no sale de ningún almacén) → ver auditoría de energía. El tope eMax evita descontrol.
+              const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effHunt[i];
+              E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
+            }
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
           } else {
@@ -517,10 +556,21 @@ export class Sim {
             // arriesgada sigue costando energía. `failDamage` ≥ 1 ≈ comportamiento antiguo (muerte casi segura).
             // (Medido en su día: sin coste alguno al fallar → sobre-disparo → colapso presa-depredador. No anular.)
             const dmg = failDamage * this.eMax[i];
-            const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
-            E[i] -= dmg;
-            const g = en.preyGain * bite * this.effHunt[j]; // j aprovecha SOLO el bocado real (no-cazador effHunt≈0 → nada)
-            E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
+            if (closed) {
+              // CERRADO: i pierde como mucho lo que tiene (sin deuda negativa); j aprovecha su bocado; el resto de la
+              // herida (lo perdido por i que j no almacena) → nutriente. Materia conservada (i → j + pool).
+              let loss = dmg; const av = E[i] > 0 ? E[i] : 0; if (loss > av) loss = av;
+              E[i] -= loss;
+              const g = en.preyGain * loss * this.effHunt[j];
+              let stored = g, room = this.eMax[j] - E[j]; if (room < 0) room = 0; if (stored > room) stored = room;
+              E[j] += stored;
+              W.N += (loss - stored); // herida disipada + lo que rebosa el tope de j → nutriente
+            } else {
+              const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
+              E[i] -= dmg;
+              const g = en.preyGain * bite * this.effHunt[j]; // j aprovecha SOLO el bocado real (no-cazador effHunt≈0 → nada)
+              E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
+            }
             this.attackCD[j] = handlingTime;
             if (E[i] <= 0) {
               this._kill(i, 'combat'); // muerte de atacante: NO cuenta como presa abatida (this.kills es solo depredación)
@@ -617,7 +667,16 @@ export class Sim {
       // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
       // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
       // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      E[i] -= this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i]; // aletear (Capa 3) encarece el nado; haulMul (A): transporte ∝ masa
+      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i]; // aletear (Capa 3) encarece el nado; haulMul (A): transporte ∝ masa
+      if (closed) {
+        // CERRADO: no se puede gastar más MATERIA de la que se tiene (sin sobregiro fantasma que destruiría materia al
+        // recuperarse comiendo). El coste efectivo se topa a la energía disponible → E baja a 0, nunca a negativo; esa
+        // materia respirada vuelve al pool de nutriente. (Si el coste supera a E, muere de hambre igual en el chequeo de abajo.)
+        let ret = metabCost; const av = E[i] > 0 ? E[i] : 0; if (ret > av) ret = av;
+        W.N += ret; E[i] -= ret;
+      } else {
+        E[i] -= metabCost;
+      }
 
       // Alimentación herbívora: absorber del campo de recurso. forageReach>0 → un cuerpo GRANDE pasta de un
       // ÁREA (forageR = forageReach·size celdas alrededor) → ventaja de forrajeo que la escasez local NO borra
@@ -637,6 +696,7 @@ export class Sim {
             if (units > maxByNeed) units = maxByNeed;
             E[i] += units * epu * effH;
             res[cell] -= units; // baja en unidades de recurso (nunca por debajo del refugio)
+            if (closed) W.N += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente (conserva)
           }
         } else {
           // — barrido de área (2·forageR+1)² celdas: el grande cubre más terreno y deplea más ancho —
@@ -656,6 +716,7 @@ export class Sim {
               const gain = units * epu * effH;
               E[i] += gain; eFalta -= gain;
               res[cell] -= units;
+              if (closed) W.N += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente (conserva)
             }
           }
         }
@@ -705,29 +766,41 @@ export class Sim {
         // su energía y su cooldown). Así encontrar pareja se vuelve una presión selectiva real.
         const child = (mate >= 0 || allowAsexual) ? this._alloc() : -1;
         if (child >= 0) {
-          if (mate >= 0) { crossover(this.genes, i, mate, child, this.cfg.mut, rng); this.birthCount.sexual++; }
-          else { copyMutated(this.genes, i, child, this.cfg.mut, rng); this.birthCount.asexual++; } // clon mutado (solo si allowAsexual)
+          const sexualBirth = mate >= 0;
+          if (sexualBirth) crossover(this.genes, i, mate, child, this.cfg.mut, rng);
+          else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
-          E[i] -= this.investE[i];
-          const childE = Math.min(this.investE[i], this.eMax[child]);
-          let ox = x[i] + (rng.next() - 0.5) * 6, oy = y[i] + (rng.next() - 0.5) * 6;
-          if (wrap) {
-            if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww;
-            if (oy < 0) oy += wh; else if (oy >= wh) oy -= wh;
+          const bm = (cfg.energy.carcassValue || 0) * this.eMax[child]; // materia estructural del cuerpo de la cría
+          if (closed && W.N < bm) {
+            // CERRADO: sin nutriente libre para construir el cuerpo → NO nace (TECHO de población ENDÓGENO por materia).
+            // Rollback del _alloc; el progenitor conserva E y cooldown (reintenta cuando haya nutriente). No cuenta nacimiento.
+            this.alive[child] = 0; this.free[this.freeTop++] = child; this.popCount--;
+          } else {
+            this.bodyMatter[child] = bm;
+            if (closed) W.N -= bm;                                       // el cuerpo se CONSTRUYE con nutriente del pool (sale de N)
+            if (sexualBirth) this.birthCount.sexual++; else this.birthCount.asexual++;
+            E[i] -= this.investE[i];
+            const childE = Math.min(this.investE[i], this.eMax[child]);
+            if (closed) { const excess = this.investE[i] - childE; if (excess > 0) W.N += excess; } // sobra de inversión (tope de la cría) → pool
+            let ox = x[i] + (rng.next() - 0.5) * 6, oy = y[i] + (rng.next() - 0.5) * 6;
+            if (wrap) {
+              if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww;
+              if (oy < 0) oy += wh; else if (oy >= wh) oy -= wh;
+            }
+            this.x[child] = ox; this.y[child] = oy;
+            this.vx[child] = 0; this.vy[child] = 0;
+            this.heading[child] = this.heading[i]; // hereda el rumbo del progenitor (sin él, miraría al este al nacer)
+            this.E[child] = childE;
+            this.age[child] = 0;
+            this.cooldown[child] = baseCD;
+            this.attackCD[child] = 0;
+            const hb = child * BRAIN.H; for (let q = 0; q < BRAIN.H; q++) this.brainHid[hb + q] = 0; // memoria a cero
+            this.atkOut[child] = 0; this.atkDrive[child] = 0; // impulso de ataque a cero (lo fija su cerebro al vivir)
+            this.lineage[child] = this.lineage[i];          // hereda linaje sin mutar
+            this.generation[child] = this.generation[i] + 1; // un escalón más en el árbol
+            this.cooldown[i] = baseCD;
+            this.births++;
           }
-          this.x[child] = ox; this.y[child] = oy;
-          this.vx[child] = 0; this.vy[child] = 0;
-          this.heading[child] = this.heading[i]; // hereda el rumbo del progenitor (sin él, miraría al este al nacer)
-          this.E[child] = childE;
-          this.age[child] = 0;
-          this.cooldown[child] = baseCD;
-          this.attackCD[child] = 0;
-          const hb = child * BRAIN.H; for (let q = 0; q < BRAIN.H; q++) this.brainHid[hb + q] = 0; // memoria a cero
-          this.atkOut[child] = 0; this.atkDrive[child] = 0; // impulso de ataque a cero (lo fija su cerebro al vivir)
-          this.lineage[child] = this.lineage[i];          // hereda linaje sin mutar
-          this.generation[child] = this.generation[i] + 1; // un escalón más en el árbol
-          this.cooldown[i] = baseCD;
-          this.births++;
         }
         // Si no hay slot libre (tope de población): no nace, el progenitor conserva su E.
       }

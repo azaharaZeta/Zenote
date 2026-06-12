@@ -20,6 +20,12 @@ export class World {
     // (cantidad según la causa, ver sim._kill), DECAE cada tick (decayCarrion → devuelve una fracción al pasto =
     // ciclo de nutrientes cadáver→descomposición→vegetación) y la CONSUMEN los carroñeros (effCarn, ver sim.js).
     this.carrion = new Float32Array(this.cols * this.rows);
+    // CERRADO EN MATERIA (prototipo, world.closedMatter): pool GLOBAL de nutriente libre disuelto (materia
+    // mineralizada lista para que las plantas la capten en regen). Lo alimenta el metabolismo/nado/pérdidas
+    // (sim.js) y la mineralización de la carroña (decayCarrion); lo vacía el rebrote del pasto (regen). En el
+    // modelo ABIERTO queda a 0 e inerte. `sim.reset()` lo inicializa al sobrante del presupuesto de materia.
+    this.N = 0;
+    this._grow = new Float32Array(this.cols * this.rows); // scratch del rebrote cerrado (incrementos por celda; sin GC)
     // Capacidad por celda: gradiente espacial FIJO que crea nichos (más rico = más R_max local).
     this.capacity = new Float32Array(this.cols * this.rows);
     this._buildGradient();
@@ -132,6 +138,7 @@ export class World {
   //           de la interacción pastoreo↔rebrote. Nadie pinta los parches: son un patrón emergente.
   // O(celdas·4); lee del snapshot del tick anterior (_resPrev) para ser independiente del orden de barrido.
   regen() {
+    if (this.cfg.world.closedMatter) { this._regenClosed(); return; } // pecera: el pasto crece consumiendo N (abajo)
     const dr = this.cfg.resource.R_regen;
     const cap = this.capacity, res = this.resource;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
@@ -162,16 +169,56 @@ export class World {
     }
   }
 
+  // Rebrote CERRADO EN MATERIA (closedMatter): las plantas solo crecen CONSUMIENDO nutriente libre (`this.N`) → el sol
+  // ya no crea biomasa, solo permite convertir N→pasto. Dos pasadas O(celdas), sin GC: (A) calcula el incremento DESEADO
+  // por celda con la MISMA dinámica que regen() (lineal o logística+difusión) y suma la materia que pediría; (B) si N no
+  // llega para todo, ESCALA el crecimiento por igual (factor f, sin sesgo de orden de barrido) y resta de N lo captado.
+  _regenClosed() {
+    const dr = this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit;
+    const cap = this.capacity, res = this.resource, grow = this._grow;
+    let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
+    const cols = this.cols, rows = this.rows;
+    let need = 0;
+    if (p <= 0) {                                            // incremento lineal por celda
+      for (let i = 0; i < res.length; i++) { let inc = cap[i] - res[i]; if (inc > dr) inc = dr; if (inc < 0) inc = 0; grow[i] = inc; need += inc; }
+    } else {                                                 // logístico + difusión de semilla (lee snapshot → orden-independiente)
+      const prev = this._resPrev; prev.set(res);
+      for (let y = 0; y < rows; y++) {
+        const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
+        for (let x = 0; x < cols; x++) {
+          const i = row + x, c = cap[i], r = prev[i], head = c - r;
+          if (head <= 0) { grow[i] = 0; continue; }
+          const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
+          const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
+          let logGrow = dr * (0.04 + r / c + meanNb / c); if (logGrow > head) logGrow = head;
+          const linGrow = dr < head ? dr : head;
+          let inc = (1 - p) * linGrow + p * logGrow; if (inc < 0) inc = 0;
+          grow[i] = inc; need += inc;
+        }
+      }
+    }
+    if (need <= 0) return;
+    const want = need * epu;                                 // materia que pediría el rebrote pleno
+    let f = 1; if (want > this.N) f = this.N > 0 ? this.N / want : 0; // escala si el nutriente no alcanza
+    if (f <= 0) return;
+    for (let i = 0; i < res.length; i++) { const g = grow[i]; if (g > 0) res[i] += g * f; }
+    this.N -= want * f;                                      // el nutriente captado SALE del pool (conservación de materia)
+  }
+
   // Decaimiento de la carroña (por tick). Lo que se descompone vuelve EN PARTE al pasto (`energy.corpseReturn`) =
   // ciclo de nutrientes (cadáver→descomposición→vegetación); el resto se pierde. Independiente por celda (O(celdas)).
+  // CERRADO EN MATERIA (closedMatter): se MINERALIZA TODO lo decaído al pool de nutriente libre `N` (sin pérdida ni
+  // paso directo al pasto: las plantas lo recaptan vía regen) → cierra el ciclo carroña→detrito→nutriente→pasto.
   decayCarrion() {
     const cd = this.cfg.resource.carrionDecay || 0; if (cd <= 0) return;
     const carrion = this.carrion, res = this.resource, cap = this.capacity;
+    const closed = this.cfg.world.closedMatter;
     const ret = this.cfg.energy.corpseReturn || 0, epu = this.cfg.resource.energyPerUnit;
     for (let i = 0; i < carrion.length; i++) {
       const cv = carrion[i]; if (cv <= 0) continue;
       const d = cv * cd; carrion[i] = cv - d;                        // energía que se descompone este tick
-      if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // fracción→pasto (en unidades de recurso)
+      if (closed) { this.N += d; }                                   // mineralización íntegra → nutriente libre (conserva)
+      else if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // fracción→pasto (en unidades de recurso)
     }
   }
 

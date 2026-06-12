@@ -116,6 +116,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .legend .legend-bar { width: 100%; height: 8px; border-radius: 4px; margin-bottom: 2px; }
 .legend span { flex: 1; }
 .legend span:last-child { text-align: right; }
+.legend span:nth-child(2):not(:last-child) { text-align: center; }   /* etiqueta del MEDIO en leyendas de 3 (p. ej. herb/carroñ/cazad) */
 .legend em { font-style: normal; line-height: 1.4; }
 
 .toggles { display: flex; gap: 14px; margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
@@ -224,8 +225,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 #panel.advanced select, #panel.advanced input[type="text"] { min-height: 26px; padding: 3px 7px; font-size: 11px; }
 #panel.advanced #reseed { min-height: 28px; padding: 5px 9px; }
 #panel.advanced .speed-row #play, #panel.advanced .maxbtn { min-height: 26px; padding: 3px 8px; }
-#panel.advanced .legend { display: none; }
 #panel.advanced .hint { display: none; }
+/* La leyenda del modo de color SÍ se muestra en laboratorio (es la clave de "Colorear por": qué color = qué). */
 #panel.advanced .speed-real { display: none; }
 
 .lab-note { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 4px 0 8px; }
