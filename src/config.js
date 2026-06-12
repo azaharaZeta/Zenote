@@ -281,20 +281,25 @@ export const config = {
     maxFPS: 60,
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
-    // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, LOD más fino,
-    //    más nieve, sustrato más fino). Opt-in (no se autodetecta); pesado, para equipos capaces. ──
+    // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, SIN LOD = TODO a
+    //    grafo completo, más nieve, sustrato más fino). Opt-in (no se autodetecta); pesado, para equipos capaces. ──
     ultraDprCap: 3,           // Tope de DPR en máxima (supersampling: render por encima del DPR del dispositivo → nítido)
-    lodUltraMult: 0.6,        // (EN DESUSO) antes bajaba los umbrales LOD en máxima; ahora MÁXIMA salta el LOD por completo (todo a grafo completo, ver canvas.js ultraFull) → este valor ya no se usa.
-    // ── LOD (nivel de detalle por RADIO EN PANTALLA, px). 3 niveles: punto < lodBody ≤ cuerpo barato < lodFull ≤ grafo
-    //    completo. lodEye/lodLure/lodWave gatean detalles caros DENTRO del grafo. En calidad BAJA se multiplican por
-    //    lodLowMult (umbrales más altos → más puntos/cuerpos baratos → muchos menos gradientes). Solo render. ──
+    // ── LOD (nivel de DETALLE). Umbrales en unidades de TAMAÑO APARENTE (radio_mundo × zoom × LOD_REF, SIN resolución;
+    //    ver canvas.js). Dos métricas: (a) por CRIATURA (radio cabeza): tier punto<lodBody≤elipse<lodFull≤grafo, + halo
+    //    (lodHalo), ojos (lodEye), onda+contorno (lodWave), señuelo (lodLure); (b) por NODO: relleno plano si <lodFlat,
+    //    sin contorno si <lodOutline, textura si >lodTexture. TODOS se multiplican por lodLowMult en BAJA (×1 en alta;
+    //    MÁXIMA los ignora → dibuja todo). Solo render. ──
     lodBody: 5,               // rPx mínimo para dibujar CUERPO (debajo = punto plano)
     lodFull: 9,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
     lodEye: 11,               // rPx mínimo para dibujar OJOS (dentro del grafo)
     lodLure: 22,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
     lodWave: 18,              // rPx mínimo para la ONDA viajera + 2ª pasada de contorno (si no, cuerpo en reposo, 1 pasada)
     lodHalo: 6,               // rPx mínimo para el HALO por agente (los puntos diminutos no lo necesitan; el bloom global ya brilla)
-    lodLowMult: 2.6,          // Multiplicador de TODOS los umbrales LOD en calidad baja (más agresivo)
+    lodLowMult: 2.6,          // Multiplicador de TODOS los umbrales LOD (criatura Y nodo) en calidad baja (más agresivo). Alta = ×1.
+    // Umbrales por NODO (tamaño del NODO, no de la criatura) → detalle fino dentro del grafo:
+    lodFlat: 5,               // nodo por debajo de este tamaño → cuerpo con relleno PLANO (sin gradiente de volumen; imperceptible)
+    lodOutline: 4,            // nodo por debajo de este tamaño → se OMITE su contorno (outline invisible)
+    lodTexture: 10,           // nodo por ENCIMA de este tamaño → bandas de TEXTURA (piel)
     grassDensity: 6800,       // Nº de motas de plancton/micro-flora repartidas por el mundo (chispas abisales)
     grassRefreshFrames: 15,   // Cada cuántos frames se redibuja la capa de sustrato
   },

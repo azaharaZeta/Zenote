@@ -445,13 +445,15 @@ export class Renderer {
     // APARENTE (referencia fija × zoom), independiente del buffer → mover la Resolución NO cambia el detalle, solo la
     // nitidez. El DIBUJO real lo escala el ctx (transform del buffer, fijado en draw()); aquí solo se decide QUÉ dibujar.
     const lodSc = LOD_REF * this.zoom;
-    this._drawScale = lodSc;
+    this._drawScale = lodSc;                       // escala del LOD (SIN resolución): TODAS las decisiones de detalle
+    this._bufScale = this._scale();                // escala REAL del buffer (CON resolución) → SOLO suelos sub-píxel, no LOD
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
     // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
     // fullThr ≤ grafo completo. En calidad BAJA los umbrales se multiplican (más puntos/cuerpos baratos → barato).
     const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra'; // MÁXIMA = SIN LOD: TODO a grafo completo "a pelo" (opt-in, "todo el esplendor") → se salta el LOD entero.
     const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos/baratos); alta = 1. (Máxima ignora el LOD, ver ultraFull.)
+    this._lodMul = lodMul;                           // los gates internos de _drawBodyGraph (onda/señuelo/textura/plano/contorno) aplican el MISMO multiplicador
     const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
@@ -552,10 +554,10 @@ export class Renderer {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
     // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
     // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
-    const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1);
+    const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1), lm = this._lodMul || 1; // lm = multiplicador de calidad (los gates lo aplican igual que el tier)
     const full = this._forceFull === true || Rc.quality === 'ultra'; // RETRATO (drawPortrait) o calidad MÁXIMA → sin recortes LOD internos (onda/señuelo/textura/gradiente/contorno): todo a pelo.
-    const doWave = full || rPxG > (Rc.lodWave || 0);    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
-    const doLure = full || rPxG > (Rc.lodLure || 0);
+    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // si no: cuerpo en reposo + 1 sola pasada (sin contorno)
+    const doLure = full || rPxG > (Rc.lodLure || 0) * lm;
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
     const py = this._ngy || (this._ngy = new Float32Array(NS));
     const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
@@ -612,15 +614,15 @@ export class Renderer {
       let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
       let wT = ryy * (1.30 + sShape * 1.15);                   // medio-ancho punta (abrir engorda)
       if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
-      const nodePx = rxx * ds;                                 // tamaño del nodo en px del BUFFER → gatea detalles invisibles a tamaño pequeño
+      const nodePx = rxx * ds;                                 // tamaño del nodo (px aparentes = lodScale) → gatea detalles invisibles a tamaño pequeño
       if (mode === 0) {                                        // PASADA contorno (outline oscuro): misma silueta agrandada
-        if (!full && nodePx < 4) return;                       // invisible en nodos diminutos → se omite (medido: ~9 ms con muchos grafos)
+        if (!full && nodePx < (Rc.lodOutline || 4) * lm) return; // invisible en nodos diminutos → se omite (medido: ~9 ms con muchos grafos)
         ctx.fillStyle = coreOut;
         silPath(cx, cy, rot, rxx + outW, wB + outW, wT + outW); ctx.fill();
       } else {                                                 // PASADA cuerpo: volumen (gradiente) + textura
         // El gradiente radial por nodo es el coste #1 del dibujado (~11 ms con muchos grafos) e IMPERCEPTIBLE en nodos
         // pequeños → relleno PLANO por debajo de ~5 px (mismo aspecto), gradiente de volumen solo donde se nota.
-        if (!full && nodePx < 5) { ctx.fillStyle = coreMid; }
+        if (!full && nodePx < (Rc.lodFlat || 5) * lm) { ctx.fillStyle = coreMid; }
         else {
           const rad = Math.max(rxx, wB, wT);
           const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
@@ -628,7 +630,7 @@ export class Renderer {
           ctx.fillStyle = g;
         }
         silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
-        if (full || rxx * ds > 10) {                           // TEXTURA: bandas transversales sutiles (clip a la silueta). `full` (retrato) → siempre
+        if (full || rxx * ds > (Rc.lodTexture || 10) * lm) {   // TEXTURA: bandas transversales sutiles (clip a la silueta). `full` (retrato) → siempre
           ctx.save(); silPath(cx, cy, rot, rxx, wB, wT); ctx.clip();
           const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
           ctx.strokeStyle = inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
@@ -702,7 +704,7 @@ export class Renderer {
     const orn = tint ? tint[to] : 0;   // #13: tint = solo orn (stride 1)
     if (orn > 0.12 && deco && doLure) {   // LOD: señuelo (béziers+gradientes, caro) solo a tamaño suficiente
       const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
-      const ds = this._drawScale || 1, fmin = (px) => px / ds;
+      const ds = this._bufScale || this._drawScale || 1, fmin = (px) => px / ds; // SUB-PÍXEL: escala REAL del buffer (no la del LOD) → rasgos finos ≥ ~px de buffer a cualquier resolución
       const hr = pr[0], elong = pl[0] / pr[0];
       const np = 1 + ((oNum * oNum * 6) | 0);
       const plen = r * (0.5 + oLen * 5.5);
@@ -794,7 +796,7 @@ export class Renderer {
     const cw = pctx.canvas.width, ch = pctx.canvas.height;
     pctx.clearRect(0, 0, cw, ch);
     if (!genes) return;
-    this._drawScale = 1;   // el retrato dibuja en píxeles directos (sin transform) → el ojo es grande → detalle completo
+    this._drawScale = 1; this._bufScale = 1; this._lodMul = 1; // el retrato dibuja en píxeles directos (sin transform) → ojo grande → detalle completo (y _forceFull salta gates igualmente)
     // Fondo abisal oscuro (degradado suave) → resaltan los contornos y el glow de la criatura.
     const bg = pctx.createLinearGradient(0, 0, 0, ch);
     bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c');
