@@ -30,6 +30,8 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
+| Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
+| Mejoras de UI / bugs menores | ⬜ pendiente | análisis abajo (leyenda Rol ponderada · salto de cámara al soltar pinza) |
 | Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |
 | Bandeja de entrada (sin procesar) | 📥 | abajo |
 
@@ -135,6 +137,53 @@ regulares) y con red anti-extinción — otro mecanismo, especulativo.
 
 ---
 
+## Pecera (ecosistema cerrado): nutriente ESPACIAL + viz del flujo de materia
+*(pendiente, 2026-06-12 · extiende el ecosistema cerrado, SPEC §3ter)*
+
+**Hoy:** en modo cerrado (`world.closedMatter`) el nutriente libre `N` es un ESCALAR global (un único número). Conserva
+la materia y da techo endógeno, pero el reciclaje es instantáneamente global: un cadáver en una esquina fertiliza todo
+el mundo por igual (vía `regen` que bebe del `N` global).
+
+**Idea (la más jugosa del cerrado):** hacer `N` un CAMPO espacial (rejilla como `resource`/`carrion`) con DIFUSIÓN lenta
+→ la materia mineralizada queda LOCAL un tiempo → **manchas fértiles donde muere algo** (un cadáver abona su zona; el
+pasto rebrota antes cerca de la descomposición). Daría estructura espacial emergente (puntos calientes de nutriente,
+frentes de descomposición) y un ciclo de nutrientes geográfico de verdad. Coste: +1 campo + una pasada de difusión
+O(celdas)/tick (barato); reescribir `_regenClosed` para beber del `N` LOCAL de cada celda, y los retornos/mineralización
+para depositar local. La conservación se mantiene (Σ del campo + lo demás = const).
+
+**Acompañar con VIZ del flujo de materia** (el payoff contemplativo): hoy `N` solo se ve como número en la cabecera.
+Pintar el campo de nutriente (neblina tenue de fertilidad sobre el sustrato) → se *ve* la materia fluir del cadáver al
+pasto. Solo render (regla 3 de VISUAL).
+
+**Relacionado (mismo modo):**
+- **Carnívoros VIVOS en la pecera:** hoy el mundo cerrado magro solo sostiene CARROÑEROS; los cazadores de presa viva no
+  emergen (exigen una productividad que satura el tope global). Un nutriente ESPACIAL con zonas ricas podría crear bolsas
+  de alta densidad de presa donde la caza activa SÍ rinda → quizá emerjan cazadores localmente. A explorar al espacializar.
+- **"Suelo metabólico" (decisión de modelo):** en cerrado el metabolismo topa `E` a 0 (no se gasta materia que no se
+  tiene) → los de baja energía pagan algo menos que en abierto (descuento implícito). Alternativa igual de conservativa
+  pero más dura: morir por FALLO metabólico si el coste supera a `E`. Revisar si distorsiona la ecología (medir).
+
+---
+
+## Mejoras de UI / bugs menores
+*(pendiente, 2026-06-12 · de la bandeja)*
+
+**(a) Leyenda "Rol" ponderada por totales.** Hoy la franja del modo *Colorear por → Rol* muestra 3 bloques IGUALES
+(33/33/33 %) como clave de color. Idea: anchos PROPORCIONALES a los conteos vivos de herbívoros/carroñeros/cazadores →
+de un vistazo se ve la composición trófica. El worker ya manda `role` por agente (mismo conteo que la gráfica de
+población), así que `controls.js` (`updateLegend`) puede leer `simProxy.role` y dimensionar los bloques; habría que
+refrescarla periódicamente (hoy se construye una vez al cambiar de modo). Solo render/UI. **Matiz:** una leyenda es una
+CLAVE (qué significa cada color), no un dato; ponderarla la vuelve mini-barra apilada de composición. Alternativa más
+limpia: mantener la clave + añadir una barra de proporción fina aparte. Decidir cuál.
+
+**(b) Bug: salto de cámara al soltar UN dedo de la pinza (móvil).** Con dos dedos, soltar los dos a la vez va bien;
+soltar uno → la cámara salta. Diagnóstico: en `controls.js` (handlers de puntero), al pasar de 2→1 punteros, `endPointer`
+borra el levantado pero NO resetea `lastX/lastY` al que QUEDA → el siguiente `pointermove` calcula `dx = clientX − lastX`
+con un `lastX` viejo → salto. Fix acotado: en `endPointer`, si queda exactamente 1 puntero tras borrar, fijar
+`lastX/lastY` a su posición actual (delta 0 en el siguiente move). Bug claro, fix localizado.
+
+---
+
 ## Bandeja de entrada (sin procesar)
 *Ideas crudas del usuario, a analizar y convertir en ideas con su pitch cuando se aborden.*
 
@@ -144,10 +193,6 @@ regulares) y con red anti-extinción — otro mecanismo, especulativo.
   ESPECIEN y dejen de cruzarse. No probado; riesgo de Allee si el umbral es muy bajo (no se encuentra pareja → bajones).
   Bajo sexual, además, `omniPenalty` rinde mejor a 0.05 (más diversidad de dieta) que a 0.15.
 
-- **Tamaño de especies:** RESUELTO (2026-06-11). "Los herbívoros siempre al tamaño mínimo" era ESTRUCTURAL: el pasto
-  no escalaba con la talla pero la cría sí (`reproRef ∝ sizeMass`) → deriva al mínimo. Lo arregla el **forrajeo por
-  talla** (`resource.forageReach`: el grande pasta de un área) → ahora emergen grandes + diversidad (ver
-  `archivo/forrajeo-por-talla.md` + SPEC §3.1). La banda de caza min-max también quedó completa (`combat.preyBandLo`/`preyBandHi`).
 - **Revisar nado:** ¿la "cabeza nadadora" todavía emerge? Cazadores con garras delanteras enormes que parecían sin
   coste y apenas propulsores. Atacado en parte: `headThrust`→0.06 (la cabeza no es motor) + (A) coste de transporte ∝
   masa (garras grandes = más masa = más coste de nado). El remate fino es la idea "coste de arrastre" (arriba).

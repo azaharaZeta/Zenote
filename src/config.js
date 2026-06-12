@@ -18,12 +18,11 @@ export const config = {
     matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
                          //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
                          //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
-    closedRegen: 0.0016, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
-                         //      el modelo abierto, sin tocarlo). 0.0016 = régimen CONTEMPLATIVO afinado headless con runs LARGOS y MULTI-SEED:
-                         //      pop ~610-790 estable, NUNCA satura el tope (3/3 seeds, a diferencia de 0.0018 que sí), y el web trófico
-                         //      (herbívoros + carroñeros) emerge en ~2/3 de las siembras; el resto = estanque herbívoro plácido → cada Sembrar
-                         //      es distinto. El modelo cerrado tiene DOS atractores (pequeño-numeroso-con-web ↔ grande-escaso-herbívoro): el
-                         //      seed decide. Bajar (0.0012) → ~350 plácido y SIEMPRE solo-herbívoro; subir (≥0.0018) → puede saturar. En vivo.
+    closedRegen: 0.0017, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
+                         //      el modelo abierto, sin tocarlo). 0.0017 = régimen CONTEMPLATIVO (subido un pelín desde 0.0016 para robustecer
+                         //      el gremio carnívoro: mundo algo menos magro → los carroñeros arrancan en más siembras). Pop estable ~700-900.
+                         //      El modelo cerrado tiene DOS atractores (con-web ↔ solo-herbívoro): bajar (0.0012) → ~350 plácido solo-herbívoro;
+                         //      subir mucho (≥0.0019) acerca a saturar el tope. Afinado headless multi-seed. En vivo.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
@@ -58,11 +57,14 @@ export const config = {
   // ───── Población ─────
   pop: {
     initial: 400,            // Nº de fundadores al sembrar
-    maxAgents: 1000,         // Tope físico del pool (límite duro de memoria) · ÚNICO límite de población
-                             //      (la capacidad de carga la pone el recurso, no un tope numérico — ver auditoría #5).
+    maxAgents: 1000,         // (UI ↻) Tope físico del pool (límite duro de memoria) · ÚNICO límite de población (la capacidad de
+                             //      carga la pone el recurso/materia, no este número — ver auditoría #5). Cambiarlo requiere Reiniciar
+                             //      (re-asigna los arrays SoA + speciesOf en el worker). Slider del lab para experimentar.
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
-    carnivoreSeedFrac: 0.14, // Fracción de fundadores sembrados como proto-carnívoros
+    carnivoreSeedFrac: 0.20, // (UI ↻) Fracción de fundadores sembrados como proto-carnívoros. Es condición INICIAL (cruza el valle
+                             //      de arranque), no estrategia codificada → la selección decide después. 0.20 da una cohorte de
+                             //      establecimiento mayor (antes 0.14 era escasa → en pecera magra el gremio a veces no arrancaba).
     simpleStart: true,       // Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios
     startJitter: 0.06,       // Magnitud del jitter gaussiano del sembrado simple
     startDiversity: 0,       // (UI) Diversidad inicial: 0 = fundadores casi CLONALES, lo más básico (renacuajos

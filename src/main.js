@@ -8,9 +8,12 @@ import { Charts } from './ui/charts.js';
 import { setupControls, updateInspector } from './ui/controls.js';
 
 // --- Proxy del Sim alimentado por el worker ---
-const cap = config.pop.maxAgents;
-const identity = new Int32Array(cap);
-for (let i = 0; i < cap; i++) identity[i] = i; // lista activa = identidad (foto ya compactada)
+// `identity` (lista activa = índice; la foto ya viene compactada 0..n-1) debe cubrir el MÁXIMO de población que el
+// slider del lab permita: `pop.maxAgents` es ajustable en vivo (+ Reiniciar). Se SOBREDIMENSIONA a un tope generoso
+// (independiente de maxAgents) para no re-asignarlo al cambiar el tope → siempre activeCount ≤ identity.length.
+const IDENT_CAP = Math.max(3000, config.pop.maxAgents);
+const identity = new Int32Array(IDENT_CAP);
+for (let i = 0; i < IDENT_CAP; i++) identity[i] = i;
 
 const empty = new Float32Array(0);
 const simProxy = {

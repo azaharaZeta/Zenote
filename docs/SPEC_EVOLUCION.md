@@ -45,6 +45,9 @@ las estrategias o las formas "buenas". Esas deben emerger.
   **espacialmente dinámica** → refugios que migran solos (Huffaker emergente): la presa está a salvo en parches
   densos y expuesta en los claros pastados. Estabilizador Lotka-Volterra (la presa nunca llega a cero) sin la
   muleta del interruptor. Es física del mundo, no conducta.
+- **Mundo abierto vs CERRADO en materia** (`world.closedMatter`, opcional): por defecto el mundo es abierto (el sol
+  crea biomasa, el cuerpo se conjura al morir). En modo "pecera" la **materia total es constante** y circula
+  (nutriente↔pasto↔organismos↔carroña), con capacidad de carga endógena. Mecánica completa en **§3ter**.
 
 ## 2. El organismo
 
@@ -57,13 +60,13 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **185 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — **186 genes** float en `[0,1]` (SoA: `Float32Array`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Bloque | Nº | Genes |
 |--------|----|-------|
-| **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
+| **Ecología / fisiología** | 12 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
 | **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
 | **Cerebro neuronal** | 83 | pesos de la RNN (ver §cerebro) |
@@ -77,6 +80,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `sense` | inversión visual → alcance base de visión + coste (`k_sense`). El reparto alcance↔ángulo lo hace `e_fov` (§2ter). |
 | `metab` | escala a la vez el ritmo de alimentación y el coste basal (`k_metab`). Alto = come y rinde más pero quema más. Trade-off, sin "mejor". |
 | `diet` | 0 = herbívoro puro (come del campo), 1 = carnívoro puro (caza). Intermedio = omnívoro penalizado (`omniPenalty`). |
+| `scav` | **eje caza↔carroña** dentro de la dieta carnívora: reparte la capacidad comecarne entre CAZAR presa viva (`effHunt`) y CARROÑEAR cadáveres (`effScav`), con `scavPenalty` al generalista. Mecánica completa en §3bis. |
 | `repro_thr` | umbral de energía para criar: `lerp(expr.repro_thr)` de la referencia (§4). |
 | `invest` | energía transferida a cada cría: `lerp(expr.invest)` de la referencia. |
 | `hue` | tono del organismo (su color en pantalla). Gen **neutro** (no afecta a la física): deriva libre y se hereda → traza el linaje a ojo. Muta como cualquier gen. |
@@ -344,6 +348,43 @@ effScav·∇carroña`) → el carroñero navega hacia los cadáveres con la cond
 GUSANO: carroñero pequeño y elongado. La proto-forma (cadena axial de nodos) se SIEMBRA en media cohorte comecarne
 para cruzar el valle morfológico (el nicho solo no basta para una forma compleja); cruzado, se mantiene por inercia +
 streamlining. Especies/herencia: `scav` es gen base → cuenta en la distancia genética (un carroñero es otra especie).
+
+### 3ter. Ecosistema CERRADO en materia (modo opcional "pecera", `world.closedMatter`)
+Por defecto el mundo es **abierto en energía**: el sol crea biomasa de la nada (`regen` rellena el recurso hasta su
+capacidad) y la biomasa estructural del cuerpo se "conjura" al morir/cazar (`carcassValue·eMax`, ver §3.1/§3bis).
+Medido: esa creación ≈17% de toda la entrada de energía (el resto es sol), y la población se asienta en `maxAgents`,
+no en la capacidad de carga. Es un modelo abierto válido, pero NO conserva.
+
+Con `world.closedMatter=true` el mundo pasa a **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en
+materia — como un ecosistema real). **Moneda única** (materia = unidades de energía); cantidad **conservada**:
+
+> `N_libre + Σ(recurso·epu) + Σ_vivos(E + bodyMatter) + Σ(carroña) = constante` (= `world.matterBudget`)
+
+- **`N`** = pool GLOBAL de nutriente libre disuelto (escalar en `world`). Es lo que las plantas captan.
+- **`bodyMatter[i] = carcassValue·eMax`** = materia ESTRUCTURAL del cuerpo (SoA). Se **retira de `N` al nacer** (y
+  **nacer se BLOQUEA si `N < bodyMatter`** → no hay materia para construir el cuerpo) y se **devuelve a la carroña al
+  morir**. Ya no se conjura: el cuerpo se paga con materia real del pool.
+- **Rebrote** (`_regenClosed`): el pasto crece CONSUMIENDO `N` a ritmo `world.closedRegen` (parámetro **propio** del
+  modo cerrado, separado de `resource.R_regen` que rige el abierto). Si `N` no llega, el crecimiento se escala (sin
+  sesgo de orden). El sol ya no crea materia: solo permite convertir `N`→pasto.
+- **Retornos a `N`** (la materia no se evapora): metabolismo + nado, pérdida trófica de la depredación, conversión de
+  pasto no asimilada (`1−effHerb`), y el sobrante por tope de `eMax`. El metabolismo no puede dejar `E` negativa (se
+  topa a 0: no se gasta materia que no se tiene). La **carroña mineraliza ÍNTEGRA** a `N` (`carrionDecay`; en cerrado
+  se ignora `corpseReturn`, que es del abierto).
+- **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgents`. El
+  sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
+- **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";
+  el seed decide → cada Sembrar varía. Régimen contemplativo por defecto `closedRegen=0.0017` (pop ~700-900 estable,
+  carroñeros en la mayoría de siembras, sin saturar). Bajar (0.0012)→~350 plácido solo-herbívoro; subir mucho→satura.
+  Los CAZADORES de presa viva apenas emergen en cerrado (mundo magro → solo el carroñeo es viable); el comecarne de la
+  pecera es sobre todo CARROÑERO. La siembra de proto-carnívoros (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
+- **Guard de `energyPerUnit`** (epu): es el tipo de cambio recurso↔materia y entra en el balance. Cambiarlo EN VIVO
+  reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`) cuando
+  `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
+  solo (solo cambia el equilibrio). `matterBudget`/`closedMatter`/`maxAgents` requieren **Reiniciar** para aplicarse.
+
+Validado headless: la materia se conserva al bit (deriva ~1e-5 %, ruido de `Float32`); el motor enruta toda pérdida a
+un pool sea cual sea el valor de los coeficientes, por eso conserva ante cambios de parámetros en vivo.
 
 ## 4. Reproducción y herencia
 

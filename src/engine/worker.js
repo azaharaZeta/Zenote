@@ -41,7 +41,7 @@ let tickAcc = 0, last = performance.now();
 // umbral, o funda una nueva. Los centroides siguen a sus miembros (k-means con umbral) → ids estables. ---
 let speciesReps = [];                 // [{ id, gene:Float32Array(NG), count, sum }]
 let nextSpeciesId = 1, speciesCount = 0, lastClassify = -1e9;
-const speciesOf = new Float32Array(config.pop.maxAgents); // especie por id estable de agente
+let speciesOf = new Float32Array(config.pop.maxAgents); // especie por id estable de agente (se re-asigna en 'reset' si cambia maxAgents)
 
 // ---- Histórico para las gráficas: muestreado por TICKS DE SIMULACIÓN (no por frames de reloj) → la curva
 // es correcta y densa a CUALQUIER velocidad (a máx. velocidad un frame avanza cientos de ticks; si se
@@ -292,6 +292,7 @@ onmessage = (e) => {
     case 'deselect': setSelected(-1); break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); break; // navegar por especies (◀ ▶ en el inspector)
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selLineage = selGeneration = selSpeciesId = -1;
+      if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // maxAgents pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
       clearHistory(); postWorld(); break;
   }

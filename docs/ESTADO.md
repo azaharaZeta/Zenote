@@ -4,7 +4,7 @@
 > `SPEC_EVOLUCION.md`, los parámetros en `src/config.js` (comentado), el backlog (histórico) en `archivo/AUDIT_EVOLUCION.md`, las ideas
 > en `ideas/indice-ideas.md`, los hitos en `CHANGELOG.md`. Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
-**Estado (2026-06-11):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
+**Estado (2026-06-12):** simulador de evolución **genuinamente emergente** (conducta y morfología bajo
 selección, sin reglas de estrategia ni fitness explícito). El **Pilar v2.0 — Forma y movimiento emergentes** está
 completo, y sobre él se ha construido la **trilogía de MORFOLOGÍA evolutiva (Capas 1-3)**: forma del nodo
 (púa↔elipse↔aleta), funciones ecológicas (alcance del cazador / pastoreo del herbívoro) y modos de movimiento
@@ -27,6 +27,11 @@ Genoma de **186 genes/agente** (SoA, typed arrays):
 - **Herencia**: sexual (crossover con ligamiento) + asexual fallback; mutación única por locus; especies por
   distancia genética (ecología + forma de nodos).
 - **Fitness 100% emergente** (sobrevivir + criar). Motor en Web Worker; render Canvas 2D desde los nodos.
+- **Mundo opcional CERRADO en materia** (`world.closedMatter`, "pecera"): la materia total se CONSERVA y circula
+  (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA, frente al modelo abierto por defecto (el sol
+  crea biomasa de la nada). Nació de una auditoría de energía (el abierto no conserva: ~17% de la entrada es biomasa
+  conjurada; la pop se clava en `maxAgents`). Régimen contemplativo afinado (`closedRegen`); el nutriente libre `N` se
+  ve en la cabecera. Mecánica → [SPEC §3ter](SPEC_EVOLUCION.md); lección → memoria `energy-ledger-not-conserved`.
 
 ## Qué EMERGE (no cableado)
 Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pastar **y atacar** emergen de los
