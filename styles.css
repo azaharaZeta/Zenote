@@ -54,7 +54,9 @@ html, body {
 #panel header { display: flex; align-items: center; justify-content: space-between; }
 #panel h1 { font-size: 15px; font-weight: 400; margin: 0; letter-spacing: 1px; color: var(--accent); }
 
-.readout { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin: 8px 0; }
+/* monospace + white-space:pre → los `padStart` del readout reservan hueco fijo por dígito → los valores no "bailan". */
+.readout { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin: 8px 0;
+           font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
 
 .row { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
 
@@ -120,6 +122,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
 .hint { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; opacity: 0.8; }
+/* Atajos de teclado (Tecla H / Espacio): irrelevantes en TÁCTIL → ocultos en cualquier dispositivo de puntero
+   grueso (móvil, tablet, también en horizontal), no por ancho. En escritorio (puntero fino) se mantienen. */
+@media (pointer: coarse) { .kbd-hint { display: none; } }
 
 /* ---- Botón flotante para reabrir ---- */
 #show {
@@ -194,10 +199,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .reseed-btn:hover { background: rgba(224, 150, 74, 0.22); border-color: rgba(224, 150, 74, 0.72); color: #f0b46a; }
 #panel:not(.advanced) #colorModeRow { display: none; }         /* en modo simple no se muestra "Colorear por" */
 /* Vista simple (contemplativa) = SOLO ver bichos: sin GRÁFICAS (población/histograma), sin la fila de SEMILLA/
-   DIVERSIDAD inicial, sin leyenda ni el texto de velocidad real. El laboratorio (.advanced) lo conserva todo. */
+   DIVERSIDAD inicial, sin leyenda, sin velocidad real y sin el total de TICKS del readout (queda fps·t/s·pob).
+   El laboratorio (.advanced) lo conserva todo. */
 #panel:not(.advanced) .charts,
 #panel:not(.advanced) #seedRow,
 #panel:not(.advanced) #legend,
+#panel:not(.advanced) .r-tick,
 #panel:not(.advanced) #speedReal { display: none; }
 
 .lab-section { display: none; margin-top: 6px; }

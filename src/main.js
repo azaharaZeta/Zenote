@@ -86,7 +86,6 @@ let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
-const panelEl = document.getElementById('panel');         // .advanced ⇒ laboratorio; simple ⇒ vista contemplativa
 
 function frame(now) {
   renderer.paused = !app.running; // congela la animación visual de los organismos al pausar
@@ -105,14 +104,13 @@ function frame(now) {
     fps = Math.round((frames * 1000) / dt);
     tps = Math.round(((simProxy.tick - lastTickCount) * 1000) / dt);
     frames = 0; lastTickCount = simProxy.tick; lastFpsT = now;
-    const adv = panelEl.classList.contains('advanced');
-    // Vista simple (contemplativa): solo fps · tick · población. El laboratorio mantiene t/s, nacimientos y muertes.
-    // La población total va en AZUL (mismo color que tenía la curva total en la gráfica, que ya no se dibuja).
-    fpsEl.textContent = adv ? `${fps} FPS · ${tps} t/s` : `${fps} FPS`;
-    const pobHtml = `<span style="color:#5a7cd1">pob ${simProxy.popCount}</span>`;
-    statEl.innerHTML = adv
-      ? `${pobHtml} · tick ${simProxy.tick} · nac ${simProxy.births} · muertes ${simProxy.deaths}`
-      : `tick ${simProxy.tick} · ${pobHtml}`;
+    // Readout COMÚN a ambos modos (simple y laboratorio): fps · t/s · población · tick (sin nacimientos/muertes).
+    // Ancho FIJO por valor (padStart + `.readout` en monospace/white-space:pre) → los números no "bailan" al cambiar.
+    // La población va en AZUL (mismo color que el resto de la UI usa para 'pob').
+    const pad = (v, n) => String(v).padStart(n);
+    fpsEl.textContent = `${pad(fps, 3)} FPS · ${pad(tps, 4)} t/s`;
+    // El tick va en su propio span (con el separador) para poder ocultarlo SOLO en modo simple (CSS). pob en azul.
+    statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span><span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
   }
