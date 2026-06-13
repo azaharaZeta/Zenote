@@ -21,20 +21,26 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Cabeza ya no es el motor (`headThrust`) | ✅ hecha | [archivo/cabeza-no-motor.md](archivo/cabeza-no-motor.md) |
 | Amplificar refugios móviles (`patchiness`) | ✅ hecha | default subido a 0.3 (knob de UI) |
 | Forrajeo por talla (payoff de talla) | ✅ hecha | [archivo/forrajeo-por-talla.md](archivo/forrajeo-por-talla.md) · mecánica en SPEC §3.1 |
-| Que la velocidad IMPORTE (escape por velocidad) | ✅ hecha | `combat.fleeSpeed=2` + `refuge.strength`↓ · mecánica SPEC §3.1 · memoria `speed-is-a-race-quantity` |
+| Que la velocidad IMPORTE (escape por velocidad) | ✅ hecha | `combat.fleeSpeed` + `refuge.strength`↓ · mecánica SPEC §3.1 · memoria `speed-is-a-race-quantity` |
 | Cazar viable en escasez (biomasa de la presa) | ✅ hecha | `energy.carcassValue` · SPEC §3.1 · memoria `lean-prey-starves-predators` |
 | Carroña + GUSANO carroñero (Fases 1-2) | ✅ hecha | campo `carrion` + gen `scav` (caza↔carroña) + proto-gusano sembrado · SPEC §3bis · memoria `morphology-valley-needs-seeding` · pdte: cadáveres con forma (abajo) |
+| Gráfica de biomasa (reparto de materia) | ✅ hecha | `charts._drawBiomass` (organismos/vegetación/carroña/nutriente apilados + total); en lab, pecera y abierto |
+| Leyenda "Rol" ponderada por totales | ✅ hecha (2026-06-14) | banda ∝ nº de individuos por oficio + 4º oficio (omnívoro, vía `trophicRole`), viva por frame · análisis abajo |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
-| Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho) |
+| Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho); remate de "revisar nado" |
 | Selección de presa por talla | ⬜ pendiente | análisis abajo |
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
+| Cadáveres con FORMA (render) | ⬜ pendiente | análisis abajo — marcadores efímeros, no toca la sim |
+| Diversidad de talla bajo repro sexual | ⬜ pendiente | análisis abajo · memoria `sexual-repro-flattens-size` |
+| Revisar señuelos (coste / atracción / visibilidad) | ⬜ pendiente | análisis abajo |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
 | LOD declarativo (desacoplar de la lista de elementos visuales) | ⬜ pendiente | análisis abajo — arquitectura/mantenibilidad del render |
 | Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
-| Mejoras de UI / bugs menores | ⬜ pendiente | análisis abajo (leyenda Rol ponderada · salto de cámara al soltar pinza) |
+| Mejoras de UI / bugs menores | ⬜ pendiente | análisis abajo — bug cámara al soltar pinza · visor de especie en móvil |
+| ¿"Reciclaje de cadáveres → pasto" es un leak? | ✅ resuelto | análisis abajo — NO es bug (en cerrado no se usa; en abierto, pérdida intencional del modelo no-conservativo) |
 | Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |
-| Bandeja de entrada (sin procesar) | 📥 | abajo |
+| Bandeja de entrada (sin procesar) | ✅ vacía | procesada 2026-06-14 (ver final) |
 
 ---
 
@@ -81,8 +87,9 @@ agotadora) y cierra el incentivo perverso del arrastre gratis.
 **Coste/riesgo:** moderado — un `Float32Array` nuevo seteado en `organism.js` + recalibrar. Cuidado de no penalizar
 TRIPLE al cuerpo ancho (ya es lento, ya paga A por masa, y pagaría B por arrastre): medir antes de defaults agresivos.
 
-**Relación:** complementa A; juntos cubren "más grande / más apéndices / más arrastre = más gasto al moverse". Liga con
-la bandeja *"Revisar nado"* (garras frontales que nadaban sin coste aparente).
+**Relación:** complementa A; juntos cubren "más grande / más apéndices / más arrastre = más gasto al moverse". Es el
+**remate de "revisar nado"** (garras/cabezas frontales que nadaban sin coste aparente; ya atacado con `headThrust`↓ y
+`k_haul`, esto cerraría el flanco de la FORMA del arrastre).
 
 ---
 
@@ -193,44 +200,85 @@ pasto. Solo render (regla 3 de VISUAL).
 ---
 
 ## Mejoras de UI / bugs menores
-*(pendiente, 2026-06-12 · de la bandeja)*
+*(2026-06-12 · de la bandeja)*
 
-**(a) Leyenda "Rol" ponderada por totales.** Hoy la franja del modo *Colorear por → Rol* muestra 3 bloques IGUALES
-(33/33/33 %) como clave de color. Idea: anchos PROPORCIONALES a los conteos vivos de herbívoros/carroñeros/cazadores →
-de un vistazo se ve la composición trófica. El worker ya manda `role` por agente (mismo conteo que la gráfica de
-población), así que `controls.js` (`updateLegend`) puede leer `simProxy.role` y dimensionar los bloques; habría que
-refrescarla periódicamente (hoy se construye una vez al cambiar de modo). Solo render/UI. **Matiz:** una leyenda es una
-CLAVE (qué significa cada color), no un dato; ponderarla la vuelve mini-barra apilada de composición. Alternativa más
-limpia: mantener la clave + añadir una barra de proporción fina aparte. Decidir cuál.
+**(a) Leyenda "Rol" ponderada por totales — ✅ HECHA (2026-06-14).** La franja del modo *Colorear por → Rol* ya no son
+bloques iguales: cada oficio ocupa un ancho PROPORCIONAL a su nº de individuos (mini-gráfica de composición trófica viva,
+refrescada cada frame por `main.js`), con **4 oficios** (se añadió OMNÍVORO al unificar el criterio con la curva de
+población vía `trophicRole`, en `organism.js` — antes el rol no tenía omnívoro). `controls.js updateLegend` lee los
+conteos de `charts.hist*`; etiquetas recoloreadas con su conteo. El matiz "clave vs dato" se resolvió haciéndola ambas
+cosas (clave de color + barra de composición). Solo render/UI. (`fallback` a bloques iguales si no hay población.)
 
-**(b) Bug: salto de cámara al soltar UN dedo de la pinza (móvil).** Con dos dedos, soltar los dos a la vez va bien;
-soltar uno → la cámara salta. Diagnóstico: en `controls.js` (handlers de puntero), al pasar de 2→1 punteros, `endPointer`
-borra el levantado pero NO resetea `lastX/lastY` al que QUEDA → el siguiente `pointermove` calcula `dx = clientX − lastX`
-con un `lastX` viejo → salto. Fix acotado: en `endPointer`, si queda exactamente 1 puntero tras borrar, fijar
-`lastX/lastY` a su posición actual (delta 0 en el siguiente move). Bug claro, fix localizado.
+**(b) Bug: salto de cámara al soltar UN dedo de la pinza (móvil).** ⬜ pendiente. Con dos dedos, soltar los dos a la vez
+va bien; soltar uno → la cámara salta. Diagnóstico: en `controls.js` (handlers de puntero), al pasar de 2→1 punteros,
+`endPointer` borra el levantado pero NO resetea `lastX/lastY` al que QUEDA → el siguiente `pointermove` calcula
+`dx = clientX − lastX` con un `lastX` viejo → salto. Fix acotado: en `endPointer`, si queda exactamente 1 puntero tras
+borrar, fijar `lastX/lastY` a su posición actual (delta 0 en el siguiente move). Bug claro, fix localizado.
+
+**(c) Visor de especie (móvil).** ⬜ pendiente (de la bandeja). Añadir la DIETA al panel de especie en móvil; recordar
+qué grupos `<details>` del genoma quedaron desplegados al cerrar/reabrir el inspector o al cambiar de especie (hoy se
+reconstruye el panel y se cierran todos). Solo UI.
+
+---
+
+## Diversidad de talla bajo reproducción SEXUAL
+*(pendiente · elevada de la bandeja 2026-06-14)*
+
+**Problema (medido):** la repro solo-sexual APLANA la diversidad de talla — la mezcla grande×pequeño regresa los extremos
+a la media (headless; memoria `sexual-repro-flattens-size`). La asexual la conserva, pero el default es sexual.
+
+**Vía (si se retoma):** recuperar la diversidad sin volver a asexual → bajar `repro.speciesGenThreshold` (y/o
+`mateRadius`) para que los grupos de talla ESPECIEN y dejen de cruzarse (así los extremos no se promedian). No probado;
+**riesgo de Allee** si el umbral es muy bajo (no se encuentra pareja compatible → bajones de población). Nota colateral:
+bajo sexual, `diet.omniPenalty` rinde mejor a ~0.05 (más diversidad de dieta) que a 0.15. Medir umbral vs estabilidad.
+
+---
+
+## Revisar señuelos (coste / atracción / visibilidad)
+*(pendiente · elevada de la bandeja 2026-06-14)*
+
+**Hoy:** la prominencia FUNCIONAL del señuelo = `o_len·o_bulb` (gateada por `orn`), cuesta `k_lure` y EXTIENDE el alcance
+de captura (`combat.lureReach`). El nº de señuelos (`o_num`) es DECORATIVO: no cuesta ni añade alcance → a veces emergen
+racimos enormes "gratis". El señuelo NO atrae presa (no existe esa mecánica) ni te hace más visible/cazable.
+
+**Tres mini-ideas a decidir:**
+- **Coste por cantidad:** que `o_num` (o la prominencia total) cueste energía → frena los racimos enormes. Lo más directo.
+- **Atracción de presa:** que el señuelo sesgue el gradiente/targeting de la presa hacia el portador → emboscada emergente
+  (anglerfish de verdad). Es una mecánica NUEVA, no solo un coste — medir que no rompa el equilibrio depredador-presa.
+- **Visibilidad:** que exhibir señuelo aumente tu rango de detección por otros → trade-off honesto pro-reproducción
+  (selección sexual, liga con `orn`) vs anti-depredación (te cazan antes).
+
+**Coste/riesgo:** el coste por `o_num` es trivial; atracción/visibilidad son mecánicas nuevas (moderado).
+
+---
+
+## Cadáveres con FORMA (render)
+*(pendiente · elevada de la bandeja 2026-06-14)*
+
+Hoy la carroña (campo `carrion`) se dibuja como mancha gris en la celda. Idea: mostrar el CUERPO real del organismo
+muerto en su sitio, grisáceo, deshaciéndose con el tiempo. **Vía:** marcadores de render EFÍMEROS — el worker manda las
+muertes del frame (pos + nodos + causa) y el render dibuja el cuerpo desaturado que se desvanece; la carroña como CAMPO
+sigue siendo la mecánica (sin coste en la simulación, regla 3 de VISUAL). Pedido por el usuario al hacer la Fase 1 de carroña.
+
+---
+
+## ¿"Reciclaje de cadáveres → pasto" (`corpseReturn`) es un leak de biomasa? — RESUELTO (analizado 2026-06-14)
+**No es un bug.** `world.decayCarrion` se comporta distinto según el modo:
+- **CERRADO (pecera, default):** `corpseReturn` se IGNORA — toda la carroña decaída MINERALIZA ÍNTEGRA al pool `N`
+  (`this.N += d`) → la materia se conserva (medido ±0.05 %, memoria `closed-matter-conservation-measured`). Sin leak.
+- **ABIERTO:** solo la fracción `corpseReturn·d` vuelve al pasto (topada a la capacidad de la celda); el resto se PIERDE.
+  Es una pérdida REAL pero **intencional**: el modo abierto NO conserva por diseño (el sol crea biomasa y el cuerpo se
+  conjura al morir, SPEC §3ter) → esa fuga equivale a respiración/calor. Subir `corpseReturn`→1 reciclaría todo el
+  detrito, pero el abierto seguiría sin conservar por el resto del modelo.
+
+Conclusión: comportamiento correcto; el "leak" solo existe en abierto y es coherente con su naturaleza no-conservativa.
 
 ---
 
 ## Bandeja de entrada (sin procesar)
 *Ideas crudas del usuario, a analizar y convertir en ideas con su pitch cuando se aborden.*
 
-- **Diversidad de talla bajo reproducción SEXUAL:** la repro solo-sexual APLANA la diversidad de talla (la mezcla
-  grande×pequeño regresa los extremos a la media; medido headless — memoria `sexual-repro-flattens-size`). Para
-  recuperarla sin volver a asexual: bajar `repro.speciesGenThreshold` (y/o `mateRadius`) para que los grupos de talla
-  ESPECIEN y dejen de cruzarse. No probado; riesgo de Allee si el umbral es muy bajo (no se encuentra pareja → bajones).
-  Bajo sexual, además, `omniPenalty` rinde mejor a 0.05 (más diversidad de dieta) que a 0.15.
-
-- **Revisar nado:** ¿la "cabeza nadadora" todavía emerge? Cazadores con garras delanteras enormes que parecían sin
-  coste y apenas propulsores. Atacado en parte: `headThrust`→0.06 (la cabeza no es motor) + (A) coste de transporte ∝
-  masa (garras grandes = más masa = más coste de nado). El remate fino es la idea "coste de arrastre" (arriba).
-- **Revisar señuelos:** a veces emergen racimos enormes de señuelos (¿debería costar más?); ¿el señuelo atrae presas?;
-  ¿debería hacerte más visible (pro reproducción, pero también para ser cazado)?
-- **Visor de especie:** en móvil añadir la dieta; recordar los menús desplegados al cerrar/reabrir o al cambiar de especie.
-- **Cadáveres con FORMA (render):** hoy la carroña (Fase 1) se dibuja como mancha gris en la celda. Mostrar el cuerpo
-  real del organismo muerto en su sitio, grisáceo, deshaciéndose con el tiempo. Vía: marcadores de render efímeros
-  (el worker manda las muertes del frame con pos+nodos+causa; el render dibuja el cuerpo desaturado que se desvanece),
-  sin coste en la simulación (la carroña como CAMPO sigue siendo la mecánica). Pedido por el usuario al hacer la Fase 1.
-
-- mostrar gráfica de biomasa total del sistema, biomasa libre, biomasa en organismos, en vegetación, en carroña...
-
-- revisar el parametro "reciclaje de cadáveres -> pasto". ¿es un leak de biomasa?
+*(Vacía — procesada el 2026-06-14. Reparto de lo que había: «diversidad de talla bajo sexual», «revisar señuelos» y
+«cadáveres con forma» → ideas con pitch arriba; «gráfica de biomasa» → ya estaba HECHA (`_drawBiomass`); «¿reciclaje de
+cadáveres = leak?» → RESUELTO (no es bug); «visor de especie» → Mejoras de UI (c); «revisar nado» → se solapa con «coste
+de arrastre en locomoción».)*

@@ -387,6 +387,14 @@ export function setupControls(app) {
       pinchDist = d; dragMoved = true;
     }
   });
+  // Suelta un puntero (pointerup/cancel) dejando el estado coherente. CLAVE: al pasar de pinza (2 dedos) a 1, re-ancla
+  // lastX/lastY al dedo que QUEDA → el próximo pointermove parte de delta 0. Sin esto, dx se calculaba contra un lastX
+  // viejo (en modo 2-dedos no se actualiza) → la cámara pegaba un SALTO al levantar un dedo. (Índice → Mejoras de UI (b).)
+  const releasePointer = (id) => {
+    pointers.delete(id);
+    if (pointers.size < 2) pinchDist = 0;
+    if (pointers.size === 1) { const p = pointers.values().next().value; lastX = p.x; lastY = p.y; }
+  };
   const endPointer = (e) => {
     if (pointers.size === 1 && !dragMoved) { // tap limpio → inspeccionar (lo resuelve el worker)
       const p = renderer.screenToWorld(e.clientX, e.clientY);
@@ -394,11 +402,10 @@ export function setupControls(app) {
       app.followSel = true; app._selSeen = false;             // la cámara seguirá al seleccionado (espera al pick)
       if (renderer.zoom < 7) { renderer.zoomAt(7 / renderer.zoom, e.clientX, e.clientY); syncZoom(); } // acercar
     }
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) pinchDist = 0;
+    releasePointer(e.pointerId);
   };
   cv.addEventListener('pointerup', endPointer);
-  cv.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); });
+  cv.addEventListener('pointercancel', (e) => releasePointer(e.pointerId)); // mismo re-anclaje → soltar por cancel tampoco salta
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
     // zoom más ágil: factor mayor (0.003→0.0075) y delta acotado a ±80 para que un ratón de "saltos" grandes
