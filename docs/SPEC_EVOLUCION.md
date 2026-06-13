@@ -45,9 +45,10 @@ las estrategias o las formas "buenas". Esas deben emerger.
   **espacialmente dinámica** → refugios que migran solos (Huffaker emergente): la presa está a salvo en parches
   densos y expuesta en los claros pastados. Estabilizador Lotka-Volterra (la presa nunca llega a cero) sin la
   muleta del interruptor. Es física del mundo, no conducta.
-- **Mundo abierto vs CERRADO en materia** (`world.closedMatter`, opcional): por defecto el mundo es abierto (el sol
-  crea biomasa, el cuerpo se conjura al morir). En modo "pecera" la **materia total es constante** y circula
-  (nutriente↔pasto↔organismos↔carroña), con capacidad de carga endógena. Mecánica completa en **§3ter**.
+- **Mundo CERRADO vs abierto en materia** (`world.closedMatter`): el modo **POR DEFECTO** es la "pecera" CERRADA — la
+  **materia total es constante** y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga endógena. El
+  modo **abierto** (`closedMatter=false`: el sol crea biomasa, el cuerpo se conjura al morir) queda como alternativa.
+  Mecánica completa en **§3ter**.
 
 ## 2. El organismo
 
@@ -349,11 +350,11 @@ GUSANO: carroñero pequeño y elongado. La proto-forma (cadena axial de nodos) s
 para cruzar el valle morfológico (el nicho solo no basta para una forma compleja); cruzado, se mantiene por inercia +
 streamlining. Especies/herencia: `scav` es gen base → cuenta en la distancia genética (un carroñero es otra especie).
 
-### 3ter. Ecosistema CERRADO en materia (modo opcional "pecera", `world.closedMatter`)
-Por defecto el mundo es **abierto en energía**: el sol crea biomasa de la nada (`regen` rellena el recurso hasta su
-capacidad) y la biomasa estructural del cuerpo se "conjura" al morir/cazar (`carcassValue·eMax`, ver §3.1/§3bis).
-Medido: esa creación ≈17% de toda la entrada de energía (el resto es sol), y la población se asienta en `maxAgents`,
-no en la capacidad de carga. Es un modelo abierto válido, pero NO conserva.
+### 3ter. Ecosistema CERRADO en materia ("pecera", `world.closedMatter` — modo POR DEFECTO)
+El modo **abierto** (`closedMatter=false`, NO el default) es **abierto en energía**: el sol crea biomasa de la nada
+(`regen` rellena el recurso hasta su capacidad) y la biomasa estructural del cuerpo se "conjura" al morir/cazar
+(`carcassValue·eMax`, ver §3.1/§3bis). Medido: esa creación ≈17% de toda la entrada de energía (el resto es sol), y la
+población se asienta en `maxAgents`, no en la capacidad de carga. Es un modelo abierto válido, pero NO conserva.
 
 Con `world.closedMatter=true` el mundo pasa a **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en
 materia — como un ecosistema real). **Moneda única** (materia = unidades de energía); cantidad **conservada**:

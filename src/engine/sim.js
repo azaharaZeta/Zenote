@@ -429,7 +429,7 @@ export class Sim {
       const effHi = this.effHerb[i], cS = this.effScav[i] / (epu * 3);
       let dfx = effHi * (res[xr] - res[xl]) + cS * (carrion[xr] - carrion[xl]);
       let dfy = effHi * (res[yb] - res[yt]) + cS * (carrion[yb] - carrion[yt]);
-      const fmag = Math.hypot(dfx, dfy) || 1;
+      const fmag = Math.sqrt(dfx * dfx + dfy * dfy) || 1; // sqrt manual (no Math.hypot): bucle caliente, sin riesgo de overflow aquí
       dfx /= fmag; dfy /= fmag;
 
       let dx = 0, dy = 0;   // el deseo de movimiento lo decide el cerebro (abajo), no una regla fija
@@ -520,7 +520,7 @@ export class Sim {
         if (wantsAttack) {
           if (coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])]) preyEscapes = true;
           else if (fleeSpeed > 0) {
-            const vc = this.vmax[i], adv = vc > 1e-4 ? this.vmax[bestContact] / vc - 1 : 0; // ventaja de velocidad relativa de la presa
+            const myV = this.vmax[i], adv = myV > 1e-4 ? this.vmax[bestContact] / myV - 1 : 0; // ventaja de velocidad relativa de la presa (myV: renombrado para no ensombrecer el `vc`=visCos de arriba)
             if (adv > 0) { let pe = fleeSpeed * adv; if (pe > 0.95) pe = 0.95; if (rng.next() < pe) preyEscapes = true; }
           }
         }
@@ -625,34 +625,34 @@ export class Sim {
       // hacia el deseo como mucho `turnRate` por tick → los cuerpos torpes sobrepasan a la presa.
       const vmaxI = this.vmax[i];
       const turn = this.turnRate[i];
-      const dmag = Math.hypot(dx, dy);
+      const dmag = Math.sqrt(dx * dx + dy * dy);
       if (dmag > 1e-4) {
         const ddx = dx / dmag, ddy = dy / dmag;          // dirección deseada (unitaria)
-        const cs0 = Math.hypot(vx[i], vy[i]);
+        const cs0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
         let curx, cury;
         if (cs0 < 1e-4) { curx = ddx; cury = ddy; }      // parado: arranca hacia el deseo
         else { curx = vx[i] / cs0; cury = vy[i] / cs0; }
         // Girar la dirección actual hacia la deseada (interpolación limitada por la agilidad).
         let ndx = curx + (ddx - curx) * turn, ndy = cury + (ddy - cury) * turn;
-        const nm = Math.hypot(ndx, ndy) || 1;
+        const nm = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
         vx[i] = ndx / nm * vmaxI; vy[i] = ndy / nm * vmaxI;
       } else {
         // Sin deseo: deriva con leve ruido térmico (no es estrategia, es física).
         const ang = (rng.next() - 0.5) * 0.6;
         const cs = Math.cos(ang), sn = Math.sin(ang);
         let nvx = vx[i] * cs - vy[i] * sn, nvy = vx[i] * sn + vy[i] * cs;
-        const sp = Math.hypot(nvx, nvy);
+        const sp = Math.sqrt(nvx * nvx + nvy * nvy);
         if (sp < 1e-3) { nvx = (rng.next() - 0.5); nvy = (rng.next() - 0.5); }
-        const target = 0.3 * vmaxI, m = Math.hypot(nvx, nvy) || 1;
+        const target = 0.3 * vmaxI, m = Math.sqrt(nvx * nvx + nvy * nvy) || 1;
         vx[i] = nvx / m * target; vy[i] = nvy / m * target;
       }
-      const dist = Math.hypot(vx[i], vy[i]);
+      const dist = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
       // Rumbo PERSISTENTE para el render: solo se reorienta si hay avance real; si v≈0 conserva el último
       // (evita el parpadeo "al este" de atan2(0,0) en parados/recién nacidos/topes no-toroidales).
       if (dist > 1e-3) this.heading[i] = Math.atan2(vy[i], vx[i]);
       // Guardar la mirada (render): al objetivo si lo hay, si no en la dirección de avance.
       if (!gazeSet) { gzx = vx[i]; gzy = vy[i]; }
-      const gm = Math.hypot(gzx, gzy) || 1;
+      const gm = Math.sqrt(gzx * gzx + gzy * gzy) || 1;
       this.gazeX[i] = gzx / gm; this.gazeY[i] = gzy / gm;
       let nx = x[i] + vx[i], ny = y[i] + vy[i];
       if (wrap) {

@@ -176,8 +176,10 @@ function snapshot() {
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
-    // OFICIO dominante = argmax(effHerb, effHunt, effScav) → 2 cazador · 1 carroñero · 0 herbívoro (mismo criterio
-    // que la gráfica de población; los omnívoros caen en el oficio en el que son mejores). Para el color 'role'.
+    // OFICIO dominante = argmax(effHerb, effHunt, effScav) → 2 cazador · 1 carroñero · 0 herbívoro. OJO: criterio
+    // DISTINTO al de la curva de población (sampleHistory, que separa por umbrales de `diet` y SÍ tiene categoría
+    // 'omnívoro'): aquí NO hay omnívoro → cada bicho cae en el oficio donde es más eficiente. Un 'omni' de la curva
+    // puede pintarse herb/cazador/carroñero según su argmax. Para el color 'role'.
     const eh = s.effHerb[i], eu = s.effHunt[i], es = s.effScav[i];
     role[k] = (eu > eh && eu >= es) ? 2 : (es > eh ? 1 : 0);
     serial[k] = s.serialOf[i];
