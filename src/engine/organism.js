@@ -157,3 +157,14 @@ export function computePhenotype(sim, i) {
   sim.hue[i]      = g[b + G.hue];
   sim.tempPref[i] = g[b + G.temp_pref]; // óptimo térmico (coste por desviarse, ver sim.js)
 }
+
+// CLASIFICACIÓN TRÓFICA — fuente ÚNICA del "oficio" de un organismo: la usan la curva de población (worker
+// sampleHistory) Y el color 'role' del render, que antes divergían (uno por umbrales de `diet`, otro por argmax de
+// eficiencias). Criterio por DIETA: herbívoro (<0.4), omnívoro (banda intermedia), o comecarne (>0.6) que se parte en
+// CAZADOR vs CARROÑERO según qué eficiencia de carne domina (eje scav). Es una LECTURA del fenotipo, NO afecta a la
+// simulación (el fitness sigue emergiendo de la energética). → 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro.
+export function trophicRole(diet, effHunt, effScav) {
+  if (diet > 0.6) return effScav > effHunt ? 1 : 2;   // comecarne: carroñero (1) ↔ cazador (2)
+  if (diet < 0.4) return 0;                            // herbívoro
+  return 3;                                            // omnívoro (dieta intermedia)
+}

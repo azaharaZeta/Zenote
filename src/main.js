@@ -112,6 +112,7 @@ function frame(now) {
       if (simProxy.sel) renderer.highlight(simProxy.sel);
       charts.draw();   // el histórico ya lo acumula el worker (muestreo por ticks); aquí solo se pinta
       updateInspector(app);
+      if (renderer.colorMode === 'role' && app.refreshLegend) app.refreshLegend(); // banda del rol ponderada por totales (viva)
       lastDrawTick = simProxy.tick; lastCamX = renderer.camX; lastCamY = renderer.camY; lastZoom = renderer.zoom; lastSelKey = selKey;
       lastDrawT = now; frames++;
     }

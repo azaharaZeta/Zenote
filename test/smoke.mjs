@@ -5,6 +5,7 @@
 import { config } from '../src/config.js';
 import { Sim } from '../src/engine/sim.js';
 import { NUM_GENES } from '../src/engine/genome.js';
+import { trophicRole } from '../src/engine/organism.js';
 
 let failures = 0;
 const check = (cond, msg) => { console.log((cond ? '  ok  ' : 'FAIL  ') + msg); if (!cond) failures++; };
@@ -47,6 +48,12 @@ if (closed) {
 
 // 4) Red trófica activa (combate ON por defecto): hubo depredación.
 if (config.combat.enabled) check(sim.kills > 0, `depredación activa (${sim.kills} presas abatidas)`);
+
+// 5) Clasificación trófica UNIFICADA: curva de población y color 'role' comparten trophicRole (casos canónicos).
+check(trophicRole(0.10, 0.0, 0.0) === 0, "trophicRole: herbívoro puro → 0");
+check(trophicRole(0.50, 0.2, 0.1) === 3, "trophicRole: omnívoro (dieta media) → 3");
+check(trophicRole(0.90, 0.5, 0.1) === 2, "trophicRole: comecarne cazador → 2");
+check(trophicRole(0.90, 0.1, 0.5) === 1, "trophicRole: comecarne carroñero → 1");
 
 console.log(failures === 0 ? '\nSMOKE OK ✅' : `\nSMOKE FAIL ❌ (${failures} fallo${failures === 1 ? '' : 's'})`);
 process.exit(failures === 0 ? 0 : 1);

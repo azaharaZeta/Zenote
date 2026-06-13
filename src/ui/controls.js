@@ -122,7 +122,28 @@ export function setupControls(app) {
     if (!legendEl) return;
     const m = renderer.colorMode;
     if (m === 'diet') legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 85, 52)) + '<span>herbívoro</span><span>carnívoro</span>';            // h=(1-diet)*120
-    else if (m === 'role') legendEl.innerHTML = bar('hsl(128,62%,50%) 0 33.34%,hsl(30,55%,50%) 33.34% 66.67%,hsl(5,82%,56%) 66.67%') + '<span>herbívoro</span><span>carroñero</span><span>cazador</span>'; // 3 oficios (mismos colores que el render); bloques duros, no degradado
+    else if (m === 'role') {
+      // OFICIOS: la banda se PONDERA por los totales actuales de cada oficio (ancho ∝ nº de individuos) → mini-gráfica
+      // de composición trófica viva, además de clave de color. Conteos = último muestreo de las series del worker
+      // (charts.hist*). main.js la refresca cada frame mientras el modo sea 'role'. Mismos colores que el render y la curva.
+      const last = (a) => (a && a.length) ? (a[a.length - 1] | 0) : 0;
+      const segs = [
+        { c: 'hsl(128,62%,50%)', n: last(charts.histH),    label: 'herbívoro' },
+        { c: 'hsl(42,87%,55%)',  n: last(charts.histO),    label: 'omnívoro'  },
+        { c: 'hsl(30,55%,50%)',  n: last(charts.histScav), label: 'carroñero' },
+        { c: 'hsl(5,82%,56%)',   n: last(charts.histC),    label: 'cazador'   },
+      ];
+      const total = segs.reduce((acc, s) => acc + s.n, 0);
+      let grad;
+      if (total > 0) {                                  // segmentos de ancho ∝ su fracción de la población
+        let acc = 0; const stops = [];
+        for (const s of segs) { if (s.n <= 0) continue; const a0 = acc / total * 100; acc += s.n; stops.push(`${s.c} ${a0.toFixed(2)}% ${(acc / total * 100).toFixed(2)}%`); }
+        grad = stops.join(',');
+      } else grad = 'hsl(128,62%,50%) 0 25%,hsl(42,87%,55%) 25% 50%,hsl(30,55%,50%) 50% 75%,hsl(5,82%,56%) 75%'; // sin población → bloques iguales
+      // Etiquetas coloreadas con su conteo (no 4 spans flex:1, que ya no se alinearían con la banda ponderada).
+      const labels = segs.map((s) => `<span style="color:${s.c}">${s.label} ${s.n}</span>`).join(' · ');
+      legendEl.innerHTML = bar(grad) + `<em>${labels}</em>`;
+    }
     else if (m === 'gene') legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 80, 52)) + `<span>${GENE_LABELS[GENES[renderer.geneIndex]]}: bajo</span><span>alto</span>`; // h=(1-gen)*120 → verde(bajo)→rojo(alto)
     else if (m === 'energy') legendEl.innerHTML = bar(ramp(u => u * 130, 85, 50)) + '<span>hambriento</span><span>lleno</span>';                 // h=ef*130
     else if (m === 'lineage') legendEl.innerHTML = '<em>un color por linaje fundador (familias / proto-especies)</em>';
@@ -131,6 +152,7 @@ export function setupControls(app) {
   };
   if (colorSel) colorSel.addEventListener('change', () => { renderer.colorMode = colorSel.value; updateLegend(); });
   updateLegend();
+  app.refreshLegend = updateLegend;   // main.js la llama cada frame en modo 'role' → la banda ponderada por totales vive
 
   // ---- Reseed (expuesto en app.reseed) + aviso "pendiente reiniciar" ----
   // Los parámetros marcados ↻ (reseed/reseedOnChange) YA NO resiembran solos: al tocarlos se enciende un aviso rojo

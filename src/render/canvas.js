@@ -485,10 +485,11 @@ export class Renderer {
         case 'species': h = lineageHue(sim.species[i] | 0); s = 78; l = 55; break;  // 1 color por ESPECIE
         case 'gene':    h = (1 - sim.geneSel[i]) * 120; s = 80; l = 52; break;      // VERDE(bajo)→amarillo→ROJO(alto) · mismo mapeo que histograma (charts.js) y leyenda (controls.js)
         case 'energy':  h = ef * 130; s = 85; l = 50; break;                         // rojo(hambre)→verde
-        case 'role': {  // OFICIO dominante (worker: argmax effHerb/effHunt/effScav): herbívoro/carroñero/cazador
+        case 'role': {  // OFICIO trófico (worker: trophicRole, MISMO criterio que la curva): herbívoro/omnívoro/carroñero/cazador
           const ro = sim.role ? sim.role[i] : 0;
           if (ro === 2) { h = 5; s = 82; l = 56; }          // CAZADOR → rojo
           else if (ro === 1) { h = 30; s = 55; l = 50; }    // CARROÑERO → marrón
+          else if (ro === 3) { h = 42; s = 87; l = 55; }    // OMNÍVORO → ámbar (igual que la curva de población)
           else { h = 128; s = 62; l = 50; }                 // HERBÍVORO → verde
           break;
         }

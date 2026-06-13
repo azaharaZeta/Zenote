@@ -7,6 +7,7 @@
 import { config } from '../config.js';
 import { Sim } from './sim.js';
 import { NUM_GENES, G, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
+import { trophicRole } from './organism.js';   // clasificación trófica ÚNICA (curva de población + color 'role')
 const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
 
 const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo
@@ -60,9 +61,9 @@ const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = 
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
-  for (let k = 0; k < n; k++) { const i = act[k], d = s.diet[i];
-    if (d > 0.6) { if (s.effScav[i] > s.effHunt[i]) scav++; else carn++; }  // comecarne: CARROÑERO vs CAZADOR (eje scav)
-    else if (d < 0.4) herb++; else omni++; }
+  for (let k = 0; k < n; k++) { const i = act[k];
+    const ro = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]);          // MISMA función que el color 'role' (fuente única)
+    if (ro === 2) carn++; else if (ro === 1) scav++; else if (ro === 3) omni++; else herb++; }
   // POOLS DE MATERIA (pecera cerrada): un solo barrido del recurso/carroña da vegFrac (sr/sc), el PASTO en pie
   // (sr·epu) y la CARROÑA (Σcarrion, ya en unidades de materia). ORGANISMOS = Σ(E almacenada + cuerpo). Con el
   // nutriente libre N, los cuatro suman matterBudget (conservación) → la curva de biomasa reparte ese total. En
@@ -176,12 +177,9 @@ function snapshot() {
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
-    // OFICIO dominante = argmax(effHerb, effHunt, effScav) → 2 cazador · 1 carroñero · 0 herbívoro. OJO: criterio
-    // DISTINTO al de la curva de población (sampleHistory, que separa por umbrales de `diet` y SÍ tiene categoría
-    // 'omnívoro'): aquí NO hay omnívoro → cada bicho cae en el oficio donde es más eficiente. Un 'omni' de la curva
-    // puede pintarse herb/cazador/carroñero según su argmax. Para el color 'role'.
-    const eh = s.effHerb[i], eu = s.effHunt[i], es = s.effScav[i];
-    role[k] = (eu > eh && eu >= es) ? 2 : (es > eh ? 1 : 0);
+    // OFICIO trófico — MISMA función que la curva de población (trophicRole, fuente única en organism.js) → coinciden
+    // exactamente. 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro. Para el color 'role' (lectura, no afecta a la sim).
+    role[k] = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]);
     serial[k] = s.serialOf[i];
     heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
     const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad ABSOLUTA (÷ vMax global), no fracción de su propia capacidad → la animación de nodos sigue al desplazamiento REAL
