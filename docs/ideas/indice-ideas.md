@@ -230,3 +230,5 @@ con un `lastX` viejo → salto. Fix acotado: en `endPointer`, si queda exactamen
   real del organismo muerto en su sitio, grisáceo, deshaciéndose con el tiempo. Vía: marcadores de render efímeros
   (el worker manda las muertes del frame con pos+nodos+causa; el render dibuja el cuerpo desaturado que se desvanece),
   sin coste en la simulación (la carroña como CAMPO sigue siendo la mecánica). Pedido por el usuario al hacer la Fase 1.
+
+- mostrar gráfica de biomasa total del sistema, biomasa libre, biomasa en organismos, en vegetación, en carroña...

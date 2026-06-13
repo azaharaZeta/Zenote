@@ -462,10 +462,10 @@ export class Renderer {
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
     const haloThr = R.lodHalo * lodMul;         // halo por agente (los puntos no lo necesitan)
-    // CACHÉ: opt-in y NO en máxima (máxima dibuja todo en vivo). Solo bichos ≤ sprMax (rPx). sprMax se LIMITA además al
-    // umbral de ondulación (lodWave·lm): el sprite es estático → solo se usa donde el render vivo TAMPOCO ondula → el
-    // cruce sprite↔vivo es continuo (sin salto de pose). spriteCacheMaxPx actúa como tope adicional (memoria/tamaño).
-    const useSpr = R.spriteCache && !ultraFull, sprMax = Math.min(R.spriteCacheMaxPx || 18, (R.lodWave || 16) * lodMul);
+    // CACHÉ DE ESQUELETO (opt-in): cachea por NODO y ensambla con la onda VIVA → conserva la ondulación → se usa en
+    // TODOS los tier-2 (full-graph) y en TODAS las calidades, MÁXIMA incluida (era el objetivo). No hay tope por tamaño
+    // ni costura: el render vivo y el horneado comparten _drawNode → mismo dibujo. (Ver _skelEntry/_bakeSkeleton.)
+    const useSpr = R.spriteCache;
     const serial = sim.serial;
     for (let a = 0; a < n; a++) {
       const i = active[a];
@@ -525,16 +525,12 @@ export class Renderer {
       }
       // LOD de 3 niveles según tamaño en pantalla.
       if (tier === 2) {
-        if (useSpr && rPx <= sprMax) {
-          // CACHÉ: pega el organismo coloreado (cuerpo+ojos+señuelo) horneado estático. Reconstruye solo al cambiar
-          // color o cubo de tamaño. Los grandes (rPx > sprMax) caen al else → en vivo (vector: ondulan + nítidos).
-          this._blitSprite(serial ? serial[i] : i, rPx, x, y, r, h, s, l, heading[i],
-                           nodes, i * (NODE_COUNT * NODE_STRIDE), eye, i * 4, face, i * 3, tint, i, deco, i * 7);
-        } else {
-          // GRAFO completo en vivo: cabeza+nodos, ojos, señuelo, volumen, onda viajera (con sus gates internos por rPx).
-          this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                              eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7);
-        }
+        // GRAFO completo: cabeza+nodos, ojos, señuelo, volumen, ONDA viva. Si el caché está activo, `skel` = entrada de
+        // esqueleto (atlas de celdas de nodo) → _drawBodyGraph PEGA las celdas en vez de reconstruirlas; onda/ojos/señuelo
+        // siguen vivos. La onda conserva el movimiento → válido en máxima. skel=null → reconstrucción vectorial viva.
+        const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 7, eye, i * 4, tint, i) : null;
+        this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
+                            eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7, skel);
       } else if (tier === 1) {
         // CUERPO BARATO: elipse orientada al rumbo con volumen (1 gradiente), sin nodos/ojos/señuelo/onda.
         this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]);
@@ -561,82 +557,125 @@ export class Renderer {
     ctx.restore();
   }
 
-  // CACHÉ DE SPRITES (opt-in, render.spriteCache) — pega el organismo COMPLETO coloreado horneado una vez (más barato que
-  // reconstruir el grafo). Reconstruye solo si cambió el COLOR (cubo de tono/sat/luz → cubre cambio de modo y energía
-  // cuantizada) o el CUBO DE TAMAÑO (zoom/resolución). El cuerpo va ESTÁTICO → el dispatch lo limita a rPx ≤ lodWave
-  // (donde el render vivo TAMPOCO ondula) → sin costura de ondulación. El halo/glow lo pinta _drawAgents fuera (vivo).
-  _blitSprite(key, rPx, x, y, r, h, s, l, heading, nodes, no, eye, eo, face, fo, tint, to, deco, dco) {
-    const ctx = this.fxCtx, cache = this._sprCache || (this._sprCache = new Map());
-    const pxOn = r * (this._bufScale || 1);                       // radio del cuerpo en píxeles REALES del buffer (nitidez)
-    const sk = Math.max(6, Math.ceil(pxOn / 4) * 4);              // cubo de TAMAÑO: bandas de 4 px de buffer → no rehornea cada píxel
+  // CACHÉ DE ESQUELETO (opt-in, render.spriteCache) — hornea cada NODO del organismo (silueta+volumen+contorno+textura)
+  // UNA vez en un ATLAS por organismo; el render vivo ENSAMBLA pegando esas celdas con la onda/rumbo del frame → CONSERVA
+  // la ondulación (a diferencia del sprite de cuerpo entero, estático) → válido en TODAS las calidades, máxima incluida.
+  // Reconstruye solo al cambiar el cubo de COLOR o de TAMAÑO. Misma infra de cubos/presupuesto/evicción que antes.
+  _skelEntry(key, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
+    const cache = this._sprCache || (this._sprCache = new Map());
+    const pxOn = r * (this._bufScale || 1);                       // radio en píxeles REALES del buffer (nitidez)
+    const sk = Math.max(6, Math.ceil(pxOn / 4) * 4);              // cubo de TAMAÑO (bandas de 4 px de buffer → no rehornea cada píxel)
     const ck = ((h / 15) | 0) * 4096 + ((s / 12) | 0) * 64 + ((l / 12) | 0); // cubo de COLOR (tono 15° · sat ~12 · luz ~12)
     let e = cache.get(key);
     if (!e || e.sk !== sk || e.ck !== ck) {
-      // Presupuesto de horneado agotado y hay sprite previo (color/tamaño viejo) → úsalo este frame; se actualizará en
-      // frames siguientes. Evita el hitch de rehornear miles de golpe tras un cambio de zoom.
+      // presupuesto de horneado agotado + hay atlas previo → úsalo este frame (se rehornea en los siguientes) → sin hitch
       if (!(this._sprBakes >= (this.cfg.render.spriteBakeBudget || 120) && e)) {
-        e = this._bakeSprite(e, sk, rPx, r, h, s, l, nodes, no, eye, eo, tint, to, deco, dco);
+        e = this._bakeSkeleton(e, sk, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to);
         e.sk = sk; e.ck = ck; cache.set(key, e); this._sprBakes++;
       }
     }
     e.seen = this._sprFrame;
-    // PEGAR: el sprite está horneado con la CABEZA en el píxel (hx,hy); pivotamos ahí (igual que el render vivo, que
-    // rota el cuerpo alrededor de la cabeza en x,y). Se dibuja a tamaño MUNDO (cv/dens) → sale a su tamaño real,
-    // INDEPENDIENTE de dens; rotado por rumbo (downscale = nítido).
-    const inv = 1 / e.dens;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
-    ctx.drawImage(e.cv, -e.hx * inv, -e.hy * inv, e.cv.width * inv, e.cv.height * inv);
-    ctx.restore();
+    return e;
   }
 
-  // Hornea el organismo coloreado y estático a un offscreen AJUSTADO a su caja real. Dos claves: (1) la CAJA se mide de
-  // la morfología (vía _nodePositions) y la cabeza queda en (hx,hy) → nada se recorta y el pivote del rumbo es correcto;
-  // (2) se hornea con el LOD VIVO (no _forceFull) a `rPx` → muestra EXACTAMENTE lo que el vivo a ese tamaño (mismos
-  // gates de ojos/señuelo/textura) → el cruce sprite↔vivo es continuo. Reusa el canvas previo si el tamaño coincide.
-  _bakeSprite(prev, sk, rPx, r, h, s, l, nodes, no, eye, eo, tint, to, deco, dco) {
-    const R = this.cfg.render, lm = this._lodMul || 1, dens = sk / r, NS = NODE_COUNT;
-    this._nodePositions(nodes, no, r);                            // posiciones en reposo (rellena this._ng*)
-    const px = this._ngx, py = this._ngy, pr = this._ngr, pl = this._ngl, pres = this._ngp;
-    const outW = Math.max(0.8, r * 0.07);
-    // CAJA REAL del cuerpo (coords de nodo, cabeza en 0,0): cada nodo presente aporta su alcance (longitud o medio-ancho
-    // de silueta + contorno) → la caja se adapta a CADA morfología (fin del recorte "a tajo" de la caja fija del v1).
-    let minX = 0, minY = 0, maxX = 0, maxY = 0;
+  // Hornea el ATLAS de nodos: por cada nodo presente, dos celdas (contorno + cuerpo) dibujadas con _drawNode (EL MISMO que
+  // el render vivo → fidelidad) en orientación CANÓNICA (eje +x, rot=0). Clave de iluminación: la luz del gradiente se
+  // pre-rota por −pa[k] → al rotar la celda por su ángulo al ensamblar, el brillo queda body-local consistente (como el
+  // cuerpo entero, la luz rota con el cuerpo = aceptado). Layout: 2 columnas (contorno | cuerpo), una fila por nodo.
+  _bakeSkeleton(prev, sk, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
+    const Rc = this.cfg.render, lm = this._lodMul || 1, dens = sk / r, NS = NODE_COUNT;
+    this._nodePositions(nodes, no, r);
+    const pr = this._ngr, pl = this._ngl, pa = this._nga, pts = this._ngts, pres = this._ngp;
+    const outW = Math.max(0.8, r * 0.07), full = Rc.quality === 'ultra'; // full=máxima (sin gates); ds=escala del LOD vivo
+    const llx0 = -0.7, lly0 = 0.7;                                // luz CANÓNICA body-local (heading=0)
+    const st = {
+      coreLight: `hsl(${h},${Math.max(22, s - 16)}%,${Math.min(82, l + 18)}%)`,
+      coreMid: `hsl(${h},${s}%,${Math.max(12, l - 3)}%)`,
+      coreDark: `hsl(${h},${Math.min(100, s + 12)}%,${Math.max(4, l - 26)}%)`,
+      coreOut: `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`,
+      tex2: deco ? deco[dco + 6] : 0.5, inkLine: `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`,
+      outW, full, lm, ds: rPx / r, lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10, llx: llx0, lly: lly0,
+    };
+    // 1) medir cada celda de NODO (silueta + contorno): una fila por nodo, columnas contorno|cuerpo
+    const cells = new Array(NS); let maxCW = 1, totH = 0;
     for (let k = 0; k < NS; k++) {
-      if (!pres[k]) continue;
-      const reach = Math.max(pl[k], pr[k] * 2.5) + outW + r * 0.06, X = px[k], Y = py[k];
-      if (X - reach < minX) minX = X - reach; if (X + reach > maxX) maxX = X + reach;
-      if (Y - reach < minY) minY = Y - reach; if (Y + reach > maxY) maxY = Y + reach;
+      if (!pres[k]) { cells[k] = null; continue; }
+      const rxx = Math.max(0.6, pl[k]), ryy = Math.max(0.6, pr[k]), sh = (pts[k] - 0.5) * 2;
+      let wB = ryy * (1.30 - sh * 0.95), wT = ryy * (1.30 + sh * 1.15); if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
+      const halfX = rxx + outW, halfY = (wB > wT ? wB : wT) + outW;     // contorno = silueta + outW
+      const cw = Math.ceil(2 * halfX * dens) + 2, ch = Math.ceil(2 * halfY * dens) + 2;
+      cells[k] = { cw, ch, conY: totH, conX: 0, bodyX: 0 };
+      if (cw > maxCW) maxCW = cw; totH += ch;
     }
-    // señuelo: SOLO si se dibujará a este rPx (mismo gate que el vivo); se proyecta al frente (+x) desde el morro
-    const orn = tint ? tint[to] : 0;
-    if (orn > 0.12 && deco && rPx > (R.lodLure || 0) * lm) {
-      const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34));
-      const fwd = pl[0] * 0.85 + plen + bulbR * 4, side = plen * 0.55 + bulbR * 4; // bulbR*4 = alcance del halo del bulbo
-      if (fwd > maxX) maxX = fwd; if (side > maxY) maxY = side; if (-side < minY) minY = -side;
+    // 1b) medir la celda DECO (ojos + señuelo), con el MISMO gate que el render vivo. Frame head-local (origen=cabeza).
+    const showEyes = full || rPx > (Rc.lodEye || 0) * lm, doLure = full || rPx > (Rc.lodLure || 0) * lm;
+    const orn = tint ? tint[to] : 0, hr = pr[0], elong = pl[0] / pr[0];
+    let dminX = 0, dmaxX = 0, dminY = 0, dmaxY = 0, hasDeco = false;
+    if (showEyes && eye) {                                              // región de ojos (cíclope/par/racimo), generosa
+      hasDeco = true; const er0 = Math.max(0.8, hr * (0.16 + 0.34 * eye[eo]));
+      const ex = hr * elong * 0.9 + er0 * 1.5, ey = hr + er0 * 1.2;
+      if (ex > dmaxX) dmaxX = ex; if (-er0 * 1.5 < dminX) dminX = -er0 * 1.5; if (ey > dmaxY) dmaxY = ey; if (-ey < dminY) dminY = -ey;
     }
-    // lienzo ajustado a la caja (+ margen M); la cabeza (0,0) cae en (hx,hy) → pivote del rumbo al pegar
-    const M = 2, cw = Math.ceil((maxX - minX) * dens) + 2 * M, ch = Math.ceil((maxY - minY) * dens) + 2 * M;
-    const hx = -minX * dens + M, hy = -minY * dens + M;
+    if (orn > 0.12 && deco && doLure) {                                // señuelo: tallo + bulbo + halo, al frente (+x)
+      hasDeco = true; const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34)), br = bulbR * 1.35, ax0 = hr * elong * 0.85;
+      const fwd = ax0 + plen + br * 4, side = plen * 0.55 + br * 4;
+      if (fwd > dmaxX) dmaxX = fwd; if (side > dmaxY) dmaxY = side; if (-side < dminY) dminY = -side;
+    }
+    let decoW = 0, decoH = 0, decoAX = 0, decoAY = 0;
+    if (hasDeco) { decoW = Math.ceil((dmaxX - dminX) * dens) + 2; decoH = Math.ceil((dmaxY - dminY) * dens) + 2; decoAX = -dminX * dens + 1; decoAY = -dminY * dens + 1; }
+    // atlas: nodos arriba (2 cols × filas), celda DECO debajo (fila propia, puede ser más ancha por el señuelo)
+    const aw = Math.max(maxCW * 2, decoW), ah = Math.max(1, totH + decoH), decoY = totH;
     let cv = prev && prev.cv;
-    if (!cv || cv.width !== cw || cv.height !== ch) { cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; }
-    const cctx = cv.getContext('2d');
-    cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, cw, ch);
-    cctx.setTransform(dens, 0, 0, dens, hx, hy);                  // nodo (nx,ny) → (hx + nx·dens, …); cabeza (0,0) → (hx,hy)
-    // HORNEAR CON EL LOD VIVO: _drawScale = escala del LOD vivo (rPx/r = zoom) → los gates internos (ojos/señuelo/textura)
-    // ven el MISMO rPx que el vivo → cruce continuo. _bufScale = densidad real del sprite (suelos sub-píxel nítidos).
-    // _forceFull y _lodMul quedan como en el render vivo (no se tocan). Cuerpo estático (spd/t 0); ojos = mismo gate.
-    const sDS = this._drawScale, sBS = this._bufScale;
-    this._drawScale = rPx / r; this._bufScale = dens;
-    const nf = this._sprFace || (this._sprFace = new Float32Array(3)); // mirada neutra (estático)
-    const showEyes = rPx > (R.lodEye || 0) * lm;
-    this._drawBodyGraph(cctx, 0, 0, r, h, s, l, nodes, no, 0, 0, 0, eye, eo, nf, 0, showEyes, tint, to, deco, dco);
-    this._drawScale = sDS; this._bufScale = sBS;
-    return { cv, dens, hx, hy, sk: 0, ck: 0, seen: this._sprFrame };
+    if (!cv || cv.width !== aw || cv.height !== ah) { cv = document.createElement('canvas'); cv.width = aw; cv.height = ah; }
+    const actx = cv.getContext('2d'); actx.setTransform(1, 0, 0, 1, 0, 0); actx.clearRect(0, 0, aw, ah);
+    // 2) hornear cada nodo: contorno (col 0) + cuerpo (col maxCW), centrado en su celda; luz pre-rotada −pa[k]
+    for (let k = 0; k < NS; k++) {
+      const cel = cells[k]; if (!cel) continue;
+      cel.bodyX = maxCW;
+      const ca = Math.cos(pa[k]), sa = Math.sin(pa[k]);
+      st.llx = llx0 * ca + lly0 * sa; st.lly = -llx0 * sa + lly0 * ca;  // rotar la luz por −pa[k]
+      const rxx = Math.max(0.6, pl[k]), ryy = Math.max(0.6, pr[k]);
+      for (let mode = 0; mode <= 1; mode++) {
+        const ax = mode === 0 ? 0 : maxCW;
+        actx.save();
+        actx.beginPath(); actx.rect(ax, cel.conY, cel.cw, cel.ch); actx.clip();   // clip a la celda → sin bleed a vecinas
+        actx.setTransform(dens, 0, 0, dens, ax + cel.cw / 2, cel.conY + cel.ch / 2); // centro de celda = centro del nodo
+        this._drawNode(actx, st, 0, 0, 0, rxx, ryy, mode, pts[k]);                 // rot=0 CANÓNICO (se rota al pegar)
+        actx.restore();
+      }
+    }
+    // 2b) hornear la celda DECO (ojos+señuelo) ESTÁTICA: t=0 (sin pulso), face=null (mirada al frente), heading=0
+    if (hasDeco) {
+      actx.save();
+      actx.setTransform(1, 0, 0, 1, 0, 0); actx.beginPath(); actx.rect(0, decoY, decoW, decoH); actx.clip();
+      actx.setTransform(dens, 0, 0, dens, decoAX, decoY + decoAY);     // cabeza (0,0) → (decoAX, decoY+decoAY)
+      this._drawDeco(actx, r, pr[0], pl[0], h, deco, dco, tint, to, 0, 0, null, 0, eye, eo, showEyes, doLure, dens);
+      actx.restore();
+    }
+    return { cv, dens, cells, maxCW, deco: hasDeco ? { x: 0, y: decoY, w: decoW, h: decoH, ax: decoAX, ay: decoAY } : null, sk: 0, ck: 0, seen: this._sprFrame };
+  }
+
+  // Pega la celda DECO (ojos+señuelo horneados, estáticos) en el frame head-local (origen=cabeza, ya rotado por rumbo en
+  // el ctx). Anclada en la cabeza (ax,ay) → cae donde el render vivo dibujaría ojos/señuelo. No-op si el organismo no tiene.
+  _blitDeco(ctx, skel) {
+    const d = skel.deco; if (!d) return;
+    const inv = 1 / skel.dens;
+    ctx.drawImage(skel.cv, d.x, d.y, d.w, d.h, -d.ax * inv, -d.ay * inv, d.w * inv, d.h * inv);
+  }
+
+  // Pega la celda cacheada del nodo k (contorno si mode 0, cuerpo si mode 1) centrada en (cx,cy) y rotada por `rot`, a
+  // tamaño MUNDO (celda/dens) → sale a su tamaño real (downscale = nítido). Lo llama _drawBodyGraph en vez de _drawNode.
+  _blitNode(ctx, skel, k, mode, cx, cy, rot) {
+    const cel = skel.cells[k]; if (!cel) return;
+    const inv = 1 / skel.dens, ax = mode === 0 ? 0 : skel.maxCW, cw = cel.cw, ch = cel.ch;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.drawImage(skel.cv, ax, cel.conY, cw, ch, -cw * 0.5 * inv, -ch * 0.5 * inv, cw * inv, ch * inv);
+    ctx.restore();
   }
 
   // Reconstruye las posiciones en REPOSO de los nodos (cabeza en el origen, mirando +x) recorriendo padres → rellena los
   // scratch this._ng* (compartidos). La onda/flexión se aplica DESPUÉS al dibujar. ÚNICA fuente de la geometría: la usan
-  // _drawBodyGraph (para dibujar) y _bakeSprite (para medir la caja) → no pueden divergir.
+  // _drawBodyGraph (para dibujar) y _bakeSkeleton (para medir/hornear las celdas de nodo) → no pueden divergir.
   _nodePositions(nodes, no, r) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
     const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
@@ -670,9 +709,151 @@ export class Renderer {
   // Evicción del caché de sprites: cada ~45 frames suelta los no vistos en `ttl` (muertos / fuera de vista / pasados a
   // vector); y aplica un techo duro de entradas (suelta las vistas hace más) → memoria acotada.
   _evictSprites() {
-    const cache = this._sprCache, f = this._sprFrame, ttl = 90, cap = this.cfg.render.spriteCacheCap || 2400;
-    if ((f % 45) === 0) for (const [k, e] of cache) if (f - e.seen > ttl) cache.delete(k);
-    if (cache.size > cap) { const arr = [...cache].sort((a, b) => a[1].seen - b[1].seen), drop = cache.size - cap; for (let q = 0; q < drop; q++) cache.delete(arr[q][0]); }
+    const cache = this._sprCache, cap = this.cfg.render.spriteCacheCap || 2400;
+    // EVICCIÓN POR MUERTE, no por visibilidad: se mantienen cacheados TODOS los organismos VIVOS aunque salgan de vista
+    // (al volver a entrar por PANEO no se rehornea). Cada ~60 frames se sueltan los serials que ya no están vivos (no en
+    // el snapshot actual). El cambio de ZOOM sí rehornea (cubo de tamaño, por nitidez) — eso es aparte de la visibilidad.
+    if ((this._sprFrame % 60) === 0 && this.sim.serial) {
+      const set = this._aliveSet || (this._aliveSet = new Set()); set.clear();
+      const ser = this.sim.serial, n = this.sim.activeCount; for (let a = 0; a < n; a++) set.add(ser[a]);
+      for (const k of cache.keys()) if (!set.has(k)) cache.delete(k);
+    }
+    if (cache.size > cap) { const arr = [...cache].sort((a, b) => a[1].seen - b[1].seen), drop = cache.size - cap; for (let q = 0; q < drop; q++) cache.delete(arr[q][0]); } // backstop de memoria
+  }
+
+  // Silueta del nodo (Capa 1): forma base↔punta según tipShape. Curva cerrada simétrica al eje; wB/wT = medio-ancho
+  // base/punta. Afilar (<0.5) engorda base y afila punta; abrir (>0.5) al revés; 0.5 ≈ elipse. Pinta en coords del
+  // cuerpo (rot+centro) → el gradiente/luz quedan coherentes sin rotar el canvas.
+  _silPath(ctx, cx, cy, rot, L, wB, wT) {
+    const cR = Math.cos(rot), sR = Math.sin(rot);
+    const X = (lx, ly) => cx + lx * cR - ly * sR, Y = (lx, ly) => cy + lx * sR + ly * cR;
+    ctx.beginPath();
+    ctx.moveTo(X(-L, 0), Y(-L, 0));
+    ctx.bezierCurveTo(X(-L * 0.5, wB), Y(-L * 0.5, wB), X(L * 0.5, wT), Y(L * 0.5, wT), X(L, 0), Y(L, 0));
+    ctx.bezierCurveTo(X(L * 0.5, -wT), Y(L * 0.5, -wT), X(-L * 0.5, -wB), Y(-L * 0.5, -wB), X(-L, 0), Y(-L, 0));
+    ctx.closePath();
+  }
+
+  // Dibuja UN nodo (silueta + volumen + textura, o su contorno). `st` = estilo del organismo (ver _drawBodyGraph): colores
+  // de relieve, dir de luz (llx,lly), textura, gates LOD. mode 0 = contorno oscuro (va DETRÁS), 1 = cuerpo (gradiente
+  // direccional + bandas). Lo usan el render VIVO y el horneado del ESQUELETO → mismo dibujo exacto = fidelidad.
+  _drawNode(ctx, st, cx, cy, rot, rxx, ryy, mode, tip) {
+    const sShape = (tip - 0.5) * 2;                          // −1 afila .. +1 abre
+    let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
+    let wT = ryy * (1.30 + sShape * 1.15);                   // medio-ancho punta (abrir engorda)
+    if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
+    const nodePx = rxx * st.ds;                              // tamaño del nodo (px aparentes = lodScale) → gatea detalles invisibles
+    if (mode === 0) {                                        // PASADA contorno (outline oscuro): misma silueta agrandada
+      if (!st.full && nodePx < st.lodOutline * st.lm) return; // invisible en nodos diminutos → se omite
+      ctx.fillStyle = st.coreOut;
+      this._silPath(ctx, cx, cy, rot, rxx + st.outW, wB + st.outW, wT + st.outW); ctx.fill();
+    } else {                                                 // PASADA cuerpo: volumen (gradiente) + textura
+      if (!st.full && nodePx < st.lodFlat * st.lm) { ctx.fillStyle = st.coreMid; } // relleno PLANO en nodos pequeños (imperceptible, ahorra el gradiente)
+      else {
+        const rad = Math.max(rxx, wB, wT);
+        const g = ctx.createRadialGradient(cx + st.llx * rxx * 0.5, cy + st.lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
+        g.addColorStop(0, st.coreLight); g.addColorStop(0.55, st.coreMid); g.addColorStop(1, st.coreDark);
+        ctx.fillStyle = g;
+      }
+      this._silPath(ctx, cx, cy, rot, rxx, wB, wT); ctx.fill();
+      if (st.full || rxx * st.ds > st.lodTexture * st.lm) {   // TEXTURA: bandas transversales sutiles (clip a la silueta)
+        ctx.save(); this._silPath(ctx, cx, cy, rot, rxx, wB, wT); ctx.clip();
+        const nb2 = 2 + ((st.tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
+        ctx.strokeStyle = st.inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
+        for (let bI = 1; bI < nb2; bI++) {
+          const u = bI / nb2 - 0.5, ox = cr2 * u * 2 * rxx, oy = sr2 * u * 2 * rxx;
+          ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, wMax * 0.95, wMax * 0.55, rot + 1.5708, 0, 6.2832); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  // SEÑUELO + OJOS del morro (decoración de la raíz), EXTRAÍDO de _drawBodyGraph para que el caché de ESQUELETO pueda
+  // hornearlo (igual que _drawNode). Todo en el frame head-local (origen = cabeza, +x = rumbo). `t` anima sway/pulso del
+  // señuelo y `face` mueve la pupila; el HORNEADO los pasa neutros (t=0, face=null) → versión estática cacheable.
+  _drawDeco(ctx, r, pr0, pl0, h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, ds) {
+    const orn = tint ? tint[to] : 0;
+    if (orn > 0.12 && deco && doLure) {
+      const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
+      const fmin = (px) => px / ds;
+      const hr = pr0, elong = pl0 / pr0;
+      const np = 1 + ((oNum * oNum * 6) | 0);
+      const plen = r * (0.5 + oLen * 5.5);
+      const ohue = h;
+      ctx.lineCap = 'round';
+      const bulbR = Math.max(fmin(0.6), r * (0.06 + oBulb * 0.34));
+      const bulbHue = (((ohue + (oHue - 0.5) * 300) % 360) + 360) % 360;
+      const ax0 = hr * elong * 0.85, ay0 = 0;
+      for (let p = 0; p < np; p++) {
+        const spread = np > 1 ? (p / (np - 1) - 0.5) : 0;
+        const ang = spread * 1.1 + Math.sin(t * 1.4 + p) * 0.1 * orn;
+        const dx = Math.cos(ang), dy = Math.sin(ang);
+        const bx = ax0, by = ay0, tx = ax0 + dx * plen, ty = ay0 + dy * plen;
+        const mx0 = (bx + tx) / 2, my0 = (by + ty) / 2;
+        let nx = -(ty - by), ny = (tx - bx); const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+        const curve = plen * 0.16 * Math.sin(p * 1.7 + 0.6);
+        const cx2 = mx0 + nx * curve, cy2 = my0 + ny * curve;
+        const wB = Math.max(fmin(0.8), r * 0.11), wT = Math.max(fmin(0.25), r * 0.03);
+        const N = 6, sgL = [], sgR = [];
+        for (let i = 0; i <= N; i++) {
+          const u = i / N, iu = 1 - u;
+          const xx = iu * iu * bx + 2 * iu * u * cx2 + u * u * tx, yy = iu * iu * by + 2 * iu * u * cy2 + u * u * ty;
+          const tgx = 2 * iu * (cx2 - bx) + 2 * u * (tx - cx2), tgy = 2 * iu * (cy2 - by) + 2 * u * (ty - cy2);
+          const tl = Math.hypot(tgx, tgy) || 1, lx = -tgy / tl, ly = tgx / tl, w = (wB * iu + wT * u) / 2;
+          sgL.push([xx + lx * w, yy + ly * w]); sgR.push([xx - lx * w, yy - ly * w]);
+        }
+        const sg = ctx.createLinearGradient(bx, by, tx, ty);
+        sg.addColorStop(0, `hsl(${ohue},55%,26%)`); sg.addColorStop(1, `hsl(${ohue},92%,64%)`);
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(sgL[0][0], sgL[0][1]);
+        for (let i = 1; i <= N; i++) ctx.lineTo(sgL[i][0], sgL[i][1]);
+        for (let i = N; i >= 0; i--) ctx.lineTo(sgR[i][0], sgR[i][1]);
+        ctx.closePath(); ctx.fill();
+        const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
+        const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
+        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 4);
+        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.3, `hsla(${h2},95%,68%,0.22)`);
+        hg.addColorStop(0.78, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 4, 0, 6.2832); ctx.fill();
+        const bg2 = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
+        bg2.addColorStop(0, `hsl(${h2},95%,84%)`); bg2.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
+        ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(tx - br * 0.3, ty - br * 0.34, br * 0.3, 0, 6.2832); ctx.fill();
+      }
+    }
+    if (showEyes && eye) {
+      const senseG = eye[eo], cEye = eye[eo + 2], atkDrive = eye[eo + 3];
+      const hr = pr0, elong = pl0 / pr0;
+      const er0 = Math.max(0.8, hr * (0.16 + 0.34 * senseG));
+      const nEye = senseG < 0.3 ? 1 : senseG < 0.72 ? 2 : 4 + ((senseG - 0.72) * 12 | 0);
+      const iHue = (((h + (cEye - 0.5) * 70) % 360) + 360) % 360;
+      const aspectY = 1 - atkDrive * 0.4;
+      const ch = Math.cos(heading), sh = Math.sin(heading);
+      let lgx = 1, lgy = 0;
+      if (face) { const gx = face[fo], gy = face[fo + 1]; lgx = gx * ch + gy * sh; lgy = -gx * sh + gy * ch; }
+      const drawEye = (cx, cy, er) => {
+        const erx = er, ery = er * aspectY;
+        const eg = ctx.createRadialGradient(cx - erx * 0.3, cy - ery * 0.3, er * 0.1, cx, cy, er * 1.05);
+        eg.addColorStop(0, `hsl(${iHue},55%,30%)`); eg.addColorStop(1, `hsl(${iHue},62%,7%)`);
+        ctx.fillStyle = eg; ctx.beginPath(); ctx.ellipse(cx, cy, erx, ery, 0, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.beginPath();
+        ctx.arc(cx + lgx * er * 0.32, cy + lgy * ery * 0.32, er * 0.42, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath();
+        ctx.arc(cx - erx * 0.3, cy - ery * 0.34, er * 0.22, 0, 6.2832); ctx.fill();
+      };
+      const fx = hr * elong * 0.45;
+      if (nEye === 1) drawEye(fx, 0, er0 * 1.2);
+      else if (nEye === 2) { for (let e = 0; e < 2; e++) { const sgn = e ? -1 : 1; drawEye(fx, sgn * hr * 0.55, er0); } }
+      else {
+        const er = er0 * 0.6, pairs = nEye >> 1;
+        for (let p = 0; p < pairs; p++) {
+          const tt = pairs > 1 ? p / (pairs - 1) : 0.5, aa = 0.5 + tt * 0.8, dd = hr * (0.4 + tt * 0.4);
+          const cx = Math.cos(aa) * dd * elong, cy = Math.sin(aa) * dd;
+          drawEye(cx, cy, er); drawEye(cx, -cy, er);
+        }
+        if (nEye & 1) drawEye(fx, 0, er);
+      }
+    }
   }
 
   // B2b (EN CONSTRUCCIÓN): dibuja el cuerpo desde el GRAFO DE NODOS (una sola primitiva). Reconstruye las
@@ -680,7 +861,7 @@ export class Renderer {
   // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
   // PRIMER INCREMENTO: sin ojos/textura/señuelo/contorno fino aún (llegan en incrementos siguientes). El
   // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
-  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco) {
+  _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco, skel) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
     // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
     // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
@@ -702,52 +883,11 @@ export class Renderer {
     const tex2 = deco ? deco[dco + 6] : 0.5;
     const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
     const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
-    // Silueta del nodo (Capa 1): forma base↔punta según tipShape. Curva cerrada simétrica al eje; wB = medio-ancho
-    // cerca de la BASE (hacia el padre), wT = cerca de la PUNTA (hacia fuera). Afilar (<0.5) engorda base y afila
-    // punta (púa/garra/tentáculo); abrir (>0.5) afila base y abre punta (aleta/paleta); 0.5 ≈ lente ≈ elipse previa.
-    // Los puntos se transforman aquí a coords del cuerpo (rot+centro) → el gradiente/luz quedan coherentes (no rotamos el canvas).
-    const silPath = (cx, cy, rot, L, wB, wT) => {
-      const cR = Math.cos(rot), sR = Math.sin(rot);
-      const X = (lx, ly) => cx + lx * cR - ly * sR, Y = (lx, ly) => cy + lx * sR + ly * cR;
-      ctx.beginPath();
-      ctx.moveTo(X(-L, 0), Y(-L, 0));
-      ctx.bezierCurveTo(X(-L * 0.5, wB), Y(-L * 0.5, wB), X(L * 0.5, wT), Y(L * 0.5, wT), X(L, 0), Y(L, 0));
-      ctx.bezierCurveTo(X(L * 0.5, -wT), Y(L * 0.5, -wT), X(-L * 0.5, -wB), Y(-L * 0.5, -wB), X(-L, 0), Y(-L, 0));
-      ctx.closePath();
-    };
-    const drawNode = (cx, cy, rot, rxx, ryy, mode, tip) => {
-      const sShape = (tip - 0.5) * 2;                          // −1 afila .. +1 abre
-      let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
-      let wT = ryy * (1.30 + sShape * 1.15);                   // medio-ancho punta (abrir engorda)
-      if (wB < 0.4) wB = 0.4; if (wT < 0.4) wT = 0.4;
-      const nodePx = rxx * ds;                                 // tamaño del nodo (px aparentes = lodScale) → gatea detalles invisibles a tamaño pequeño
-      if (mode === 0) {                                        // PASADA contorno (outline oscuro): misma silueta agrandada
-        if (!full && nodePx < (Rc.lodOutline || 4) * lm) return; // invisible en nodos diminutos → se omite (medido: ~9 ms con muchos grafos)
-        ctx.fillStyle = coreOut;
-        silPath(cx, cy, rot, rxx + outW, wB + outW, wT + outW); ctx.fill();
-      } else {                                                 // PASADA cuerpo: volumen (gradiente) + textura
-        // El gradiente radial por nodo es el coste #1 del dibujado (~11 ms con muchos grafos) e IMPERCEPTIBLE en nodos
-        // pequeños → relleno PLANO por debajo de ~5 px (mismo aspecto), gradiente de volumen solo donde se nota.
-        if (!full && nodePx < (Rc.lodFlat || 5) * lm) { ctx.fillStyle = coreMid; }
-        else {
-          const rad = Math.max(rxx, wB, wT);
-          const g = ctx.createRadialGradient(cx + llx * rxx * 0.5, cy + lly * ryy * 0.5, rad * 0.12, cx, cy, rad * 1.05);
-          g.addColorStop(0, coreLight); g.addColorStop(0.55, coreMid); g.addColorStop(1, coreDark);
-          ctx.fillStyle = g;
-        }
-        silPath(cx, cy, rot, rxx, wB, wT); ctx.fill();
-        if (full || rxx * ds > (Rc.lodTexture || 10) * lm) {   // TEXTURA: bandas transversales sutiles (clip a la silueta). `full` (retrato) → siempre
-          ctx.save(); silPath(cx, cy, rot, rxx, wB, wT); ctx.clip();
-          const nb2 = 2 + ((tex2 * 4) | 0), cr2 = Math.cos(rot), sr2 = Math.sin(rot), wMax = wB > wT ? wB : wT;
-          ctx.strokeStyle = inkLine; ctx.lineWidth = Math.max(0.6, ryy * 0.16);
-          for (let bI = 1; bI < nb2; bI++) {
-            const u = bI / nb2 - 0.5, ox = cr2 * u * 2 * rxx, oy = sr2 * u * 2 * rxx;
-            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, wMax * 0.95, wMax * 0.55, rot + 1.5708, 0, 6.2832); ctx.stroke();
-          }
-          ctx.restore();
-        }
-      }
-    };
+    // Estilo de nodo (constante por organismo) que consumen los métodos _silPath/_drawNode. EXTRAÍDOS de aquí para que
+    // el caché de ESQUELETO hornee cada nodo con EXACTAMENTE el mismo dibujo que el render vivo → fidelidad por
+    // construcción (una sola fuente del dibujo de nodo, no se duplica). `ds` = escala del LOD; `lm`/`full` = gates.
+    const st = skel ? null : { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
+                 lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 }; // sin caché → estilo para _drawNode; con caché → se pegan celdas
     // ---- ONDA VIAJERA (B2b): la flexión se ACUMULA del padre al hijo → cadena articulada (anguila). La
     // cabeza (raíz, prof. 0) queda estable; la cola ondula más (fase por profundidad). Nada más rápido = más onda.
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
@@ -801,100 +941,14 @@ export class Renderer {
         const baseRot = pa[k] + acc[k];                           // orientación del nodo = reposo + onda acumulada
         for (let sgn = 1; sgn >= (lateral ? -1 : 1); sgn -= 2) {  // sgn=−1 = reflejo bilateral (y y rotación)
           const rot = baseRot * sgn + (lateral ? turnLean * sgn : 0); // remado: aletas laterales se inclinan hacia el giro
-          drawNode(wpx[k], wpy[k] * sgn, rot, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode, pts[k]);
+          if (skel) this._blitNode(ctx, skel, k, mode, wpx[k], wpy[k] * sgn, rot);   // CACHÉ: pega la celda del nodo (la onda/rumbo van en cx,cy,rot → conserva ondulación)
+          else this._drawNode(ctx, st, wpx[k], wpy[k] * sgn, rot, Math.max(0.6, pl[k]), Math.max(0.6, pr[k]), mode, pts[k]);
         }
       }
     }
-    // ---- SEÑUELO / ORNAMENTO (B2b incremento 3): tallo curvo afilado + bulbo bioluminiscente, naciendo del
-    // morro y proyectado al frente (illicium de rape). Gateado por `orn`; estilo por o_len/o_bulb/o_hue/o_num. ----
-    const orn = tint ? tint[to] : 0;   // #13: tint = solo orn (stride 1)
-    if (orn > 0.12 && deco && doLure) {   // LOD: señuelo (béziers+gradientes, caro) solo a tamaño suficiente
-      const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
-      const ds = this._bufScale || this._drawScale || 1, fmin = (px) => px / ds; // SUB-PÍXEL: escala REAL del buffer (no la del LOD) → rasgos finos ≥ ~px de buffer a cualquier resolución
-      const hr = pr[0], elong = pl[0] / pr[0];
-      const np = 1 + ((oNum * oNum * 6) | 0);
-      const plen = r * (0.5 + oLen * 5.5);
-      const ohue = h;   // #13: el tallo del señuelo usa el tono del cuerpo (antes desfase por c_app, retirado)
-      ctx.lineCap = 'round';
-      const bulbR = Math.max(fmin(0.6), r * (0.06 + oBulb * 0.34));
-      const bulbHue = (((ohue + (oHue - 0.5) * 300) % 360) + 360) % 360;
-      const ax0 = hr * elong * 0.85, ay0 = 0;
-      for (let p = 0; p < np; p++) {
-        const spread = np > 1 ? (p / (np - 1) - 0.5) : 0;
-        const ang = spread * 1.1 + Math.sin(t * 1.4 + p) * 0.1 * orn;
-        const dx = Math.cos(ang), dy = Math.sin(ang);
-        const bx = ax0, by = ay0, tx = ax0 + dx * plen, ty = ay0 + dy * plen;
-        const mx0 = (bx + tx) / 2, my0 = (by + ty) / 2;
-        let nx = -(ty - by), ny = (tx - bx); const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
-        const curve = plen * 0.16 * Math.sin(p * 1.7 + 0.6);
-        const cx2 = mx0 + nx * curve, cy2 = my0 + ny * curve;
-        const wB = Math.max(fmin(0.8), r * 0.11), wT = Math.max(fmin(0.25), r * 0.03);
-        const N = 6, sgL = [], sgR = [];
-        for (let i = 0; i <= N; i++) {
-          const u = i / N, iu = 1 - u;
-          const xx = iu * iu * bx + 2 * iu * u * cx2 + u * u * tx, yy = iu * iu * by + 2 * iu * u * cy2 + u * u * ty;
-          const tgx = 2 * iu * (cx2 - bx) + 2 * u * (tx - cx2), tgy = 2 * iu * (cy2 - by) + 2 * u * (ty - cy2);
-          const tl = Math.hypot(tgx, tgy) || 1, lx = -tgy / tl, ly = tgx / tl, w = (wB * iu + wT * u) / 2;
-          sgL.push([xx + lx * w, yy + ly * w]); sgR.push([xx - lx * w, yy - ly * w]);
-        }
-        const sg = ctx.createLinearGradient(bx, by, tx, ty);
-        sg.addColorStop(0, `hsl(${ohue},55%,26%)`); sg.addColorStop(1, `hsl(${ohue},92%,64%)`);
-        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(sgL[0][0], sgL[0][1]);
-        for (let i = 1; i <= N; i++) ctx.lineTo(sgL[i][0], sgL[i][1]);
-        for (let i = N; i >= 0; i--) ctx.lineTo(sgR[i][0], sgR[i][1]);
-        ctx.closePath(); ctx.fill();
-        const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
-        const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
-        // HALO del bulbo CEÑIDO a br*4 (antes br*7): el anillo exterior (br*4–7) tenía alpha <0.055 → casi invisible,
-        // pero era el grueso del relleno (coste ∝ r²). Recortado, el glow VISIBLE (br*0–3) queda igual (los stops se
-        // reescalan a los mismos radios absolutos) y el bloom global suma encima → mismo aspecto, ~⅔ menos coste de halo.
-        const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 4);
-        hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.3, `hsla(${h2},95%,68%,0.22)`);
-        hg.addColorStop(0.78, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
-        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(tx, ty, br * 4, 0, 6.2832); ctx.fill();
-        const bg2 = ctx.createRadialGradient(tx - br * 0.35, ty - br * 0.4, br * 0.1, tx, ty, br);
-        bg2.addColorStop(0, `hsl(${h2},95%,84%)`); bg2.addColorStop(1, `hsl(${(h2 + 20) % 360},90%,50%)`);
-        ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(tx, ty, br, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(tx - br * 0.3, ty - br * 0.34, br * 0.3, 0, 6.2832); ctx.fill();
-      }
-    }
-
-    // ---- OJOS en la raíz (B2b incremento 2): perla vidriosa oscura + pupila que sigue la MIRADA. Conteo
-    // (cíclope/par/racimo) desde `sense`; iris ligado a la paleta del cuerpo (c_eye); entornado por el
-    // IMPULSO DE ATAQUE del cerebro (dinámico, emergente: los que cazan parecen feroces — ya no un gen). ----
-    if (showEyes && eye) {
-      const senseG = eye[eo], cEye = eye[eo + 2], atkDrive = eye[eo + 3];
-      const hr = pr[0], elong = pl[0] / pr[0];
-      const er0 = Math.max(0.8, hr * (0.16 + 0.34 * senseG));
-      const nEye = senseG < 0.3 ? 1 : senseG < 0.72 ? 2 : 4 + ((senseG - 0.72) * 12 | 0);
-      const iHue = (((h + (cEye - 0.5) * 70) % 360) + 360) % 360;
-      const aspectY = 1 - atkDrive * 0.4;                        // impulso de ataque alto → ojo entornado (feroz)
-      const ch = Math.cos(heading), sh = Math.sin(heading);
-      let lgx = 1, lgy = 0;
-      if (face) { const gx = face[fo], gy = face[fo + 1]; lgx = gx * ch + gy * sh; lgy = -gx * sh + gy * ch; }
-      const drawEye = (cx, cy, er) => {
-        const erx = er, ery = er * aspectY;
-        const eg = ctx.createRadialGradient(cx - erx * 0.3, cy - ery * 0.3, er * 0.1, cx, cy, er * 1.05);
-        eg.addColorStop(0, `hsl(${iHue},55%,30%)`); eg.addColorStop(1, `hsl(${iHue},62%,7%)`);
-        ctx.fillStyle = eg; ctx.beginPath(); ctx.ellipse(cx, cy, erx, ery, 0, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.beginPath();
-        ctx.arc(cx + lgx * er * 0.32, cy + lgy * ery * 0.32, er * 0.42, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath();
-        ctx.arc(cx - erx * 0.3, cy - ery * 0.34, er * 0.22, 0, 6.2832); ctx.fill();
-      };
-      const fx = hr * elong * 0.45;                              // ojos en la mitad FRONTAL de la raíz (+x = rumbo)
-      if (nEye === 1) drawEye(fx, 0, er0 * 1.2);                 // cíclope
-      else if (nEye === 2) { for (let e = 0; e < 2; e++) { const sgn = e ? -1 : 1; drawEye(fx, sgn * hr * 0.55, er0); } }
-      else {                                                     // racimo en pares espejados
-        const er = er0 * 0.6, pairs = nEye >> 1;
-        for (let p = 0; p < pairs; p++) {
-          const tt = pairs > 1 ? p / (pairs - 1) : 0.5, aa = 0.5 + tt * 0.8, dd = hr * (0.4 + tt * 0.4);
-          const cx = Math.cos(aa) * dd * elong, cy = Math.sin(aa) * dd;
-          drawEye(cx, cy, er); drawEye(cx, -cy, er);
-        }
-        if (nEye & 1) drawEye(fx, 0, er);
-      }
-    }
+    // SEÑUELO + OJOS del morro: con caché → celda DECO horneada (estática: gaze/pulso fijos); sin caché → _drawDeco vivo.
+    if (skel) this._blitDeco(ctx, skel);
+    else this._drawDeco(ctx, r, pr[0], pl[0], h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, this._bufScale || this._drawScale || 1);
     ctx.restore();
   }
 
