@@ -225,15 +225,22 @@ function snapshot() {
       atkDrive: s.atkDrive[i],                          // impulso de ataque suavizado → ceño del retrato + readout del inspector
     };
   }
+  const resource = s.world.resource.slice(), carrion = s.world.carrion.slice();
+  // TRANSFERIBLES: los TypedArrays creados FRESCOS en esta foto se MUEVEN al hilo principal (cero copia) en lugar de
+  // clonarse (structured clone). Tras transferirse quedan "detached" aquí, pero el próximo snapshot crea otros nuevos →
+  // seguro. NO se incluyen los arrays histó* (los RETIENE el worker entre frames; además son Array normal, no TypedArray)
+  // ni `sel`/escalares → se copian. `nodes` (n·80 floats) es el mayor; transferirlo evita su copia por frame.
+  const transfer = [x.buffer, y.buffer, radius.buffer, hue.buffer, diet.buffer, eFrac.buffer, lineage.buffer,
+    geneSel.buffer, heading.buffer, spd.buffer, tint.buffer, eye.buffer, face.buffer, deco.buffer, nodes.buffer,
+    hist.buffer, species.buffer, role.buffer, serial.buffer, resource.buffer, carrion.buffer];
   postMessage({
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.N,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount, role, serial,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
     histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histN, histGrass, histBio, histCarrion, histDC, histDS, histDA, histDE, histBS, histBA,
-    resource: s.world.resource.slice(),
-    carrion: s.world.carrion.slice(),
-  });
+    resource, carrion,
+  }, transfer);
 }
 
 
