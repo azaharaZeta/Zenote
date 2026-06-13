@@ -30,6 +30,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
+| LOD declarativo (desacoplar de la lista de elementos visuales) | ⬜ pendiente | análisis abajo — arquitectura/mantenibilidad del render |
 | Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
 | Mejoras de UI / bugs menores | ⬜ pendiente | análisis abajo (leyenda Rol ponderada · salto de cámara al soltar pinza) |
 | Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |
@@ -120,6 +121,32 @@ El render NO toca la simulación (regla 3 de VISUAL.md).
 
 Varios nodos con el mismo `parent` y `emit` parecido se solapan al dibujarse. Posible reparto angular sutil entre
 hermanos (solo render, no toca genética).
+
+---
+
+## LOD declarativo: desacoplar los umbrales de la lista de elementos visuales — arquitectura
+*(pendiente, 2026-06-13)*
+
+**Idea (del usuario):** los parámetros del LOD tienen **dependencia dura** con la lista de elementos visuales del
+organismo (hoy: cuerpo, ojos, señuelo, onda, halo + por-nodo plano/contorno/textura). Cada elemento es un `lodX` suelto
+en `config.js` con su gate cableado a mano. **Añadir un elemento visual nuevo obliga a tocar en VARIOS sitios** de forma
+coordinada → frágil y fácil de desincronizar. De momento NO hace falta (la lista es estable y pequeña), pero puede
+volverse necesaria.
+
+**Hoy — dónde hay que tocar para meter UN elemento nuevo:** (1) `config.js` (nuevo umbral `lodX`); (2) `canvas.js
+_drawAgents` (dispatch de tier / gate del halo); (3) `canvas.js _drawBodyGraph` (gate interno `doX = full || rPxG >
+lodX·lm`); (4) `_bakeSprite` (REPLICAR ese gate para que el sprite cacheado coincida con el vivo — p. ej. `showEyes`); (5)
+mantener el ORDEN coherente de la rampa (`lodBody ≤ lodFull ≤ lodEye ≤ lodWave ≤ lodLure`); (6) docs. Es fácil olvidar uno
+— de hecho el punto (4) ya causó la costura vivo↔sprite que hubo que arreglar (señuelo que parpadeaba en el cruce).
+
+**Vía a futuro (si se retoma):** una **tabla declarativa** de elementos visuales — cada entrada `{ nombre, umbral,
+aplica(rPx, lm), dibuja(...) }` — y que el dispatch y el horneado del sprite ITEREN sobre ella en vez de tener gates a
+mano repetidos. Añadir un elemento = una entrada (umbral + función de dibujo); el caché de sprites hereda el MISMO gate
+automáticamente (sin replicar) → desaparece el riesgo de desincronización vivo↔sprite.
+
+**Coste / cuándo:** refactor de render acotado, SIN cambio de comportamiento (puro de mantenibilidad). No urge ahora; se
+vuelve rentable si se añaden varios elementos visuales más, o si reaparece la desincronización vivo↔sprite. Buen momento
+para hacerlo: junto al **esqueleto** (sprites por nodo), que tocaría exactamente estos mismos gates.
 
 ---
 

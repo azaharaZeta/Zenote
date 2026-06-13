@@ -298,15 +298,15 @@ export const config = {
     //    (lodHalo), ojos (lodEye), onda+contorno (lodWave), señuelo (lodLure); (b) por NODO: relleno plano si <lodFlat,
     //    sin contorno si <lodOutline, textura si >lodTexture. TODOS se multiplican por lodLowMult en BAJA (×1 en alta;
     //    MÁXIMA los ignora → dibuja todo). Solo render. ──
-    lodBody: 5,               // rPx mínimo para dibujar CUERPO (debajo = punto plano)
-    lodFull: 9,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
-    lodEye: 11,               // rPx mínimo para dibujar OJOS (dentro del grafo)
-    lodLure: 22,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
-    lodWave: 16,              // rPx mínimo para la ONDA viajera (MOVIMIENTO). El contorno ya NO depende de esto (va con el grafo). (18→16: se mueve un pelín antes.)
+    lodBody: 2,               // rPx mínimo para dibujar CUERPO (debajo = punto plano)
+    lodFull: 3,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
+    lodEye: 4,               // rPx mínimo para dibujar OJOS (dentro del grafo)
+    lodLure: 4,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
+    lodWave: 6,              // rPx mínimo para la ONDA viajera (MOVIMIENTO). El contorno ya NO depende de esto (va con el grafo). (18→16: se mueve un pelín antes.)
     lodHalo: 6,               // rPx mínimo para el HALO por agente (los puntos diminutos no lo necesitan; el bloom global ya brilla)
-    lodLowMult: 2.6,          // Multiplicador de TODOS los umbrales LOD (criatura Y nodo) en calidad baja (más agresivo). Alta = ×1.
+    lodLowMult: 2.0,          // Multiplicador de TODOS los umbrales LOD (criatura Y nodo) en calidad baja (más agresivo). Alta = ×1.
     // Umbrales por NODO (tamaño del NODO, no de la criatura) → detalle fino dentro del grafo:
-    lodFlat: 5,               // nodo por debajo de este tamaño → cuerpo con relleno PLANO (sin gradiente de volumen; imperceptible)
+    lodFlat: 4,               // nodo por debajo de este tamaño → cuerpo con relleno PLANO (sin gradiente de volumen; imperceptible)
     lodOutline: 4,            // nodo por debajo de este tamaño → se OMITE su contorno (outline invisible)
     lodTexture: 10,           // nodo por ENCIMA de este tamaño → bandas de TEXTURA (piel)
     grassDensity: 6800,       // Nº de motas de plancton/micro-flora repartidas por el mundo (chispas abisales)
