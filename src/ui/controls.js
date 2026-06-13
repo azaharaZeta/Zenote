@@ -132,7 +132,11 @@ export function setupControls(app) {
   if (colorSel) colorSel.addEventListener('change', () => { renderer.colorMode = colorSel.value; updateLegend(); });
   updateLegend();
 
-  // ---- Reseed (expuesto en app.reseed → el toggle de "Pecera sellada" lo llama para re-sembrar al activarse) ----
+  // ---- Reseed (expuesto en app.reseed) + aviso "pendiente reiniciar" ----
+  // Los parámetros marcados ↻ (reseed/reseedOnChange) YA NO resiembran solos: al tocarlos se enciende un aviso rojo
+  // junto al botón de modo. El cambio se aplica cuando el usuario pulsa Reiniciar (o el propio aviso, que es un atajo).
+  const reseedPendingEl = $('reseedPending');
+  app.markReseedPending = () => { if (reseedPendingEl) reseedPendingEl.classList.add('show'); };   // lo invoca setupLab al tocar un ↻
   app.reseed = () => {
     const si = $('seedInput');                       // campo semilla oculto de momento → si no existe/vacío, semilla aleatoria
     const raw = si ? si.value.trim() : '';
@@ -140,8 +144,10 @@ export function setupControls(app) {
     send({ type: 'reset', seed });   // el motor (worker) re-siembra y reenvía el mundo
     charts.clear();
     renderer.resize();
+    if (reseedPendingEl) reseedPendingEl.classList.remove('show');   // ya aplicado → apaga el aviso
   };
   $('reseed').addEventListener('click', app.reseed);
+  if (reseedPendingEl) reseedPendingEl.addEventListener('click', () => app.reseed());   // pulsar el aviso reinicia (atajo)
 
   // ---- Slider de DIVERSIDAD del sembrado (junto a Sembrar): monótono ↔ variado. Aplica al próximo Sembrar. ----
   const divSlider = $('divSlider'), divVal = $('divVal');
@@ -541,23 +547,24 @@ function setupLab(app, send) {
       const resets = [];                            // reset de cada parámetro (lo usa también el reset de categoría)
       group.items.forEach((it) => {
         const def = get(it.k);                      // valor POR DEFECTO (config.js al cargar) → muesca + reset
+        const needsReseed = !!(it.reseed || it.reseedOnChange);  // ↻ requiere Reiniciar para aplicarse → al tocarlo, avisa (ya no resiembra solo)
         if (it.toggle) {
           const row = document.createElement('div'); row.className = 'lab-row toggle';
           const lab = document.createElement('label'); lab.className = 'lab-toggle';
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
-          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (it.reseedOnChange && app.reseed) app.reseed(); });
-          lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + it.label));
+          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (needsReseed && app.markReseedPending) app.markReseedPending(); });
+          lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + (needsReseed ? '↻ ' : '') + it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (it.reseedOnChange && app.reseed) app.reseed(); } paintT(); };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (needsReseed && app.markReseedPending) app.markReseedPending(); } paintT(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
           grid.appendChild(row);
         } else {
           const row = document.createElement('div'); row.className = 'lab-row';
           const head = document.createElement('div'); head.className = 'lab-lab';
-          const name = document.createElement('span'); name.className = 'lab-name'; name.textContent = (it.reseed ? '↻ ' : '') + it.label;
+          const name = document.createElement('span'); name.className = 'lab-name'; name.textContent = (needsReseed ? '↻ ' : '') + it.label;
           const right = document.createElement('span'); right.className = 'lab-right';
           const out = document.createElement('output'); out.textContent = (+def).toFixed(it.dec);
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
@@ -569,12 +576,13 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); if (needsReseed && app.markReseedPending) app.markReseedPending(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
           const reset = () => {
             inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); setLocal(it.k, +def); paint();
+            if (needsReseed && app.markReseedPending) app.markReseedPending();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);

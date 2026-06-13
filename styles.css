@@ -201,6 +201,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .mode-btn { display: inline-block; width: auto; margin: 8px 0 2px; padding: 3px 9px; font-size: 10px; letter-spacing: 0.2px; }
 .btn-row { align-items: center; }                              /* modo/calidad/reiniciar en UNA fila */
 .btn-row .mode-btn { margin: 0; flex: 0 0 auto; padding: 3px 7px; } /* la fila ya aporta el margen; padding ajustado para que los 3 quepan incluso con "Calidad: Máxima" */
+/* Aviso "pendiente reiniciar": junto al botón de modo, en ROJO, al tocar un parámetro ↻ (requiere Reiniciar para
+   aplicarse). Oculto por defecto; .show lo revela (y lo hace latir suave). Pulsarlo reinicia (atajo, ver controls.js). */
+.reseed-pending { display: none; }
+.btn-row .reseed-pending { flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px 8px; font-size: 10px; letter-spacing: 0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+       background: rgba(255, 107, 90, 0.12); border: 1px solid rgba(255, 107, 90, 0.55); color: #ff7a6a; }
+.btn-row .reseed-pending.show { display: inline-flex; align-items: center; animation: reseedPulse 1.8s ease-in-out infinite; }
+.btn-row .reseed-pending:hover { background: rgba(255, 107, 90, 0.22); border-color: rgba(255, 107, 90, 0.85); color: #ff9384; }
+@keyframes reseedPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 /* Control de RESOLUCIÓN interna del render: en la fila de modo/calidad, en su propia línea. SOLO en laboratorio
    (el modo simple se mantiene simple). Cambia la nitidez, no el detalle. */
 /* Sección RENDIMIENTO: bloque (mismo estilo .lab-cat que las categorías) solo visible en laboratorio. Agrupa Calidad +

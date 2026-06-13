@@ -31,6 +31,8 @@
 
     <div class="row btn-row">
       <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
+      <!-- Aviso: hay parámetros ↻ cambiados que aún no se han aplicado. Oculto hasta que se toca uno; pulsarlo reinicia. -->
+      <button id="reseedPending" class="reseed-pending" type="button" title="Hay cambios (↻) que requieren Reiniciar para aplicarse. Pulsa para reiniciar ahora.">↻ pendiente reiniciar</button>
       <button id="qualityBtn" class="mode-btn" title="Calidad gráfica: Baja (móvil) · Alta · Máxima. Baja va más fluido (sin bloom ni adornos).">Calidad: Alta</button>
     </div>
     <!-- Sección RENDIMIENTO (solo lab; mismo estilo de bloque que las categorías de parámetros). El botón Calidad se mueve a .perf-body desde el btn-row al entrar en lab (ver applyMode). -->
