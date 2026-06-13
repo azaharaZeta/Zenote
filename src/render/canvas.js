@@ -372,6 +372,9 @@ export class Renderer {
     const fctx = this.fxCtx;
     fctx.setTransform(1, 0, 0, 1, 0, 0);
     fctx.clearRect(0, 0, c.width, c.height);
+    // Caché de sprites (opt-in): contador de frame por DIBUJADO (no por mosaico → marca "visto" una vez) + presupuesto
+    // de horneados por frame, reseteado aquí. La evicción va tras el bucle de mosaicos (abajo).
+    this._sprFrame = (this._sprFrame | 0) + 1; this._sprBakes = 0;
 
     const s = this._scale();
     const offX = c.width / 2 - this.camX * s, offY = c.height / 2 - this.camY * s;
@@ -411,6 +414,7 @@ export class Renderer {
         this._drawAgents(this.camX - vwHalf - tx * W, this.camX + vwHalf - tx * W, this.camY - vhHalf - ty * H, this.camY + vhHalf - ty * H);
       }
     }
+    if (this._sprCache && this._sprCache.size) this._evictSprites(); // soltar sprites de organismos muertos/fuera de vista
     // Componer la capa de organismos sobre el suelo.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.fx, 0, 0);
@@ -458,6 +462,11 @@ export class Renderer {
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
     const haloThr = R.lodHalo * lodMul;         // halo por agente (los puntos no lo necesitan)
+    // CACHÉ: opt-in y NO en máxima (máxima dibuja todo en vivo). Solo bichos ≤ sprMax (rPx). sprMax se LIMITA además al
+    // umbral de ondulación (lodWave·lm): el sprite es estático → solo se usa donde el render vivo TAMPOCO ondula → el
+    // cruce sprite↔vivo es continuo (sin salto de pose). spriteCacheMaxPx actúa como tope adicional (memoria/tamaño).
+    const useSpr = R.spriteCache && !ultraFull, sprMax = Math.min(R.spriteCacheMaxPx || 18, (R.lodWave || 16) * lodMul);
+    const serial = sim.serial;
     for (let a = 0; a < n; a++) {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
@@ -516,9 +525,16 @@ export class Renderer {
       }
       // LOD de 3 niveles según tamaño en pantalla.
       if (tier === 2) {
-        // GRAFO completo: cabeza+nodos, ojos, señuelo, volumen, onda viajera (con sus propios gates internos por rPx).
-        this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                            eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7);
+        if (useSpr && rPx <= sprMax) {
+          // CACHÉ: pega el organismo coloreado (cuerpo+ojos+señuelo) horneado estático. Reconstruye solo al cambiar
+          // color o cubo de tamaño. Los grandes (rPx > sprMax) caen al else → en vivo (vector: ondulan + nítidos).
+          this._blitSprite(serial ? serial[i] : i, rPx, x, y, r, h, s, l, heading[i],
+                           nodes, i * (NODE_COUNT * NODE_STRIDE), eye, i * 4, face, i * 3, tint, i, deco, i * 7);
+        } else {
+          // GRAFO completo en vivo: cabeza+nodos, ojos, señuelo, volumen, onda viajera (con sus gates internos por rPx).
+          this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
+                              eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7);
+        }
       } else if (tier === 1) {
         // CUERPO BARATO: elipse orientada al rumbo con volumen (1 gradiente), sin nodos/ojos/señuelo/onda.
         this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]);
@@ -545,6 +561,120 @@ export class Renderer {
     ctx.restore();
   }
 
+  // CACHÉ DE SPRITES (opt-in, render.spriteCache) — pega el organismo COMPLETO coloreado horneado una vez (más barato que
+  // reconstruir el grafo). Reconstruye solo si cambió el COLOR (cubo de tono/sat/luz → cubre cambio de modo y energía
+  // cuantizada) o el CUBO DE TAMAÑO (zoom/resolución). El cuerpo va ESTÁTICO → el dispatch lo limita a rPx ≤ lodWave
+  // (donde el render vivo TAMPOCO ondula) → sin costura de ondulación. El halo/glow lo pinta _drawAgents fuera (vivo).
+  _blitSprite(key, rPx, x, y, r, h, s, l, heading, nodes, no, eye, eo, face, fo, tint, to, deco, dco) {
+    const ctx = this.fxCtx, cache = this._sprCache || (this._sprCache = new Map());
+    const pxOn = r * (this._bufScale || 1);                       // radio del cuerpo en píxeles REALES del buffer (nitidez)
+    const sk = Math.max(6, Math.ceil(pxOn / 4) * 4);              // cubo de TAMAÑO: bandas de 4 px de buffer → no rehornea cada píxel
+    const ck = ((h / 15) | 0) * 4096 + ((s / 12) | 0) * 64 + ((l / 12) | 0); // cubo de COLOR (tono 15° · sat ~12 · luz ~12)
+    let e = cache.get(key);
+    if (!e || e.sk !== sk || e.ck !== ck) {
+      // Presupuesto de horneado agotado y hay sprite previo (color/tamaño viejo) → úsalo este frame; se actualizará en
+      // frames siguientes. Evita el hitch de rehornear miles de golpe tras un cambio de zoom.
+      if (!(this._sprBakes >= (this.cfg.render.spriteBakeBudget || 120) && e)) {
+        e = this._bakeSprite(e, sk, rPx, r, h, s, l, nodes, no, eye, eo, tint, to, deco, dco);
+        e.sk = sk; e.ck = ck; cache.set(key, e); this._sprBakes++;
+      }
+    }
+    e.seen = this._sprFrame;
+    // PEGAR: el sprite está horneado con la CABEZA en el píxel (hx,hy); pivotamos ahí (igual que el render vivo, que
+    // rota el cuerpo alrededor de la cabeza en x,y). Se dibuja a tamaño MUNDO (cv/dens) → sale a su tamaño real,
+    // INDEPENDIENTE de dens; rotado por rumbo (downscale = nítido).
+    const inv = 1 / e.dens;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
+    ctx.drawImage(e.cv, -e.hx * inv, -e.hy * inv, e.cv.width * inv, e.cv.height * inv);
+    ctx.restore();
+  }
+
+  // Hornea el organismo coloreado y estático a un offscreen AJUSTADO a su caja real. Dos claves: (1) la CAJA se mide de
+  // la morfología (vía _nodePositions) y la cabeza queda en (hx,hy) → nada se recorta y el pivote del rumbo es correcto;
+  // (2) se hornea con el LOD VIVO (no _forceFull) a `rPx` → muestra EXACTAMENTE lo que el vivo a ese tamaño (mismos
+  // gates de ojos/señuelo/textura) → el cruce sprite↔vivo es continuo. Reusa el canvas previo si el tamaño coincide.
+  _bakeSprite(prev, sk, rPx, r, h, s, l, nodes, no, eye, eo, tint, to, deco, dco) {
+    const R = this.cfg.render, lm = this._lodMul || 1, dens = sk / r, NS = NODE_COUNT;
+    this._nodePositions(nodes, no, r);                            // posiciones en reposo (rellena this._ng*)
+    const px = this._ngx, py = this._ngy, pr = this._ngr, pl = this._ngl, pres = this._ngp;
+    const outW = Math.max(0.8, r * 0.07);
+    // CAJA REAL del cuerpo (coords de nodo, cabeza en 0,0): cada nodo presente aporta su alcance (longitud o medio-ancho
+    // de silueta + contorno) → la caja se adapta a CADA morfología (fin del recorte "a tajo" de la caja fija del v1).
+    let minX = 0, minY = 0, maxX = 0, maxY = 0;
+    for (let k = 0; k < NS; k++) {
+      if (!pres[k]) continue;
+      const reach = Math.max(pl[k], pr[k] * 2.5) + outW + r * 0.06, X = px[k], Y = py[k];
+      if (X - reach < minX) minX = X - reach; if (X + reach > maxX) maxX = X + reach;
+      if (Y - reach < minY) minY = Y - reach; if (Y + reach > maxY) maxY = Y + reach;
+    }
+    // señuelo: SOLO si se dibujará a este rPx (mismo gate que el vivo); se proyecta al frente (+x) desde el morro
+    const orn = tint ? tint[to] : 0;
+    if (orn > 0.12 && deco && rPx > (R.lodLure || 0) * lm) {
+      const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34));
+      const fwd = pl[0] * 0.85 + plen + bulbR * 4, side = plen * 0.55 + bulbR * 4; // bulbR*4 = alcance del halo del bulbo
+      if (fwd > maxX) maxX = fwd; if (side > maxY) maxY = side; if (-side < minY) minY = -side;
+    }
+    // lienzo ajustado a la caja (+ margen M); la cabeza (0,0) cae en (hx,hy) → pivote del rumbo al pegar
+    const M = 2, cw = Math.ceil((maxX - minX) * dens) + 2 * M, ch = Math.ceil((maxY - minY) * dens) + 2 * M;
+    const hx = -minX * dens + M, hy = -minY * dens + M;
+    let cv = prev && prev.cv;
+    if (!cv || cv.width !== cw || cv.height !== ch) { cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; }
+    const cctx = cv.getContext('2d');
+    cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, cw, ch);
+    cctx.setTransform(dens, 0, 0, dens, hx, hy);                  // nodo (nx,ny) → (hx + nx·dens, …); cabeza (0,0) → (hx,hy)
+    // HORNEAR CON EL LOD VIVO: _drawScale = escala del LOD vivo (rPx/r = zoom) → los gates internos (ojos/señuelo/textura)
+    // ven el MISMO rPx que el vivo → cruce continuo. _bufScale = densidad real del sprite (suelos sub-píxel nítidos).
+    // _forceFull y _lodMul quedan como en el render vivo (no se tocan). Cuerpo estático (spd/t 0); ojos = mismo gate.
+    const sDS = this._drawScale, sBS = this._bufScale;
+    this._drawScale = rPx / r; this._bufScale = dens;
+    const nf = this._sprFace || (this._sprFace = new Float32Array(3)); // mirada neutra (estático)
+    const showEyes = rPx > (R.lodEye || 0) * lm;
+    this._drawBodyGraph(cctx, 0, 0, r, h, s, l, nodes, no, 0, 0, 0, eye, eo, nf, 0, showEyes, tint, to, deco, dco);
+    this._drawScale = sDS; this._bufScale = sBS;
+    return { cv, dens, hx, hy, sk: 0, ck: 0, seen: this._sprFrame };
+  }
+
+  // Reconstruye las posiciones en REPOSO de los nodos (cabeza en el origen, mirando +x) recorriendo padres → rellena los
+  // scratch this._ng* (compartidos). La onda/flexión se aplica DESPUÉS al dibujar. ÚNICA fuente de la geometría: la usan
+  // _drawBodyGraph (para dibujar) y _bakeSprite (para medir la caja) → no pueden divergir.
+  _nodePositions(nodes, no, r) {
+    const NS = NODE_COUNT, ST = NODE_STRIDE;
+    const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
+    const py = this._ngy || (this._ngy = new Float32Array(NS));
+    const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
+    const pl = this._ngl || (this._ngl = new Float32Array(NS));   // longitud (eje)
+    const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión en reposo
+    const pts = this._ngts || (this._ngts = new Float32Array(NS)); // tipShape por nodo (silueta base↔punta)
+    const pres = this._ngp || (this._ngp = new Uint8Array(NS));
+    const par = this._ngpar || (this._ngpar = new Int8Array(NS));  // índice del padre (−1 = raíz)
+    const dep = this._ngdep || (this._ngdep = new Uint8Array(NS)); // profundidad en el grafo (fase de la onda)
+    // RAÍZ (cabeza): en el origen, mirando al frente (+x); el rumbo ya lo aplica el ctx.rotate al dibujar.
+    pres[0] = 1; pr[0] = r * (0.55 + nodes[no + 2] * 0.5); pl[0] = pr[0] * (1 + nodes[no + 3] * 0.8);
+    px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0; pts[0] = 0.5; // cabeza: silueta neutra (elipse)
+    for (let k = 1; k < NS; k++) {
+      const nb = no + k * ST;
+      const w = presWeight(nodes[nb]);                            // presencia GRADUADA (misma banda que la física)
+      if (w <= 0) { pres[k] = 0; continue; }                      // por debajo de la banda → no se dibuja
+      let p = (nodes[nb + 1] * k) | 0; if (p > k - 1) p = k - 1; if (!pres[p]) p = 0; // padre < k; reanclar huérfano
+      pres[k] = 1; par[k] = p; dep[k] = dep[p] + 1;
+      const sz = (0.15 + nodes[nb + 2] * 0.85) * w, asp = nodes[nb + 3]; // tamaño ESCALADO por presencia → el nodo CRECE al aparecer
+      const cr = r * sz * (1 - 0.6 * asp);                        // sección transversal (fino → pequeña)
+      const ln = r * sz * (1 + 1.8 * asp);                        // longitud (fino → larga = tentáculo)
+      const emit = nodes[nb + 4] * Math.PI;                       // 0 (frente) .. π (atrás) desde el eje del cuerpo
+      const dist = (pr[p] + cr) * (0.85 + nodes[nb + 5] * 0.5);   // anclaje al padre: suelo alto (0.85) → no queda ENTERRADO bajo el padre
+      px[k] = px[p] + Math.cos(emit) * dist; py[k] = py[p] + Math.sin(emit) * dist;
+      pr[k] = cr; pl[k] = ln; pa[k] = emit; pts[k] = nodes[nb + 8]; // tipShape (silueta)
+    }
+  }
+
+  // Evicción del caché de sprites: cada ~45 frames suelta los no vistos en `ttl` (muertos / fuera de vista / pasados a
+  // vector); y aplica un techo duro de entradas (suelta las vistas hace más) → memoria acotada.
+  _evictSprites() {
+    const cache = this._sprCache, f = this._sprFrame, ttl = 90, cap = this.cfg.render.spriteCacheCap || 2400;
+    if ((f % 45) === 0) for (const [k, e] of cache) if (f - e.seen > ttl) cache.delete(k);
+    if (cache.size > cap) { const arr = [...cache].sort((a, b) => a[1].seen - b[1].seen), drop = cache.size - cap; for (let q = 0; q < drop; q++) cache.delete(arr[q][0]); }
+  }
+
   // B2b (EN CONSTRUCCIÓN): dibuja el cuerpo desde el GRAFO DE NODOS (una sola primitiva). Reconstruye las
   // posiciones recorriendo padres (la física no las necesita; el render sí) y dibuja cada nodo como una
   // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
@@ -558,32 +688,8 @@ export class Renderer {
     const full = this._forceFull === true || Rc.quality === 'ultra'; // RETRATO (drawPortrait) o calidad MÁXIMA → sin recortes LOD internos (onda/señuelo/textura/gradiente/contorno): todo a pelo.
     const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // ONDA = solo el MOVIMIENTO (flexión); el contorno se dibuja SIEMPRE (ya no atado a esto). Si no: cuerpo en reposo.
     const doLure = full || rPxG > (Rc.lodLure || 0) * lm;
-    const px = this._ngx || (this._ngx = new Float32Array(NS));   // posiciones en REPOSO (sin onda)
-    const py = this._ngy || (this._ngy = new Float32Array(NS));
-    const pr = this._ngr || (this._ngr = new Float32Array(NS));   // radio transversal
-    const pl = this._ngl || (this._ngl = new Float32Array(NS));   // longitud (eje)
-    const pa = this._nga || (this._nga = new Float32Array(NS));   // ángulo de emisión en reposo
-    const pts = this._ngts || (this._ngts = new Float32Array(NS)); // tipShape por nodo (silueta base↔punta)
-    const pres = this._ngp || (this._ngp = new Uint8Array(NS));
-    const par = this._ngpar || (this._ngpar = new Int8Array(NS));  // índice del padre (−1 = raíz)
-    const dep = this._ngdep || (this._ngdep = new Uint8Array(NS)); // profundidad en el grafo (fase de la onda)
-    // RAÍZ (cabeza): en el origen, mirando al frente (+x); el rumbo ya lo aplica el ctx.rotate de abajo.
-    pres[0] = 1; pr[0] = r * (0.55 + nodes[no + 2] * 0.5); pl[0] = pr[0] * (1 + nodes[no + 3] * 0.8);
-    px[0] = 0; py[0] = 0; pa[0] = 0; par[0] = -1; dep[0] = 0; pts[0] = 0.5; // cabeza: silueta neutra (elipse)
-    for (let k = 1; k < NS; k++) {
-      const nb = no + k * ST;
-      const w = presWeight(nodes[nb]);                            // presencia GRADUADA (misma banda que la física)
-      if (w <= 0) { pres[k] = 0; continue; }                      // por debajo de la banda → no se dibuja
-      let p = (nodes[nb + 1] * k) | 0; if (p > k - 1) p = k - 1; if (!pres[p]) p = 0; // padre < k; reanclar huérfano
-      pres[k] = 1; par[k] = p; dep[k] = dep[p] + 1;
-      const sz = (0.15 + nodes[nb + 2] * 0.85) * w, asp = nodes[nb + 3]; // tamaño ESCALADO por presencia → el nodo CRECE al aparecer
-      const cr = r * sz * (1 - 0.6 * asp);                        // sección transversal (fino → pequeña)
-      const ln = r * sz * (1 + 1.8 * asp);                        // longitud (fino → larga = tentáculo)
-      const emit = nodes[nb + 4] * Math.PI;                       // 0 (frente) .. π (atrás) desde el eje del cuerpo
-      const dist = (pr[p] + cr) * (0.85 + nodes[nb + 5] * 0.5);   // anclaje al padre: suelo alto (0.85) → el hijo no queda ENTERRADO bajo el padre
-      px[k] = px[p] + Math.cos(emit) * dist; py[k] = py[p] + Math.sin(emit) * dist;
-      pr[k] = cr; pl[k] = ln; pa[k] = emit; pts[k] = nodes[nb + 8]; // tipShape (silueta)
-    }
+    this._nodePositions(nodes, no, r);                            // posiciones en REPOSO (cabeza en origen); la onda se aplica luego al dibujar
+    const px = this._ngx, py = this._ngy, pr = this._ngr, pl = this._ngl, pa = this._nga, pts = this._ngts, pres = this._ngp, par = this._ngpar, dep = this._ngdep;
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
     // VOLUMEN (B2b incremento 4): colores de relieve del render clásico + luz desde arriba-izq del MUNDO,
     // pasada a este frame local (rota −heading) para que el brillo sea coherente sea cual sea el rumbo.

@@ -209,6 +209,14 @@ export function setupControls(app) {
     fpsCapSlider.addEventListener('input', () => { cfg.render.maxFPS = +fpsCapSlider.value; syncFps(); });
   }
 
+  // Caché de sprites (modo rendimiento, opt-in): toggle del laboratorio. El detalle/LOD lo deciden otros controles;
+  // esto solo cambia CÓMO se dibuja el cuerpo de los bichos pequeños (sprite cacheado vs reconstrucción vectorial).
+  const spriteCacheChk = $('spriteCacheChk');
+  if (spriteCacheChk) {
+    spriteCacheChk.checked = !!cfg.render.spriteCache;
+    spriteCacheChk.addEventListener('change', () => { cfg.render.spriteCache = spriteCacheChk.checked; });
+  }
+
   // ---- Modo contemplación (oculta toda la UI) ----
   // El control de velocidad sigue accesible: reubicamos el nodo #speedBlock a una barra flotante
   // (#floatControls) mientras el panel está oculto, y lo devolvemos a su sitio al reabrirlo. Los

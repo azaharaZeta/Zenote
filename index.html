@@ -38,6 +38,9 @@
       <label class="res-ctrl" title="Tope de fotogramas por segundo del DIBUJO (no afecta a la velocidad de simulación). Con el dibujado bajo demanda, evita gastar GPU/CPU redibujando de más.">FPS máx <output id="fpsCapVal">60</output>
         <input id="fpsCapSlider" type="range" min="15" max="120" step="5" value="60" />
       </label>
+      <label class="res-ctrl chk-ctrl" title="Modo rendimiento (móvil/equipos modestos): cachea el cuerpo de los bichos PEQUEÑOS como imagen y lo reutiliza (≈3× más rápido en escenas con muchos organismos). Solo se aplica por debajo del umbral de ondulación → los bichos siguen ondulando en vivo en cuanto crecen lo suficiente; el cruce es continuo.">
+        <input id="spriteCacheChk" type="checkbox" /> Caché de sprites
+      </label>
     </div>
 
     <div class="row" id="seedRow">

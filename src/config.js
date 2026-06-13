@@ -279,6 +279,15 @@ export const config = {
     // (solo se redibuja si cambió el tick/cámara/selección) evita malgastar GPU+CPU en frames idénticos (pantallas a
     // 120 Hz, o velocidad máxima donde los datos cambian ~4/s). 60 = fluido sin malgastar; baja a 30 para más ahorro.
     maxFPS: 60,
+    // ── CACHÉ DE SPRITES (opt-in, modo rendimiento). Hornea el organismo COMPLETO coloreado y lo PEGA cada frame
+    //    (medido ≈19× más barato que reconstruir el grafo vectorial). Reconstruye solo al cambiar color (cubo de
+    //    tono/sat/luz → cubre cambio de modo y energía cuantizada) o cubo de tamaño (zoom/resolución). COSTE: el sprite
+    //    es ESTÁTICO → pierde la ondulación → reservado a bichos PEQUEÑOS en pantalla; los grandes siguen en vivo
+    //    (vector → ondulan + nítidos). Pensado para móvil/equipos modestos con muchos agentes. Solo render. ──
+    spriteCache: false,       // (UI) activar el caché de sprites del cuerpo (modo rendimiento). Solo se usa por debajo del umbral de ondulación → NO pierde ondulación; cruce sprite↔vivo continuo.
+    spriteCacheMaxPx: 18,     // tope del radio APARENTE (rPx) para usar sprite; se LIMITA además a lodWave (umbral de ondulación) → el cruce sprite↔vivo es continuo. Mayores: en vivo (vector).
+    spriteBakeBudget: 120,    // máx. horneados de sprite por frame → limita el "hitch" cuando un cambio de zoom invalida muchos a la vez
+    spriteCacheCap: 2400,     // techo de entradas del caché (evicción de las vistas hace más tiempo) → cota de memoria
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
                               //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
     // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, SIN LOD = TODO a

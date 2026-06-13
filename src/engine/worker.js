@@ -153,6 +153,7 @@ function snapshot() {
   const hist = new Float32Array(HIST_BINS);
   const species = new Float32Array(n);                            // especie (id) por agente
   const role = new Uint8Array(n);                                 // OFICIO dominante (color 'role'): 0 herbívoro · 1 carroñero · 2 cazador
+  const serial = new Int32Array(n);                               // id único por organismo (clave estable del caché de sprites del render)
   let carn = 0;
   for (let k = 0; k < n; k++) {
     const i = act[k];
@@ -167,6 +168,7 @@ function snapshot() {
     // que la gráfica de población; los omnívoros caen en el oficio en el que son mejores). Para el color 'role'.
     const eh = s.effHerb[i], eu = s.effHunt[i], es = s.effScav[i];
     role[k] = (eu > eh && eu >= es) ? 2 : (es > eh ? 1 : 0);
+    serial[k] = s.serialOf[i];
     heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
     const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad ABSOLUTA (÷ vMax global), no fracción de su propia capacidad → la animación de nodos sigue al desplazamiento REAL
     spd[k] = v > 1 ? 1 : v;
@@ -212,7 +214,7 @@ function snapshot() {
   postMessage({
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.N,
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
-    species, speciesCount, role,
+    species, speciesCount, role, serial,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
     histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
     resource: s.world.resource.slice(),

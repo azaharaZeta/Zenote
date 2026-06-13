@@ -66,7 +66,7 @@ worker.onmessage = (e) => {
     simProxy.activeCount = m.n; simProxy.popCount = m.pop;
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;
-    simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount;
+    simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount; simProxy.serial = m.serial;
     // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
     // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
     charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histV = m.histVeg; charts.histT = m.histTick;

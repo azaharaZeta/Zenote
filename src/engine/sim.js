@@ -9,6 +9,7 @@ import { computePhenotype } from './organism.js';
 export class Sim {
   constructor(cfg) {
     this.cfg = cfg;
+    this._serial = 0; // contador de id de organismo: NO se reinicia al re-sembrar → serials siempre únicos (el caché del render no colisiona viejo↔nuevo)
     this.reset(cfg.pop.seed);
   }
 
@@ -90,6 +91,10 @@ export class Sim {
     this.active = new Int32Array(cap);
     this.activeCount = 0;
     this.popCount = 0;
+    // Id ÚNICO por organismo a lo largo de toda la vida de la sim (≠ slot, que se reutiliza del pool). El render lo usa
+    // como clave estable de su caché de sprites: un slot reutilizado por un organismo nuevo recibe un serial distinto.
+    // (this._serial vive en el constructor → persiste entre re-siembras para no colisionar serials viejos↔nuevos.)
+    this.serialOf = new Int32Array(cap);
 
     this.tick = 0;
     this.births = 0;
@@ -120,6 +125,7 @@ export class Sim {
     if (this.freeTop === 0) return -1;
     const i = this.free[--this.freeTop];
     this.alive[i] = 1;
+    this.serialOf[i] = ++this._serial; // organismo nuevo en este slot → serial nuevo (invalida el caché del anterior)
     this.popCount++;
     return i;
   }
