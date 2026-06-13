@@ -111,6 +111,13 @@ altera ni limita** la genética, la energética ni la dinámica de población: u
   sería desperdicio. Y nunca más de `render.maxFPS` veces/s (def. 60; 0 = sin límite; slider "FPS máx" en el lab). El
   **FPS del readout = dibujos reales/s** (a velocidad normal ≈ t/s; a máx, ~snapshots/s — no es un bajón, es no malgastar).
   El motor (t/s, en el worker) es INDEPENDIENTE del render. (Medido: a máx velocidad los dibujos caen de ~40/s a ~3/s.)
+- **Caché de sprites (opt-in, modo rendimiento).** `render.spriteCache` (toggle en el lab, default OFF): cachea cada
+  organismo en un atlas —cuerpo POR NODO + ojos/señuelo— y lo ENSAMBLA cada frame pegando esas piezas con la onda y el
+  rumbo del momento → **conserva la ondulación** (no es un sprite plano) → quality-neutral, válido en todas las calidades.
+  Se rehornea solo al cambiar el color o el tamaño en pantalla, y se mantiene mientras el organismo VIVE (no se borra al
+  salir de vista → sin churn al panear). Solo toca los tier-grafo (puntos/elipses ya son baratos). Win ~1.7× por organismo
+  (el coste constante —doble bloom/sustrato— no lo toca). Coste asumido: la pupila y el pulso del bulbo quedan estáticos en
+  los cacheados (imperceptible a ese tamaño). Para un win mayor conservando todo haría falta WebGL.
 - **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se baja la **calidad** (a Baja:
   sin bloom, sin halos por agente, sin nieve, LOD agresivo) y se puede reducir
   `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
