@@ -119,6 +119,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .legend span:nth-child(2):not(:last-child) { text-align: center; }   /* etiqueta del MEDIO en leyendas de 3 (p. ej. herb/carroñ/cazad) */
 .legend em { font-style: normal; line-height: 1.4; }
 
+/* Histograma (solo lab): los selectores "Histograma de" + "Colorear por" en columna a la IZQUIERDA
+   y la gráfica del histograma a su DERECHA. La leyenda va aparte, debajo, a ancho completo. */
+.hist-block { display: flex; gap: 8px; align-items: stretch; margin: 6px 0; }
+.hist-block .hist-controls { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.hist-block .inline { white-space: nowrap; }                   /* "Histograma de" en una línea (como la etiqueta de "Colorear por") aunque la columna sea estrecha */
+.hist-block .inline select { flex: 1 1 auto; min-width: 0; }   /* el combo llena el ancho de la columna, igual que "Colorear por" */
+.hist-block #histChart { flex: 1 1 0; min-width: 0; height: 84px; margin: 0; }
+#panel.advanced .hist-block .ctrl-inline { margin: 0; }        /* lo espacia el gap de la columna, no su margen propio (gana al #panel.advanced .ctrl-inline) */
+#panel:not(.advanced) .hist-block { display: none; }           /* en vista simple no hay histograma ni "colorear por" */
+
 .toggles { display: flex; gap: 14px; margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
 .toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 

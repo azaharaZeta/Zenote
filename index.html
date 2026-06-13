@@ -59,30 +59,34 @@
       </label>
     </div>
 
-    <!-- Fila 1: población + histograma (dos por fila) -->
+    <!-- Fila 1: curva de población a ancho completo (el histograma se movió junto a sus selectores, abajo) -->
     <div class="charts">
       <div class="chart-pair">
         <canvas id="popChart" class="chart"></canvas>
-        <canvas id="histChart" class="chart"></canvas>
       </div>
-      <label class="inline">Histograma de
-        <select id="geneSel"></select>
-      </label>
     </div>
 
-    <div class="ctrl">
-      <div class="ctrl-inline" id="colorModeRow">
-        <label for="colorMode">Colorear por</label>
-        <select id="colorMode">
-          <option value="real">Visión real</option>
-          <option value="diet">Dieta (depredador / presa)</option>
-          <option value="role">Rol (herbívoro / carroñero / cazador)</option>
-          <option value="species">Especie</option>
-          <option value="gene">Gen del histograma</option>
-        </select>
+    <!-- Histograma (solo lab): los selectores "Histograma de" + "Colorear por" a la IZQUIERDA y la
+         gráfica del histograma a su DERECHA. La leyenda va debajo, a ancho completo. -->
+    <div class="hist-block">
+      <div class="hist-controls">
+        <label class="inline">Histograma de
+          <select id="geneSel"></select>
+        </label>
+        <div class="ctrl-inline" id="colorModeRow">
+          <label for="colorMode">Colorear por</label>
+          <select id="colorMode">
+            <option value="real">Visión real</option>
+            <option value="diet">Dieta (depredador / presa)</option>
+            <option value="role">Rol (herbívoro / carroñero / cazador)</option>
+            <option value="species">Especie</option>
+            <option value="gene">Gen del histograma</option>
+          </select>
+        </div>
       </div>
-      <div id="legend" class="legend"></div>
+      <canvas id="histChart" class="chart"></canvas>
     </div>
+    <div id="legend" class="legend"></div>
 
     <!-- Fila 2: demografía (nacimientos | muertes, dos por fila): solo en modo laboratorio -->
     <div class="death-chart">
