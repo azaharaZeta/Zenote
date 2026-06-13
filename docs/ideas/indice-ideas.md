@@ -28,8 +28,8 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Leyenda "Rol" ponderada por totales | ✅ hecha (2026-06-14) | banda ∝ nº de individuos por oficio + 4º oficio (omnívoro, vía `trophicRole`), viva por frame · análisis abajo |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
 | Coste de arrastre en locomoción | ✅ hecha (2026-06-14) | `energy.k_drag`/`dragRef` · SoA `drag`=Dmul · SPEC §3 · complementa A; remate de "revisar nado" |
-| Selección de presa por talla | ⬜ pendiente | análisis abajo |
-| Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
+| Selección de presa por talla | ✅ hecha (2026-06-14) | vía entrada 8 del cerebro (talla relativa) — ver "entradas sensoriales"; SPEC §cerebro |
+| Nuevas entradas sensoriales del cerebro | 🔄 parcial (2026-06-14) | cobertura local + talla de presa HECHAS (BRAIN.I 7→9); dir. al congénere (manada) pendiente |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Cadáveres con FORMA (render) | ⬜ pendiente | análisis abajo — marcadores efímeros, no toca la sim |
 | Diversidad de talla bajo repro sexual | ⬜ pendiente | análisis abajo · memoria `sexual-repro-flattens-size` |
@@ -45,7 +45,11 @@ observaciones/lecciones de ecología → memoria del proyecto.
 ---
 
 ## Selección de presa por talla (forrajeo óptimo) — EMERGENTE
-*(pendiente, 2026-06-09)*
+*(✅ HECHA 2026-06-14 · por la VÍA NEURONAL del análisis de abajo)*
+
+**HECHO:** la **talla relativa de la presa más cercana** (`radius[bestPrey]/myR − 1`, acotada [−1,1]) es ahora la
+**entrada 8 del cerebro** (`sim.js`) → los pesos aprenden a evitar la presa grande y emerge solo (sin gen `prey_pref` ni
+argmax cableado). Va junto a la cobertura local (ver "Nuevas entradas sensoriales"). El análisis original se conserva abajo.
 
 **Idea (del usuario):** que el cazador, al elegir presa, tenga en cuenta el tamaño — buscar la que da más comida y
 es más fácil de atacar (ni muy pequeña, da poca; ni muy grande, que lo mata).
@@ -101,7 +105,13 @@ TRIPLE al cuerpo ancho (ya es lento, ya paga A por masa, y pagaría B por arrast
 ---
 
 ## Nuevas ENTRADAS sensoriales del cerebro (uso táctico emergente)
-*(pendiente, 2026-06-10)*
+*(🔄 PARCIAL 2026-06-14 · cobertura local + talla de presa HECHAS; dirección al congénere PENDIENTE)*
+
+**HECHO (cobertura + talla de presa):** `BRAIN.I` 7→9 (genoma 186→196). Entrada 7 = **cobertura local** (`res[celda]/R_max`
+∈[−1,1]) → uso táctico del refugio; entrada 8 = **talla relativa de la presa** → evitar presa grande. Sembradas a peso ~0
+(`seedBrain` intacto) → su uso EMERGE. Medido headless (6000t, seed 123): la conducta base NO se degrada (pop ~1000-1100,
+trío trófico vivo, depredación a tasa constante). Mecánica en SPEC §cerebro. **PENDIENTE:** dirección al congénere más
+cercano (+2 entradas) → manada coordinada (la más especulativa). El análisis original se conserva abajo.
 
 El cerebro tiene 7 entradas: gradiente de comida (x,y), dirección a presa (x,y), dirección a amenaza (x,y), energía.
 **No percibe ni la cobertura ni a los congéneres** → ciertas conductas no PUEDEN evolucionar porque falta la señal.

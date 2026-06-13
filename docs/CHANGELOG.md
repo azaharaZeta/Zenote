@@ -2,6 +2,12 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-14: cerebro — 2 entradas sensoriales nuevas: COBERTURA local (vegetación de su celda) + TALLA relativa de la presa (`BRAIN.I` 7→9, genoma 186→196). Sembradas a peso ~0 → el uso táctico del refugio y evitar presa grande EMERGEN (no cableado). Verificado headless (conducta base intacta a 6000 ticks).
+- 2026-06-14: locomoción — coste de ARRASTRE de la forma (`energy.k_drag` 0.4 · `dragRef` 1.1): el arrastre (`Dmul`) ahora ENCARECE el nado, no solo lo frena (cierra el incentivo del "arrastre gratis"); complementa `k_haul` (masa). Efecto sutil en el régimen lento por defecto, medido headless.
+- 2026-06-14: móvil — fix: la cámara saltaba al soltar UN dedo de la pinza (re-anclaje de `lastX/lastY` al dedo que queda, en `pointerup`/`pointercancel`).
+- 2026-06-14: 'Colorear por' → Rol — la banda de leyenda se PONDERA por los totales de cada oficio (viva, por frame) y suma un 4º oficio OMNÍVORO; criterio trófico unificado en `trophicRole` (la curva de población y el color comparten fuente).
+- 2026-06-14: auditoría de código — perf: `Math.hypot`→`sqrt(a²+b²)` en el bucle caliente (≈11× más rápido) y snapshot del worker por TRANSFERIBLES (sin copia); docs: SPEC sincronizada con la pecera como modo por defecto; smoke test headless (`npm test`: invariantes + conservación de materia).
+- 2026-06-14: ideas — `indice-ideas.md` procesado: bandeja de entrada vaciada (ideas crudas → pitch o resueltas); gráfica de biomasa y leyenda Rol marcadas hechas.
 - 2026-06-13: UI — en el laboratorio, los controles de render (Calidad, Resolución, FPS máx, Caché de sprites) se agrupan en una sección "Rendimiento". El modo simple no cambia (Calidad sigue en su sitio).
 - 2026-06-13: render — CACHÉ DE SPRITES por esqueleto (opt-in, default OFF, modo rendimiento): cachea cada organismo (cuerpo por nodo + ojos/señuelo) en un atlas y lo ENSAMBLA con la onda viva → conserva la ondulación → vale en todas las calidades (máxima incluida). Evicción por muerte (mantiene cacheados los vivos). ~1.7× por-agente. Toggle en el lab; knobs `spriteCache*` en config.
 - 2026-06-13: render — halo del bulbo del señuelo ceñido (br×7→br×4): mismo aspecto, ~⅓ del coste.

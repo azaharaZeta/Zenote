@@ -374,7 +374,7 @@ export class Sim {
   step() {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
     const wrap = world.wrap, ww = world.width, wh = world.height;
-    const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
+    const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit, Rmax = cfg.resource.R_max;
     const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
     const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
@@ -439,7 +439,7 @@ export class Sim {
       // Mirada (solo render): por defecto al frente; si ve presa/amenaza, la sigue (se fija abajo).
       let gzx = 0, gzy = 0, gazeSet = false;
       // Direcciones unitarias a presa/amenaza (0 si ninguna) → entradas del cerebro neuronal.
-      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0;
+      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0, preySizeRel = 0; // preySizeRel = talla relativa de la presa más cercana (entrada 8 del cerebro; 0 si no ve presa)
 
       // Términos presa/amenaza: solo si el combate está activo (Fase 2). Alimentan las entradas del cerebro
       // (dirección a presa/amenaza) y la detección de solape para el combate.
@@ -596,6 +596,7 @@ export class Sim {
           }
           const m = Math.sqrt(bestPreyD) || 1;
           preyDX = ddx / m; preyDY = ddy / m;
+          const psr = this.radius[bestPrey] / myR - 1; preySizeRel = psr > 1 ? 1 : psr < -1 ? -1 : psr; // talla relativa (entrada 8): <0 presa menor · >0 mayor
           gzx = ddx; gzy = ddy; gazeSet = true; // mira a la presa
         }
         if (bestThreat !== -1) {
@@ -617,6 +618,8 @@ export class Sim {
         const inp = this._brIn;
         inp[0] = dfx; inp[1] = dfy; inp[2] = preyDX; inp[3] = preyDY;
         inp[4] = threatDX; inp[5] = threatDY; inp[6] = E[i] / this.eMax[i] * 2 - 1;
+        inp[7] = (res[ci] / Rmax) * 2 - 1;   // (#3) COBERTURA local: vegetación viva de su celda ∈[−1,1] → uso TÁCTICO del refugio (huir a la maleza) EMERGE
+        inp[8] = preySizeRel;                 // (#3) TALLA relativa de la presa más cercana (0 si no ve presa) → evitar presa grande EMERGE
         this._brain(i);
         dx = this._brOut[0]; dy = this._brOut[1];
       }
