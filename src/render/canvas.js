@@ -219,15 +219,20 @@ export class Renderer {
           g.addColorStop(0, 'rgba(150,153,165,1)'); g.addColorStop(1, 'rgba(150,153,165,0)');
           sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._carrionSprite = sp;
         }
-        const sprite = this._carrionSprite, ref = 35;       // energía de referencia para la opacidad (cadáver natural ≈ E + carcassValue·eMax)
+        const sprite = this._carrionSprite, ref = 35, sz = cellW * 1.7; // energía de referencia para la opacidad (cadáver natural ≈ E + carcassValue·eMax)
         for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
           ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-          for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+          // CULLING a las celdas VISIBLES de este mosaico (igual que el plancton, arriba): a zoom alto el barrido pasa
+          // de las 3072 celdas a unas pocas (+1 de margen por el tamaño del sprite). A zoom 1 (mundo entero) recorre ~todas.
+          let cx0 = ((this.camX - vwHalf - tx * W) / cellW | 0) - 1; if (cx0 < 0) cx0 = 0;
+          let cx1 = ((this.camX + vwHalf - tx * W) / cellW | 0) + 1; if (cx1 > cols - 1) cx1 = cols - 1;
+          let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
+          let cy1 = ((this.camY + vhHalf - ty * H) / cellH | 0) + 1; if (cy1 > rows - 1) cy1 = rows - 1;
+          for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
             const cval = carrion[cy * cols + cx];
             if (cval < 0.5) continue;                        // celda sin carroña apreciable → salta (la mayoría)
             let a = cval / ref; if (a > 0.5) a = 0.5;
             ctx.globalAlpha = a;
-            const sz = cellW * 1.7;
             ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);
           }
         }
@@ -782,19 +787,21 @@ export class Renderer {
         const curve = plen * 0.16 * Math.sin(p * 1.7 + 0.6);
         const cx2 = mx0 + nx * curve, cy2 = my0 + ny * curve;
         const wB = Math.max(fmin(0.8), r * 0.11), wT = Math.max(fmin(0.25), r * 0.03);
-        const N = 6, sgL = [], sgR = [];
+        const N = 6;   // buffers REUTILIZABLES (sin asignar 2 arrays + 14 pares [x,y] por señuelo y frame en el camino sin caché)
+        const sgLx = this._sgLx || (this._sgLx = new Float32Array(N + 1)), sgLy = this._sgLy || (this._sgLy = new Float32Array(N + 1));
+        const sgRx = this._sgRx || (this._sgRx = new Float32Array(N + 1)), sgRy = this._sgRy || (this._sgRy = new Float32Array(N + 1));
         for (let i = 0; i <= N; i++) {
           const u = i / N, iu = 1 - u;
           const xx = iu * iu * bx + 2 * iu * u * cx2 + u * u * tx, yy = iu * iu * by + 2 * iu * u * cy2 + u * u * ty;
           const tgx = 2 * iu * (cx2 - bx) + 2 * u * (tx - cx2), tgy = 2 * iu * (cy2 - by) + 2 * u * (ty - cy2);
           const tl = Math.hypot(tgx, tgy) || 1, lx = -tgy / tl, ly = tgx / tl, w = (wB * iu + wT * u) / 2;
-          sgL.push([xx + lx * w, yy + ly * w]); sgR.push([xx - lx * w, yy - ly * w]);
+          sgLx[i] = xx + lx * w; sgLy[i] = yy + ly * w; sgRx[i] = xx - lx * w; sgRy[i] = yy - ly * w;
         }
         const sg = ctx.createLinearGradient(bx, by, tx, ty);
         sg.addColorStop(0, `hsl(${ohue},55%,26%)`); sg.addColorStop(1, `hsl(${ohue},92%,64%)`);
-        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(sgL[0][0], sgL[0][1]);
-        for (let i = 1; i <= N; i++) ctx.lineTo(sgL[i][0], sgL[i][1]);
-        for (let i = N; i >= 0; i--) ctx.lineTo(sgR[i][0], sgR[i][1]);
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(sgLx[0], sgLy[0]);
+        for (let i = 1; i <= N; i++) ctx.lineTo(sgLx[i], sgLy[i]);
+        for (let i = N; i >= 0; i--) ctx.lineTo(sgRx[i], sgRy[i]);
         ctx.closePath(); ctx.fill();
         const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
         const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
@@ -861,18 +868,22 @@ export class Renderer {
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
     // VOLUMEN (B2b incremento 4): colores de relieve del render clásico + luz desde arriba-izq del MUNDO,
     // pasada a este frame local (rota −heading) para que el brillo sea coherente sea cual sea el rumbo.
-    const coreLight = `hsl(${h},${Math.max(22, s - 16)}%,${Math.min(82, l + 18)}%)`;
-    const coreMid = `hsl(${h},${s}%,${Math.max(12, l - 3)}%)`;
-    const coreDark = `hsl(${h},${Math.min(100, s + 12)}%,${Math.max(4, l - 26)}%)`;
-    const coreOut = `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`;
-    const chh = Math.cos(heading), shh = Math.sin(heading);
-    const llx = -0.7 * chh + -0.7 * shh, lly = 0.7 * chh + -0.7 * shh; // dir de luz (mundo -0.7,-0.7) → local
-    const tex2 = deco ? deco[dco + 6] : 0.5;
-    const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
-    const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
-    // Estilo de nodo (constante por organismo) para _drawNode (también lo usa el horneado del caché → mismo dibujo).
-    const st = skel ? null : { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
-                 lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 }; // null con caché (se pegan celdas)
+    // Estilo de nodo (constante por organismo) para _drawNode. Solo se construye SIN caché: con caché (skel) las celdas
+    // ya están horneadas y `st` no se usa → así NO creamos 5 strings HSL por organismo y frame en el camino por DEFECTO.
+    let st = null;
+    if (!skel) {
+      const coreLight = `hsl(${h},${Math.max(22, s - 16)}%,${Math.min(82, l + 18)}%)`;
+      const coreMid = `hsl(${h},${s}%,${Math.max(12, l - 3)}%)`;
+      const coreDark = `hsl(${h},${Math.min(100, s + 12)}%,${Math.max(4, l - 26)}%)`;
+      const coreOut = `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`;
+      const chh = Math.cos(heading), shh = Math.sin(heading);
+      const llx = -0.7 * chh + -0.7 * shh, lly = 0.7 * chh + -0.7 * shh; // dir de luz (mundo -0.7,-0.7) → local
+      const tex2 = deco ? deco[dco + 6] : 0.5;
+      const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
+      const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
+      st = { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
+             lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 };
+    }
     // ---- ONDA VIAJERA (B2b): la flexión se ACUMULA del padre al hijo → cadena articulada (anguila). La
     // cabeza (raíz, prof. 0) queda estable; la cola ondula más (fase por profundidad). Nada más rápido = más onda.
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
