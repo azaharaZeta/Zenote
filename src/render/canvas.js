@@ -617,7 +617,7 @@ export class Renderer {
       if (ex > dmaxX) dmaxX = ex; if (-er0 * 1.5 < dminX) dminX = -er0 * 1.5; if (ey > dmaxY) dmaxY = ey; if (-ey < dminY) dminY = -ey;
     }
     if (orn > 0.12 && deco && doLure) {                                // señuelo: tallo + bulbo + halo, al frente (+x)
-      hasDeco = true; const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34)), br = bulbR * 1.35, ax0 = hr * elong * 0.85;
+      hasDeco = true; const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34)), br = bulbR * 1.5, ax0 = hr * elong * 0.85; // 1.5 cubre el br máx (0.9+0.4·orn)·pulso ≈ 1.48 → no recorta el halo
       const fwd = ax0 + plen + br * 4, side = plen * 0.55 + br * 4;
       if (fwd > dmaxX) dmaxX = fwd; if (side > dmaxY) dmaxY = side; if (-side < dminY) dminY = -side;
     }
