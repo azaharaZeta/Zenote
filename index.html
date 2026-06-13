@@ -37,14 +37,14 @@
     <details class="lab-cat perf-cat" id="perfRow" open>
       <summary>🖥️ Rendimiento</summary>
       <div class="perf-body">
-        <label class="res-ctrl" title="Resolución del render: más baja = más fluida (cambia la nitidez, no el detalle de los bichos).">Resolución <output id="resVal">1280</output>
-          <input id="resSlider" type="range" min="640" max="3840" step="80" value="1280" />
+        <label class="res-ctrl" title="Resolución del render: más baja = más fluida (cambia la nitidez, no el detalle de los bichos).">Resolución <output id="resVal">960</output>
+          <input id="resSlider" type="range" min="640" max="1280" step="80" value="960" />
         </label>
-        <label class="res-ctrl" title="Tope de FPS del dibujo (no afecta a la velocidad de la simulación).">FPS máx <output id="fpsCapVal">60</output>
-          <input id="fpsCapSlider" type="range" min="15" max="120" step="5" value="60" />
+        <label class="res-ctrl" title="Tope de FPS del dibujo (no afecta a la velocidad de la simulación).">FPS máx <output id="fpsCapVal">20</output>
+          <input id="fpsCapSlider" type="range" min="5" max="60" step="5" value="20" />
         </label>
         <label class="res-ctrl chk-ctrl" title="Modo rendimiento: cachea los organismos como imagen para dibujarlos más rápido (móvil/equipos modestos).">
-          <input id="spriteCacheChk" type="checkbox" /> Caché de sprites
+          <input id="spriteCacheChk" type="checkbox" checked /> Caché de sprites
         </label>
       </div>
     </details>

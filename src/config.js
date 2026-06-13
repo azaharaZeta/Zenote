@@ -272,16 +272,16 @@ export const config = {
     // el CSS reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda
     // ACOTADO e independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO
     // (nunca sobre-renderiza). NO cambia el DETALLE (LOD por tamaño percibido), solo la NITIDEZ. Más bajo = más rápido y
-    // más borroso; 3840 ≈ sin tope. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Control
-    // "Resolución" junto al botón de Calidad (solo en modo laboratorio).
-    maxInternalPx: 1280,
+    // más borroso. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Slider "Resolución" en el
+    // bloque Rendimiento del laboratorio (rango 640–1280).
+    maxInternalPx: 960,
     // (UI) Tope de FPS del RENDER (0 = sin límite). El motor (t/s) NO depende de esto. Con el dibujado BAJO DEMANDA
     // (solo se redibuja si cambió el tick/cámara/selección) evita malgastar GPU+CPU en frames idénticos (pantallas a
-    // 120 Hz, o velocidad máxima donde los datos cambian ~4/s). 60 = fluido sin malgastar; baja a 30 para más ahorro.
-    maxFPS: 60,
+    // 120 Hz, o velocidad máxima donde los datos cambian ~4/s). 20 = ligero (≈ ritmo del tick); súbelo para paneo/zoom más fluido.
+    maxFPS: 20,
     // ── CACHÉ DE SPRITES (opt-in, modo rendimiento). Cachea cada organismo por NODO en un atlas y lo ensambla con la
     //    onda viva (conserva la ondulación). Rehornea solo al cambiar color o tamaño. Para móvil/equipos modestos. ──
-    spriteCache: false,       // (UI) activar el caché de sprites (modo rendimiento)
+    spriteCache: true,        // (UI) activar el caché de sprites (modo rendimiento)
     spriteBakeBudget: 120,    // máx. horneados por frame (limita el "hitch" tras un cambio de zoom)
     spriteCacheCap: 2400,     // techo de entradas del caché (cota de memoria)
     quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
