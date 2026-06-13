@@ -87,10 +87,12 @@ optgroup { font-weight: 500; }
 
 .charts { margin: 8px 0; }
 .chart-pair { display: block; }   /* simple: gráficas apiladas. avanzado: lado a lado (ver #panel.advanced) */
-.chart { width: 100%; height: 84px; display: block; background: rgba(0,0,0,0.25); border-radius: 8px; margin-bottom: 6px; } /* alto para acomodar la leyenda de 2 filas de la curva de población */
+.chart { width: 100%; height: 84px; display: block; background: rgba(0,0,0,0.25); border: 1px solid rgba(90,209,196,0.22); border-radius: 8px; margin-bottom: 6px; } /* marco teal ligero; alto para acomodar la leyenda de 2 filas de la curva de población */
 .death-chart { display: none; margin: 0 0 6px; }            /* demografía (nacimientos/muertes): solo modo laboratorio */
 #panel.advanced .death-chart { display: flex; gap: 6px; }   /* nacimientos | muertes: dos por fila */
 #panel.advanced .death-chart .chart { flex: 1 1 0; min-width: 0; height: 60px; margin-bottom: 0; }
+/* Curva de BIOMASA (apilada): visible en lab tanto en pecera como en abierto (en vista simple la oculta su .charts padre). */
+#panel.advanced .charts .bio-chart { height: 64px; margin: 6px 0 0; }   /* secundaria: algo más baja que la población y separada por arriba */
 .inline { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .inline select { padding: 4px 6px; min-height: 28px; }
 

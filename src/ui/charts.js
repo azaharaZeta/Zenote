@@ -4,20 +4,23 @@
 import { NUM_GENES, G, GENES, GENE_LABELS } from '../engine/genome.js';
 
 export class Charts {
-  constructor(popCanvas, histCanvas, sim, deathCanvas, birthCanvas) {
+  constructor(popCanvas, histCanvas, sim, deathCanvas, birthCanvas, bioCanvas) {
     this.sim = sim;
     this.popCanvas = popCanvas;
     this.histCanvas = histCanvas;
     this.deathCanvas = deathCanvas || null;   // gráfica de MUERTES por causa (solo modo laboratorio)
     this.birthCanvas = birthCanvas || null;   // gráfica de NACIMIENTOS por tipo (solo modo laboratorio)
+    this.bioCanvas = bioCanvas || null;       // gráfica de BIOMASA: reparto de la materia (solo pecera cerrada)
     this.popCtx = popCanvas.getContext('2d');
     this.histCtx = histCanvas.getContext('2d');
     this.deathCtx = this.deathCanvas ? this.deathCanvas.getContext('2d') : null;
     this.birthCtx = this.birthCanvas ? this.birthCanvas.getContext('2d') : null;
+    this.bioCtx = this.bioCanvas ? this.bioCanvas.getContext('2d') : null;
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
     // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
     this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
+    this.histN = []; this.histGrass = []; this.histBio = []; this.histCarrion = [];   // pools de materia (pecera): nutriente libre · pasto · organismos · carroña
     // (histC = CAZADORES, histScav = CARROÑEROS: los dos tipos de comecarne, ver worker.sampleHistory.)
     // Demografía del ecosistema por ventana (del worker): nacimientos (sexual/asexual) + muertes (cazado/atacando/hambre/vejez).
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
@@ -30,6 +33,7 @@ export class Charts {
     this._fitDPR(histCanvas, this.histCtx);
     if (this.deathCtx) this._fitDPR(this.deathCanvas, this.deathCtx);
     if (this.birthCtx) this._fitDPR(this.birthCanvas, this.birthCtx);
+    if (this.bioCtx) this._fitDPR(this.bioCanvas, this.bioCtx);
   }
 
   _fitDPR(canvas, ctx) {
@@ -48,16 +52,19 @@ export class Charts {
     this._fitDPR(this.histCanvas, this.histCtx);
     if (this.deathCtx) this._fitDPR(this.deathCanvas, this.deathCtx);
     if (this.birthCtx) this._fitDPR(this.birthCanvas, this.birthCtx);
+    if (this.bioCtx) this._fitDPR(this.bioCanvas, this.bioCtx);
   }
 
   // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
   clear() {
     this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
+    this.histN = []; this.histGrass = []; this.histBio = []; this.histCarrion = [];
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
   }
 
   draw() {
     this._drawPop();
+    if (this.bioCtx) this._drawBiomass();   // biomasa: en pecera Y en abierto (permite comparar el total)
     this._drawHist();
     if (this.deathCtx) this._drawDeaths();
     if (this.birthCtx) this._drawBirths();
@@ -111,6 +118,53 @@ export class Charts {
         tx += ctx.measureText(text).width + 8;   // hueco fijo entre segmentos
       }
     }
+  }
+
+  // Curva de BIOMASA (solo PECERA CERRADA): cómo se reparte la materia conservada entre sus tres compartimentos
+  // — organismos vivos (E+cuerpo), pasto en pie y nutriente libre N — como FRACCIÓN del total (suman 1). Ver la
+  // materia CIRCULAR entre nutriente ↔ pasto ↔ vida es la lectura clave de un ecosistema cerrado.
+  _drawBiomass() {
+    const ctx = this.bioCtx, c = this.bioCanvas, w = c._w, h = c._h;
+    ctx.clearRect(0, 0, w, h);
+    const N = this.histN, Gr = this.histGrass, Bio = this.histBio, Car = this.histCarrion, T = this.histT, n = T.length;
+    if (n < 2 || N.length !== n || Gr.length !== n || Bio.length !== n || Car.length !== n) return;
+    const tEnd = T[n - 1], span = this.windowTicks || 1;
+    const TOP = 25, ph = h - TOP - 2;                       // banda superior reservada a la leyenda (hasta 2 filas)
+    const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
+    const yOf = (frac) => h - 2 - frac * ph;                // fracción 0 → base abajo · 1 → cima (justo bajo la leyenda)
+    // GRÁFICA APILADA al 100%: cada compartimento es una banda y su GROSOR = su fracción del total de materia (suman 1).
+    // De ABAJO a ARRIBA: organismos · pasto · carroña · N. Se pinta de la banda más ALTA (área completa) a la más baja,
+    // superponiendo áreas OPACAS desde su techo acumulado hasta la base → cada banda queda visible con su color.
+    const stack = [
+      [Bio, '#5a7cd1'],   // organismos (azul) — en la base
+      [Gr,  '#6fcf6a'],   // pasto en pie (verde)
+      [Car, '#a8835c'],   // carroña / detrito (marrón)
+      [N,   '#6fae8a'],   // nutriente libre N (teal) — en la cima
+    ];
+    for (let k = stack.length; k >= 1; k--) {               // k = nº de bandas (desde la base) bajo el techo de esta área
+      ctx.fillStyle = stack[k - 1][1];                      // color de la banda cuyo techo es este borde superior
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const tot = N[i] + Gr[i] + Bio[i] + Car[i] || 1;
+        let cum = 0; for (let j = 0; j < k; j++) cum += stack[j][0][i];   // techo acumulado = suma de las k bandas inferiores
+        const x = xOf(i), yv = yOf(cum / tot);
+        if (i === 0) ctx.moveTo(x, yv); else ctx.lineTo(x, yv);
+      }
+      ctx.lineTo(xOf(n - 1), yOf(0)); ctx.lineTo(xOf(0), yOf(0));   // baja y cierra contra la base
+      ctx.closePath(); ctx.fill();
+    }
+    // Leyenda: TOTAL de materia junto a "biomasa:" (≈cte en pecera, CRECE en abierto: el sol crea materia) +
+    // el % actual de cada compartimento en su color (salta de fila si no cabe, igual que las demás gráficas).
+    const total = N[n - 1] + Gr[n - 1] + Bio[n - 1] + Car[n - 1], tot = total || 1, pct = (v) => Math.round((v / tot) * 100);
+    const fmtTot = total >= 1000 ? (total / 1000).toFixed(1) + 'k' : Math.round(total).toString();
+    ctx.font = '10px system-ui, sans-serif';
+    let x = 4, y = 11;
+    const put = (txt, col) => { const tw = ctx.measureText(txt).width; if (x > 4 && x + tw > w - 2) { x = 4; y += 11; } ctx.fillStyle = col; ctx.fillText(txt, x, y); x += tw + 7; };
+    put(`biomasa: ${fmtTot}`, '#7b8494');
+    put(`organismos ${pct(Bio[n - 1])}%`, '#5a7cd1');
+    put(`pasto ${pct(Gr[n - 1])}%`, '#6fcf6a');
+    put(`carroña ${pct(Car[n - 1])}%`, '#a8835c');
+    put(`N ${pct(N[n - 1])}%`, '#6fae8a');
   }
 
   // Helper: una LÍNEA por serie a lo largo del tiempo (media móvil = tendencia, no picos), normalizadas JUNTAS

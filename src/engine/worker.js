@@ -49,21 +49,28 @@ let speciesOf = new Float32Array(config.pop.maxAgents); // especie por id establ
 // el muestreo es fiel. HIST_WINDOW debe coincidir con charts.windowTicks. ----
 const HIST_K = 40, HIST_WINDOW = 4800;
 const histPop = [], histCarn = [], histScav = [], histVeg = [], histTick = [];
+const histN = [], histGrass = [], histBio = [], histCarrion = [];   // pecera cerrada: pools de MATERIA por muestra (nutriente libre N · pasto en pie · organismos vivos · carroña)
 const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / comecarne (>0.6),
                                       // y los comecarne se parten en CAZADORES (histCarn) y CARROÑEROS (histScav) por effScav>effHunt.
 const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana: muertes combate/hambre/vejez/cazado + nacimientos sexual/asexual
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
-function vegFrac() {
-  const r = sim.world.resource, c = sim.world.capacity; let sr = 0, sc = 0;
-  for (let i = 0; i < r.length; i++) { sr += r[i]; sc += c[i]; }
-  return sc > 0 ? sr / sc : 0;
-}
 function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
   for (let k = 0; k < n; k++) { const i = act[k], d = s.diet[i];
     if (d > 0.6) { if (s.effScav[i] > s.effHunt[i]) scav++; else carn++; }  // comecarne: CARROÑERO vs CAZADOR (eje scav)
     else if (d < 0.4) herb++; else omni++; }
-  histPop.push(s.popCount); histCarn.push(carn); histScav.push(scav); histHerb.push(herb); histOmni.push(omni); histVeg.push(vegFrac()); histTick.push(s.tick);
+  // POOLS DE MATERIA (pecera cerrada): un solo barrido del recurso/carroña da vegFrac (sr/sc), el PASTO en pie
+  // (sr·epu) y la CARROÑA (Σcarrion, ya en unidades de materia). ORGANISMOS = Σ(E almacenada + cuerpo). Con el
+  // nutriente libre N, los cuatro suman matterBudget (conservación) → la curva de biomasa reparte ese total. En
+  // mundo ABIERTO también se calculan y se muestran: N=0 y el total NO se conserva (el sol crea materia → crece),
+  // lo que permite comparar desde la UI el comportamiento de la biomasa con y sin pecera.
+  const res = s.world.resource, cap = s.world.capacity, car = s.world.carrion; let sr = 0, sc = 0, scar = 0;
+  for (let c = 0; c < res.length; c++) { sr += res[c]; sc += cap[c]; scar += car[c]; }
+  let bio = 0; for (let k = 0; k < n; k++) bio += s.E[act[k]] + s.bodyMatter[act[k]];
+  const epu = config.resource.energyPerUnit;
+  histPop.push(s.popCount); histCarn.push(carn); histScav.push(scav); histHerb.push(herb); histOmni.push(omni);
+  histVeg.push(sc > 0 ? sr / sc : 0);
+  histN.push(s.world.N); histGrass.push(sr * epu); histBio.push(bio); histCarrion.push(scar); histTick.push(s.tick);
   const cd = s.deathCause, bc = s.birthCount, L = histLastCD;
   histDC.push(Math.max(0, cd.combat - L.combat)); histDS.push(Math.max(0, cd.starv - L.starv));
   histDA.push(Math.max(0, cd.age - L.age)); histDE.push(Math.max(0, cd.eaten - L.eaten));
@@ -72,11 +79,12 @@ function sampleHistory() {
   const t0 = s.tick - HIST_WINDOW;
   while (histTick.length > 1 && histTick[0] < t0) {
     histPop.shift(); histCarn.shift(); histScav.shift(); histHerb.shift(); histOmni.shift(); histVeg.shift(); histTick.shift();
+    histN.shift(); histGrass.shift(); histBio.shift(); histCarrion.shift();
     histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift(); histBS.shift(); histBA.shift();
   }
 }
 function clearHistory() {
-  for (const a of [histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
+  for (const a of [histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histN, histGrass, histBio, histCarrion, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
   lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 }
 function classifySpecies() {
@@ -216,7 +224,7 @@ function snapshot() {
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount, role, serial,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
-    histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histDC, histDS, histDA, histDE, histBS, histBA,
+    histPop, histCarn, histScav, histHerb, histOmni, histVeg, histTick, histN, histGrass, histBio, histCarrion, histDC, histDS, histDA, histDE, histBS, histBA,
     resource: s.world.resource.slice(),
     carrion: s.world.carrion.slice(),
   });

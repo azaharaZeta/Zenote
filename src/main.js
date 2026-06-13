@@ -44,6 +44,7 @@ const charts = new Charts(
   simProxy,
   document.getElementById('deathChart'),
   document.getElementById('birthChart'),
+  document.getElementById('bioChart'),
 );
 
 const app = { sim: simProxy, worker, renderer, charts, cfg: config, running: true, maxSpeed: false, followSel: false };
@@ -72,6 +73,7 @@ worker.onmessage = (e) => {
     charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histV = m.histVeg; charts.histT = m.histTick;
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
     charts.bSex = m.histBS; charts.bAsex = m.histBA;
+    charts.histN = m.histN; charts.histGrass = m.histGrass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
   }
