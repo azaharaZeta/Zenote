@@ -35,6 +35,10 @@ function findSpeciesMember(sp) {           // un miembro vivo de la especie `sp`
   return -1;
 }
 let tickAcc = 0, last = performance.now();
+// ¿hay una foto NUEVA que postear? A targetTPS < 60, la mayoría de los ~60 loops/s no avanzan ningún tick → su
+// snapshot sería IDÉNTICO al anterior (y el hilo principal ya lo descarta por "dibujado bajo demanda"). Evitamos
+// generarlo y clonarlo (postMessage) salvo que la sim avance un tick o llegue un comando de UI que cambie lo mostrado.
+let needSnap = true;
 
 // --- ESPECIES: clustering por distancia genética (periódico, no cada tick). Cada especie es un
 // "representante" (centroide del genoma); cada agente se asigna a la especie más cercana dentro del
@@ -234,6 +238,7 @@ function snapshot() {
 function loop() {
   const now = performance.now();
   let dt = (now - last) / 1000; if (dt > 0.1) dt = 0.1; last = now;
+  const tick0 = sim.tick;
   if (running) {
     const start = performance.now();
     if (maxSpeed) {
@@ -252,9 +257,10 @@ function loop() {
       }
     }
   } else tickAcc = 0;
+  if (sim.tick !== tick0) needSnap = true;             // la sim avanzó → la foto cambió
   if (sim.tick - lastClassify >= 60) { classifySpecies(); lastClassify = sim.tick; } // especies (periódico)
-  snapshot();
-  setTimeout(loop, 16); // ~60 Hz de fotos (independiente del render del hilo principal)
+  if (needSnap) { snapshot(); needSnap = false; }      // solo se postea si hay algo nuevo (tick o comando de UI)
+  setTimeout(loop, 16); // hasta ~60 Hz de fotos (independiente del render del hilo principal)
 }
 
 function setPath(o, path, v) {
@@ -297,14 +303,14 @@ onmessage = (e) => {
       }
       setPath(config, m.key, m.value);
       break;
-    case 'gene': geneIdx = m.index; break;
-    case 'pick': setSelected(pick(m.wx, m.wy)); break;
-    case 'deselect': setSelected(-1); break;       // cerrar la vista de especie (botón ✕ del inspector)
-    case 'pickSpecies': pickSpecies(m.dir); break; // navegar por especies (◀ ▶ en el inspector)
+    case 'gene': geneIdx = m.index; needSnap = true; break;
+    case 'pick': setSelected(pick(m.wx, m.wy)); needSnap = true; break;
+    case 'deselect': setSelected(-1); needSnap = true; break;       // cerrar la vista de especie (botón ✕ del inspector)
+    case 'pickSpecies': pickSpecies(m.dir); needSnap = true; break; // navegar por especies (◀ ▶ en el inspector)
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selLineage = selGeneration = selSpeciesId = -1;
       if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // maxAgents pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
-      clearHistory(); postWorld(); break;
+      clearHistory(); postWorld(); needSnap = true; break;
   }
 };
 

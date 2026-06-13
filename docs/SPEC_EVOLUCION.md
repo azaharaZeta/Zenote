@@ -387,8 +387,9 @@ materia — como un ecosistema real). **Moneda única** (materia = unidades de e
   `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
   solo (solo cambia el equilibrio). `matterBudget`/`closedMatter`/`maxAgents` requieren **Reiniciar** para aplicarse.
 
-Validado headless: la materia se conserva al bit (deriva ~1e-5 %, ruido de `Float32`); el motor enruta toda pérdida a
-un pool sea cual sea el valor de los coeficientes, por eso conserva ante cambios de parámetros en vivo.
+Validado headless: la materia se conserva con una deriva de **±0.05 %** (ruido de acumulación en `Float32`, no error
+sistemático); el motor enruta toda pérdida a un pool sea cual sea el valor de los coeficientes, por eso conserva ante
+cambios de parámetros en vivo.
 
 ## 4. Reproducción y herencia
 

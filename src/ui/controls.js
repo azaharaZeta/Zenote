@@ -409,15 +409,15 @@ export function setupControls(app) {
 const LAB_SPEC = [
   { cat: '🫧 Pecera sellada (materia)', items: [
     { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
-    { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, min: 35000, max: 150000, step: 5000, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
-    { k: 'world.closedRegen', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.004, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
+    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, min: 35000, max: 150000, step: 5000, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
+    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.004, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
   { cat: '🍃 Comida y recurso', items: [
-    { k: 'resource.R_regen', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Ritmo de rebrote de la comida: regulador principal de cuántos organismos sostiene el mundo.' },
+    { k: 'resource.R_regen', mode: 'open', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Rebrote del pasto en el modo ABIERTO: regulador principal de cuánta comida sostiene el mundo. En la pecera cerrada manda "Fotosíntesis (pecera)".' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que no se puede pastar (queda como semilla): frena el sobrepastoreo.' },
     { k: 'resource.forageReach', label: 'Alcance de forrajeo (talla)', min: 0, max: 4, step: 1, dec: 0, d: 'Cuántas celdas alrededor pasta un cuerpo grande: da ventaja a la talla. 0 = solo su celda.' },
     { k: 'resource.absRate', label: 'Ritmo de absorción', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Velocidad a la que un organismo absorbe el recurso de su celda (alto = comen rápido, pero la arrasan).' },
@@ -425,7 +425,7 @@ const LAB_SPEC = [
     { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = pasto uniforme; subir = parches que se agotan y migran solos (premia buscar).' },
     { k: 'resource.carrionDecay', label: 'Descomposición de cadáveres', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Ritmo al que se pudre la carroña: bajo = los cadáveres duran más para el carroñero.' },
     { k: 'resource.carrionAbsRate', label: 'Ritmo de carroñeo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Velocidad a la que un carroñero vacía un cadáver.' },
-    { k: 'energy.corpseReturn', label: 'Reciclaje de cadáveres (→ pasto)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Fracción de la carroña que, al pudrirse, vuelve al pasto (ciclo de nutrientes).' },
+    { k: 'energy.corpseReturn', mode: 'open', label: 'Reciclaje de cadáveres (→ pasto)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Fracción de la carroña que, al pudrirse, vuelve al pasto (ciclo de nutrientes). Solo en modo ABIERTO; en la pecera la carroña mineraliza íntegra al nutriente.' },
   ]},
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
@@ -491,6 +491,7 @@ const LAB_SPEC = [
 
 function setupLab(app, send) {
   const cfg = app.cfg;
+  const modeGated = [];  // controles que solo aplican en pecera (mode:'closed') o solo en abierto (mode:'open') → atenuados en el otro modo
   const $ = (id) => document.getElementById(id);
   const get = (path) => { const ks = path.split('.'); let t = cfg; for (const k of ks) t = t[k]; return t; };
   // Espeja el cambio en la config del HILO PRINCIPAL (no solo en el worker) → el readout (N) y el render leen el valor real.
@@ -554,12 +555,13 @@ function setupLab(app, send) {
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
-          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (needsReseed && app.markReseedPending) app.markReseedPending(); });
+          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (needsReseed && app.markReseedPending) app.markReseedPending(); if (it.k === 'world.closedMatter') refreshModeGating(); });
           lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + (needsReseed ? '↻ ' : '') + it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (needsReseed && app.markReseedPending) app.markReseedPending(); } paintT(); };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (needsReseed && app.markReseedPending) app.markReseedPending(); } paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
+          if (it.mode) { row.classList.add('lab-modegate'); modeGated.push({ row, mode: it.mode }); }
           grid.appendChild(row);
         } else {
           const row = document.createElement('div'); row.className = 'lab-row';
@@ -586,6 +588,7 @@ function setupLab(app, send) {
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
+          if (it.mode) { row.classList.add('lab-modegate'); modeGated.push({ row, mode: it.mode }); }
           grid.appendChild(row);
         }
       });
@@ -593,6 +596,20 @@ function setupLab(app, send) {
       det.appendChild(grid); body.appendChild(det);
     });
   }
+  // Atenúa los controles que NO aplican en el modo actual (pecera ↔ abierto): p.ej. "Fotosíntesis (pecera)" solo
+  // rige con el ecosistema cerrado ON; "Comida disponible (rebrote)" y "Reciclaje de cadáveres", solo con OFF.
+  // Evita mover un slider inerte sin saberlo. Se refresca al construir el lab y al togglear "Ecosistema cerrado".
+  function refreshModeGating() {
+    const closed = !!cfg.world.closedMatter;
+    for (const { row, mode } of modeGated) {
+      const inert = mode === 'closed' ? !closed : closed;
+      row.classList.toggle('lab-inert', inert);
+      row.title = inert
+        ? (mode === 'closed' ? 'Solo aplica en la pecera cerrada (ahora: modo abierto)' : 'Solo aplica en el modo abierto (ahora: pecera cerrada)')
+        : '';
+    }
+  }
+  refreshModeGating();
   // Alternar VISTA SIMPLE ↔ MODO LABORATORIO: añade/quita .advanced al panel (revela la sección del
   // laboratorio y compacta la vista simple). Recuerda el modo entre recargas (localStorage).
   const panel = $('panel'), modeBtn = $('modeBtn');
