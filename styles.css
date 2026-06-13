@@ -195,7 +195,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
    Resolución + FPS máx + Caché de sprites. */
 .perf-cat { display: none; }
 #panel.advanced .perf-cat { display: block; }
-.perf-body { padding: 6px 10px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+/* Una sola fila SIEMPRE (nowrap → el check NO salta de línea): [Calidad] · [dos sliders apilados] · [Caché].
+   Los sliders se ACORTAN cuando el panel se estrecha, en vez de empujar el check a la fila de abajo. */
+.perf-body { padding: 6px 10px 10px; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px 10px; }
+.perf-sliders { flex: 1 1 60px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.perf-sliders .res-ctrl { flex: 0 0 auto; width: 100%; min-width: 0; margin-top: 0; }
+.perf-sliders .res-ctrl input[type="range"] { flex: 1 1 auto; min-width: 30px; }
 .res-ctrl { display: none; }
 #panel.advanced .res-ctrl { display: flex; align-items: center; gap: 6px; flex: 1 1 100%; margin-top: 2px; font-size: 10px; color: var(--muted); white-space: nowrap; }
 .res-ctrl input[type="range"] { flex: 1 1 auto; min-width: 70px; }
