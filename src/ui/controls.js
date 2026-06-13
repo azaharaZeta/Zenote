@@ -468,6 +468,7 @@ const LAB_SPEC = [
     { k: 'energy.k_effort', label: 'Coste por esfuerzo', min: 0, max: 3, step: 0.05, dec: 2, d: 'Coste extra de nadar a tope: limita la velocidad por presupuesto energético.' },
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coste de moverse ∝ velocidad²: frena la carrera de velocidad.' },
     { k: 'energy.k_haul', label: 'Coste de transporte (masa)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar arrastrar masa: alto = un cuerpo grande gasta más al desplazarse, no solo al mantenerse.' },
+    { k: 'energy.k_drag', label: 'Coste de arrastre (forma)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar el ARRASTRE de la forma (cuerpo/aletas anchos, apéndices): complementa el coste por masa — distingue la forma hidrodinámica del bulto. 0 = el arrastre solo frena, no cuesta.' },
     { k: 'energy.E_max_base', label: 'Energía máxima base', min: 40, max: 200, step: 5, dec: 0, d: 'Energía máxima que almacena un organismo (escala con su tamaño): más reserva ante hambrunas.' },
     { k: 'energy.preyGain', label: 'Energía de la presa', min: 0, max: 1, step: 0.02, dec: 2, d: 'Fracción de la energía almacenada de la presa que aprovecha el cazador.' },
     { k: 'energy.carcassValue', label: 'Valor del cadáver (biomasa)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto alimenta el CUERPO de la presa al cazarla, además de su energía. Alto = cazar es viable aunque la presa esté magra; muy alto puede disparar oscilaciones.' },

@@ -231,7 +231,7 @@ Por tick, cada organismo:
   vivir lento cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
-- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost) · (1 + k_haul·max(0,mass−1))`,
+- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost) · (1 + k_haul·max(0,mass−1)) · (1 + k_drag·max(0,Dmul−dragRef))`,
   **cuadrático en la velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
   **`flapCost`** (Capa 3) = `k_flap · flapWork` (trabajo de aleteo, lateral): **aletear ENCARECE el nado** (el golpe
   activo gasta). Hace honesto el eje **ondular (crucero barato) ↔ aletear (ráfaga cara)**: el aleteo da +empuje
@@ -240,8 +240,14 @@ Por tick, cada organismo:
   **`haulMul`** (A, *coste de transporte*) = `1 + k_haul·max(0,mass−1)`: **arrastrar masa ENCARECE el nado** — el
   sobrecoste ACTIVO de DESPLAZAR un cuerpo grande o con muchos/grandes apéndices (mantenerlo ya se paga en el basal,
   `mass^kleiber`). Referencia en `mass=1` (organismo medio): por debajo no recarga; por encima paga ∝ exceso de masa.
-  El aerodinámico ahorra y el complejo paga; QUÉ forma gana lo decide la selección. Pendiente el coste por la FORMA del
-  arrastre (no solo la masa) — idea "coste de arrastre en locomoción" en `ideas/indice-ideas.md`.
+  El aerodinámico ahorra y el complejo paga; QUÉ forma gana lo decide la selección.
+  **`dragMul`** (B, *coste de arrastre*) = `1 + k_drag·max(0,Dmul−dragRef)`: **la FORMA con resistencia ENCARECE el nado** —
+  `Dmul` es el arrastre emergente de la geometría (`reducePlan`: cuerpo/aletas anchos, apéndices), cacheado por agente (SoA
+  `drag`). Complementa A (que es por MASA): difieren en aletas/garras (mucho arrastre, poca masa). Cierra el incentivo
+  perverso del *arrastre gratis* (antes el arrastre solo FRENABA, `v=…/Dmul`, y como el coste va con `v²` un cuerpo con
+  arrastre nadaba **más barato** → ahora una forma con resistencia es lenta **y** agotadora). `dragRef` da un colchón
+  (solo paga el `Dmul` por encima). Medido: efecto sutil en el régimen lento por defecto, mayor bajo presión de velocidad;
+  neutro a `k_drag=0`. `k_drag`/`dragRef` se leen en vivo.
 - **Alimentación** (ritmo `absEff = absRate · (0.5 + metab) · (1 + k_graze·(massMul−1)) · (1 + k_grazeWide·anchura)`;
   más masa = más superficie de pasto. **`anchura`** (Capa 2) = `1 − (elongN−1)/(elongMax−1)` ∈ [0,1]: un cuerpo
   **ancho/aplanado** (baja elongación) **barre más recurso** que uno fino/aerodinámico → premia la morfología de

@@ -126,6 +126,14 @@ export function computePhenotype(sim, i) {
   // que "más masa = más caro moverla"; QUÉ cuerpo gana lo decide la selección (el aerodinámico ahorra, el complejo paga).
   sim.haulMul[i] = 1 + en.k_haul * Math.max(0, mass - 1);
 
+  // COSTE DE ARRASTRE (B): el arrastre `Dmul` (emergente de la FORMA — cuerpo/aletas anchos, apéndices — en
+  // bodyplan.reducePlan) hoy solo BAJA la velocidad (v = …·stream/Dmul); no costaba energía. Como el coste de nado va
+  // con dist²∝v², un cuerpo con mucho arrastre nadaba MÁS BARATO (lento → menos v² → menos gasto) → el arrastre se
+  // PREMIABA. Cacheamos el Dmul crudo (dato físico); sim.js cobra (1 + k_drag·max(0, Dmul−dragRef)) al nado → una forma
+  // con resistencia es lenta Y agotadora. Distingue la FORMA del mero bulto (A=k_haul es por MASA; aletas/garras tienen
+  // arrastre SIN masa). k_drag/dragRef se leen en vivo (no recachea). FRONTERA: defino "más arrastre = más gasto"; la forma la decide la selección.
+  sim.drag[i] = R.Dmul;
+
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);
   sim.effHerb[i] = (1 - diet) * omni;

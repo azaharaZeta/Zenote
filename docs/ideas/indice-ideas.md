@@ -27,7 +27,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Gráfica de biomasa (reparto de materia) | ✅ hecha | `charts._drawBiomass` (organismos/vegetación/carroña/nutriente apilados + total); en lab, pecera y abierto |
 | Leyenda "Rol" ponderada por totales | ✅ hecha (2026-06-14) | banda ∝ nº de individuos por oficio + 4º oficio (omnívoro, vía `trophicRole`), viva por frame · análisis abajo |
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
-| Coste de arrastre en locomoción | ⬜ pendiente | análisis abajo — complementa A (`k_haul`, ya hecho); remate de "revisar nado" |
+| Coste de arrastre en locomoción | ✅ hecha (2026-06-14) | `energy.k_drag`/`dragRef` · SoA `drag`=Dmul · SPEC §3 · complementa A; remate de "revisar nado" |
 | Selección de presa por talla | ⬜ pendiente | análisis abajo |
 | Nuevas entradas sensoriales del cerebro | ⬜ pendiente | análisis abajo |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
@@ -70,7 +70,14 @@ la mala pelea); medir su efecto antes de decidir si este hace falta.
 ---
 
 ## Coste de ARRASTRE en locomoción — el arrastre debe COSTAR, no solo frenar
-*(pendiente, 2026-06-11 · "opción B" del análisis de energética; la "opción A", `k_haul`, ya está hecha)*
+*(✅ HECHA 2026-06-14 · "opción B" del análisis de energética; la "opción A", `k_haul`, ya estaba hecha)*
+
+**HECHO:** `Dmul` (arrastre de la forma) se cachea por agente (SoA `sim.drag`, seteado en `organism.js`) y el coste de
+nado se multiplica por `(1 + k_drag·max(0, Dmul−dragRef))` (`sim.js`; `k_drag`/`dragRef` leídos EN VIVO → afinables sin
+resembrar). Defaults `k_drag=0.4`, `dragRef=1.1` (slider en el lab). **Medido headless** (4000t, pecera, seed 123; barrido
+dragRef∈{1.0,1.1,1.15} × k_drag∈{0.4,0.8}): efecto **sutil** en el régimen default (vmax~0.37 → `moveCost·v²` es fracción
+menor del balance) y **sin daño** (pop 1030–1173, pastador ancho intacto — no se materializó la triple-penalización temida);
+mordería más bajo presión de velocidad (fleeSpeed alto). Mecánica en SPEC §3. El análisis original se conserva abajo.
 
 **Idea:** hoy el arrastre (`Dmul`, emergente de la forma) solo BAJA la velocidad (`v = …·stream/Dmul`); no cuesta
 energía. Como el coste de nado va con `dist² ∝ v²`, un cuerpo con mucho arrastre nada **más barato** (va lento → menos

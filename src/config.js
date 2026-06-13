@@ -102,6 +102,16 @@ export const config = {
     k_haul: 0.4,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
                         //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
                         //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
+    k_drag: 0.4,        // (UI) (B) Coste de nado ∝ ARRASTRE de la FORMA: el nado se multiplica por (1 + k_drag·max(0, Dmul−dragRef)),
+                        //      Dmul = arrastre emergente de la geometría (bodyplan.reducePlan: cuerpo/aletas anchos, apéndices). Complementa
+                        //      A (que es por MASA): difieren en aletas/garras (mucho arrastre, poca masa). Cierra el incentivo PERVERSO del
+                        //      "arrastre gratis" (antes el arrastre solo FRENABA, v=…/Dmul, y como el coste va con v² un cuerpo con arrastre
+                        //      nadaba MÁS BARATO). MEDIDO headless (4000t, pecera): efecto SUTIL en el régimen default —las velocidades son
+                        //      bajas (vmax~0.37), así que moveCost·v² es una fracción menor del balance—; SIN daño (pop/dieta estables a 0.4–0.8,
+                        //      no machaca al pastador ancho). Muerde MÁS bajo presión de velocidad (fleeSpeed alto / carrera depredador-presa).
+                        //      0 = INERTE (el arrastre solo frena). Se lee en vivo (no recachea el fenotipo).
+    dragRef: 1.1,       // (UI) Arrastre de REFERENCIA del coste B: solo el Dmul por ENCIMA de dragRef paga (max(0, Dmul−dragRef)) → colchón
+                        //      para no cobrar el arrastre típico. Medido: Dmul mediana≈1.17, p90≈1.36 (mínimo 1.0 = cuerpo sin arrastre extra).
     E_max_base: 71,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla

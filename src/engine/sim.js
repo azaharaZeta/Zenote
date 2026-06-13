@@ -60,6 +60,7 @@ export class Sim {
     this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
     this.flapCost = new Float32Array(cap); // Capa 3: coste de NADO extra por aletear (golpe activo); ver organism.js
     this.haulMul = new Float32Array(cap);  // (A) coste de TRANSPORTE ∝ masa: multiplica el coste de NADO; ver organism.js
+    this.drag = new Float32Array(cap);     // (B) ARRASTRE emergente de la forma (Dmul de bodyplan): antes solo frenaba; ahora ENCARECE el nado (sim.js); ver organism.js
     this.senseR = new Float32Array(cap);   // alcance visual efectivo (emerge de sense · e_fov)
     this.visCos = new Float32Array(cap);   // cos(semiángulo del cono de visión) → visión direccional
     this.gazeX = new Float32Array(cap);    // dirección de la mirada (a la presa/amenaza, si no al frente)
@@ -374,6 +375,7 @@ export class Sim {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
     const wrap = world.wrap, ww = world.width, wh = world.height;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit;
+    const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
     const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
@@ -673,7 +675,8 @@ export class Sim {
       // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
       // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
       // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i]; // aletear (Capa 3) encarece el nado; haulMul (A): transporte ∝ masa
+      const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // (B) el arrastre de la forma encarece el nado (0 = inerte)
+      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul; // nado: aletear (Capa 3) + transporte∝masa (A) + arrastre∝forma (B)
       if (closed) {
         // CERRADO: no se puede gastar más MATERIA de la que se tiene (sin sobregiro fantasma que destruiría materia al
         // recuperarse comiendo). El coste efectivo se topa a la energía disponible → E baja a 0, nunca a negativo; esa
