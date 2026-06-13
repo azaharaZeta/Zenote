@@ -31,14 +31,14 @@
 
     <div class="row btn-row">
       <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
-      <button id="qualityBtn" class="mode-btn" title="Calidad gráfica. Baja mejora el rendimiento (recomendado en móvil): sin bloom, menos partículas, menor resolución.">Calidad: Alta</button>
-      <label class="res-ctrl" title="Resolución interna del render (px del borde largo). Más baja = más rápido y suave; el DETALLE de las criaturas no cambia, solo la nitidez.">Resolución <output id="resVal">1280</output>
+      <button id="qualityBtn" class="mode-btn" title="Calidad gráfica: Baja (móvil) · Alta · Máxima. Baja va más fluido (sin bloom ni adornos).">Calidad: Alta</button>
+      <label class="res-ctrl" title="Resolución del render: más baja = más fluida (cambia la nitidez, no el detalle de los bichos).">Resolución <output id="resVal">1280</output>
         <input id="resSlider" type="range" min="640" max="3840" step="80" value="1280" />
       </label>
-      <label class="res-ctrl" title="Tope de fotogramas por segundo del DIBUJO (no afecta a la velocidad de simulación). Con el dibujado bajo demanda, evita gastar GPU/CPU redibujando de más.">FPS máx <output id="fpsCapVal">60</output>
+      <label class="res-ctrl" title="Tope de FPS del dibujo (no afecta a la velocidad de la simulación).">FPS máx <output id="fpsCapVal">60</output>
         <input id="fpsCapSlider" type="range" min="15" max="120" step="5" value="60" />
       </label>
-      <label class="res-ctrl chk-ctrl" title="Modo rendimiento (móvil/equipos modestos): cachea el cuerpo de los bichos PEQUEÑOS como imagen y lo reutiliza (≈3× más rápido en escenas con muchos organismos). Solo se aplica por debajo del umbral de ondulación → los bichos siguen ondulando en vivo en cuanto crecen lo suficiente; el cruce es continuo.">
+      <label class="res-ctrl chk-ctrl" title="Modo rendimiento: cachea los organismos como imagen para dibujarlos más rápido (móvil/equipos modestos).">
         <input id="spriteCacheChk" type="checkbox" /> Caché de sprites
       </label>
     </div>

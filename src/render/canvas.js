@@ -445,26 +445,22 @@ export class Renderer {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
-    // El LOD NO usa la resolución (ni nativa ni maxInternalPx): SOLO calidad (lodMul, abajo) × ZOOM. `lodSc` = tamaño
-    // APARENTE (referencia fija × zoom), independiente del buffer → mover la Resolución NO cambia el detalle, solo la
-    // nitidez. El DIBUJO real lo escala el ctx (transform del buffer, fijado en draw()); aquí solo se decide QUÉ dibujar.
+    // El LOD depende SOLO de calidad (lodMul) × ZOOM, no de la resolución. `lodSc` = tamaño aparente (referencia fija ×
+    // zoom) → mover la Resolución cambia la nitidez, no el detalle. El dibujo real lo escala el ctx del buffer.
     const lodSc = LOD_REF * this.zoom;
     this._drawScale = lodSc;                       // escala del LOD (SIN resolución): TODAS las decisiones de detalle
     this._bufScale = this._scale();                // escala REAL del buffer (CON resolución) → SOLO suelos sub-píxel, no LOD
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
-    // LOD (rendimiento): umbrales de RADIO EN PANTALLA (px) por nivel. 3 tiers: punto < dThr ≤ cuerpo barato <
-    // fullThr ≤ grafo completo. En calidad BAJA los umbrales se multiplican (más puntos/cuerpos baratos → barato).
-    const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra'; // MÁXIMA = SIN LOD: TODO a grafo completo "a pelo" (opt-in, "todo el esplendor") → se salta el LOD entero.
+    // Umbrales de tamaño aparente por nivel: punto < dThr ≤ elipse barata < fullThr ≤ grafo completo (×lodMul en BAJA).
+    const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra'; // MÁXIMA (ultraFull) = sin LOD: todo a grafo completo
     const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos/baratos); alta = 1. (Máxima ignora el LOD, ver ultraFull.)
     this._lodMul = lodMul;                           // los gates internos de _drawBodyGraph (onda/señuelo/textura/plano/contorno) aplican el MISMO multiplicador
     const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
     const haloThr = R.lodHalo * lodMul;         // halo por agente (los puntos no lo necesitan)
-    // CACHÉ DE ESQUELETO (opt-in): cachea por NODO y ensambla con la onda VIVA → conserva la ondulación → se usa en
-    // TODOS los tier-2 (full-graph) y en TODAS las calidades, MÁXIMA incluida (era el objetivo). No hay tope por tamaño
-    // ni costura: el render vivo y el horneado comparten _drawNode → mismo dibujo. (Ver _skelEntry/_bakeSkeleton.)
+    // Caché de esqueleto (opt-in): se usa en todos los tier-2 y todas las calidades; conserva la ondulación (ver _skelEntry).
     const useSpr = R.spriteCache;
     const serial = sim.serial;
     for (let a = 0; a < n; a++) {
@@ -525,9 +521,8 @@ export class Renderer {
       }
       // LOD de 3 niveles según tamaño en pantalla.
       if (tier === 2) {
-        // GRAFO completo: cabeza+nodos, ojos, señuelo, volumen, ONDA viva. Si el caché está activo, `skel` = entrada de
-        // esqueleto (atlas de celdas de nodo) → _drawBodyGraph PEGA las celdas en vez de reconstruirlas; onda/ojos/señuelo
-        // siguen vivos. La onda conserva el movimiento → válido en máxima. skel=null → reconstrucción vectorial viva.
+        // GRAFO completo (cabeza+nodos, ojos, señuelo, onda). Con caché, `skel` = atlas del organismo → _drawBodyGraph pega
+        // las celdas en vez de reconstruirlas (la onda sigue viva). skel=null → reconstrucción vectorial.
         const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 7, eye, i * 4, tint, i) : null;
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
                             eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7, skel);
@@ -557,10 +552,8 @@ export class Renderer {
     ctx.restore();
   }
 
-  // CACHÉ DE ESQUELETO (opt-in, render.spriteCache) — hornea cada NODO del organismo (silueta+volumen+contorno+textura)
-  // UNA vez en un ATLAS por organismo; el render vivo ENSAMBLA pegando esas celdas con la onda/rumbo del frame → CONSERVA
-  // la ondulación (a diferencia del sprite de cuerpo entero, estático) → válido en TODAS las calidades, máxima incluida.
-  // Reconstruye solo al cambiar el cubo de COLOR o de TAMAÑO. Misma infra de cubos/presupuesto/evicción que antes.
+  // Caché de esqueleto (opt-in): obtiene o hornea el atlas de un organismo (clave = serial). Rehornea al cambiar el cubo
+  // de color o de tamaño; usa el atlas previo si se agota el presupuesto de horneado del frame.
   _skelEntry(key, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
     const cache = this._sprCache || (this._sprCache = new Map());
     const pxOn = r * (this._bufScale || 1);                       // radio en píxeles REALES del buffer (nitidez)
@@ -578,10 +571,9 @@ export class Renderer {
     return e;
   }
 
-  // Hornea el ATLAS de nodos: por cada nodo presente, dos celdas (contorno + cuerpo) dibujadas con _drawNode (EL MISMO que
-  // el render vivo → fidelidad) en orientación CANÓNICA (eje +x, rot=0). Clave de iluminación: la luz del gradiente se
-  // pre-rota por −pa[k] → al rotar la celda por su ángulo al ensamblar, el brillo queda body-local consistente (como el
-  // cuerpo entero, la luz rota con el cuerpo = aceptado). Layout: 2 columnas (contorno | cuerpo), una fila por nodo.
+  // Hornea el atlas del organismo: por nodo, 2 celdas (contorno|cuerpo) vía _drawNode canónico (rot=0), + 1 celda DECO
+  // (ojos+señuelo). La luz del gradiente se pre-rota −pa[k] para que el brillo quede consistente al rotar la celda.
+  // Layout: 2 columnas (contorno | cuerpo) × filas de nodo, y la celda deco debajo.
   _bakeSkeleton(prev, sk, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
     const Rc = this.cfg.render, lm = this._lodMul || 1, dens = sk / r, NS = NODE_COUNT;
     this._nodePositions(nodes, no, r);
@@ -706,13 +698,10 @@ export class Renderer {
     }
   }
 
-  // Evicción del caché de sprites: cada ~45 frames suelta los no vistos en `ttl` (muertos / fuera de vista / pasados a
-  // vector); y aplica un techo duro de entradas (suelta las vistas hace más) → memoria acotada.
+  // Evicción por MUERTE (no por visibilidad): cada ~60 frames suelta los serials que ya no están vivos → los vivos siguen
+  // cacheados aunque salgan de vista (sin rehornear al panear). + techo duro de entradas (memoria acotada).
   _evictSprites() {
     const cache = this._sprCache, cap = this.cfg.render.spriteCacheCap || 2400;
-    // EVICCIÓN POR MUERTE, no por visibilidad: se mantienen cacheados TODOS los organismos VIVOS aunque salgan de vista
-    // (al volver a entrar por PANEO no se rehornea). Cada ~60 frames se sueltan los serials que ya no están vivos (no en
-    // el snapshot actual). El cambio de ZOOM sí rehornea (cubo de tamaño, por nitidez) — eso es aparte de la visibilidad.
     if ((this._sprFrame % 60) === 0 && this.sim.serial) {
       const set = this._aliveSet || (this._aliveSet = new Set()); set.clear();
       const ser = this.sim.serial, n = this.sim.activeCount; for (let a = 0; a < n; a++) set.add(ser[a]);
@@ -734,9 +723,8 @@ export class Renderer {
     ctx.closePath();
   }
 
-  // Dibuja UN nodo (silueta + volumen + textura, o su contorno). `st` = estilo del organismo (ver _drawBodyGraph): colores
-  // de relieve, dir de luz (llx,lly), textura, gates LOD. mode 0 = contorno oscuro (va DETRÁS), 1 = cuerpo (gradiente
-  // direccional + bandas). Lo usan el render VIVO y el horneado del ESQUELETO → mismo dibujo exacto = fidelidad.
+  // Dibuja UN nodo. `st` = estilo del organismo (colores de relieve, dir de luz, textura, gates LOD; ver _drawBodyGraph).
+  // mode 0 = contorno oscuro (va detrás), 1 = cuerpo (gradiente + bandas). Lo usan el render vivo y el horneado del caché.
   _drawNode(ctx, st, cx, cy, rot, rxx, ryy, mode, tip) {
     const sShape = (tip - 0.5) * 2;                          // −1 afila .. +1 abre
     let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
@@ -769,9 +757,8 @@ export class Renderer {
     }
   }
 
-  // SEÑUELO + OJOS del morro (decoración de la raíz), EXTRAÍDO de _drawBodyGraph para que el caché de ESQUELETO pueda
-  // hornearlo (igual que _drawNode). Todo en el frame head-local (origen = cabeza, +x = rumbo). `t` anima sway/pulso del
-  // señuelo y `face` mueve la pupila; el HORNEADO los pasa neutros (t=0, face=null) → versión estática cacheable.
+  // Señuelo + ojos del morro, en el frame head-local (origen = cabeza, +x = rumbo). Lo usan el render vivo y el horneado
+  // del caché. `t` anima el sway/pulso del señuelo y `face` la pupila; el horneado los pasa neutros (t=0, face=null) → estático.
   _drawDeco(ctx, r, pr0, pl0, h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, ds) {
     const orn = tint ? tint[to] : 0;
     if (orn > 0.12 && deco && doLure) {
@@ -883,11 +870,9 @@ export class Renderer {
     const tex2 = deco ? deco[dco + 6] : 0.5;
     const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
     const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
-    // Estilo de nodo (constante por organismo) que consumen los métodos _silPath/_drawNode. EXTRAÍDOS de aquí para que
-    // el caché de ESQUELETO hornee cada nodo con EXACTAMENTE el mismo dibujo que el render vivo → fidelidad por
-    // construcción (una sola fuente del dibujo de nodo, no se duplica). `ds` = escala del LOD; `lm`/`full` = gates.
+    // Estilo de nodo (constante por organismo) para _drawNode (también lo usa el horneado del caché → mismo dibujo).
     const st = skel ? null : { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
-                 lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 }; // sin caché → estilo para _drawNode; con caché → se pegan celdas
+                 lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 }; // null con caché (se pegan celdas)
     // ---- ONDA VIAJERA (B2b): la flexión se ACUMULA del padre al hijo → cadena articulada (anguila). La
     // cabeza (raíz, prof. 0) queda estable; la cola ondula más (fase por profundidad). Nada más rápido = más onda.
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
