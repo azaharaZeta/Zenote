@@ -15,7 +15,7 @@ export const config = {
                          //      nutriente del pool y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia,
                          //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
                          //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
-    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
+    matterBudget: 30000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
                          //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
                          //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
     closedRegen: 0.0034, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige

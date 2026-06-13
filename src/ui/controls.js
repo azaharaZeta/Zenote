@@ -438,7 +438,7 @@ export function setupControls(app) {
 const LAB_SPEC = [
   { cat: '🫧 Pecera sellada (materia)', items: [
     { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
-    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, min: 35000, max: 150000, step: 5000, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
+    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, min: 10000, max: 100000, step: 2500, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
     { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.004, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
