@@ -38,8 +38,8 @@ export const config = {
                         //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
-    energyPerUnit: 10,  // Energía obtenida por unidad de recurso comida
-    grazeRefuge: 0.20,   // Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
+    energyPerUnit: 10,  // (UI) Energía obtenida por unidad de recurso comida
+    grazeRefuge: 0.20,   // (UI) Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
     forageReach: 2,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
                         //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
                         //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
@@ -83,13 +83,13 @@ export const config = {
     c_base: 0.024,      // (UI) Coste basal por tick (recalibrado por la alometría: antes 0.02 con k_size aparte)
     massExp: 1.5,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp. 1 = lineal; 2 = área 2D
     kleiber: 0.75,      // (UI) Exponente metabólico: coste basal ∝ masa^kleiber (¾ = Kleiber; <1 = los grandes gastan menos por masa)
-    k_sense: 0.3,       // Coste de la visión (alcance)
-    k_metab: 0.6,       // Coste del metabolismo
-    k_lifespan: 0.35,   // (#12, disposable soma) Coste basal extra de la LONGEVIDAD: factor (1 + k_lifespan·(1−senescence)).
+    k_sense: 0.3,       // (UI) Coste de la visión (alcance)
+    k_metab: 0.6,       // (UI) Coste del metabolismo
+    k_lifespan: 0.35,   // (UI) (#12, disposable soma) Coste basal extra de la LONGEVIDAD: factor (1 + k_lifespan·(1−senescence)).
                         //      Vivir lento/longevo cuesta mantener el cuerpo → evita que la senescencia colapse a "inmortal".
     k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
     k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
-    k_graze: 0.50,      // Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
+    k_graze: 0.50,      // (UI) Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
     k_grazeWide: 0.5,   // (UI) (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
                         //          más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico
     k_scavThin: 1.0,    // (UI) (Fase 2) CARROÑEO extra ∝ lo FINO/elongado del cuerpo: effScav·(1+k_scavThin·elongación).
@@ -97,14 +97,14 @@ export const config = {
                         //          pastador ANCHO). 0 = el carroñero no gana por ser fino (no diverge la forma). Afinar midiendo.
     k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
-    k_effort: 1.59,     // Coste extra de moverse ∝ esfuerzo (gen speed)
-    moveCost: 0.015,    // Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
+    k_effort: 1.59,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
+    moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
     k_haul: 0.4,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
                         //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
                         //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
-    E_max_base: 71,     // Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
+    E_max_base: 71,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
-    preyGain: 0.90,     // Fracción de energía de la presa aprovechada al cazarla
+    preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla
     carcassValue: 0.25, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía: la captura rinde preyGain·(E_presa
                         //      + carcassValue·eMax_presa). 0 = solo cuenta la energía ALMACENADA (modelo previo) → en
                         //      mundo escaso la presa cría hasta el tope pero MAGRA (poca E) y cazarla da calorías
@@ -127,7 +127,7 @@ export const config = {
   // Qué morfología gana lo decide la SELECCIÓN, no estos números. (Matiz: bodyThrust alto = cabeza buen propulsor
   // → ver idea "cabeza nadadora" en IDEAS.md; es balance, no una regla de forma.)
   loco: {
-    kThrust: 7.1,       // Calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47)
+    kThrust: 7.1,       // (UI) Calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47)
     headThrust: 0.06,   // (UI) Empuje de la CABEZA (motor base débil): 1 = cabeza nadadora; bajo = la cabeza es carga
                         //      y nadar bien EXIGE cola/aletas → emergen propulsores. A 0.06 un cuerpo SIN propulsores casi
                         //      no avanza (≈vMin) y un "garras-only" queda clavado en el suelo → nadar depende del fenotipo
@@ -142,8 +142,8 @@ export const config = {
     streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica)
     effortFloor: 0.2,   // Esfuerzo mínimo de nado
     vMin: 0.15,         // Suelo de velocidad-capacidad (nadie queda 100% inmóvil)
-    vMax: 3.0,          // Techo de velocidad-capacidad
-    turnBase: 0.18,     // Agilidad de giro base
+    vMax: 3.0,          // (UI) Techo de velocidad-capacidad
+    turnBase: 0.18,     // (UI) Agilidad de giro base
     turnAsym: 0.35,     // La asimetría del grafo de nodos (emergente) mejora el giro
     turnSize: 0.15,     // Los cuerpos grandes giran peor
     turnElong: 0.08,    // Los cuerpos elongados giran peor
@@ -174,7 +174,7 @@ export const config = {
     halfFovMin: 0.35,   // Semiángulo mínimo del cono (rad ≈ 20°): estrecho y frontal (cazador)
     halfFovMax: 2.70,   // Semiángulo máximo (rad ≈ 155°): casi panorámico (presa)
     fovRef: 3.05,       // FOV de referencia para conservar el área visual
-    rangeExp: 0.4,      // Exponente del reparto alcance↔ángulo
+    rangeExp: 0.4,      // (UI) Exponente del reparto alcance↔ángulo
   },
 
   // ───── Dieta ─────
@@ -205,7 +205,7 @@ export const config = {
   // Edad / mortalidad. La madurez (inicio de senescencia + gate de cría) y el ritmo de vida son GENES (#12):
   // ver expr.mature_age y el gen `senescence`. Aquí quedan solo las escalas BASE comunes.
   age: {
-    mortality: 0.0005,  // Mortalidad base por senescencia (prob./tick tras madurar; el gen `senescence` la escala)
+    mortality: 0.0005,  // (UI) Mortalidad base por senescencia (prob./tick tras madurar; el gen `senescence` la escala)
     scale: 500,         // Escala temporal de la senescencia
     senesSlow: 0.3,     // (#12) multiplicador de senescencia con `senescence`=0 (longevo: envejece despacio)
     senesFast: 3.0,     // (#12) multiplicador con `senescence`=1 (vida rápida: envejece deprisa, muere joven)
@@ -213,12 +213,12 @@ export const config = {
 
   // ───── Reproducción ─────
   repro: {
-    cooldown: 60,              // Enfriamiento entre crías (ticks)
-    sexual: true,              // Reproducción sexual (recombinación de dos padres)
+    cooldown: 60,              // (UI) Enfriamiento entre crías (ticks)
+    sexual: true,              // (UI) Reproducción sexual (recombinación de dos padres)
     asexual: true,              // (UI) Permitir clon mutado si no hay pareja compatible cerca. ON conserva la diversidad
                                //      de talla; solo-sexual la APLANA (la mezcla grande×pequeño regresa a la media — medido headless).
-    speciesGenThreshold: 0.15, // Distancia genética máxima para cruzarse (= misma especie)
-    mateRadius: 70,            // Radio (px) de búsqueda de pareja al reproducirse
+    speciesGenThreshold: 0.15, // (UI) Distancia genética máxima para cruzarse (= misma especie)
+    mateRadius: 70,            // (UI) Radio (px) de búsqueda de pareja al reproducirse
   },
 
   // ───── Mutación: UNA sola tasa por locus, CIEGA a la función del gen (auditoría #1) ─────
@@ -226,7 +226,7 @@ export const config = {
   mut: {
     rate: 0.05,         // (UI) Prob. de mutación por gen (todos los genes por igual)
     sigma: 0.08,        // (UI) Magnitud de la mutación
-    bigRate: 0.002,     // Prob. de macromutación (salto grande y raro)
+    bigRate: 0.002,     // (UI) Prob. de macromutación (salto grande y raro)
     bigSigmaMult: 5,    // Multiplicador de magnitud de la macromutación
     recomb: 0.07,       // (UI) Recombinación sexual: prob. de cruce por locus (LIGAMIENTO). 0.5 = uniforme (sin
                         //      ligamiento); →0 = tramos contiguos largos co-heredados. Vive en `mut` por conveniencia.
@@ -247,8 +247,8 @@ export const config = {
                         //      BAJADO 2→1.2: caza algo más fácil → sostiene el nicho CAZADOR de presa viva en la pecera (red trófica;
                         //      bajar a 1.0 lo hace boom-bust, menos robusto — medido). Afecta también al modelo abierto.
                         //      >4 o cobertura nula → la presa escapa demasiado y los carnívoros se quedan sin comer (medido).
-    handlingTime: 31,    // Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
-    dietMargin: 0.08,    // Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
+    handlingTime: 31,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
+    dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
     preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
@@ -312,7 +312,6 @@ export const config = {
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
     size:      { min: 1.7, max: 9 },    // gen size → radio (px); solo render/contacto, NO afecta a la energía
-    speed:     { min: 0.2, max: 2.0 },  // gen speed → escala de esfuerzo / v_max
     sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (px)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)

@@ -95,7 +95,7 @@ export class Charts {
     };
     // Series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros) + los dos tipos de
     // comecarne (CAZADORES rojo / CARROÑEROS violeta) + población total.
-    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // VEGETACIÓN (fracción 0-1, escala propia) en verde, al fondo
+    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // PASTO = llenado (fracción 0-1 de la capacidad, escala propia) en verde, al fondo
     if (histH.length) line(histH, '#5ab3d1');               // herbívoros (cian-teal)
     if (histO.length) line(histO, '#f0b429');               // omnívoros (ámbar)
     if (histC.length) line(histC, '#ff6b5a');               // CAZADORES (rojo) — comecarne que caza presa viva
@@ -108,7 +108,7 @@ export class Charts {
     const rows = [
       [[`pob ${String(last(hist)).padStart(4)}`, '#5a7cd1'], [`carn ${String(last(histC)).padStart(4)}`, '#ff6b5a']],
       [[`carroñ ${String(last(histScav)).padStart(3)}`, '#b07be0'], [`omni ${String(last(histO)).padStart(4)}`, '#f0b429']],
-      [[`herb ${String(last(histH)).padStart(4)}`, '#5ab3d1'], [`veg ${String(vegNow).padStart(3)}%`, '#6fcf6a']],
+      [[`herb ${String(last(histH)).padStart(4)}`, '#5ab3d1'], [`pasto ${String(vegNow).padStart(3)}%`, '#6fcf6a']],
     ];
     for (let r = 0; r < rows.length; r++) {
       let tx = 4;
@@ -120,9 +120,9 @@ export class Charts {
     }
   }
 
-  // Curva de BIOMASA (solo PECERA CERRADA): cómo se reparte la materia conservada entre sus tres compartimentos
-  // — organismos vivos (E+cuerpo), pasto en pie y nutriente libre N — como FRACCIÓN del total (suman 1). Ver la
-  // materia CIRCULAR entre nutriente ↔ pasto ↔ vida es la lectura clave de un ecosistema cerrado.
+  // Curva de BIOMASA: cómo se reparte la materia entre sus cuatro compartimentos — organismos vivos (E+cuerpo),
+  // vegetación en pie, carroña y nutriente libre — como FRACCIÓN del total (suman 1). Ver la materia CIRCULAR entre
+  // nutriente ↔ vegetación ↔ vida ↔ carroña es la lectura clave (en pecera el total se conserva; en abierto crece).
   _drawBiomass() {
     const ctx = this.bioCtx, c = this.bioCanvas, w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);
@@ -133,13 +133,13 @@ export class Charts {
     const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
     const yOf = (frac) => h - 2 - frac * ph;                // fracción 0 → base abajo · 1 → cima (justo bajo la leyenda)
     // GRÁFICA APILADA al 100%: cada compartimento es una banda y su GROSOR = su fracción del total de materia (suman 1).
-    // De ABAJO a ARRIBA: organismos · pasto · carroña · N. Se pinta de la banda más ALTA (área completa) a la más baja,
-    // superponiendo áreas OPACAS desde su techo acumulado hasta la base → cada banda queda visible con su color.
+    // De ABAJO a ARRIBA: organismos · vegetación · carroña · nutriente. Se pinta de la banda más ALTA (área completa)
+    // a la más baja, superponiendo áreas OPACAS desde su techo acumulado hasta la base → cada banda queda visible.
     const stack = [
       [Bio, '#5a7cd1'],   // organismos (azul) — en la base
-      [Gr,  '#6fcf6a'],   // pasto en pie (verde)
+      [Gr,  '#6fcf6a'],   // vegetación / pasto en pie (verde)
       [Car, '#a8835c'],   // carroña / detrito (marrón)
-      [N,   '#6fae8a'],   // nutriente libre N (teal) — en la cima
+      [N,   '#a0a4ac'],   // nutriente libre (GRIS: la materia que NO es viva ni carroña) — en la cima
     ];
     for (let k = stack.length; k >= 1; k--) {               // k = nº de bandas (desde la base) bajo el techo de esta área
       ctx.fillStyle = stack[k - 1][1];                      // color de la banda cuyo techo es este borde superior
@@ -162,9 +162,9 @@ export class Charts {
     const put = (txt, col) => { const tw = ctx.measureText(txt).width; if (x > 4 && x + tw > w - 2) { x = 4; y += 11; } ctx.fillStyle = col; ctx.fillText(txt, x, y); x += tw + 7; };
     put(`biomasa: ${fmtTot}`, '#7b8494');
     put(`organismos ${pct(Bio[n - 1])}%`, '#5a7cd1');
-    put(`pasto ${pct(Gr[n - 1])}%`, '#6fcf6a');
+    put(`vegetación ${pct(Gr[n - 1])}%`, '#6fcf6a');
     put(`carroña ${pct(Car[n - 1])}%`, '#a8835c');
-    put(`N ${pct(N[n - 1])}%`, '#6fae8a');
+    put(`nutriente ${pct(N[n - 1])}%`, '#a0a4ac');
   }
 
   // Helper: una LÍNEA por serie a lo largo del tiempo (media móvil = tendencia, no picos), normalizadas JUNTAS
