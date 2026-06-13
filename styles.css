@@ -191,6 +191,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer;
 .btn-row .mode-btn { margin: 0; flex: 0 0 auto; padding: 3px 7px; } /* la fila ya aporta el margen; padding ajustado para que los 3 quepan incluso con "Calidad: Máxima" */
 /* Control de RESOLUCIÓN interna del render: en la fila de modo/calidad, en su propia línea. SOLO en laboratorio
    (el modo simple se mantiene simple). Cambia la nitidez, no el detalle. */
+/* Sección RENDIMIENTO: bloque (mismo estilo .lab-cat que las categorías) solo visible en laboratorio. Agrupa Calidad +
+   Resolución + FPS máx + Caché de sprites. */
+.perf-cat { display: none; }
+#panel.advanced .perf-cat { display: block; }
+.perf-body { padding: 6px 10px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .res-ctrl { display: none; }
 #panel.advanced .res-ctrl { display: flex; align-items: center; gap: 6px; flex: 1 1 100%; margin-top: 2px; font-size: 10px; color: var(--muted); white-space: nowrap; }
 .res-ctrl input[type="range"] { flex: 1 1 auto; min-width: 70px; }

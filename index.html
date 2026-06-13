@@ -32,16 +32,22 @@
     <div class="row btn-row">
       <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
       <button id="qualityBtn" class="mode-btn" title="Calidad gráfica: Baja (móvil) · Alta · Máxima. Baja va más fluido (sin bloom ni adornos).">Calidad: Alta</button>
-      <label class="res-ctrl" title="Resolución del render: más baja = más fluida (cambia la nitidez, no el detalle de los bichos).">Resolución <output id="resVal">1280</output>
-        <input id="resSlider" type="range" min="640" max="3840" step="80" value="1280" />
-      </label>
-      <label class="res-ctrl" title="Tope de FPS del dibujo (no afecta a la velocidad de la simulación).">FPS máx <output id="fpsCapVal">60</output>
-        <input id="fpsCapSlider" type="range" min="15" max="120" step="5" value="60" />
-      </label>
-      <label class="res-ctrl chk-ctrl" title="Modo rendimiento: cachea los organismos como imagen para dibujarlos más rápido (móvil/equipos modestos).">
-        <input id="spriteCacheChk" type="checkbox" /> Caché de sprites
-      </label>
     </div>
+    <!-- Sección RENDIMIENTO (solo lab; mismo estilo de bloque que las categorías de parámetros). El botón Calidad se mueve a .perf-body desde el btn-row al entrar en lab (ver applyMode). -->
+    <details class="lab-cat perf-cat" id="perfRow" open>
+      <summary>🖥️ Rendimiento</summary>
+      <div class="perf-body">
+        <label class="res-ctrl" title="Resolución del render: más baja = más fluida (cambia la nitidez, no el detalle de los bichos).">Resolución <output id="resVal">1280</output>
+          <input id="resSlider" type="range" min="640" max="3840" step="80" value="1280" />
+        </label>
+        <label class="res-ctrl" title="Tope de FPS del dibujo (no afecta a la velocidad de la simulación).">FPS máx <output id="fpsCapVal">60</output>
+          <input id="fpsCapSlider" type="range" min="15" max="120" step="5" value="60" />
+        </label>
+        <label class="res-ctrl chk-ctrl" title="Modo rendimiento: cachea los organismos como imagen para dibujarlos más rápido (móvil/equipos modestos).">
+          <input id="spriteCacheChk" type="checkbox" /> Caché de sprites
+        </label>
+      </div>
+    </details>
 
     <div class="row" id="seedRow">
       <input id="seedInput" type="text" placeholder="semilla" />

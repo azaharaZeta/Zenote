@@ -592,6 +592,13 @@ function setupLab(app, send) {
   const applyMode = (adv) => {
     panel.classList.toggle('advanced', adv);
     modeBtn.textContent = adv ? 'Simple' : 'Laboratorio'; // texto corto (el destino del toggle); el title lo explica
+    // El botón Calidad vive en la sección "Rendimiento" en LAB y vuelve al btn-row (junto a "Laboratorio") en SIMPLE
+    // → el modo simple queda igual que antes. Mover el nodo conserva su listener (un único botón, sin duplicar).
+    const qBtn = $('qualityBtn'), perfRow = $('perfRow'), perfBody = perfRow && perfRow.querySelector('.perf-body');
+    if (qBtn && perfBody) {
+      if (adv) perfBody.insertBefore(qBtn, perfBody.firstChild);        // primer control del bloque Rendimiento
+      else modeBtn.parentNode.insertBefore(qBtn, modeBtn.nextSibling);  // de vuelta al btn-row (junto a "Laboratorio")
+    }
     // En modo SIMPLE el color es siempre "visión real" (el selector "Colorear por" queda oculto) → fuérzalo.
     // (Disparamos 'change' en el <select> para reusar su handler, que vive en otro ámbito y actualiza la leyenda.)
     const cs = $('colorMode');

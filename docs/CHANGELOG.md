@@ -2,6 +2,7 @@
 
 Una línea por cambio, lo más reciente arriba. (Foto del presente → `ESTADO.md` · parámetros → `src/config.js` · ideas → `ideas/`.)
 
+- 2026-06-13: UI — en el laboratorio, los controles de render (Calidad, Resolución, FPS máx, Caché de sprites) se agrupan en una sección "Rendimiento". El modo simple no cambia (Calidad sigue en su sitio).
 - 2026-06-13: render — CACHÉ DE SPRITES por esqueleto (opt-in, default OFF, modo rendimiento): cachea cada organismo (cuerpo por nodo + ojos/señuelo) en un atlas y lo ENSAMBLA con la onda viva → conserva la ondulación → vale en todas las calidades (máxima incluida). Evicción por muerte (mantiene cacheados los vivos). ~1.7× por-agente. Toggle en el lab; knobs `spriteCache*` en config.
 - 2026-06-13: render — halo del bulbo del señuelo ceñido (br×7→br×4): mismo aspecto, ~⅓ del coste.
 - 2026-06-13: render — el LOD se desliga por completo de la resolución (`rPx = radio·zoom`, solo depende de calidad+zoom) y calidad MÁXIMA = sin LOD (todo a grafo completo).
