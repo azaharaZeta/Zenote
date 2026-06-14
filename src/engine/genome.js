@@ -41,13 +41,14 @@ for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.pus
 // se retiró, #9). Los pesos NO cuentan en la distancia genética (su deriva dominaría → no contaminan las
 // especies). Entradas (I) = señales sensoriales; H ocultas (tanh); O=3 salidas = deseo de movimiento (dx,dy)
 // + IMPULSO DE ATAQUE (cazar/agredir emerge del cerebro, ya no del gen `aggro`). Pesos = (gen-0.5)*scale. ---
-// Entradas (9): 0,1 ∇comida · 2,3 dir-presa · 4,5 dir-amenaza · 6 energía · 7 COBERTURA local (vegetación de su celda →
-// uso táctico del refugio) · 8 TALLA relativa de la presa (ratio−1 → evitar presa grande). Las nuevas (7,8) arrancan con
-// peso ~0 (seedBrain NO las siembra) → su uso EMERGE por selección, no cableado. Subir I obliga a resembrar (NUM_GENES 186→196).
-export const BRAIN = { I: 9, H: 5, O: 3, scale: 6 };
+// Entradas (10): 0,1 ∇comida · 2,3 dir-presa · 4,5 dir-amenaza · 6 energía · 7 COBERTURA local (uso táctico del refugio) ·
+// 8 TALLA relativa de la presa (evitar presa grande) · 9 ESCAPABILIDAD de la presa (cobertura de SU celda → no atacar a la
+// que escapará). Las entradas 7-9 arrancan con peso ~0 (seedBrain NO las siembra) → su uso EMERGE por selección, no cableado.
+// Subir I obliga a resembrar (NUM_GENES cambia).
+export const BRAIN = { I: 10, H: 5, O: 3, scale: 6 };
 // RECURRENTE (Elman): pesos entrada→oculta (I·H) + oculta→oculta/MEMORIA (H·H) + sesgos ocultos (H)
 // + oculta→salida (H·O) + sesgos salida (O). El estado oculto persiste entre ticks (en sim.brainHid).
-export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 93 (I·H=45 + H²=25 + H=5 + H·O=15 + O=3)
+export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 98 (I·H=50 + H²=25 + H=5 + H·O=15 + O=3)
 export const BRAIN0 = BASE_GENES.length;                                          // índice del 1er peso
 export const GENES = BASE_GENES.concat(Array.from({ length: BRAIN_W }, (_, i) => 'br' + i));
 export const NUM_GENES = GENES.length;

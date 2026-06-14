@@ -267,6 +267,13 @@ export const config = {
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
     preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
+    lureAttract: 0.5,    // (UI) (P1, EMBOSCADA) ATRACCIÓN de presa por el señuelo: lo emiten como "comida aparente" → sesga el
+                         //      gradiente de comida de los vecinos que lo VEN hacia el portador (∝ prominencia · 1/dist²). Hace emerger
+                         //      al CAZADOR EMBOSCADA (anglerfish): invierte en señuelo, se mueve poco, la presa viene → caza barata y de
+                         //      BAJA varianza (vs persecución). La presa puede evolucionar a ignorarlo (carrera). FÍSICA, no conducta.
+                         //      (2026-06-14) 0.5 medido headless (6 seeds × 8000t): ESTABILIZA al cazador (fluctuación CV 0.47→0.28, presencia
+                         //      93→100%, supervivencia 5/6→6/6) sin inflar su abundancia → "fluctúa sin extinguirse". OJO: 1.0+ DESESTABILIZA
+                         //      (la presa va en masa al señuelo → sobre-caza local → boom-bust). 0 = off (el señuelo solo extiende alcance). Se lee en vivo.
     morphReach: 0.4,     // (UI) (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
                          //          morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (gait<0)
   },

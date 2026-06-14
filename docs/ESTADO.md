@@ -13,14 +13,14 @@ modo de nado EMERGEN de la geometría; el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **196 genes/agente** (SoA, typed arrays):
+Genoma de **201 genes/agente** (SoA, typed arrays):
 
 | Bloque | Genes | Codifica |
 |---|---|---|
 | Ecología | 12 | size, speed(esfuerzo), sense, metab, diet, **scav (caza↔carroña)**, repro_thr, invest, hue, temp_pref, **mature_age, senescence** (ciclo de vida) |
 | Identidad / display | 11 | e_fov (visión), c_eye, orn/pref (sex.), c_lum/c_sat, señuelo (o_*), tex2 |
 | Cuerpo por NODOS | 80 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase, **tipShape**, **gaitMode**} → grafo generativo |
-| Cerebro | 93 | MLP recurrente (Elman, 9 entradas: +cobertura local +talla de presa); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
+| Cerebro | 98 | MLP recurrente (Elman, 10 entradas: +cobertura local, +talla y escapabilidad de la presa); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
 
 - **Frontera gen→fenotipo única**: `organism.js` + `bodyplan.js`. El cuerpo es un grafo de una sola primitiva;
   masa, arrastre, **empuje direccional**, giro y elongación EMERGEN de la geometría.

@@ -29,11 +29,11 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
 | Coste de arrastre en locomoción | ✅ hecha (2026-06-14) | `energy.k_drag`/`dragRef` · SoA `drag`=Dmul · SPEC §3 · complementa A; remate de "revisar nado" |
 | Selección de presa por talla | ✅ hecha (2026-06-14) | vía entrada 8 del cerebro (talla relativa) — ver "entradas sensoriales"; SPEC §cerebro |
-| Nuevas entradas sensoriales del cerebro | 🔄 parcial (2026-06-14) | cobertura local + talla de presa HECHAS (BRAIN.I 7→9); dir. al congénere (manada) pendiente |
+| Nuevas entradas sensoriales del cerebro | 🔄 parcial (2026-06-14) | cobertura + talla + ESCAPABILIDAD de la presa HECHAS (BRAIN.I 7→10); dir. al congénere (manada) pendiente |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Cadáveres con FORMA (render) | ⬜ pendiente | análisis abajo — marcadores efímeros, no toca la sim |
 | Diversidad de talla bajo repro sexual | ⬜ pendiente | análisis abajo · memoria `sexual-repro-flattens-size` |
-| Revisar señuelos (coste / atracción / visibilidad) | ⬜ pendiente | análisis abajo |
+| Revisar señuelos (coste / atracción / visibilidad) | 🔄 parcial (2026-06-14) | ATRACCIÓN hecha (emboscada `combat.lureAttract`); coste por o_num + visibilidad pendientes |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
 | LOD declarativo (desacoplar de la lista de elementos visuales) | ⬜ pendiente | análisis abajo — arquitectura/mantenibilidad del render |
 | Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
@@ -107,8 +107,9 @@ TRIPLE al cuerpo ancho (ya es lento, ya paga A por masa, y pagaría B por arrast
 ## Nuevas ENTRADAS sensoriales del cerebro (uso táctico emergente)
 *(🔄 PARCIAL 2026-06-14 · cobertura local + talla de presa HECHAS; dirección al congénere PENDIENTE)*
 
-**HECHO (cobertura + talla de presa):** `BRAIN.I` 7→9 (genoma 186→196). Entrada 7 = **cobertura local** (`res[celda]/R_max`
-∈[−1,1]) → uso táctico del refugio; entrada 8 = **talla relativa de la presa** → evitar presa grande. Sembradas a peso ~0
+**HECHO (cobertura + talla + escapabilidad):** `BRAIN.I` 7→10 (genoma 186→201). Entrada 7 = **cobertura local**
+(`res[celda]/R_max` ∈[−1,1]) → uso táctico del refugio; entrada 8 = **talla relativa de la presa** → evitar presa grande;
+entrada 9 = **escapabilidad de la presa** (P2: cobertura de la celda DE la presa) → no atacar a la que escapará. Sembradas a peso ~0
 (`seedBrain` intacto) → su uso EMERGE. Medido headless (6000t, seed 123): la conducta base NO se degrada (pop ~1000-1100,
 trío trófico vivo, depredación a tasa constante). Mecánica en SPEC §cerebro. **PENDIENTE:** dirección al congénere más
 cercano (+2 entradas) → manada coordinada (la más especulativa). El análisis original se conserva abajo.
@@ -252,7 +253,12 @@ bajo sexual, `diet.omniPenalty` rinde mejor a ~0.05 (más diversidad de dieta) q
 ---
 
 ## Revisar señuelos (coste / atracción / visibilidad)
-*(pendiente · elevada de la bandeja 2026-06-14)*
+*(🔄 PARCIAL 2026-06-14 · ATRACCIÓN hecha como P1/emboscada; coste por `o_num` y visibilidad pendientes)*
+
+**HECHO (atracción / emboscada, P1):** el señuelo ahora ATRAE a la presa que lo ve (`combat.lureAttract` 0.5; sesga su
+gradiente de comida hacia el portador) → emerge el cazador EMBOSCADA y ESTABILIZA al gremio cazador (medido headless:
+fluctuación CV 0.47→0.28, supervivencia 5/6→6/6, presencia 93→100% a 8000t; 1.0+ desestabiliza → boom-bust). Mecánica en
+SPEC §3 (señuelo). **PENDIENTE:** coste energético por `o_num` (frenar racimos) y trade-off de visibilidad.
 
 **Hoy:** la prominencia FUNCIONAL del señuelo = `o_len·o_bulb` (gateada por `orn`), cuesta `k_lure` y EXTIENDE el alcance
 de captura (`combat.lureReach`). El nº de señuelos (`o_num`) es DECORATIVO: no cuesta ni añade alcance → a veces emergen

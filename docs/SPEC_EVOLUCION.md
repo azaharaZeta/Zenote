@@ -61,7 +61,7 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **196 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — **201 genes** float en `[0,1]` (SoA: `Float32Array`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
@@ -70,7 +70,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | **Ecología / fisiología** | 12 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
 | **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
-| **Cerebro neuronal** | 93 | pesos de la RNN (ver §cerebro; 9 entradas) |
+| **Cerebro neuronal** | 98 | pesos de la RNN (ver §cerebro; 10 entradas) |
 
 **Genes de ecología/fisiología:**
 
@@ -107,12 +107,13 @@ y piel (`tex2`) son **NEUTRALES** (solo render, derivan por linaje → identidad
 La decisión la toma una **red neuronal recurrente diminuta (Elman)** cuyos **pesos SON genes**.
 Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*`, backlog #9):
 
-- Topología `BRAIN = {I:9, H:5, O:3}`, **93 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
+- Topología `BRAIN = {I:10, H:5, O:3}`, **98 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
   entrada→oculta, **oculta→oculta (memoria)**, sesgos ocultos, oculta→salida, sesgos salida.
   El estado oculto **persiste entre ticks** (memoria → búsqueda/persistencia emergente).
-- **Entradas (9):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
-  energía, **cobertura local** (vegetación viva de su celda → uso táctico del refugio) y **talla relativa de la presa**
-  (ratio presa/yo − 1 → evitar presa grande). Las dos últimas se siembran a peso ~0 → su uso EMERGE, no cableado.
+- **Entradas (10):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
+  energía, **cobertura local** (vegetación de su celda → uso táctico del refugio), **talla relativa de la presa**
+  (evitar presa grande) y **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
+  escapará). Las entradas 7-9 se siembran a peso ~0 → su uso EMERGE, no cableado.
   **Salidas (3):** deseo de movimiento (dx,dy) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]`.
   Pesos = `(gen−0.5)·scale`.
 - Nada de estrategia programada: pastar/cazar/huir **y atacar/agredir** emergen **100% de los pesos
@@ -267,9 +268,12 @@ Por tick, cada organismo:
     media 0.22; 3 (default, con omniPenalty 0.15) → DOS grupos de talla (~0.25 y ~0.55, 21% grandes) + carnívoros). `forageReach=0` = solo su celda (modelo previo).
     FRONTERA: defino "más grande barre más área"; QUÉ talla gana lo decide la selección.
 - **Señuelo bioluminiscente** (`lure`): órgano FUNCIONAL gateado por `orn` (`orn > 0.12`),
-  prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`) y **extiende el alcance de
-  captura** al cazar (`combat.lureReach`). El carnívoro lo recupera cazando → evoluciona señuelos
-  largos; el herbívoro solo paga → los pierde. La correlación señuelo↔dieta **emerge**.
+  prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`), **extiende el alcance de
+  captura** al cazar (`combat.lureReach`) y **ATRAE a la presa** (P1, emboscada): emite "comida aparente" que sesga el
+  gradiente de comida de quien lo ve hacia el portador (`combat.lureAttract` · prominencia · 1/dist²) → emerge el **cazador
+  EMBOSCADA** (anglerfish: invierte en señuelo, se mueve poco, la presa viene → caza de BAJA varianza que estabiliza al
+  gremio cazador, medido). El carnívoro lo recupera cazando → evoluciona señuelos largos; el herbívoro solo paga → los
+  pierde (y puede evolucionar a ignorar el señuelo-trampa). La correlación señuelo↔dieta **emerge**.
 - **Reproducción:** §4. **Muerte por hambre:** `E ≤ 0`.
 - **Muerte por vejez** (senescencia estocástica, #12): cada tick muere con prob.
   `age.mortality · senesMult · (max(0, edad − Tm) / age.scale)²`, donde `Tm` = edad de madurez (gen `mature_age`)
@@ -454,7 +458,7 @@ runaway) → ornamentos divergentes por especie. Solo afecta a la elección y al
 Métrica única (compatibilidad sexual + clústeres de especie): **euclídea normalizada sobre los genes
 FUNCIONALES** → `dist = sqrt( Σ_func (g1ᵢ − g2ᵢ)² / n_func ) ∈ [0,1]`.
 - **FUNCIONALES** = ecología + `e_fov` + `orn`/`pref` + **forma de nodos** (incl. `osc_amp`).
-- **EXCLUIDOS:** el **cerebro** (93 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
+- **EXCLUIDOS:** el **cerebro** (98 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
   (colores, `c_eye`, `c_lum`, `c_sat`, estilo de señuelo `o_*`, `tex2`). **`osc_phase`** también se excluye
   aunque afecta a la física: solo importa su **dispersión dentro de un cuerpo**, no el valor absoluto (dos
   bichos igual de coordinados con fase global distinta nadan idéntico) → contarlo daría especiación espuria.

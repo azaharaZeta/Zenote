@@ -495,6 +495,7 @@ const LAB_SPEC = [
     { k: 'combat.preyBandLo', label: 'Suelo de banda de caza', min: 0, max: 1, step: 0.05, dec: 2, d: 'Ratio mínimo presa/depredador atacable: ignora presas demasiado pequeñas.' },
     { k: 'combat.preyBandHi', label: 'Techo de banda de caza', min: 0.5, max: 3, step: 0.05, dec: 2, d: 'Ratio máximo presa/depredador atacable: bajo = solo presa menor; >1 = puede atacar presa mayor (caro).' },
     { k: 'combat.morphReach', label: 'Alcance de caza (apéndices)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto extienden el alcance de captura los apéndices frontales (garras/tentáculos): forma de cazador.' },
+    { k: 'combat.lureAttract', label: 'Atracción del señuelo (emboscada)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto ATRAE el señuelo a la presa que lo ve (emboscada anglerfish): la presa se acerca al portador. 0 = el señuelo solo extiende el alcance de captura, no atrae.' },
     { k: 'combat.handlingTime', label: 'Tiempo de manejo (digestión)', min: 0, max: 120, step: 4, dec: 0, d: 'Ticks de enfriamiento tras cazar: limita la tasa de caza y amortigua las oscilaciones.' },
     { k: 'combat.dietMargin', label: 'Margen de dieta (presa)', min: 0, max: 0.6, step: 0.02, dec: 2, d: 'Diferencia de dieta mínima para ver a otro como presa (evita que los parecidos se coman).' },
     { k: 'diet.omniPenalty', label: 'Penalización omnívora', min: 0, max: 1, step: 0.05, dec: 2, d: 'Penaliza la dieta intermedia: alta = especializarse (herbívoro o carnívoro puro) rinde más.' },

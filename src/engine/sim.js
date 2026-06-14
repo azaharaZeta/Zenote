@@ -395,6 +395,7 @@ export class Sim {
     const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
     const fleeSpeed = cfg.combat.fleeSpeed || 0;                            // escape por VELOCIDAD relativa (0 = off, modelo previo)
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
+    const lureAttract = cfg.combat.lureAttract || 0;                        // (P1) ATRACCIÓN de presa por señuelo (emboscada): sesga el gradiente de comida de los vecinos hacia el portador (0 = off)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
     const closed = world.closedMatter; // CERRADO EN MATERIA: re-enruta toda pérdida al pool de nutriente (W.N) en vez de evaporarla
@@ -431,15 +432,16 @@ export class Sim {
       const effHi = this.effHerb[i], cS = this.effScav[i] / (epu * 3);
       let dfx = effHi * (res[xr] - res[xl]) + cS * (carrion[xr] - carrion[xl]);
       let dfy = effHi * (res[yb] - res[yt]) + cS * (carrion[yb] - carrion[yt]);
-      const fmag = Math.sqrt(dfx * dfx + dfy * dfy) || 1; // sqrt manual (no Math.hypot): bucle caliente, sin riesgo de overflow aquí
-      dfx /= fmag; dfy /= fmag;
+      // (P1) gradiente CRUDO (sin normalizar aún): el señuelo de vecinos le sumará una atracción (escaneo abajo) y se
+      // normaliza justo antes del cerebro. Sin señuelos cerca → idéntico al modelo previo (normalizado igual).
 
       let dx = 0, dy = 0;   // el deseo de movimiento lo decide el cerebro (abajo), no una regla fija
 
       // Mirada (solo render): por defecto al frente; si ve presa/amenaza, la sigue (se fija abajo).
       let gzx = 0, gzy = 0, gazeSet = false;
       // Direcciones unitarias a presa/amenaza (0 si ninguna) → entradas del cerebro neuronal.
-      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0, preySizeRel = 0; // preySizeRel = talla relativa de la presa más cercana (entrada 8 del cerebro; 0 si no ve presa)
+      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0, preySizeRel = 0, preyCover = 0; // preySizeRel/preyCover = talla y escapabilidad de la presa más cercana (entradas 8 y 9; 0 si no ve presa)
+      let lureAX = 0, lureAY = 0;   // (P1) atracción acumulada de SEÑUELOS vecinos → sesga el gradiente de comida (emboscada)
 
       // Términos presa/amenaza: solo si el combate está activo (Fase 2). Alimentan las entradas del cerebro
       // (dirección a presa/amenaza) y la detección de solape para el combate.
@@ -500,6 +502,11 @@ export class Sim {
                       if (canEat) { if (d2 < bestPreyD) { bestPreyD = d2; bestPrey = j; } }
                       // Amenaza: j puede comerME (yo en su banda: rj/myR ∈ [threatLo,threatHi]; j más arriba en dieta).
                       else if (ratio >= threatLo && ratio <= threatHi && -dDiff > dietMargin && d2 < bestThreatD) { bestThreatD = d2; bestThreat = j; }
+                      // (P1, EMBOSCADA) el SEÑUELO de j (anglerfish) emite "comida aparente": suma atracción al gradiente de
+                      // comida de i, ∝ prominencia y ~1/dist² → la presa que VE un señuelo se acerca a él (la trampa). Es FÍSICA
+                      // (la luz parece comida); QUIÉN invierte en señuelo y QUIÉN se deja atraer lo decide la selección → emerge el
+                      // cazador-emboscada (barato, baja varianza) y la presa puede evolucionar a ignorarlo (carrera armamentística).
+                      if (lureAttract > 0) { const lj = this.lure[j]; if (lj > 0.12) { const lw = lj / (d2 + 1); lureAX += ddx * lw; lureAY += ddy * lw; } }
                     }
                   }
                 }
@@ -597,6 +604,7 @@ export class Sim {
           const m = Math.sqrt(bestPreyD) || 1;
           preyDX = ddx / m; preyDY = ddy / m;
           const psr = this.radius[bestPrey] / myR - 1; preySizeRel = psr > 1 ? 1 : psr < -1 ? -1 : psr; // talla relativa (entrada 8): <0 presa menor · >0 mayor
+          preyCover = res[W.cellIndexAt(x[bestPrey], y[bestPrey])] / Rmax * 2 - 1; // (P2) ESCAPABILIDAD de la presa (cobertura de su celda) ∈[−1,1] → entrada 9: no atacar a la que escapará
           gzx = ddx; gzy = ddy; gazeSet = true; // mira a la presa
         }
         if (bestThreat !== -1) {
@@ -614,12 +622,17 @@ export class Sim {
       // ---------- CEREBRO NEURONAL: la RNN decide el deseo de movimiento (y el impulso de ataque) ----------
       // El deseo (dx,dy) sale de la red (pesos = genoma) a partir de las señales sensoriales; `_brain` también
       // escribe el impulso de ataque (atkOut/atkDrive). Comportamiento 100% emergente, sin estrategias programadas.
+      // (P1) sumar la atracción de los señuelos vecinos al gradiente de comida y NORMALIZAR (la dirección que ve el
+      // cerebro ya incluye el señuelo). Sin señuelos cerca / combate off → lureAX,lureAY=0 → idéntico al gradiente puro.
+      dfx += lureAttract * lureAX; dfy += lureAttract * lureAY;
+      { const _fm = Math.sqrt(dfx * dfx + dfy * dfy) || 1; dfx /= _fm; dfy /= _fm; }
       {
         const inp = this._brIn;
         inp[0] = dfx; inp[1] = dfy; inp[2] = preyDX; inp[3] = preyDY;
         inp[4] = threatDX; inp[5] = threatDY; inp[6] = E[i] / this.eMax[i] * 2 - 1;
         inp[7] = (res[ci] / Rmax) * 2 - 1;   // (#3) COBERTURA local: vegetación viva de su celda ∈[−1,1] → uso TÁCTICO del refugio (huir a la maleza) EMERGE
         inp[8] = preySizeRel;                 // (#3) TALLA relativa de la presa más cercana (0 si no ve presa) → evitar presa grande EMERGE
+        inp[9] = preyCover;                   // (P2) ESCAPABILIDAD de la presa (cobertura de su celda) → no atacar a la que escapará EMERGE
         this._brain(i);
         dx = this._brOut[0]; dy = this._brOut[1];
       }
