@@ -76,8 +76,8 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 - **Escalado, no recorte.** El canvas ocupa el viewport con `width:100%` por CSS, pero
   su resolución de dibujo se fija en píxeles del dispositivo. Se calcula un factor
   `scale = min(canvasPx_w / world.width, canvasPx_h / world.height)` y se aplica con
-  `ctx.setTransform` (o `translate`+`scale`) para encajar el mundo completo con letterbox
-  (barras vacías) si la relación de aspecto difiere. Nunca se estira de forma anisotrópica
+  `ctx.setTransform` (o `translate`+`scale`) para encajar el mundo completo: a zoom mínimo el MUNDO ENTERO cabe.
+  El eje que no llena lo rellena el TORO en mosaico (continuación sin costura), no barras vacías. Nunca se estira de forma anisotrópica
   ni se cambia `world.width/height` para "rellenar". El toro se sigue viendo entero.
 - **DevicePixelRatio con tope + CAP de resolución interna.** Resolución del canvas =
   `min(cssPx · min(devicePixelRatio, render.dprCap), render.maxInternalPx)`. Sobre el tope de DPR hay un **cap del borde
@@ -150,8 +150,10 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 - **Cámara con zoom y paneo toroidal:** rueda (o pinza en móvil) para zoom, arrastrar para
   desplazarse. El mundo es un toro y se renderiza **en mosaico**, así el paneo recorre el
   ecosistema sin fin y **nunca se ven los bordes** (el sustrato y el moteado se envuelven con
-  ruido periódico → teselan sin costura). Zoom mínimo = el mundo cubre la pantalla (sin letterbox);
-  doble clic resetea el zoom. El render es solo lectura: la simulación no cambia con la cámara.
+  ruido periódico → teselan sin costura). Zoom mínimo = el mundo ENTERO cabe en pantalla (el toro rellena el sobrante en mosaico, sin barras vacías);
+  doble clic resetea el zoom. El render es solo lectura: la simulación no cambia con la cámara. Un **límite tenue** marca
+  los bordes del mundo (`render.worldBounds`, toggle del lab) → se distingue el *tile* real de su repetición en el
+  mosaico, sin barras vacías ni romper la inmersión abisal (es honesto con la topología del toro, no inventa un borde).
 - Click/tap en un organismo (sin arrastrar): muestra su genoma (barras), linaje y generación.
 - **Modos de coloreado** (solo render, no tocan la simulación) para *analizar* la evolución:
   *Visión real* (pigmento adaptado a la luz), *Dieta* (verde herbívoro → rojo carnívoro),

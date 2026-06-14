@@ -357,8 +357,9 @@ export class Renderer {
     // (un "pegote" escalado) → la pantalla real (4K, 8K…) no entra en ningún cálculo. El LOD (nivel de detalle) depende
     // SOLO de la CALIDAD y el ZOOM, NUNCA de la resolución (ver _drawAgents / LOD_REF): bajar `maxInternalPx` abarata la
     // RASTERIZACIÓN (menos píxeles), NO el detalle. El paneo/pick cruzan a coords de CSS vía pxRatio.
-    // Escala "cover": el mundo cubre el viewport (sin letterbox); el zoom multiplica sobre esta base.
-    this.coverScale = Math.max(c.width / cfg.world.width, c.height / cfg.world.height);
+    // Escala "fit/contain": a zoom 1 el MUNDO ENTERO cabe en el viewport. El eje que no llena lo rellena el TORO en
+    // mosaico (continuación sin costura), no barras vacías. El zoom multiplica sobre esta base. (Antes "cover"=Math.max → recortaba un eje.)
+    this.fitScale = Math.min(c.width / cfg.world.width, c.height / cfg.world.height);
     // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
     this.grass.width = c.width; this.grass.height = c.height;
     this.fx.width = c.width; this.fx.height = c.height;
@@ -366,7 +367,7 @@ export class Renderer {
     this._gz = NaN; this._abyssTimer = 0;   // recomputa el ruido del sustrato tras resize/reseed/cambio de calidad
   }
 
-  _scale() { return this.coverScale * this.zoom; }
+  _scale() { return this.fitScale * this.zoom; }
 
   // BLOOM downsampled (#2): desenfoca una MINIATURA (¼) de `src` y la reescala aditivamente al canvas → mismo
   // halo de baja frecuencia que un blur a pantalla completa, a ~1/16 del coste. `blurPx` se aplica sobre la
@@ -477,6 +478,18 @@ export class Renderer {
     const vwHalf = c.width / (2 * s), vhHalf = c.height / (2 * s);
     const txMin = Math.floor((this.camX - vwHalf) / W), txMax = Math.floor((this.camX + vwHalf) / W);
     const tyMin = Math.floor((this.camY - vhHalf) / H), tyMax = Math.floor((this.camY + vhHalf) / H);
+    // PISTA DEL LÍMITE DEL MUNDO (render.worldBounds): hairline TENUE en los bordes [0,0]–[W,H] de CADA tile del toro →
+    // el observador ve dónde acaba un mundo y empieza su repetición (sin barras vacías ni romper la inmersión). En
+    // espacio-MUNDO (panea/zoomea con la cámara), BAJO los organismos. Sutil a propósito. No afecta a la simulación.
+    if (cfg.render.worldBounds) {
+      ctx.strokeStyle = 'rgba(10, 67, 88, 0.16)';   // cian-frío muy tenue (coherente con la paleta abisal)
+      ctx.lineWidth = 1.2 / s;                        // ≈1.5 px de backing en pantalla (el ctx va escalado por s)
+      for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
+        ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
+        ctx.strokeRect(0, 0, W, H);
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     // (B) NIEVE MARINA: partículas tenues a la deriva (detrito/esporas) → agua profunda viva + profundidad.
     // Capa propia, BAJO los organismos. Solo abisal. Anclada al mundo (deriva lenta con descenso + parpadeo).
     if (cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)

@@ -320,6 +320,9 @@ export const config = {
   // PÍXELES REALES de dibujo (backing store / pantalla / DPR). Es el único bloque donde "px" = píxeles de verdad.
   render: {
     glow: true,               // Resplandor (bloom). Solo config (sin control en vivo)
+    worldBounds: true,        // (UI) Pista SUTIL del límite del mundo: hairline tenue en los bordes [0,0]–[W,H] de CADA tile
+                              //      del toro → se ve dónde acaba un mundo y empieza su repetición (mosaico), sin barras vacías ni
+                              //      romper la inmersión. Honestidad/comprensión del toro. Solo render (no toca la sim). En vivo.
     vegIntensity: 1.0,        // (UI) Realce de la VEGETACIÓN (brillo del teal del pasto en el sustrato): 0 = invisible · alto = más presente. En vivo (lab).
     vegBoost: 0.77,           // (UI) Realce del pasto tenue (0→1): ALTO = hasta el pasto ralo se nota · BAJO = solo el denso brilla. Mapea a un exponente food→brillo (food∈[0,1]). En vivo (lab).
     vegBlur: 1.8,             // (UI) Difuminado del sustrato (px de buffer ≈ ×4.7 en mundo): disuelve la rejilla de celda del recurso. 0 = nítido (rejilla visible). En vivo (lab).
