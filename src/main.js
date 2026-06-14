@@ -71,10 +71,10 @@ worker.onmessage = (e) => {
     simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount; simProxy.serial = m.serial;
     // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
     // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
-    charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histV = m.histVeg; charts.histT = m.histTick;
+    charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histVegFill = m.histVegFill; charts.histT = m.histTick;
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
     charts.bSex = m.histBS; charts.bAsex = m.histBA;
-    charts.histN = m.histN; charts.histGrass = m.histGrass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
+    charts.histN = m.histN; charts.histVegMass = m.histVegMass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
     simProxy.world.nutrient = m.nutrient;

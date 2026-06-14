@@ -19,8 +19,8 @@ export class Charts {
     this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
     // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
     // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
-    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
-    this.histN = []; this.histGrass = []; this.histBio = []; this.histCarrion = [];   // pools de materia (pecera): nutriente libre · pasto · organismos · carroña
+    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histVegFill = []; this.histT = [];
+    this.histN = []; this.histVegMass = []; this.histBio = []; this.histCarrion = [];   // pools de materia (pecera): nutriente libre · pasto · organismos · carroña
     // (histC = CAZADORES, histScav = CARROÑEROS: los dos tipos de comecarne, ver worker.sampleHistory.)
     // Demografía del ecosistema por ventana (del worker): nacimientos (sexual/asexual) + muertes (cazado/atacando/hambre/vejez).
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
@@ -57,8 +57,8 @@ export class Charts {
 
   // Limpieza visual inmediata al Sembrar (antes de que llegue el primer frame del mundo nuevo del worker).
   clear() {
-    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histV = []; this.histT = [];
-    this.histN = []; this.histGrass = []; this.histBio = []; this.histCarrion = [];
+    this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histVegFill = []; this.histT = [];
+    this.histN = []; this.histVegMass = []; this.histBio = []; this.histCarrion = [];
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
   }
 
@@ -95,14 +95,14 @@ export class Charts {
     };
     // Series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros) + los dos tipos de
     // comecarne (CAZADORES rojo / CARROÑEROS violeta) + población total.
-    if (this.histV.length) line(this.histV, '#6fcf6a', 1); // PASTO = llenado (fracción 0-1 de la capacidad, escala propia) en verde, al fondo
+    if (this.histVegFill.length) line(this.histVegFill, '#6fcf6a', 1); // VEGETACIÓN, métrica LLENADO (histVegFill = fracción 0-1 de la capacidad ocupada por pasto vivo; escala propia) en verde → leyenda "pasto %"
     if (histH.length) line(histH, '#5ab3d1');               // herbívoros (cian-teal)
     if (histO.length) line(histO, '#f0b429');               // omnívoros (ámbar)
     if (histC.length) line(histC, '#ff6b5a');               // CAZADORES (rojo) — comecarne que caza presa viva
     if (histScav.length) line(histScav, '#b07be0');         // CARROÑEROS (violeta) — comecarne que vive de la carroña
     line(hist, '#5a7cd1', max, 2);                          // POBLACIÓN TOTAL en azul ('pob') al FINAL y más gruesa → envolvente visible (si no, en mundo herbívoro la tapa la línea herb)
     const last = (a) => a.length ? a[a.length - 1] | 0 : 0;
-    const vegNow = this.histV.length ? (this.histV[this.histV.length - 1] * 100) | 0 : 0;
+    const vegNow = this.histVegFill.length ? (this.histVegFill[this.histVegFill.length - 1] * 100) | 0 : 0;
     ctx.font = '10px monospace';
     // Leyenda en 2 FILAS de 2 (no cabe en una a este ancho). Monospace + padStart ⇒ posiciones fijas.
     const rows = [
@@ -126,7 +126,7 @@ export class Charts {
   _drawBiomass() {
     const ctx = this.bioCtx, c = this.bioCanvas, w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);
-    const N = this.histN, Gr = this.histGrass, Bio = this.histBio, Car = this.histCarrion, T = this.histT, n = T.length;
+    const N = this.histN, Gr = this.histVegMass, Bio = this.histBio, Car = this.histCarrion, T = this.histT, n = T.length;
     if (n < 2 || N.length !== n || Gr.length !== n || Bio.length !== n || Car.length !== n) return;
     const tEnd = T[n - 1], span = this.windowTicks || 1;
     const TOP = 25, ph = h - TOP - 2;                       // banda superior reservada a la leyenda (hasta 2 filas)
