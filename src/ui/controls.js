@@ -163,6 +163,7 @@ export function setupControls(app) {
     const si = $('seedInput');                       // campo semilla oculto de momento → si no existe/vacío, semilla aleatoria
     const raw = si ? si.value.trim() : '';
     const seed = raw === '' ? null : (Number.isFinite(+raw) ? +raw : hashStr(raw));
+    if (app._flushPending) app._flushPending();   // aplica los cambios ↻ PENDIENTES (world.size, maxAgents, matterBudget…) al worker+config ANTES de resembrar (no en caliente)
     send({ type: 'reset', seed });   // el motor (worker) re-siembra y reenvía el mundo
     charts.clear();
     renderer.resize();
@@ -537,6 +538,15 @@ function setupLab(app, send) {
   const get = (path) => { const ks = path.split('.'); let t = cfg; for (const k of ks) t = t[k]; return t; };
   // Espeja el cambio en la config del HILO PRINCIPAL (no solo en el worker) → el readout (N) y el render leen el valor real.
   const setLocal = (path, v) => { const ks = path.split('.'); let t = cfg; for (let i = 0; i < ks.length - 1; i++) t = t[ks[i]]; t[ks[ks.length - 1]] = v; };
+  // Cambios de parámetros ↻ (reseed): NO se aplican EN CALIENTE — romperían la sim VIVA (p.ej. `world.size` cambia el
+  // wrapping toroidal y la rejilla a mitad de corrida → desajuste posiciones↔grid). Se guardan como PENDIENTES y se
+  // aplican (al worker + config del hilo principal) SOLO al Reiniciar (app.reseed los vacía con app._flushPending).
+  const pending = {};
+  app._flushPending = () => { for (const k of Object.keys(pending)) { send({ type: 'set', key: k, value: pending[k] }); setLocal(k, pending[k]); delete pending[k]; } };
+  const commit = (k, v, needsReseed) => {
+    if (needsReseed) { pending[k] = v; if (app.markReseedPending) app.markReseedPending(); }   // ↻ → pendiente hasta Reiniciar (no toca la sim viva)
+    else { send({ type: 'set', key: k, value: v }); setLocal(k, v); }                            // resto → en vivo (al instante / crías nuevas)
+  };
 
   // ---- Tooltip informativo compartido: escritorio = hover con RETARDO; móvil = TAP en el icono ⓘ. ----
   // Un único elemento reposicionable (no 44 divs). El tap lo "fija" hasta tocar fuera; el hover lo muestra
@@ -596,10 +606,10 @@ function setupLab(app, send) {
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
-          inp.addEventListener('change', () => { send({ type: 'set', key: it.k, value: inp.checked }); setLocal(it.k, inp.checked); paintT(); if (needsReseed && app.markReseedPending) app.markReseedPending(); if (it.k === 'world.closedMatter') refreshModeGating(); });
+          inp.addEventListener('change', () => { commit(it.k, inp.checked, needsReseed); paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); });
           lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + (needsReseed ? '↻ ' : '') + it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; send({ type: 'set', key: it.k, value: !!def }); setLocal(it.k, !!def); if (needsReseed && app.markReseedPending) app.markReseedPending(); } paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; commit(it.k, !!def, needsReseed); } paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
           if (it.mode) { row.classList.add('lab-modegate'); modeGated.push({ row, mode: it.mode }); }
@@ -619,13 +629,12 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); if (it.k.indexOf('render.') === 0 && app.renderer) { app.renderer._abyssTimer = 0; app.renderer._grassTimer = 0; } if (needsReseed && app.markReseedPending) app.markReseedPending(); });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); commit(it.k, v, needsReseed); paint(); if (it.k.indexOf('render.') === 0 && app.renderer) { app.renderer._abyssTimer = 0; app.renderer._grassTimer = 0; } });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
           const reset = () => {
-            inp.value = def; out.textContent = (+def).toFixed(it.dec); send({ type: 'set', key: it.k, value: +def }); setLocal(it.k, +def); paint();
-            if (needsReseed && app.markReseedPending) app.markReseedPending();
+            inp.value = def; out.textContent = (+def).toFixed(it.dec); commit(it.k, +def, needsReseed); paint();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
