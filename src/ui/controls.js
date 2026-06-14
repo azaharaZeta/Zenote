@@ -518,6 +518,11 @@ const LAB_SPEC = [
     { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (el gen de ritmo de vida la escala): más alto = vidas más cortas.' },
     { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta ser longevo: alto = la vida larga sale cara (evita que todos sean "inmortales").' },
   ]},
+  { cat: '🎨 Estética (solo render)', items: [
+    { k: 'render.vegIntensity', label: 'Brillo de la vegetación', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto resalta la vegetación (teal del pasto) en el sustrato. 0 = invisible; alto = muy presente. Solo visual, en vivo.' },
+    { k: 'render.vegBoost', label: 'Realce del pasto tenue', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto se nota el pasto escaso: derecha = hasta el pasto ralo brilla; izquierda = solo el pasto denso. Solo visual, en vivo.' },
+    { k: 'render.vegBlur', label: 'Suavizado del sustrato', min: 0, max: 4, step: 0.2, dec: 1, d: 'Difumina el sustrato para disolver la rejilla de celdas del recurso. 0 = nítido (se ve la cuadrícula); alto = nebulosa difusa. Solo visual, en vivo.' },
+  ]},
 ];
 
 function setupLab(app, send) {
@@ -609,7 +614,7 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); if (needsReseed && app.markReseedPending) app.markReseedPending(); });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); send({ type: 'set', key: it.k, value: v }); setLocal(it.k, v); paint(); if (it.k.indexOf('render.') === 0 && app.renderer) { app.renderer._abyssTimer = 0; app.renderer._grassTimer = 0; } if (needsReseed && app.markReseedPending) app.markReseedPending(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);

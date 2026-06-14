@@ -309,3 +309,5 @@ Conclusión: comportamiento correcto; el "leak" solo existe en abierto y es cohe
 «cadáveres con forma» → ideas con pitch arriba; «gráfica de biomasa» → ya estaba HECHA (`_drawBiomass`); «¿reciclaje de
 cadáveres = leak?» → RESUELTO (no es bug); «visor de especie» → Mejoras de UI (c); «revisar nado» → se solapa con «coste
 de arrastre en locomoción».)*
+- analizar por qué el ajuste de performance de resolución no parece afectar al performance (mismos fps en mínima vs maxima resolución)
+- estudiar viablidad y efectos de ampliar el espacio del mundo (sólo más espacio)

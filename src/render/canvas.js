@@ -132,15 +132,20 @@ export class Renderer {
     // temperatura, (A) moteado orgánico por ruido anclado al mundo, y (C) comida fosforescente +
     // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
     {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
-      const SS = cfg.render.quality === 'low' ? 2 : cfg.render.quality === 'ultra' ? 4 : 3, NW = cols * SS, NH = rows * SS; // baja 2× · alta 3× · máxima 4× (sustrato más fino)
+      const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo del sustrato (baja 3× · alta 4× · máxima 6×) → suaviza la rejilla del recurso
       let cv = this._abyssLow;
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
+        this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = NW; this._abyssSmooth.height = NH;
+        this._abyssSmoothCtx = this._abyssSmooth.getContext('2d'); // buffer DIFUMINADO (disuelve la rejilla de celda del recurso)
         this._abyssTimer = 0; // realloc (cambio de calidad) → fuerza recomputar el ruido
       }
       if (this._abyssTimer <= 0) {   // #4: el ruido del sustrato es del MUNDO (no de la cámara) → recomputar por TIMER, no en cada paneo/seguimiento
       const d = this._abyssImg.data;
+      const vegI = cfg.render.vegIntensity != null ? cfg.render.vegIntensity : 1; // brillo de la vegetación (slider lab, en vivo)
+      const vegBoost = cfg.render.vegBoost != null ? cfg.render.vegBoost : 0.77;   // realce del pasto tenue (UI 0→1, slider lab)
+      const vegExp = 1.5 - vegBoost * 1.3; // 0→1 (realce) → exponente 1.5→0.2: como food∈[0,1], exponente BAJO sube los mids → el pasto tenue brilla. Alto vegBoost = más realce.
       const hash = (ix, iy, sd) => { let h = (ix * 374761393 + iy * 668265263 + sd * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
       // value-noise PERIÓDICO: rejilla px×py que ENVUELVE (módulo) → tesela sin costura en el toro. u,v ∈ [0,1).
       const pnoise = (u, v, px, py, sd) => {
@@ -153,7 +158,8 @@ export class Renderer {
         const wx = (i + 0.5) / NW * W, wy = (j + 0.5) / NH * H;
         // BILINEAL sobre los centros de celda (toro) → comida y temperatura SUAVES, sin cuadrados de rejilla.
         const gxc = wx / cellW - 0.5, gyc = wy / cellH - 0.5;
-        const x0 = Math.floor(gxc), y0 = Math.floor(gyc), fxc = gxc - x0, fyc = gyc - y0;
+        const x0 = Math.floor(gxc), y0 = Math.floor(gyc), fxr = gxc - x0, fyr = gyc - y0;
+        const fxc = fxr * fxr * (3 - 2 * fxr), fyc = fyr * fyr * (3 - 2 * fyr); // smoothstep → interpolación SUAVE (C1) del food/temp: mata las facetas/rejilla del bilinear
         const xa = ((x0 % cols) + cols) % cols, xb = (xa + 1) % cols;
         const ya = ((y0 % rows) + rows) % rows, yb = (ya + 1) % rows;
         const i00 = ya * cols + xa, i10 = ya * cols + xb, i01 = yb * cols + xa, i11 = yb * cols + xb;
@@ -172,20 +178,29 @@ export class Renderer {
         const o = (j * NW + i) * 4;
         // (C) VEGETACIÓN = fosforescencia TENUE teal/algas (verde-azul desaturado), DISTINTA del cian brillante de
         // los bichos. Dim a propósito (techo de brillo bajo): la legibilidad la da el contraste con el fondo negro.
-        const fg = Math.pow(food, 0.72);  // realza algo los mids → la vegetación moderada también se nota
-        d[o]     = rr * mott + fg * 6;     // muy poco rojo
-        d[o + 1] = gg * mott + fg * 40;    // verde (teal/algas)
-        d[o + 2] = bb * mott + fg * 52;    // azul moderado → teal apagado, no cian neón
+        const fg = Math.pow(food, vegExp); // vegExp derivado de vegBoost: exponente bajo realza los MIDS (pasto tenue se nota); alto → solo el lush
+        d[o]     = rr * mott + fg * 10 * vegI; // poco rojo (teal cálido)
+        d[o + 1] = gg * mott + fg * 64 * vegI; // verde (teal/algas) — brillo escalado por vegIntensity (UI)
+        d[o + 2] = bb * mott + fg * 70 * vegI; // azul-verde; sin pasto (fg=0) el fondo sigue oscuro (penumbra intacta)
         d[o + 3] = 255;
       }
       this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
+      // DIFUMINADO del sustrato en su propio espacio (barato: NW×NH, solo al recomputar): el blur disuelve la
+      // estructura de celda del recurso (cellW≈19px) que la vegetación realzada revelaba como rejilla. El radio
+      // (UI vegBlur) está en px de BUFFER → ~4.7× en el mundo. La interpolación suave ya estaba; esto la remata.
+      const vegBlur = cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8;
+      const sc = this._abyssSmoothCtx;
+      sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(0, 0, NW, NH);
+      sc.filter = vegBlur > 0 ? `blur(${vegBlur}px)` : 'none';
+      sc.drawImage(cv, 0, 0);
+      sc.filter = 'none';
       this._abyssTimer = 18;
       }
       this._abyssTimer--;
-      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; // suaviza el upscaling del sustrato → menos rejilla del recurso
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        ctx.drawImage(cv, 0, 0, W, H);
+        ctx.drawImage(this._abyssSmooth, 0, 0, W, H);
       }
       // (C) MICRO-FLORA luminosa: motas tenues que brillan donde hay comida (plancton/floración). Reusa tufts.
       ctx.globalCompositeOperation = 'lighter';
