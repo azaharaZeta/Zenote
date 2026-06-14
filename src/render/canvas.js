@@ -132,13 +132,19 @@ export class Renderer {
     // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
     {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
       const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo del sustrato (baja 3× · alta 4× · máxima 6×) → suaviza la rejilla del recurso
+      const PAD = 16, WW = NW + 2 * PAD, WH = NH + 2 * PAD; // margen para el BLUR TOROIDAL (≥ radio del blur ~3·vegBlur; tope del slider 4 → 12px)
       let cv = this._abyssLow;
       const NP = NW * NH;
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
-        this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = NW; this._abyssSmooth.height = NH;
-        this._abyssSmoothCtx = this._abyssSmooth.getContext('2d'); // buffer DIFUMINADO (disuelve la rejilla de celda del recurso)
+        // Buffers AMPLIADOS con padding TOROIDAL (WW×WH): _abyssWrap = sustrato + sus bordes ENVUELTOS (mosaico 3×3);
+        // _abyssSmooth = ese mosaico blureado. El blur promedia los bordes con el lado OPUESTO real (no con el vacío)
+        // → al teselar el toro NO quedan costuras. Se tesela la región CENTRAL (PAD,PAD,NW,NH). Ver el bloque del blur.
+        this._abyssWrap = document.createElement('canvas'); this._abyssWrap.width = WW; this._abyssWrap.height = WH;
+        this._abyssWrapCtx = this._abyssWrap.getContext('2d');
+        this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = WW; this._abyssSmooth.height = WH;
+        this._abyssSmoothCtx = this._abyssSmooth.getContext('2d'); // buffer DIFUMINADO (mosaico blureado; la región central = sustrato sin costura)
         // CACHÉS del sustrato (ESTÁTICOS: no cambian con el tiempo, solo con resolución/temperatura):
         this._subBase = new Float32Array(NP * 3);  // color de fondo YA moteado (rr·mott, gg·mott, bb·mott)
         this._subIdx  = new Int32Array(NP * 4);     // índices del bilineal del food (i00,i10,i01,i11)
@@ -208,19 +214,24 @@ export class Renderer {
           d[q] = base[b3] + fg * cR; d[q + 1] = base[b3 + 1] + fg * cG; d[q + 2] = base[b3 + 2] + fg * cB; d[q + 3] = 255; // fondo cacheado + vegetación viva
         }
         this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
-        // DIFUMINADO del sustrato en su propio espacio (NW×NH): el blur disuelve la estructura de celda del recurso
-        // (cellW≈19px) que la vegetación realzada revelaba como rejilla. Radio (UI vegBlur) en px de BUFFER → ~4.7× en mundo.
+        // DIFUMINADO TOROIDAL: el blur disuelve la rejilla de celda del recurso (cellW≈19px) que el realce de la
+        // vegetación revelaría. Para NO dejar costuras en los bordes del mundo (toro), se blurea sobre un MOSAICO 3×3
+        // del sustrato (su contenido ya es periódico) → el blur de los bordes promedia con el lado OPUESTO real, no con
+        // el vacío transparente (que hundía el alpha del borde y creaba la costura al teselar). Radio (UI vegBlur).
         const vegBlur = cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8;
+        const wrap = this._abyssWrapCtx;
+        wrap.setTransform(1, 0, 0, 1, 0, 0); wrap.clearRect(0, 0, WW, WH);
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) wrap.drawImage(cv, PAD + ox * NW, PAD + oy * NH); // sustrato centrado (PAD,PAD) + 8 réplicas envueltas
         const sc = this._abyssSmoothCtx;
-        sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(0, 0, NW, NH);
+        sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(0, 0, WW, WH);
         sc.filter = vegBlur > 0 ? `blur(${vegBlur}px)` : 'none';
-        sc.drawImage(cv, 0, 0);
+        sc.drawImage(this._abyssWrap, 0, 0);
         sc.filter = 'none';
       }
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; // suaviza el upscaling del sustrato → menos rejilla del recurso
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-        ctx.drawImage(this._abyssSmooth, 0, 0, W, H);
+        ctx.drawImage(this._abyssSmooth, PAD, PAD, NW, NH, 0, 0, W, H); // región CENTRAL del buffer ampliado (sin el padding toroidal) → W×H
       }
       // (C) MICRO-FLORA luminosa: motas tenues que brillan donde hay comida (plancton/floración). Reusa tufts.
       ctx.globalCompositeOperation = 'lighter';
