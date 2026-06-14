@@ -69,7 +69,9 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
 la pantalla solo lo *muestra*. El motor nunca ve píxeles de pantalla. Toda la
 adaptación ocurre en la capa de render/UI. Esto garantiza que ver en móvil **no
 altera ni limita** la genética, la energética ni la dinámica de población: una misma
-`pop.seed` produce idéntica corrida en un portátil y en un teléfono.
+`pop.seed` produce idéntica corrida en un portátil y en un teléfono. El mundo y los organismos se miden en
+**unidades de mundo (u)**, no en píxeles: la resolución (DPR/`maxInternalPx`/backing) solo cambia la NITIDEZ, nunca el
+tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resolución se cancela). Convención completa en SPEC §1.
 
 - **Escalado, no recorte.** El canvas ocupa el viewport con `width:100%` por CSS, pero
   su resolución de dibujo se fija en píxeles del dispositivo. Se calcula un factor

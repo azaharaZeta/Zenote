@@ -1,12 +1,27 @@
 // Configuración por defecto — "Zenote". ÚNICO lugar de los parámetros (el motor lee de aquí; nada hardcodeado disperso).
 // Cada parámetro lleva su NOMBRE FUNCIONAL para editarlo a mano con rapidez. Los marcados (UI) tienen control
 // en vivo en el modo Laboratorio. Frontera de diseño: el programador define la FÍSICA; la conducta y la forma EVOLUCIONAN.
+//
+// ── UNIDADES (u) · LÉEME antes de tocar tamaños o resolución ────────────────────────────────────────────────
+// El MOTOR trabaja en UNIDADES DE MUNDO (u), NUNCA en píxeles de pantalla. La resolución de dibujo (DPR,
+// render.maxInternalPx, backing store, CSS) NO entra en ningún cálculo lógico NI en el tamaño APARENTE:
+//        aparente_CSS = radio · (viewport_CSS / world.width) · zoom      → DPR / backing / maxInternalPx se CANCELAN
+// (la resolución solo cambia la NITIDEZ del pegote final; jamás QUÉ se simula ni cómo de grande se ve algo).
+// El tamaño ABSOLUTO en u es un GAUGE LIBRE: multiplica TODAS las longitudes (world.width/height, expr.size,
+// expr.sense, repro.mateRadius, loco.vMin/vMax) por k y energy.moveCost por 1/k² → simulación y apariencia
+// IDÉNTICAS. Solo importan los RATIOS (radio/mundo = densidad, sense/mundo, mateRadius/mundo, velocidad/mundo·tick).
+//   Dimensiones:  LONGITUD¹  → world.width/height · expr.size (radio) · expr.sense · repro.mateRadius · loco.vMin/vMax (u/tick)
+//                 LONGITUD⁻² → energy.moveCost (coef. del coste ∝ v²)
+//                 ADIMENSIONALES → energía/materia (E_max_base, matterBudget, energyPerUnit, c_base, costes…), genes [0,1],
+//                                  conteos (gridCols/Rows, maxAgents), masas/áreas NORMALIZADAS (sizeMass=(radio/refRadius)^massExp), ratios.
+// EXCEPCIÓN: en el bloque `render` los "px" SÍ son píxeles REALES de dibujo (backing store / pantalla / DPR), no u.
+// ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const config = {
   // ───── Mundo ─────
   world: {
-    width: 1200,   // Ancho del mundo (px lógicos; fijo, no depende de la pantalla)
-    height: 800,   // Alto del mundo
+    width: 1200,   // Ancho del mundo en u (UNIDADES DE MUNDO, NO píxeles de pantalla — ver cabecera UNIDADES). Fijo, no depende de la pantalla.
+    height: 800,   // Alto del mundo (u)
     wrap: true,    // Mundo toroidal (los bordes envuelven)
     // ── PROTOTIPO: ECOSISTEMA CERRADO EN MATERIA (pecera sellada) ──
     closedMatter: true,  // (↻) DEFAULT ON (pecera; receta del trío trófico en closedRegen). false = modelo ABIERTO (el sol CREA biomasa). true = la
@@ -113,7 +128,7 @@ export const config = {
     k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
     k_effort: 1.59,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
-    moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
+    moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad) · dimensión u⁻² (ver cabecera UNIDADES)
     k_haul: 0.2,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
                         //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
                         //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
@@ -168,7 +183,7 @@ export const config = {
     streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica)
     effortFloor: 0.2,   // Esfuerzo mínimo de nado
     vMin: 0.15,         // Suelo de velocidad-capacidad (nadie queda 100% inmóvil)
-    vMax: 3.0,          // (UI) Techo de velocidad-capacidad
+    vMax: 3.0,          // (UI) Techo de velocidad-capacidad (u/tick)
     turnBase: 0.18,     // (UI) Agilidad de giro base
     turnAsym: 0.35,     // La asimetría del grafo de nodos (emergente) mejora el giro
     turnSize: 0.15,     // Los cuerpos grandes giran peor
@@ -244,7 +259,7 @@ export const config = {
     asexual: true,              // (UI) Permitir clon mutado si no hay pareja compatible cerca. ON conserva la diversidad
                                //      de talla; solo-sexual la APLANA (la mezcla grande×pequeño regresa a la media — medido headless).
     speciesGenThreshold: 0.15, // (UI) Distancia genética máxima para cruzarse (= misma especie)
-    mateRadius: 70,            // (UI) Radio (px) de búsqueda de pareja al reproducirse
+    mateRadius: 70,            // (UI) Radio (u) de búsqueda de pareja al reproducirse
   },
 
   // ───── Mutación: UNA sola tasa por locus, CIEGA a la función del gen (auditoría #1) ─────
@@ -301,6 +316,8 @@ export const config = {
   },
 
   // ───── Render (solo visual; no afecta a la simulación) ─────
+  // OJO UNIDADES: a diferencia del MOTOR (que trabaja en u, unidades de mundo — ver cabecera), AQUÍ los "px" son
+  // PÍXELES REALES de dibujo (backing store / pantalla / DPR). Es el único bloque donde "px" = píxeles de verdad.
   render: {
     glow: true,               // Resplandor (bloom). Solo config (sin control en vivo)
     vegIntensity: 1.0,        // (UI) Realce de la VEGETACIÓN (brillo del teal del pasto en el sustrato): 0 = invisible · alto = más presente. En vivo (lab).
@@ -355,7 +372,7 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 2.0, max: 9 },    // gen size → radio (px). SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste
+    size:      { min: 2.0, max: 9 },    // gen size → radio en u (unidades de mundo, ver cabecera). SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste
                                         //      basal/cría. `min` SUBIDO 1.7→3.4 (2026-06-14, fix TRÍO A LARGO PLAZO): pone un SUELO a la
                                         //      talla. Sin él, a >10k ticks la pop derivaba a cuerpos DIMINUTOS (size µ≈0.13) que como
                                         //      r-estrategas SATURABAN el pool (maxAgents, no la materia) y borraban la base de presa con
@@ -363,7 +380,7 @@ export const config = {
                                         //      vuelve a ser el límite (pop < tope) y el cazador PERSISTE a 30k (medido headless 7/7 seeds).
                                         //      refRadius=(min+max)/2 sigue dando sizeMass≈1 al organismo medio → la alometría no se recalibra.
                                         // Nota Azahara: cambio temporalmenet de 3.4 (el valor recomendado en pruebas) a 2.0 para ejecutar pruebas manuales
-    sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (px)
+    sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (u)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)
     mature_age:{ min: 80,  max: 650 },  // (#12) gen mature_age → edad de madurez (ticks): gatea la cría e inicia la senescencia
