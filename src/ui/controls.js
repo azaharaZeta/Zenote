@@ -439,7 +439,7 @@ const LAB_SPEC = [
   { cat: '🫧 Pecera sellada (materia)', items: [
     { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
     { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, min: 10000, max: 100000, step: 2500, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
-    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.004, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
+    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
@@ -448,11 +448,11 @@ const LAB_SPEC = [
   { cat: '🍃 Comida y recurso', items: [
     { k: 'resource.R_regen', mode: 'open', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Rebrote del pasto en el modo ABIERTO: regulador principal de cuánta comida sostiene el mundo. En la pecera cerrada manda "Fotosíntesis (pecera)".' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que no se puede pastar (queda como semilla): frena el sobrepastoreo.' },
-    { k: 'resource.forageReach', label: 'Alcance de forrajeo (talla)', min: 0, max: 4, step: 1, dec: 0, d: 'Cuántas celdas alrededor pasta un cuerpo grande: da ventaja a la talla. 0 = solo su celda.' },
+    { k: 'resource.forageReach', label: 'Alcance de forrajeo (talla)', min: 0, max: 8, step: 1, dec: 0, d: 'Cuántas celdas alrededor pasta un cuerpo grande: da ventaja a la talla (hace emerger el grupo grande). 0 = solo su celda.' },
     { k: 'resource.absRate', label: 'Ritmo de absorción', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Velocidad a la que un organismo absorbe el recurso de su celda (alto = comen rápido, pero la arrasan).' },
-    { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 40, step: 1, dec: 0, d: 'Energía que da cada unidad de recurso comido (sube la rentabilidad de pastar).' },
+    { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 24, step: 1, dec: 0, d: 'Energía que da cada unidad de recurso comido (sube la rentabilidad de pastar).' },
     { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = pasto uniforme; subir = parches que se agotan y migran solos (premia buscar).' },
-    { k: 'resource.carrionDecay', label: 'Descomposición de cadáveres', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Ritmo al que se pudre la carroña: bajo = los cadáveres duran más para el carroñero.' },
+    { k: 'resource.carrionDecay', label: 'Descomposición de cadáveres', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Ritmo al que se pudre la carroña: bajo = los cadáveres duran más para el carroñero.' },
     { k: 'resource.carrionAbsRate', label: 'Ritmo de carroñeo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Velocidad a la que un carroñero vacía un cadáver.' },
     { k: 'energy.corpseReturn', mode: 'open', label: 'Reciclaje de cadáveres (→ pasto)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Fracción de la carroña que, al pudrirse, vuelve al pasto (ciclo de nutrientes). Solo en modo ABIERTO; en la pecera la carroña mineraliza íntegra al nutriente.' },
   ]},
@@ -469,7 +469,7 @@ const LAB_SPEC = [
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coste de moverse ∝ velocidad²: frena la carrera de velocidad.' },
     { k: 'energy.k_haul', label: 'Coste de transporte (masa)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar arrastrar masa: alto = un cuerpo grande gasta más al desplazarse, no solo al mantenerse.' },
     { k: 'energy.k_drag', label: 'Coste de arrastre (forma)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar el ARRASTRE de la forma (cuerpo/aletas anchos, apéndices): complementa el coste por masa — distingue la forma hidrodinámica del bulto. 0 = el arrastre solo frena, no cuesta.' },
-    { k: 'energy.E_max_base', label: 'Energía máxima base', min: 40, max: 200, step: 5, dec: 0, d: 'Energía máxima que almacena un organismo (escala con su tamaño): más reserva ante hambrunas.' },
+    { k: 'energy.E_max_base', label: 'Energía máxima base', min: 40, max: 150, step: 5, dec: 0, d: 'Energía máxima que almacena un organismo (escala con su tamaño): más reserva ante hambrunas.' },
     { k: 'energy.preyGain', label: 'Energía de la presa', min: 0, max: 1, step: 0.02, dec: 2, d: 'Fracción de la energía almacenada de la presa que aprovecha el cazador.' },
     { k: 'energy.carcassValue', label: 'Valor del cadáver (biomasa)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto alimenta el CUERPO de la presa al cazarla, además de su energía. Alto = cazar es viable aunque la presa esté magra; muy alto puede disparar oscilaciones.' },
     { k: 'energy.scrapReturn', label: 'Sobras de la caza (carroña)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánta carroña deja una presa CAZADA (las muertes naturales dejan el cuerpo entero).' },
@@ -484,7 +484,7 @@ const LAB_SPEC = [
   { cat: '🧬 Mutación', items: [
     { k: 'mut.rate', label: 'Tasa de mutación', min: 0, max: 0.2, step: 0.005, dec: 3, d: 'Probabilidad de que cada gen mute en la cría: alta = más variación, evolución más rápida.' },
     { k: 'mut.sigma', label: 'Sigma de mutación', min: 0, max: 0.3, step: 0.005, dec: 3, d: 'Magnitud de cada mutación: más alto = saltos genéticos mayores.' },
-    { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto), además de la deriva fina.' },
+    { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.01, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto), además de la deriva fina.' },
     { k: 'mut.recomb', label: 'Recombinación (ligamiento)', min: 0, max: 0.5, step: 0.01, dec: 2, d: 'Cruce sexual por gen: 0.5 = cada gen al azar; bajo = se heredan tramos contiguos (complejos co-adaptados intactos).' },
   ]},
   { cat: '⚔ Combate y dieta', items: [
@@ -506,7 +506,7 @@ const LAB_SPEC = [
   ]},
   { cat: '🏊 Locomoción y visión', items: [
     { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 12, step: 0.1, dec: 1, d: 'Calibra la velocidad típica de la morfología: más alto = todos nadan más rápido.' },
-    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados).' },
+    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 0.5, step: 0.05, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados). El default es muy bajo a propósito (la cabeza es casi carga, no motor).' },
     { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad de cualquier cuerpo.' },
     { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base: más alto = giran más rápido hacia donde quieren ir.' },
     { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar descoordinado: alto = presiona a una natación coordinada (onda limpia).' },

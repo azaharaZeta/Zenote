@@ -15,16 +15,17 @@ export const config = {
                          //      nutriente del pool y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia,
                          //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
                          //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
-    matterBudget: 30000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
+    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
                          //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
                          //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
-    closedRegen: 0.0034, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
-                         //      el modelo abierto, sin tocarlo). 0.0034 = régimen de RED TRÓFICA: herbívoros + carroñeros + CAZADORES de
-                         //      presa viva coexisten (medido headless multi-seed: trío estable en 4/6 siembras; los cazadores son una
-                         //      minoría ápice fluctuante). EXIGE pop.maxAgents≈2000 (la productividad sube la pop a ~1000-2000; con el tope
-                         //      en 1000 satura y se distorsiona). Va de la mano de combat.fleeSpeed 1.2 + diet.scavPenalty 0.30 (afinado
-                         //      para el trío). DOS atractores: bajar a ~0.0017 → pecera magra y contemplativa (~700-900) pero el gremio
-                         //      CAZADOR es FRÁGIL (colapsa en varias siembras → solo herbívoro/carroñero); 0.0012 → ~350 plácido solo-herbívoro. En vivo.
+                         //      (2026-06-14, tuning DIVERSIDAD) 60000: alimenta la pirámide trófica de 3 niveles (sostiene cazadores); SATURA
+                         //      aquí (medido: 75k/90k no mejoran, el exceso queda como N libre). Da MENOS pop que 30k (≈914 vs 1309: la cadena
+                         //      trófica más larga reparte la materia → menos individuos, más diversidad y más fluido).
+    closedRegen: 0.004,  // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
+                         //      el modelo abierto, sin tocarlo). (2026-06-14, tuning DIVERSIDAD) 0.004 = régimen de RED TRÓFICA con los 3
+                         //      gremios (herbívoros + carroñeros + CAZADORES) coexistiendo en 6/6 siembras (medido headless multi-seed, junto a
+                         //      matterBudget 60k + forageReach 5 + massExp 1.3 + k_haul 0.2 + fleeSpeed 1.0). Más productividad = cadena trófica
+                         //      más larga. DOS atractores: bajar a ~0.0017 → pecera magra (solo herbívoro/carroñero, sin cazadores); 0.0012 → ~350 plácido. En vivo.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
@@ -40,12 +41,12 @@ export const config = {
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
     energyPerUnit: 10,  // (UI) Energía obtenida por unidad de recurso comida
     grazeRefuge: 0.20,   // (UI) Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
-    forageReach: 2,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
+    forageReach: 5,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
                         //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
                         //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
                         //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
-                        //      Fine-tuning headless (5 semillas): 0 → todo mínimo; 2 → 1 pico; 3 (con omniPenalty 0.15) →
-                        //      DOS grupos de talla (~0.25 peque + ~0.55 grande, 21% grandes) y robusto. Va con omniPenalty 0.15.
+                        //      (2026-06-14, tuning DIVERSIDAD) 5: con massExp 1.3 + k_haul 0.2 hace emerger un grupo de talla GRANDE (medido
+                        //      headless: big% ~9, sizeσ 0.17) y, al dar presa grande y gorda, ayuda a sostener a los cazadores. Va con omniPenalty 0.15.
     carrionDecay: 0.005, // (UI) Ritmo al que se descompone la CARROÑA por tick (cadáveres). Lo decaído vuelve en
                         //      parte al pasto (energy.corpseReturn) = ciclo de nutrientes; el resto se pierde. Bajo =
                         //      los cadáveres tardan en deshacerse (más tiempo para que un carroñero llegue); alto =
@@ -81,7 +82,9 @@ export const config = {
   // recalibradas para que el organismo MEDIO (size 0.5, head-only) conserve ≈ los valores previos.
   energy: {
     c_base: 0.024,      // (UI) Coste basal por tick (recalibrado por la alometría: antes 0.02 con k_size aparte)
-    massExp: 1.5,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp. 1 = lineal; 2 = área 2D
+    massExp: 1.3,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp. 1 = lineal; 2 = área 2D.
+                        //      (2026-06-14, tuning DIVERSIDAD) bajado 1.5→1.3: en la pecera CERRADA un cuerpo grande cuesta materia real
+                        //      (bodyMatter ∝ eMax ∝ masa) y 1.5 lo encarecía tanto que los grandes casi no nacían; 1.3 los hace viables → emerge talla grande.
     kleiber: 0.75,      // (UI) Exponente metabólico: coste basal ∝ masa^kleiber (¾ = Kleiber; <1 = los grandes gastan menos por masa)
     k_sense: 0.3,       // (UI) Coste de la visión (alcance)
     k_metab: 0.6,       // (UI) Coste del metabolismo
@@ -99,9 +102,10 @@ export const config = {
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
     k_effort: 1.59,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad)
-    k_haul: 0.4,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
+    k_haul: 0.2,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
                         //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
                         //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
+                        //      (2026-06-14, tuning DIVERSIDAD) bajado 0.4→0.2: menos castigo a la masa al moverse → los grandes son viables (va con massExp 1.3).
     k_drag: 0.4,        // (UI) (B) Coste de nado ∝ ARRASTRE de la FORMA: el nado se multiplica por (1 + k_drag·max(0, Dmul−dragRef)),
                         //      Dmul = arrastre emergente de la geometría (bodyplan.reducePlan: cuerpo/aletas anchos, apéndices). Complementa
                         //      A (que es por MASA): difieren en aletas/garras (mucho arrastre, poca masa). Cierra el incentivo PERVERSO del
@@ -250,13 +254,14 @@ export const config = {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
     failDamage: 0.2,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
-    fleeSpeed: 1.2,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
+    fleeSpeed: 1.0,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
                         //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope 0.95). Hace que huir/cazar sea un DUELO de
                         //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
                         //      cobertura baja (refuge.strength) o el escondite lo enmascara. 0 = solo cobertura (modelo previo).
-                        //      BAJADO 2→1.2: caza algo más fácil → sostiene el nicho CAZADOR de presa viva en la pecera (red trófica;
-                        //      bajar a 1.0 lo hace boom-bust, menos robusto — medido). Afecta también al modelo abierto.
-                        //      >4 o cobertura nula → la presa escapa demasiado y los carnívoros se quedan sin comer (medido).
+                        //      (2026-06-14, tuning DIVERSIDAD) 1.0: caza algo más fácil → sostiene los cazadores en 6/6 siembras junto al resto del
+                        //      combo (matterBudget 60k, closedRegen 0.004, forageReach 5). (El viejo aviso "1.0 = boom-bust" era en el régimen anterior,
+                        //      no en este combo.) Afecta también al modelo abierto.
+                        //      >4 o cobertura nula → la presa escapa demasiado y los cazadores se quedan sin comer (medido).
     handlingTime: 31,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
