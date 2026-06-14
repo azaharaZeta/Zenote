@@ -371,19 +371,22 @@ población se asienta en `maxAgents`, no en la capacidad de carga. Es un modelo 
 Con `world.closedMatter=true` el mundo pasa a **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en
 materia — como un ecosistema real). **Moneda única** (materia = unidades de energía); cantidad **conservada**:
 
-> `N_libre + Σ(recurso·epu) + Σ_vivos(E + bodyMatter) + Σ(carroña) = constante` (= `world.matterBudget`)
+> `Σ N[celda] + Σ(recurso·epu) + Σ_vivos(E + bodyMatter) + Σ(carroña) = constante` (= `world.matterBudget`)
 
-- **`N`** = pool GLOBAL de nutriente libre disuelto (escalar en `world`). Es lo que las plantas captan.
-- **`bodyMatter[i] = carcassValue·eMax`** = materia ESTRUCTURAL del cuerpo (SoA). Se **retira de `N` al nacer** (y
-  **nacer se BLOQUEA si `N < bodyMatter`** → no hay materia para construir el cuerpo) y se **devuelve a la carroña al
-  morir**. Ya no se conjura: el cuerpo se paga con materia real del pool.
-- **Rebrote** (`_regenClosed`): el pasto crece CONSUMIENDO `N` a ritmo `world.closedRegen` (parámetro **propio** del
-  modo cerrado, separado de `resource.R_regen` que rige el abierto). Si `N` no llega, el crecimiento se escala (sin
-  sesgo de orden). El sol ya no crea materia: solo permite convertir `N`→pasto.
-- **Retornos a `N`** (la materia no se evapora): metabolismo + nado, pérdida trófica de la depredación, conversión de
-  pasto no asimilada (`1−effHerb`), y el sobrante por tope de `eMax`. El metabolismo no puede dejar `E` negativa (se
-  topa a 0: no se gasta materia que no se tiene). La **carroña mineraliza ÍNTEGRA** a `N` (`carrionDecay`; en cerrado
-  se ignora `corpseReturn`, que es del abierto).
+- **`N`** = CAMPO ESPACIAL de nutriente libre disuelto **por celda** (`world.N`; antes un escalar global). Las plantas lo
+  captan LOCALMENTE → **manchas fértiles** donde muere/respira algo. Se **DIFUNDE** despacio entre vecinos
+  (`world.nutrientDiffuse`, conservativa en el toro) → las manchas se difuminan y migran. Σ del campo = pool global.
+- **`bodyMatter[i] = carcassValue·eMax`** = materia ESTRUCTURAL del cuerpo (SoA). Se **retira del nutriente del VECINDARIO
+  5×5 del progenitor al nacer** (el cuerpo se construye reuniendo materia de la ZONA, no de una sola celda que no bastaría
+  de golpe) — y **nacer se BLOQUEA si la zona no tiene `bodyMatter`** → la cría se acopla a la fertilidad local; se
+  **devuelve a la carroña al morir**. Ya no se conjura: el cuerpo se paga con materia real.
+- **Rebrote** (`_regenClosed`): cada celda crece CONSUMIENDO su `N` LOCAL a ritmo `world.closedRegen` (parámetro **propio**
+  del modo cerrado, separado de `resource.R_regen` que rige el abierto) → el pasto rebrota DONDE hay nutriente (manchas
+  fértiles). Si el `N` local no llega, se escala ESA celda. El sol ya no crea materia: solo permite convertir `N`→pasto.
+- **Retornos a `N`** (la materia no se evapora), todos en la **CELDA donde ocurren**: metabolismo + nado, pérdida trófica
+  de la depredación, conversión de pasto no asimilada (`1−effHerb`), y el sobrante por tope de `eMax`. El metabolismo no
+  puede dejar `E` negativa (se topa a 0: no se gasta materia que no se tiene). La **carroña mineraliza ÍNTEGRA** al `N` de
+  su celda (`carrionDecay`; en cerrado se ignora `corpseReturn`, del abierto) → el cadáver fertiliza su propia zona.
 - **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgents`. El
   sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
 - **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";

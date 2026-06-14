@@ -31,12 +31,13 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Selección de presa por talla | ✅ hecha (2026-06-14) | vía entrada 8 del cerebro (talla relativa) — ver "entradas sensoriales"; SPEC §cerebro |
 | Nuevas entradas sensoriales del cerebro | ✅ hecha (2026-06-14) | cobertura + talla + ESCAPABILIDAD de la presa (BRAIN.I 7→10); dir. al congénere (manada) APLAZADA → nicho cazador sin masa crítica en pecera pequeña (memoria `pecera-pequena-contemplativa-scope`) |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
+| Vegetación poco visible / sin valor (render) | ⬜ pendiente | la fosforescencia teal es demasiado sutil → ni informa ni decora (visto en preview 2026-06-14); pendiente realzar su contraste/lectura sin romper la legibilidad de los bichos ni la penumbra abisal |
 | Cadáveres con FORMA (render) | ⬜ pendiente | análisis abajo — marcadores efímeros, no toca la sim |
 | Diversidad de talla bajo repro sexual | ⬜ pendiente | análisis abajo · memoria `sexual-repro-flattens-size` |
 | Revisar señuelos (coste / atracción / visibilidad) | 🔄 parcial (2026-06-14) | ATRACCIÓN hecha (emboscada `combat.lureAttract`); coste por o_num + visibilidad pendientes |
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
 | LOD declarativo (desacoplar de la lista de elementos visuales) | ⬜ pendiente | análisis abajo — arquitectura/mantenibilidad del render |
-| Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
+| Pecera: nutriente ESPACIAL + viz de la materia | ✅ hecha (2026-06-14) | campo `N` por celda + difusión (`world.nutrientDiffuse`) + viz índigo · SPEC §3ter · MEJORA diversidad (manchas → bolsas de presa) |
 | Mejoras de UI / bugs menores | 🔄 parcial (2026-06-14) | leyenda Rol + bug cámara (pinza) HECHOS; visor de especie en móvil pendiente |
 | ¿"Reciclaje de cadáveres → pasto" es un leak? | ✅ resuelto | análisis abajo — NO es bug (en cerrado no se usa; en abierto, pérdida intencional del modelo no-conservativo) |
 | Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |

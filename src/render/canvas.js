@@ -209,6 +209,38 @@ export class Renderer {
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;                                 // restaurar (las chispas usaron globalAlpha)
+      // NUTRIENTE libre (pecera cerrada): neblina ÍNDIGO/violeta tenue donde se CONCENTRA la materia mineralizada
+      // (manchas fértiles donde murió/respiró algo). Distinta del teal de la vegetación y el gris de la carroña.
+      // Opacidad ∝ N normalizado por su MÁXIMO → solo destacan las concentraciones; el fondo difuso casi no se ve.
+      const nutrient = Wld.nutrient;
+      if (nutrient && nutrient.length) {
+        let maxN = 0; for (let k = 0; k < nutrient.length; k++) if (nutrient[k] > maxN) maxN = nutrient[k];
+        if (maxN > 0.001) {
+          if (!this._nutrientSprite) {
+            const S = 48, sp = document.createElement('canvas'); sp.width = sp.height = S;
+            const sx = sp.getContext('2d'), g = sx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+            g.addColorStop(0, 'rgba(124,108,214,1)'); g.addColorStop(1, 'rgba(124,108,214,0)'); // índigo-violeta (nutriente mineral)
+            sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._nutrientSprite = sp;
+          }
+          const sprite = this._nutrientSprite, inv = 1 / maxN, sz = cellW * 2.0;
+          ctx.globalCompositeOperation = 'lighter';
+          for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
+            ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
+            let cx0 = ((this.camX - vwHalf - tx * W) / cellW | 0) - 1; if (cx0 < 0) cx0 = 0;
+            let cx1 = ((this.camX + vwHalf - tx * W) / cellW | 0) + 1; if (cx1 > cols - 1) cx1 = cols - 1;
+            let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
+            let cy1 = ((this.camY + vhHalf - ty * H) / cellH | 0) + 1; if (cy1 > rows - 1) cy1 = rows - 1;
+            for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+              const nv = nutrient[cy * cols + cx] * inv;       // 0..1 normalizado al máximo del campo
+              if (nv < 0.25) continue;                          // solo concentraciones notables (no el fondo difuso)
+              ctx.globalAlpha = (nv - 0.25) * 0.32;             // sutil (máx ≈ 0.24)
+              ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);
+            }
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
+        }
+      }
       // (Fase 1) CARROÑA: cadáveres como manchas GRISES desaturadas (frío-azuladas, distintas de la fosforescencia
       // teal de la vegetación) en su celda; opacidad ∝ carroña restante → se desvanecen al decaer o ser consumidas.
       const carrion = Wld.carrion;

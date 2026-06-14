@@ -25,6 +25,7 @@ const simProxy = {
     temp: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     carrion: new Float32Array(config.resource.gridCols * config.resource.gridRows),
+    nutrient: new Float32Array(config.resource.gridCols * config.resource.gridRows),
   },
   x: empty, y: empty, radius: empty, hue: empty, diet: empty, eFrac: empty,
   lineage: empty, geneSel: empty, heading: empty, spd: empty, nodes: empty, tint: empty, eye: empty, face: empty, deco: empty,
@@ -76,6 +77,7 @@ worker.onmessage = (e) => {
     charts.histN = m.histN; charts.histGrass = m.histGrass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
+    simProxy.world.nutrient = m.nutrient;
   }
 };
 
