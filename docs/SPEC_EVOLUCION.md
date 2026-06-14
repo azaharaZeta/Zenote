@@ -31,7 +31,7 @@ las estrategias o las formas "buenas". Esas deben emerger.
 
 > **Unidades (u) — el motor es independiente de la resolución de dibujo.** El motor trabaja en **unidades de mundo
 > (u)**, NO en píxeles de pantalla. La resolución (DPR, `render.maxInternalPx`, backing store, CSS) no entra en NINGÚN
-> cálculo lógico ni en el tamaño *aparente*: `aparente_CSS = radio · (viewport / world.width) · zoom` → la resolución se
+> cálculo lógico ni en el tamaño *aparente*: `aparente_CSS = radio · (viewport / world.size) · zoom` → la resolución se
 > **cancela** (solo cambia la NITIDEZ, nunca QUÉ se simula ni cómo de grande se ve). El tamaño absoluto en u es un
 > **gauge libre**: escalar TODAS las longitudes (`world`, `expr.size`, `sense`, `mateRadius`, `vMin/vMax`) por k y
 > `energy.moveCost` por 1/k² da una simulación y una apariencia idénticas → solo importan los **ratios** (radio/mundo =
@@ -39,7 +39,7 @@ las estrategias o las formas "buenas". Esas deben emerger.
 > Catálogo dimensional completo en la cabecera de `src/config.js`.
 
 - Rejilla continua (coordenadas float), por defecto un **toro** (bordes envueltos) para
-  evitar artefactos de borde.
+  evitar artefactos de borde. El mundo es **CUADRADO**: un solo valor `world.size` (lado en u).
 - **Recurso difuso** ("energía solar/química") en un campo escalar de baja resolución
   (`resource.gridCols`×`gridRows`). Capacidad por celda según `resource.gradient`
   (`perlin` | `center` | `uniform`). Se acumula hasta `R_max` por celda.

@@ -26,8 +26,8 @@ export class Renderer {
     // Cámara: zoom (1 = el mundo cubre la pantalla) y centro en coords del mundo.
     // El paneo recorre el toro sin costuras (render en mosaico), así no se ven los bordes.
     this.zoom = 1; this.maxZoom = 20;
-    this.camX = cfg.world.width / 2;
-    this.camY = cfg.world.height / 2;
+    this.camX = cfg.world.size / 2;
+    this.camY = cfg.world.size / 2;
 
     // Capa de SUSTRATO abisal (`grass`/`grassCtx`: nombre histórico). Búfer del tamaño de la PANTALLA:
     // se dibuja con la cámara aplicada (nítido a cualquier zoom) y solo se re-renderiza cuando la cámara
@@ -70,8 +70,8 @@ export class Renderer {
     this.tuftSprite = new Uint8Array(n);   // qué chispa usa (fijo)
     this.tuftSeed = new Float32Array(n);   // umbral aleatorio por mota → plancton con densidad POR CANTIDAD
     for (let i = 0; i < n; i++) {
-      this.tuftX[i] = rng.next() * W.width;
-      this.tuftY[i] = rng.next() * W.height;
+      this.tuftX[i] = rng.next() * W.size;
+      this.tuftY[i] = rng.next() * W.size;
       this.tuftScale[i] = 0.75 + rng.next() * 0.85;
       this.tuftSprite[i] = (rng.next() * nSpark) | 0;
       this.tuftSeed[i] = rng.next();
@@ -119,7 +119,7 @@ export class Renderer {
     const Rmax = cfg.resource.R_max;
     const res = Wld.resource, cols = Wld.cols, rows = Wld.rows, cellW = Wld.cellW, cellH = Wld.cellH;
     const temp = Wld.temp;
-    const W = cfg.world.width, H = cfg.world.height, s = this._scale();
+    const W = cfg.world.size, H = cfg.world.size, s = this._scale();
     const offX = c.width / 2 - this.camX * s, offY = c.height / 2 - this.camY * s;
     const vwHalf = c.width / (2 * s), vhHalf = c.height / (2 * s);
     const txMin = Math.floor((this.camX - vwHalf) / W), txMax = Math.floor((this.camX + vwHalf) / W);
@@ -359,7 +359,7 @@ export class Renderer {
     // RASTERIZACIÓN (menos píxeles), NO el detalle. El paneo/pick cruzan a coords de CSS vía pxRatio.
     // Escala "fit/contain": a zoom 1 el MUNDO ENTERO cabe en el viewport. El eje que no llena lo rellena el TORO en
     // mosaico (continuación sin costura), no barras vacías. El zoom multiplica sobre esta base. (Antes "cover"=Math.max → recortaba un eje.)
-    this.fitScale = Math.min(c.width / cfg.world.width, c.height / cfg.world.height);
+    this.fitScale = Math.min(c.width / cfg.world.size, c.height / cfg.world.size);
     // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
     this.grass.width = c.width; this.grass.height = c.height;
     this.fx.width = c.width; this.fx.height = c.height;
@@ -394,7 +394,7 @@ export class Renderer {
     const c = this.canvas, rect = c.getBoundingClientRect();
     const px = (clientX - rect.left) * (c.width / rect.width);
     const py = (clientY - rect.top) * (c.height / rect.height);
-    const s = this._scale(), W = this.cfg.world.width, H = this.cfg.world.height;
+    const s = this._scale(), W = this.cfg.world.size, H = this.cfg.world.size;
     let x = this.camX + (px - c.width / 2) / s;
     let y = this.camY + (py - c.height / 2) / s;
     return { x: ((x % W) + W) % W, y: ((y % H) + H) % H };
@@ -402,7 +402,7 @@ export class Renderer {
 
   // Paneo: desplaza la cámara (en píxeles CSS arrastrados), envolviendo el toro.
   panByScreen(dxCss, dyCss) {
-    const s = this._scale(), W = this.cfg.world.width, H = this.cfg.world.height;
+    const s = this._scale(), W = this.cfg.world.size, H = this.cfg.world.size;
     this.camX = (((this.camX - dxCss * this.pxRatio / s) % W) + W) % W;
     this.camY = (((this.camY - dyCss * this.pxRatio / s) % H) + H) % H;
   }
@@ -412,7 +412,7 @@ export class Renderer {
     const c = this.canvas, rect = c.getBoundingClientRect();
     const px = (clientX - rect.left) * (c.width / rect.width);
     const py = (clientY - rect.top) * (c.height / rect.height);
-    const W = this.cfg.world.width, H = this.cfg.world.height;
+    const W = this.cfg.world.size, H = this.cfg.world.size;
     const s0 = this._scale();
     const wx = this.camX + (px - c.width / 2) / s0;
     const wy = this.camY + (py - c.height / 2) / s0;
@@ -424,7 +424,7 @@ export class Renderer {
 
   draw() {
     const ctx = this.ctx, cfg = this.cfg, c = this.canvas;
-    const W = cfg.world.width, H = cfg.world.height;
+    const W = cfg.world.size, H = cfg.world.size;
 
     // Reloj de animación ATADO al avance de la SIMULACIÓN (nº de ticks), no al tiempo real: a baja
     // velocidad los organismos se animan en CÁMARA LENTA (coherente con el control fino de velocidad);
@@ -1105,7 +1105,7 @@ export class Renderer {
   // ({x,y,radius}); dibuja la copia envuelta (toro) más cercana a la cámara.
   highlight(sel) {
     if (!sel) return;
-    const c = this.canvas, s = this._scale(), W = this.cfg.world.width, H = this.cfg.world.height;
+    const c = this.canvas, s = this._scale(), W = this.cfg.world.size, H = this.cfg.world.size;
     let dx = ((sel.x - this.camX + W * 1.5) % W) - W / 2; // diferencia envuelta [-W/2, W/2)
     let dy = ((sel.y - this.camY + H * 1.5) % H) - H / 2;
     const sx = c.width / 2 + dx * s, sy = c.height / 2 + dy * s;

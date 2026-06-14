@@ -192,8 +192,8 @@ export class Sim {
       seedBrain(this.genes, i, rng, (!dietLow && n < nCarn) ? 0.27 : 0);
       computePhenotype(this, i);
       this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
-      this.x[i] = rng.next() * W.width;
-      this.y[i] = rng.next() * W.height;
+      this.x[i] = rng.next() * W.size;
+      this.y[i] = rng.next() * W.size;
       this.vx[i] = 0; this.vy[i] = 0;
       this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
@@ -351,7 +351,7 @@ export class Sim {
       }
       computePhenotype(this, i);
       this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
-      this.x[i] = rng.next() * W.width; this.y[i] = rng.next() * W.height;
+      this.x[i] = rng.next() * W.size; this.y[i] = rng.next() * W.size;
       this.vx[i] = 0; this.vy[i] = 0;
       this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
@@ -373,7 +373,7 @@ export class Sim {
   // ---- Un tick de simulación ----
   step() {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
-    const wrap = world.wrap, ww = world.width, wh = world.height;
+    const wrap = world.wrap, ww = world.size, wh = world.size;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit, Rmax = cfg.resource.R_max;
     const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
     const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
@@ -842,7 +842,7 @@ export class Sim {
   // distancia genética < `speciesGenThreshold` (= misma especie). Devuelve su índice o -1.
   _findMate(i) {
     const W = this.world, x = this.x, y = this.y, cfg = this.cfg, world = cfg.world;
-    const wrap = world.wrap, ww = world.width, wh = world.height;
+    const wrap = world.wrap, ww = world.size, wh = world.size;
     const mr = cfg.repro.mateRadius, mr2 = mr * mr, thr = cfg.repro.speciesGenThreshold;
     const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
     const hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;

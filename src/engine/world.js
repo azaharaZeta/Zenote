@@ -8,8 +8,8 @@ export class World {
     const r = cfg.resource;
     this.cols = r.gridCols;
     this.rows = r.gridRows;
-    this.cellW = cfg.world.width / this.cols;
-    this.cellH = cfg.world.height / this.rows;
+    this.cellW = cfg.world.size / this.cols;
+    this.cellH = cfg.world.size / this.rows;
 
     // Campo de recurso (unidades normalizadas [0, R_max]).
     this.resource = new Float32Array(this.cols * this.rows);
@@ -45,8 +45,8 @@ export class World {
 
     // ---- Spatial hash uniforme: celda = mayor radio de visión posible ----
     this.hashCell = cfg.expr.sense.max; // 80px
-    this.hCols = Math.ceil(cfg.world.width / this.hashCell);
-    this.hRows = Math.ceil(cfg.world.height / this.hashCell);
+    this.hCols = Math.ceil(cfg.world.size / this.hashCell);
+    this.hRows = Math.ceil(cfg.world.size / this.hashCell);
     this.cellHead = new Int32Array(this.hCols * this.hRows).fill(-1);
     this.cellNext = null; // se dimensiona con el pool (setCapacity)
   }

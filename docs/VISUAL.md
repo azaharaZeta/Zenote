@@ -65,7 +65,7 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
 > desplegable como estáticos (ver CLAUDE.md, regla 5).
 
 ## Responsive y móvil (sin tocar la simulación)
-**Principio rector:** el mundo es lógico y fijo (`world.width`×`world.height`, toro);
+**Principio rector:** el mundo es lógico y fijo (cuadrado, lado `world.size`, toro);
 la pantalla solo lo *muestra*. El motor nunca ve píxeles de pantalla. Toda la
 adaptación ocurre en la capa de render/UI. Esto garantiza que ver en móvil **no
 altera ni limita** la genética, la energética ni la dinámica de población: una misma
@@ -75,10 +75,10 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 
 - **Escalado, no recorte.** El canvas ocupa el viewport con `width:100%` por CSS, pero
   su resolución de dibujo se fija en píxeles del dispositivo. Se calcula un factor
-  `scale = min(canvasPx_w / world.width, canvasPx_h / world.height)` y se aplica con
+  `scale = min(canvasPx_w, canvasPx_h) / world.size` y se aplica con
   `ctx.setTransform` (o `translate`+`scale`) para encajar el mundo completo: a zoom mínimo el MUNDO ENTERO cabe.
   El eje que no llena lo rellena el TORO en mosaico (continuación sin costura), no barras vacías. Nunca se estira de forma anisotrópica
-  ni se cambia `world.width/height` para "rellenar". El toro se sigue viendo entero.
+  ni se cambia `world.size` para "rellenar". El toro se sigue viendo entero.
 - **DevicePixelRatio con tope + CAP de resolución interna.** Resolución del canvas =
   `min(cssPx · min(devicePixelRatio, render.dprCap), render.maxInternalPx)`. Sobre el tope de DPR hay un **cap del borde
   largo del backing store** (`render.maxInternalPx`, **escalar, def. 1280**; se aplica a **TODAS las calidades** —Máxima

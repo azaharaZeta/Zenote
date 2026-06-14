@@ -5,12 +5,12 @@
 // ── UNIDADES (u) · LÉEME antes de tocar tamaños o resolución ────────────────────────────────────────────────
 // El MOTOR trabaja en UNIDADES DE MUNDO (u), NUNCA en píxeles de pantalla. La resolución de dibujo (DPR,
 // render.maxInternalPx, backing store, CSS) NO entra en ningún cálculo lógico NI en el tamaño APARENTE:
-//        aparente_CSS = radio · (viewport_CSS / world.width) · zoom      → DPR / backing / maxInternalPx se CANCELAN
+//        aparente_CSS = radio · (viewport_CSS / world.size) · zoom      → DPR / backing / maxInternalPx se CANCELAN
 // (la resolución solo cambia la NITIDEZ del pegote final; jamás QUÉ se simula ni cómo de grande se ve algo).
-// El tamaño ABSOLUTO en u es un GAUGE LIBRE: multiplica TODAS las longitudes (world.width/height, expr.size,
+// El tamaño ABSOLUTO en u es un GAUGE LIBRE: multiplica TODAS las longitudes (world.size, expr.size,
 // expr.sense, repro.mateRadius, loco.vMin/vMax) por k y energy.moveCost por 1/k² → simulación y apariencia
 // IDÉNTICAS. Solo importan los RATIOS (radio/mundo = densidad, sense/mundo, mateRadius/mundo, velocidad/mundo·tick).
-//   Dimensiones:  LONGITUD¹  → world.width/height · expr.size (radio) · expr.sense · repro.mateRadius · loco.vMin/vMax (u/tick)
+//   Dimensiones:  LONGITUD¹  → world.size · expr.size (radio) · expr.sense · repro.mateRadius · loco.vMin/vMax (u/tick)
 //                 LONGITUD⁻² → energy.moveCost (coef. del coste ∝ v²)
 //                 ADIMENSIONALES → energía/materia (E_max_base, matterBudget, energyPerUnit, c_base, costes…), genes [0,1],
 //                                  conteos (gridCols/Rows, maxAgents), masas/áreas NORMALIZADAS (sizeMass=(radio/refRadius)^massExp), ratios.
@@ -20,8 +20,10 @@
 export const config = {
   // ───── Mundo ─────
   world: {
-    width: 1200,   // Ancho del mundo en u (UNIDADES DE MUNDO, NO píxeles de pantalla — ver cabecera UNIDADES). Fijo, no depende de la pantalla.
-    height: 800,   // Alto del mundo (u)
+    size: 1000,    // (UI ↻) Lado del MUNDO CUADRADO (toro) en u (unidades de mundo; ver cabecera UNIDADES). Antes era width×height
+                   //      (1200×800); ahora UN solo valor. Dial de DENSIDAD: más GRANDE = más disperso → menos depredación, MÁS especies
+                   //      (aislamiento espacial); más pequeño = denso → más depredadores, menos especies. NO cambia el alimento total
+                   //      (rejilla y matterBudget fijos), solo la densidad. (gridCols=gridRows → celdas cuadradas.) Requiere Reiniciar.
     wrap: true,    // Mundo toroidal (los bordes envuelven)
     // ── PROTOTIPO: ECOSISTEMA CERRADO EN MATERIA (pecera sellada) ──
     closedMatter: true,  // (↻) DEFAULT ON (pecera; receta del trío trófico en closedRegen). false = modelo ABIERTO (el sol CREA biomasa). true = la
@@ -50,8 +52,9 @@ export const config = {
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
   resource: {
-    gridCols: 64,       // Columnas de la rejilla de recurso
-    gridRows: 48,       // Filas de la rejilla de recurso
+    gridCols: 56,       // Columnas de la rejilla de recurso. IGUAL a gridRows → CELDAS CUADRADAS en el mundo cuadrado (world.size).
+    gridRows: 56,       // Filas. Mantener = gridCols para celdas cuadradas. 56×56 ≈ mismo nº de celdas y ÁREA de celda que el 64×48 previo
+                        //      (≈313 u²) → sin anisotropía y sin tocar la escala del campo de comida ni la capacidad de carga (cerrado: la pone matterBudget).
     R_max: 1.0,         // Recurso máximo por celda
     R_regen: 0.0035,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
@@ -337,7 +340,7 @@ export const config = {
     // ACOTADO e independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO
     // (nunca sobre-renderiza). NO cambia el DETALLE (LOD por tamaño percibido), solo la NITIDEZ. Más bajo = más rápido y
     // más borroso. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Slider "Resolución" en el
-    // bloque Rendimiento del laboratorio (rango 640–1280).
+    // bloque Rendimiento del laboratorio (rango 640–3840; 3840 = sin tope = render nativo en 4K).
     maxInternalPx: 960,
     // (UI) Tope de FPS del RENDER (0 = sin límite). El motor (t/s) NO depende de esto. Con el dibujado BAJO DEMANDA
     // (solo se redibuja si cambió el tick/cámara/selección) evita malgastar GPU+CPU en frames idénticos (pantallas a

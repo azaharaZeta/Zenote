@@ -19,8 +19,8 @@ const empty = new Float32Array(0);
 const simProxy = {
   world: {
     cols: config.resource.gridCols, rows: config.resource.gridRows,
-    cellW: config.world.width / config.resource.gridCols,
-    cellH: config.world.height / config.resource.gridRows,
+    cellW: config.world.size / config.resource.gridCols,
+    cellH: config.world.size / config.resource.gridRows,
     capacity: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     temp: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),

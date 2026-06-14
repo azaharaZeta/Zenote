@@ -279,7 +279,7 @@ function setPath(o, path, v) {
 }
 
 function pick(wx, wy) {
-  const s = sim, act = s.active, n = s.activeCount, ww = config.world.width, wh = config.world.height;
+  const s = sim, act = s.active, n = s.activeCount, ww = config.world.size, wh = config.world.size;
   let best = -1, bd = 1e9;
   for (let k = 0; k < n; k++) {
     const i = act[k];

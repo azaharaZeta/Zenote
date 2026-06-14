@@ -442,6 +442,7 @@ const LAB_SPEC = [
     { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
+    { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 5000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
