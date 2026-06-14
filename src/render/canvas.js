@@ -61,8 +61,7 @@ export class Renderer {
     this.nTufts = n;
     // CHISPAS de plancton (abisal): puntito con halo radial suave, en teal/cian/verde-teal desaturado.
     // Pre-renderizadas → drawImage barato por mota. La vegetación = textura TENUE, distinta del glow de los bichos.
-    this.sparkSprites = [this._makeSparkSprite(150), this._makeSparkSprite(165), this._makeSparkSprite(180),
-                         this._makeSparkSprite(196), this._makeSparkSprite(212)]; // verde-algas → cian → azul-cian (variedad)
+    this.sparkSprites = (this.cfg.render.planktonHues || [150, 165, 180, 196, 212]).map((h) => this._makeSparkSprite(h)); // verde-algas → cian → azul-cian (variedad)
     const nSpark = this.sparkSprites.length;
     // Posiciones fijas de cada mota de plancton (solo el brillo/tamaño cambia con el recurso local).
     this.tuftX = new Float32Array(n);
@@ -198,7 +197,8 @@ export class Renderer {
           this._fgExp = vegExp;
         }
         const d = this._abyssImg.data, base = this._subBase, sIdx = this._subIdx, sWx = this._subWx, sWy = this._subWy, lut = this._fgLUT;
-        const invR = 1 / Rmax, cR = 10 * vegI, cG = 64 * vegI, cB = 70 * vegI;
+        const vc = cfg.render.vegColor || [10, 64, 70];
+        const invR = 1 / Rmax, cR = vc[0] * vegI, cG = vc[1] * vegI, cB = vc[2] * vegI;
         for (let idx = 0; idx < NP; idx++) {
           const q = idx * 4, a0 = res[sIdx[q]], fxc = sWx[idx];               // bilineal del food con índices/pesos cacheados
           const rT = a0 + (res[sIdx[q + 1]] - a0) * fxc, c0 = res[sIdx[q + 2]];
@@ -249,16 +249,24 @@ export class Renderer {
       // Opacidad ∝ N normalizado por su MÁXIMO → solo destacan las concentraciones; el fondo difuso casi no se ve.
       const nutrient = Wld.nutrient;
       if (nutrient && nutrient.length) {
+        // SUAVIZADO TEMPORAL (EMA) del campo SOLO para el DIBUJO: las manchas RESPIRAN despacio en vez de titilar al
+        // ritmo de los ticks (el nutriente fluctúa rápido: difusión + consumo del rebrote + depósitos por muerte). NO
+        // toca la simulación. `render.nutrientEase` = acercamiento por refresco (bajo = más calmado). En pausa no avanza.
+        let nut = this._nutSmooth;
+        if (!nut || nut.length !== nutrient.length) { nut = this._nutSmooth = new Float32Array(nutrient.length); nut.set(nutrient); }
+        const nutEase = cfg.render.nutrientEase != null ? cfg.render.nutrientEase : 0.1;
+        for (let k = 0; k < nut.length; k++) nut[k] += (nutrient[k] - nut[k]) * nutEase;
         // La viz resalta el CONTRASTE (concentración SOBRE la media), no el valor absoluto: un campo UNIFORME
         // (p.ej. el nutriente recién repartido al reiniciar) NO debe pintar una rejilla de celdas — solo las MANCHAS
         // reales de concentración. (Antes se normalizaba al máximo → uniforme ⇒ todas las celdas a tope ⇒ rejilla brillante.)
-        let maxN = 0, sumN = 0; for (let k = 0; k < nutrient.length; k++) { const v = nutrient[k]; sumN += v; if (v > maxN) maxN = v; }
+        let maxN = 0, sumN = 0; for (let k = 0; k < nut.length; k++) { const v = nut[k]; sumN += v; if (v > maxN) maxN = v; }
         const meanN = sumN / nutrient.length, span = maxN - meanN;
         if (span > meanN * 0.15 + 0.001) {   // solo si hay RELIEVE real (manchas); campo casi uniforme → no se pinta nada
           if (!this._nutrientSprite) {
             const S = 48, sp = document.createElement('canvas'); sp.width = sp.height = S;
             const sx = sp.getContext('2d'), g = sx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-            g.addColorStop(0, 'rgba(124,108,214,1)'); g.addColorStop(1, 'rgba(124,108,214,0)'); // índigo-violeta (nutriente mineral)
+            const nc = cfg.render.nutrientColor || [124, 108, 214];
+            g.addColorStop(0, `rgba(${nc[0]},${nc[1]},${nc[2]},1)`); g.addColorStop(1, `rgba(${nc[0]},${nc[1]},${nc[2]},0)`); // índigo-violeta (nutriente mineral)
             sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._nutrientSprite = sp;
           }
           const sprite = this._nutrientSprite, inv = 1 / span, sz = cellW * 2.0;
@@ -270,7 +278,7 @@ export class Renderer {
             let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
             let cy1 = ((this.camY + vhHalf - ty * H) / cellH | 0) + 1; if (cy1 > rows - 1) cy1 = rows - 1;
             for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-              const nv = (nutrient[cy * cols + cx] - meanN) * inv;  // 0..1: EXCESO sobre la media, normalizado al pico → uniforme = 0
+              const nv = (nut[cy * cols + cx] - meanN) * inv;  // 0..1: EXCESO sobre la media (suavizada), normalizado al pico → uniforme = 0
               if (nv < 0.25) continue;                               // solo las concentraciones POR ENCIMA de la media
               ctx.globalAlpha = (nv - 0.25) * 0.32;                  // sutil (máx ≈ 0.24)
               ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);

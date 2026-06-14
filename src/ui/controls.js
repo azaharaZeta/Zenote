@@ -522,6 +522,7 @@ const LAB_SPEC = [
     { k: 'render.vegIntensity', label: 'Brillo de la vegetación', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto resalta la vegetación (teal del pasto) en el sustrato. 0 = invisible; alto = muy presente. Solo visual, en vivo.' },
     { k: 'render.vegBoost', label: 'Realce del pasto tenue', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto se nota el pasto escaso: derecha = hasta el pasto ralo brilla; izquierda = solo el pasto denso. Solo visual, en vivo.' },
     { k: 'render.vegBlur', label: 'Suavizado del sustrato', min: 0, max: 4, step: 0.2, dec: 1, d: 'Difumina el sustrato para disolver la rejilla de celdas del recurso. 0 = nítido (se ve la cuadrícula); alto = nebulosa difusa. Solo visual, en vivo.' },
+    { k: 'render.nutrientEase', label: 'Reactividad del nutriente', min: 0.02, max: 0.5, step: 0.02, dec: 2, d: 'Cuánto siguen las manchas de nutriente al campo real. Izquierda = respiran despacio (calmado, no titilan); derecha = reaccionan al instante (titilan al ritmo de los ticks). Solo visual, en vivo.' },
   ]},
 ];
 

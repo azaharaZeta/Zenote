@@ -306,6 +306,11 @@ export const config = {
     vegIntensity: 1.0,        // (UI) Realce de la VEGETACIÓN (brillo del teal del pasto en el sustrato): 0 = invisible · alto = más presente. En vivo (lab).
     vegBoost: 0.77,           // (UI) Realce del pasto tenue (0→1): ALTO = hasta el pasto ralo se nota · BAJO = solo el denso brilla. Mapea a un exponente food→brillo (food∈[0,1]). En vivo (lab).
     vegBlur: 1.8,             // (UI) Difuminado del sustrato (px de buffer ≈ ×4.7 en mundo): disuelve la rejilla de celda del recurso. 0 = nítido (rejilla visible). En vivo (lab).
+    nutrientEase: 0.1,        // (UI) Suavizado TEMPORAL (EMA por refresco) de las manchas de NUTRIENTE: bajo = respiran despacio (no titilan) · alto = siguen al instante el campo (titilan al ritmo de los ticks). Solo visual, en vivo.
+    // ── COLORES del sustrato (CONSTANTES; sin slider → cambiarlos requiere recargar). Antes hardcodeados en canvas.js. ──
+    vegColor: [10, 64, 70],          // Color de la VEGETACIÓN (pasto): incremento de brillo teal sumado donde hay pasto, escalado por vegIntensity (RGB 0-255). Ver canvas._refreshGrass.
+    nutrientColor: [124, 108, 214],  // Color de las manchas de NUTRIENTE libre (índigo-violeta, RGB 0-255). Ver el sprite de nutriente en canvas._refreshGrass.
+    planktonHues: [150, 165, 180, 196, 212], // Tonos HSL (0-360) de las chispas de PLANCTON/micro-flora (verde-algas → cian → azul-cian; la variedad da riqueza). Ver canvas._initTufts.
     dprCap: 2,                // Tope de densidad de píxeles (DPR) en calidad ALTA
     // (UI) CAP de RESOLUCIÓN INTERNA (borde largo, px del backing store): el render corre por DEBAJO de la pantalla y
     // el CSS reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda
