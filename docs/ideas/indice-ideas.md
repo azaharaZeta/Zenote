@@ -29,7 +29,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
 | Coste de arrastre en locomoción | ✅ hecha (2026-06-14) | `energy.k_drag`/`dragRef` · SoA `drag`=Dmul · SPEC §3 · complementa A; remate de "revisar nado" |
 | Selección de presa por talla | ✅ hecha (2026-06-14) | vía entrada 8 del cerebro (talla relativa) — ver "entradas sensoriales"; SPEC §cerebro |
-| Nuevas entradas sensoriales del cerebro | 🔄 parcial (2026-06-14) | cobertura + talla + ESCAPABILIDAD de la presa HECHAS (BRAIN.I 7→10); dir. al congénere (manada) pendiente |
+| Nuevas entradas sensoriales del cerebro | ✅ hecha (2026-06-14) | cobertura + talla + ESCAPABILIDAD de la presa (BRAIN.I 7→10); dir. al congénere (manada) APLAZADA → nicho cazador sin masa crítica en pecera pequeña (memoria `pecera-pequena-contemplativa-scope`) |
 | Dibujado de vegetación: dosel (Fase 2) | ⬜ pendiente | análisis abajo (Fase 1 hecha) |
 | Cadáveres con FORMA (render) | ⬜ pendiente | análisis abajo — marcadores efímeros, no toca la sim |
 | Diversidad de talla bajo repro sexual | ⬜ pendiente | análisis abajo · memoria `sexual-repro-flattens-size` |
@@ -37,7 +37,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Apiñamiento de hermanos (render) | ⬜ pendiente | nota abajo |
 | LOD declarativo (desacoplar de la lista de elementos visuales) | ⬜ pendiente | análisis abajo — arquitectura/mantenibilidad del render |
 | Pecera: nutriente ESPACIAL + viz de la materia | ⬜ pendiente | análisis abajo — extiende el ecosistema cerrado (SPEC §3ter) |
-| Mejoras de UI / bugs menores | ⬜ pendiente | análisis abajo — bug cámara al soltar pinza · visor de especie en móvil |
+| Mejoras de UI / bugs menores | 🔄 parcial (2026-06-14) | leyenda Rol + bug cámara (pinza) HECHOS; visor de especie en móvil pendiente |
 | ¿"Reciclaje de cadáveres → pasto" es un leak? | ✅ resuelto | análisis abajo — NO es bug (en cerrado no se usa; en abierto, pérdida intencional del modelo no-conservativo) |
 | Variabilidad temporal del recurso (boom-bust) | ❌ descartada (probada) | nota abajo — no diversifica, mete desorden |
 | Bandeja de entrada (sin procesar) | ✅ vacía | procesada 2026-06-14 (ver final) |
@@ -111,8 +111,12 @@ TRIPLE al cuerpo ancho (ya es lento, ya paga A por masa, y pagaría B por arrast
 (`res[celda]/R_max` ∈[−1,1]) → uso táctico del refugio; entrada 8 = **talla relativa de la presa** → evitar presa grande;
 entrada 9 = **escapabilidad de la presa** (P2: cobertura de la celda DE la presa) → no atacar a la que escapará. Sembradas a peso ~0
 (`seedBrain` intacto) → su uso EMERGE. Medido headless (6000t, seed 123): la conducta base NO se degrada (pop ~1000-1100,
-trío trófico vivo, depredación a tasa constante). Mecánica en SPEC §cerebro. **PENDIENTE:** dirección al congénere más
-cercano (+2 entradas) → manada coordinada (la más especulativa). El análisis original se conserva abajo.
+trío trófico vivo, depredación a tasa constante). Mecánica en SPEC §cerebro. **APLAZADA — dirección al congénere (manada):**
+analizada y descartada para esta web (2026-06-14). El gremio cazador es minoría ápice (~40 ind.) SIN masa crítica para que
+una conducta de caza coordinada emerja por neuroevolución (deriva > selección con Ne tan bajo); además la entrada extra
+agrandaría el espacio de pesos del cerebro, empeorando el afinado justo en el gremio más pequeño. El cazador se acepta como
+minoría ápice ESTABLE. Las dinámicas de caza MACRO quedan para un futuro proyecto NATIVO/GPU (memoria `pecera-pequena-contemplativa-scope`).
+El análisis original se conserva abajo.
 
 El cerebro tiene 7 entradas: gradiente de comida (x,y), dirección a presa (x,y), dirección a amenaza (x,y), energía.
 **No percibe ni la cobertura ni a los congéneres** → ciertas conductas no PUEDEN evolucionar porque falta la señal.
@@ -227,11 +231,10 @@ población vía `trophicRole`, en `organism.js` — antes el rol no tenía omní
 conteos de `charts.hist*`; etiquetas recoloreadas con su conteo. El matiz "clave vs dato" se resolvió haciéndola ambas
 cosas (clave de color + barra de composición). Solo render/UI. (`fallback` a bloques iguales si no hay población.)
 
-**(b) Bug: salto de cámara al soltar UN dedo de la pinza (móvil).** ⬜ pendiente. Con dos dedos, soltar los dos a la vez
-va bien; soltar uno → la cámara salta. Diagnóstico: en `controls.js` (handlers de puntero), al pasar de 2→1 punteros,
-`endPointer` borra el levantado pero NO resetea `lastX/lastY` al que QUEDA → el siguiente `pointermove` calcula
-`dx = clientX − lastX` con un `lastX` viejo → salto. Fix acotado: en `endPointer`, si queda exactamente 1 puntero tras
-borrar, fijar `lastX/lastY` a su posición actual (delta 0 en el siguiente move). Bug claro, fix localizado.
+**(b) Bug: salto de cámara al soltar UN dedo de la pinza (móvil).** ✅ HECHA (2026-06-14). Al pasar de 2→1 punteros,
+`lastX/lastY` quedaban con un valor viejo (en modo 2-dedos no se actualizan) → el siguiente `pointermove` calculaba `dx`
+contra ese valor → salto. Fix: helper `releasePointer` que re-ancla `lastX/lastY` al dedo que QUEDA, compartido por
+`pointerup` y `pointercancel` (`controls.js`) → cubre también el cancel (frecuente en multitouch).
 
 **(c) Visor de especie (móvil).** ⬜ pendiente (de la bandeja). Añadir la DIETA al panel de especie en móvil; recordar
 qué grupos `<details>` del genoma quedaron desplegados al cerrar/reabrir el inspector o al cambiar de especie (hoy se

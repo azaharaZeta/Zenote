@@ -20,11 +20,13 @@ export class World {
     // (cantidad según la causa, ver sim._kill), DECAE cada tick (decayCarrion → devuelve una fracción al pasto =
     // ciclo de nutrientes cadáver→descomposición→vegetación) y la CONSUMEN los carroñeros (effCarn, ver sim.js).
     this.carrion = new Float32Array(this.cols * this.rows);
-    // CERRADO EN MATERIA (prototipo, world.closedMatter): pool GLOBAL de nutriente libre disuelto (materia
-    // mineralizada lista para que las plantas la capten en regen). Lo alimenta el metabolismo/nado/pérdidas
-    // (sim.js) y la mineralización de la carroña (decayCarrion); lo vacía el rebrote del pasto (regen). En el
-    // modelo ABIERTO queda a 0 e inerte. `sim.reset()` lo inicializa al sobrante del presupuesto de materia.
-    this.N = 0;
+    // CERRADO EN MATERIA (world.closedMatter): CAMPO ESPACIAL de nutriente libre disuelto POR CELDA (antes era un escalar
+    // global). Las plantas lo captan LOCALMENTE en regen → manchas fértiles donde muere/respira algo. Lo alimentan el
+    // metabolismo/nado/pérdidas (sim.js) y la mineralización de la carroña (decayCarrion), en la CELDA donde ocurre; se
+    // DIFUNDE despacio (diffuseNutrient); lo vacía el rebrote. Σ del campo = pool global (conservación). En ABIERTO queda
+    // a 0 e inerte. `sim.reset()` lo reparte del presupuesto. El nacimiento reúne nutriente de un VECINDARIO (nutrientAround).
+    this.N = new Float32Array(this.cols * this.rows);
+    this._nPrev = new Float32Array(this.cols * this.rows); // scratch de la difusión del nutriente (snapshot, sin GC)
     this._grow = new Float32Array(this.cols * this.rows); // scratch del rebrote cerrado (incrementos por celda; sin GC)
     // Capacidad por celda: gradiente espacial FIJO que crea nichos (más rico = más R_max local).
     this.capacity = new Float32Array(this.cols * this.rows);
@@ -199,11 +201,16 @@ export class World {
       }
     }
     if (need <= 0) return;
-    const want = need * epu;                                 // materia que pediría el rebrote pleno
-    let f = 1; if (want > this.N) f = this.N > 0 ? this.N / want : 0; // escala si el nutriente no alcanza
-    if (f <= 0) return;
-    for (let i = 0; i < res.length; i++) { const g = grow[i]; if (g > 0) res[i] += g * f; }
-    this.N -= want * f;                                      // el nutriente captado SALE del pool (conservación de materia)
+    // Cada celda capta de su PROPIO nutriente local N[i] (campo espacial) → el pasto crece donde hay nutriente (manchas
+    // fértiles junto a la descomposición). Si el N local no llega, se escala SOLO esa celda. Conserva: N[i] → res[i]·epu.
+    const N = this.N;
+    for (let i = 0; i < res.length; i++) {
+      let g = grow[i]; if (g <= 0) continue;
+      let want = g * epu;
+      if (want > N[i]) { want = N[i] > 0 ? N[i] : 0; g = want / epu; } // N local insuficiente → escala esta celda
+      if (g <= 0) continue;
+      res[i] += g; N[i] -= want;
+    }
   }
 
   // Decaimiento de la carroña (por tick). Lo que se descompone vuelve EN PARTE al pasto (`energy.corpseReturn`) =
@@ -218,7 +225,7 @@ export class World {
     for (let i = 0; i < carrion.length; i++) {
       const cv = carrion[i]; if (cv <= 0) continue;
       const d = cv * cd; carrion[i] = cv - d;                        // energía que se descompone este tick
-      if (closed) { this.N += d; }                                   // mineralización íntegra → nutriente libre (conserva)
+      if (closed) { this.N[i] += d; }                                // mineralización íntegra → nutriente libre LOCAL de la celda (el cadáver fertiliza SU zona; conserva)
       else if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // fracción→pasto (en unidades de recurso)
     }
   }
@@ -242,6 +249,42 @@ export class World {
     const c = cy * this.hCols + cx;
     this.cellNext[i] = this.cellHead[c];
     this.cellHead[c] = i;
+  }
+
+  // ── NUTRIENTE ESPACIAL (campo this.N) ──
+  // Difusión lenta del nutriente libre: cada tick reparte una fracción `nutrientDiffuse` hacia los 4 vecinos (toro) →
+  // las manchas fértiles se difuminan despacio en vez de teletransportarse global. CONSERVATIVA (Σ N constante en el
+  // toro: Σ media4 = Σ N); lee un snapshot (_nPrev) para ser independiente del orden de barrido.
+  diffuseNutrient() {
+    const rate = this.cfg.world.nutrientDiffuse; if (!rate || rate <= 0) return;
+    const N = this.N, prev = this._nPrev, cols = this.cols, rows = this.rows;
+    prev.set(N);
+    for (let y = 0; y < rows; y++) {
+      const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
+      for (let x = 0; x < cols; x++) {
+        const i = row + x, xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
+        const mean4 = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
+        N[i] = prev[i] + rate * (mean4 - prev[i]);
+      }
+    }
+  }
+
+  totalN() { let s = 0; const N = this.N; for (let i = 0; i < N.length; i++) s += N[i]; return s; } // pool global = Σ campo
+
+  // Nutriente del VECINDARIO (2R+1)² centrado en `cell` (toro). El nacimiento construye el cuerpo (bodyMatter) reuniendo
+  // nutriente de la ZONA del progenitor, no de una sola celda (que no tendría suficiente de golpe → bloquearía la cría).
+  nutrientAround(cell, R) {
+    const cols = this.cols, rows = this.rows, cx = cell % cols, cy = (cell / cols) | 0; let s = 0;
+    for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows;
+      for (let dx = -R; dx <= R; dx++) { const xx = ((cx + dx) % cols + cols) % cols; s += this.N[yy * cols + xx]; } }
+    return s;
+  }
+  // Retira `amount` del vecindario (2R+1)², proporcional al N de cada celda (conserva). Asume amount ≤ nutrientAround.
+  takeNutrientAround(cell, R, amount) {
+    const total = this.nutrientAround(cell, R); if (total <= 0) return;
+    const f = amount / total, cols = this.cols, rows = this.rows, cx = cell % cols, cy = (cell / cols) | 0;
+    for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows;
+      for (let dx = -R; dx <= R; dx++) { const idx = yy * cols + ((cx + dx) % cols + cols) % cols; this.N[idx] -= this.N[idx] * f; } }
   }
 }
 

@@ -19,7 +19,7 @@ const matter = (sim) => {
   let res = 0; for (let k = 0; k < W.resource.length; k++) res += W.resource[k];
   let car = 0; for (let k = 0; k < W.carrion.length; k++) car += W.carrion[k];
   let bio = 0; for (let i = 0; i < sim.cap; i++) if (sim.alive[i]) bio += sim.E[i] + sim.bodyMatter[i];
-  return W.N + res * epu + bio + car;
+  return W.totalN() + res * epu + bio + car;
 };
 
 config.pop.seed = 123;                       // semilla fija → corrida reproducible

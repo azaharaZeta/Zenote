@@ -117,8 +117,8 @@ export class Sim {
       const epu = cfg.resource.energyPerUnit;
       let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
       let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
-      this.world.N = cfg.world.matterBudget - res * epu - bio;
-      if (this.world.N < 0) this.world.N = 0; // presupuesto demasiado bajo → arranca sin nutriente libre (matter-starved)
+      let n0 = cfg.world.matterBudget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante de materia → nutriente libre inicial
+      this.world.N.fill(n0 / this.world.N.length); // repartido UNIFORME por el campo (la dinámica lo concentra luego en manchas)
     }
   }
 
@@ -402,6 +402,7 @@ export class Sim {
 
     W.regen();
     W.decayCarrion();   // los cadáveres se descomponen (y devuelven parte al pasto = ciclo de nutrientes)
+    if (closed) W.diffuseNutrient(); // CERRADO: el campo de nutriente libre se difunde despacio → manchas fértiles que migran
 
     // Reconstruir lista activa + spatial hash (O(n), sin asignaciones).
     this._rebuildActive();
@@ -553,7 +554,7 @@ export class Sim {
               const g = en.preyGain * Mj * this.effHunt[i];
               const remainder = Mj - g;                                   // ineficiencia trófica + lo no comido → restos
               let stored = g, room = this.eMax[i] - E[i]; if (room < 0) room = 0;
-              if (stored > room) { W.N += (stored - room); stored = room; } // rebosa el tope → nutriente
+              if (stored > room) { W.N[ci] += (stored - room); stored = room; } // rebosa el tope → nutriente local (celda del depredador)
               E[i] += stored;
               if (remainder > 0) this._depositCarrion(x[j], y[j], remainder);
             } else {
@@ -579,7 +580,7 @@ export class Sim {
               const g = en.preyGain * loss * this.effHunt[j];
               let stored = g, room = this.eMax[j] - E[j]; if (room < 0) room = 0; if (stored > room) stored = room;
               E[j] += stored;
-              W.N += (loss - stored); // herida disipada + lo que rebosa el tope de j → nutriente
+              W.N[ci] += (loss - stored); // herida disipada + lo que rebosa el tope de j → nutriente local
             } else {
               const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
               E[i] -= dmg;
@@ -698,7 +699,7 @@ export class Sim {
         // recuperarse comiendo). El coste efectivo se topa a la energía disponible → E baja a 0, nunca a negativo; esa
         // materia respirada vuelve al pool de nutriente. (Si el coste supera a E, muere de hambre igual en el chequeo de abajo.)
         let ret = metabCost; const av = E[i] > 0 ? E[i] : 0; if (ret > av) ret = av;
-        W.N += ret; E[i] -= ret;
+        W.N[tcell] += ret; E[i] -= ret; // materia respirada/nadada → nutriente de su celda actual
       } else {
         E[i] -= metabCost;
       }
@@ -721,7 +722,7 @@ export class Sim {
             if (units > maxByNeed) units = maxByNeed;
             E[i] += units * epu * effH;
             res[cell] -= units; // baja en unidades de recurso (nunca por debajo del refugio)
-            if (closed) W.N += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente (conserva)
+            if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente LOCAL (conserva)
           }
         } else {
           // — barrido de área (2·forageR+1)² celdas: el grande cubre más terreno y deplea más ancho —
@@ -741,7 +742,7 @@ export class Sim {
               const gain = units * epu * effH;
               E[i] += gain; eFalta -= gain;
               res[cell] -= units;
-              if (closed) W.N += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente (conserva)
+              if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente LOCAL (conserva)
             }
           }
         }
@@ -796,17 +797,17 @@ export class Sim {
           else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
           const bm = (cfg.energy.carcassValue || 0) * this.eMax[child]; // materia estructural del cuerpo de la cría
-          if (closed && W.N < bm) {
+          if (closed && W.nutrientAround(tcell, 2) < bm) { // ¿hay bm de nutriente en la ZONA (5×5) del progenitor? (1 celda no basta de golpe)
             // CERRADO: sin nutriente libre para construir el cuerpo → NO nace (TECHO de población ENDÓGENO por materia).
             // Rollback del _alloc; el progenitor conserva E y cooldown (reintenta cuando haya nutriente). No cuenta nacimiento.
             this.alive[child] = 0; this.free[this.freeTop++] = child; this.popCount--;
           } else {
             this.bodyMatter[child] = bm;
-            if (closed) W.N -= bm;                                       // el cuerpo se CONSTRUYE con nutriente del pool (sale de N)
+            if (closed) W.takeNutrientAround(tcell, 2, bm);              // el cuerpo se CONSTRUYE con nutriente de la ZONA del progenitor (sale del campo N, conserva)
             if (sexualBirth) this.birthCount.sexual++; else this.birthCount.asexual++;
             E[i] -= this.investE[i];
             const childE = Math.min(this.investE[i], this.eMax[child]);
-            if (closed) { const excess = this.investE[i] - childE; if (excess > 0) W.N += excess; } // sobra de inversión (tope de la cría) → pool
+            if (closed) { const excess = this.investE[i] - childE; if (excess > 0) W.N[tcell] += excess; } // sobra de inversión (tope de la cría) → nutriente local
             let ox = x[i] + (rng.next() - 0.5) * 6, oy = y[i] + (rng.next() - 0.5) * 6;
             if (wrap) {
               if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww;

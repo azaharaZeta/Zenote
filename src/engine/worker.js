@@ -75,7 +75,7 @@ function sampleHistory() {
   const epu = config.resource.energyPerUnit;
   histPop.push(s.popCount); histCarn.push(carn); histScav.push(scav); histHerb.push(herb); histOmni.push(omni);
   histVeg.push(sc > 0 ? sr / sc : 0);
-  histN.push(s.world.N); histGrass.push(sr * epu); histBio.push(bio); histCarrion.push(scar); histTick.push(s.tick);
+  histN.push(s.world.totalN()); histGrass.push(sr * epu); histBio.push(bio); histCarrion.push(scar); histTick.push(s.tick);
   const cd = s.deathCause, bc = s.birthCount, L = histLastCD;
   histDC.push(Math.max(0, cd.combat - L.combat)); histDS.push(Math.max(0, cd.starv - L.starv));
   histDA.push(Math.max(0, cd.age - L.age)); histDE.push(Math.max(0, cd.eaten - L.eaten));
@@ -232,7 +232,7 @@ function snapshot() {
     geneSel.buffer, heading.buffer, spd.buffer, tint.buffer, eye.buffer, face.buffer, deco.buffer, nodes.buffer,
     hist.buffer, species.buffer, role.buffer, serial.buffer, resource.buffer, carrion.buffer];
   postMessage({
-    type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.N,
+    type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.totalN(),
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount, role, serial,
     // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
@@ -303,10 +303,8 @@ onmessage = (e) => {
       // (M = N + Σres·epu + …). Cambiarlo en vivo reescalaría la materia de la vegetación EN PIE → un salto puntual.
       // Lo ABSORBE el pool de nutriente: N -= Σres·Δepu → la MATERIA total no salta (se reparte distinto, no se crea/borra).
       if (m.key === 'resource.energyPerUnit' && config.world.closedMatter) {
-        const oldEpu = config.resource.energyPerUnit;
-        let sres = 0; const r = sim.world.resource; for (let i = 0; i < r.length; i++) sres += r[i];
-        let nN = sim.world.N + sres * (oldEpu - m.value);   // compensa el cambio del término Σres·epu
-        sim.world.N = nN > 0 ? nN : 0;                       // si epu sube tanto que agotaría N, clamp a 0 (salto residual mínimo)
+        const oldEpu = config.resource.energyPerUnit, d = oldEpu - m.value, N = sim.world.N, r = sim.world.resource;
+        for (let i = 0; i < N.length; i++) { const v = N[i] + r[i] * d; N[i] = v > 0 ? v : 0; } // compensa Σres·epu POR CELDA → la materia total no salta
       }
       setPath(config, m.key, m.value);
       break;

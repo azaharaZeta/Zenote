@@ -26,6 +26,9 @@ export const config = {
                          //      gremios (herbívoros + carroñeros + CAZADORES) coexistiendo en 6/6 siembras (medido headless multi-seed, junto a
                          //      matterBudget 60k + forageReach 5 + massExp 1.3 + k_haul 0.2 + fleeSpeed 1.0). Más productividad = cadena trófica
                          //      más larga. DOS atractores: bajar a ~0.0017 → pecera magra (solo herbívoro/carroñero, sin cazadores); 0.0012 → ~350 plácido. En vivo.
+    nutrientDiffuse: 0.15, // (UI) (pecera) Difusión del campo de NUTRIENTE libre por tick: 0 = manchas fértiles muy LOCALES y
+                         //      persistentes (donde muere algo, el pasto rebrota antes ahí) … alto → se reparte casi global (como el
+                         //      N escalar previo). 0.15 = manchas que se difuminan despacio (ciclo de nutrientes geográfico). Solo cerrado. En vivo.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
