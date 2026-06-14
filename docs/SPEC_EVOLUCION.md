@@ -7,7 +7,7 @@ parte visual es secundaria al cumplimiento de estas reglas.
 > **Modelo v2.0 (jun 2026).** El cuerpo dejó de ser categorías hechas a mano
 > (cabeza/segmentos/apéndices) y pasó a ser un **genoma generativo por nodos**: forma y
 > locomoción EMERGEN de la selección. Si encuentras menciones a `m_app`, `m_seg`, `mod*`,
-> `s_*`, `maxAlive` o "carroña comestible" en código o notas viejas, son del modelo
+> `s_*` o `maxAlive` en código o notas viejas, son del modelo
 > anterior. El estado vivo está en `ESTADO.md` (foto) y `CHANGELOG.md` (hitos); el porqué histórico de v2.0, en
 > `archivo/AUDIT_EVOLUCION.md` (auditoría cerrada).
 
@@ -216,8 +216,8 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
 ## 3. Energética (el corazón de la selección)
 
 **Capacidad (ALOMÉTRICA, #3).** La talla es una **masa física**: `sizeMass = (radius / refRadius)^massExp`
-(normalizada al radio medio → un organismo medio tiene `sizeMass≈1`; `refRadius` = radio a size=0.5;
-`massExp` ≈ 1.5, tunable). `mass = sizeMass · massMul` (los nodos lóbulo/segmento suman masa real, `massMul ≥ 1`).
+(normalizada al radio medio → un organismo medio tiene `sizeMass≈1`; `refRadius` = radio en el punto medio
+del gen; exponente `massExp`, constante en `config.js`). `mass = sizeMass · massMul` (los nodos lóbulo/segmento suman masa real, `massMul ≥ 1`).
 La **capacidad escala con la masa** (almacén ∝ volumen): `E_max = E_max_base · mass`. La masa añade **reserva**
 (buffer para hambrunas), pero —clave— la **reproducción NO depende de la masa de nodos** (ver §4): la complejidad
 da reserva pero no frena la cría. `energyPerUnit` convierte recurso normalizado a energía
@@ -227,7 +227,8 @@ Por tick, cada organismo:
 
 - **Coste basal (ALOMÉTRICO, #3):**
   `c_base · mass^kleiber · (1 + k_metab·metab) · (1 + k_lifespan·(1−lifeFast)) · (1 + k_sense·sense + k_lure·lure)`.
-  El mantenimiento del cuerpo escala con `mass^kleiber` (**ley de Kleiber**, `kleiber ≈ 0.75`): los grandes gastan
+  El mantenimiento del cuerpo escala con `mass^kleiber` (**ley de Kleiber**: exponente sub-lineal ≈¾ por la propia
+  ley; el valor vive en `kleiber`, `config.js`): los grandes gastan
   **más en absoluto pero menos por unidad de masa** (economía de escala). Esto subsume el viejo coste lineal por
   tamaño y por masa de nodos (`k_size`/`k_body`, retirados). Visión y señuelo son **órganos** (coste aparte,
   multiplicativo). El término `(1 + k_lifespan·(1−lifeFast))` es el coste de **longevidad** (disposable soma, #12):
@@ -264,8 +265,8 @@ Por tick, cada organismo:
   - **Forrajeo por talla (`forageReach`):** un cuerpo grande pasta de un ÁREA `(2·forageR+1)²` celdas, con
     `forageR = round(forageReach · size)` → **cubre más terreno** y cosecha más aunque cada celda esté pelada (ventaja
     que la escasez local NO borra). Es lo que da PAYOFF a la talla: sin esto el ingreso de pasto no escala con la talla
-    pero el coste de cría (`reproRef ∝ sizeMass`) sí → todo deriva al mínimo (medido headless: `forageReach` 0 → talla
-    media 0.22; 3 (default, con omniPenalty 0.15) → DOS grupos de talla (~0.25 y ~0.55, 21% grandes) + carnívoros). `forageReach=0` = solo su celda (modelo previo).
+    pero el coste de cría (`reproRef ∝ sizeMass`) sí → todo deriva al mínimo (medido headless: con `forageReach`=0
+    la talla converge al mínimo; con su valor por defecto y `omniPenalty` activo → DOS grupos de talla, pequeño y grande, + carnívoros). `forageReach`=0 = solo su celda (modelo previo).
     FRONTERA: defino "más grande barre más área"; QUÉ talla gana lo decide la selección.
 - **Señuelo bioluminiscente** (`lure`): órgano FUNCIONAL gateado por `orn` (`orn > 0.12`),
   prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`), **extiende el alcance de
@@ -279,11 +280,11 @@ Por tick, cada organismo:
   `age.mortality · senesMult · (max(0, edad − Tm) / age.scale)²`, donde `Tm` = edad de madurez (gen `mature_age`)
   y `senesMult = lerp(age.senesSlow, age.senesFast, lifeFast)` (gen `senescence`). Antes de madurar no hay
   riesgo de vejez. Sin tope duro.
-- **Reciclaje del cadáver:** al morir **por hambre o vejez** deposita `corpseReturn · E` como recurso
-  en su celda (respetando `R_max`). Una presa muerta **por depredación NO deposita cadáver** (su
-  energía ya se la queda el depredador → la energía se conserva, no se contabiliza dos veces).
-  *(No existe subsistema de "carroña comestible": se retiró en auditoría #11; el cadáver solo
-  realimenta el campo de recurso.)*
+- **Reciclaje del cadáver:** toda muerte deposita un cuerpo en el campo `carrion` de su celda (la presa
+  **cazada** solo deja *sobras* —`scrapReturn`— porque el depredador ya se llevó casi todo); la carroña
+  **decae** y realimenta el ciclo de nutrientes (vuelve en parte al pasto vía `corpseReturn` en el modelo
+  abierto, o **mineraliza** al nutriente `N` en la pecera cerrada) y la **consumen los carroñeros**.
+  Mecánica completa en **§3bis** (carroña) y **§3ter** (pecera).
 
 La selección **NO es una función de fitness explícita**: simplemente, **los que se quedan sin energía
 mueren y no se reproducen.** El fitness emerge.
@@ -319,8 +320,9 @@ Afilar (`tipShape < 0.5`, alarga el nodo) da más alcance → liga la Capa 1 (fo
   atacante se zafa, con prob. `fleeSpeed · (vmax_presa/vmax_atacante − 1)` (tope 0.95). Convierte la persecución en un
   **duelo de velocidad** → la velocidad y la **morfología propulsora** (colas/aletas) pasan a ser selectivas (carrera
   armamentística presa↔cazador). `fleeSpeed=0` = solo cobertura (modelo previo). Medido: con cobertura baja
-  (`refuge.strength≈0.3`) la `vmax` evoluciona al alza por MORFOLOGÍA (no por el gen de esfuerzo, que se queda en su
-  óptimo de coste); demasiado alto (o cobertura nula) → la presa escapa siempre y los carnívoros se quedan sin comer.
+  (`refuge.strength` en su valor por defecto, modesto) la `vmax` evoluciona al alza por MORFOLOGÍA (no por el gen de
+  esfuerzo, que se queda en su óptimo de coste); demasiado alto (o cobertura nula) → la presa escapa siempre y los
+  carnívoros se quedan sin comer.
   **Sin esto la velocidad es ~neutra**: forrajear no es una carrera (deriva al gradiente), así que nada la premiaba.
 - **Tiempo de manejo (`handlingTime`):** tras una captura el ganador no puede atacar durante N ticks
   (digestión). Satura la tasa de depredación → la presa amortigua → coexistencia en vez de colapso.
@@ -350,7 +352,7 @@ Toda muerte deposita un **cuerpo** en el campo `carrion` de su celda (en unidade
 La carroña **decae** cada tick (`resource.carrionDecay`); lo descompuesto vuelve en parte al pasto
 (`energy.corpseReturn`) → **ciclo de nutrientes** (cadáver→descomposición→vegetación). La **consume** quien puede
 procesar carne (`effCarn`, ritmo `resource.carrionAbsRate`) → puente carroñero que da colchón a los carnívoros en la
-escasez (medido: a R_regen 0.0035 multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
+escasez (medido a `R_regen` bajo: el carroñeo multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
 
 **Eje CAZA ↔ CARROÑA (Fase 2, gen `scav`):** la capacidad carnívora (`meat = diet·omni`) se reparte entre cazar
 presa VIVA (`effHunt = meat·(1−scav)·spec`) y CARROÑEAR cadáveres (`effScav = meat·scav·spec·(1+k_scavThin·thin)`),
@@ -390,14 +392,14 @@ materia — como un ecosistema real). **Moneda única** (materia = unidades de e
 - **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgents`. El
   sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
 - **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";
-  el seed decide → cada Sembrar varía. Por defecto `closedRegen=0.0034` + `pop.maxAgents=2000` + `combat.fleeSpeed=1.2`
-  + `diet.scavPenalty=0.30` → régimen de **RED TRÓFICA**: herbívoros + carroñeros + CAZADORES de presa viva coexisten
-  (trío estable en ~4/6 siembras; los cazadores son una minoría ÁPICE fluctuante, los carroñeros el grueso del comecarne,
-  los herbívoros la base). CLAVE: cazar presa viva exige productividad alta (mundo magro → solo el carroñeo rinde), y esa
-  productividad sube la pop → exige holgura de pool (`maxAgents` 2000; con 1000 satura y se distorsiona). Bajar a
-  `closedRegen≈0.0017` → pecera magra y contemplativa (~700-900) pero el gremio CAZADOR es FRÁGIL (colapsa en varias
-  siembras → solo herbívoro/carroñero); 0.0012 → ~350 plácido solo-herbívoro. La siembra de proto-carnívoros
-  (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
+  el seed decide → cada Sembrar varía. Con los valores por defecto (`world.closedRegen` + `pop.maxAgents` +
+  `combat.fleeSpeed` + `diet.scavPenalty`, todos en `config.js`) → régimen de **RED TRÓFICA**: herbívoros + carroñeros +
+  CAZADORES de presa viva coexisten (trío estable en la mayoría de siembras; los cazadores son una minoría ÁPICE
+  fluctuante, los carroñeros el grueso del comecarne, los herbívoros la base). CLAVE: cazar presa viva exige
+  productividad alta (mundo magro → solo el carroñeo rinde), y esa productividad sube la pop → exige holgura de pool
+  (`maxAgents` con margen; si queda corto, satura y se distorsiona). Bajar `closedRegen` → pecera magra y contemplativa
+  pero el gremio CAZADOR es FRÁGIL (colapsa en varias siembras → solo herbívoro/carroñero); bajarlo aún más → población
+  plácida solo-herbívora. La siembra de proto-carnívoros (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
 - **Guard de `energyPerUnit`** (epu): es el tipo de cambio recurso↔materia y entra en el balance. Cambiarlo EN VIVO
   reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`) cuando
   `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva

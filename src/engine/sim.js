@@ -379,6 +379,7 @@ export class Sim {
     const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
+    const epuScent = epu * cfg.resource.carrionScent; // olfato de carroña: el ∇carroña pesa effScav/epuScent en el gradiente de búsqueda
     const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
     const handlingTime = cfg.combat.handlingTime;
@@ -394,10 +395,12 @@ export class Sim {
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
     const fleeSpeed = cfg.combat.fleeSpeed || 0;                            // escape por VELOCIDAD relativa (0 = off, modelo previo)
+    const fleeCap = cfg.combat.fleeCap;                                     // tope de la prob. de escape por velocidad (la presa nunca se zafa con certeza)
     const lureReach = cfg.combat.lureReach || 0;                            // alcance de caza extra por señuelo (anglerfish)
     const lureAttract = cfg.combat.lureAttract || 0;                        // (P1) ATRACCIÓN de presa por señuelo (emboscada): sesga el gradiente de comida de los vecinos hacia el portador (0 = off)
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
+    const birthGatherR = world.birthGatherR;                               // (pecera) radio en celdas del vecindario del que la cría reúne materia al nacer
     const closed = world.closedMatter; // CERRADO EN MATERIA: re-enruta toda pérdida al pool de nutriente (W.N) en vez de evaporarla
 
     W.regen();
@@ -430,7 +433,7 @@ export class Sim {
       // Gradiente DEPENDIENTE DE DIETA: cada organismo asciende hacia lo que PUEDE comer — vegetación
       // (effHerb·∇recurso) y/o carroña (effScav·∇carroña, escalada a unidades de recurso) → el carroñero navega
       // hacia los cadáveres con la MISMA conducta de búsqueda ya evolucionada (sin añadir entrada al cerebro).
-      const effHi = this.effHerb[i], cS = this.effScav[i] / (epu * 3);
+      const effHi = this.effHerb[i], cS = this.effScav[i] / epuScent;
       let dfx = effHi * (res[xr] - res[xl]) + cS * (carrion[xr] - carrion[xl]);
       let dfy = effHi * (res[yb] - res[yt]) + cS * (carrion[yb] - carrion[yt]);
       // (P1) gradiente CRUDO (sin normalizar aún): el señuelo de vecinos le sumará una atracción (escaneo abajo) y se
@@ -531,7 +534,7 @@ export class Sim {
           if (coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])]) preyEscapes = true;
           else if (fleeSpeed > 0) {
             const myV = this.vmax[i], adv = myV > 1e-4 ? this.vmax[bestContact] / myV - 1 : 0; // ventaja de velocidad relativa de la presa (myV: renombrado para no ensombrecer el `vc`=visCos de arriba)
-            if (adv > 0) { let pe = fleeSpeed * adv; if (pe > 0.95) pe = 0.95; if (rng.next() < pe) preyEscapes = true; }
+            if (adv > 0) { let pe = fleeSpeed * adv; if (pe > fleeCap) pe = fleeCap; if (rng.next() < pe) preyEscapes = true; }
           }
         }
         if (wantsAttack && !preyEscapes) {
@@ -797,13 +800,13 @@ export class Sim {
           else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
           const bm = (cfg.energy.carcassValue || 0) * this.eMax[child]; // materia estructural del cuerpo de la cría
-          if (closed && W.nutrientAround(tcell, 2) < bm) { // ¿hay bm de nutriente en la ZONA (5×5) del progenitor? (1 celda no basta de golpe)
+          if (closed && W.nutrientAround(tcell, birthGatherR) < bm) { // ¿hay bm de nutriente en la ZONA (5×5) del progenitor? (1 celda no basta de golpe)
             // CERRADO: sin nutriente libre para construir el cuerpo → NO nace (TECHO de población ENDÓGENO por materia).
             // Rollback del _alloc; el progenitor conserva E y cooldown (reintenta cuando haya nutriente). No cuenta nacimiento.
             this.alive[child] = 0; this.free[this.freeTop++] = child; this.popCount--;
           } else {
             this.bodyMatter[child] = bm;
-            if (closed) W.takeNutrientAround(tcell, 2, bm);              // el cuerpo se CONSTRUYE con nutriente de la ZONA del progenitor (sale del campo N, conserva)
+            if (closed) W.takeNutrientAround(tcell, birthGatherR, bm);              // el cuerpo se CONSTRUYE con nutriente de la ZONA del progenitor (sale del campo N, conserva)
             if (sexualBirth) this.birthCount.sexual++; else this.birthCount.asexual++;
             E[i] -= this.investE[i];
             const childE = Math.min(this.investE[i], this.eMax[child]);

@@ -79,7 +79,7 @@ export function computePhenotype(sim, i) {
   // Prominencia = largo (o_len) × tamaño del bulbo (o_bulb), gateada por orn (que haya señuelo). Clave: depende
   // de o_len/o_bulb (DECORATIVOS, deriva LIBRE) y NO de orn (fijado por selección sexual) → la presión de caza
   // los mueve limpiamente: carnívoros evolucionan señuelos largos y grandes; herbívoros, cortos y pequeños.
-  const lure = g[b + G.orn] > 0.12 ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
+  const lure = g[b + G.orn] > cfg.combat.lureGate ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
   sim.lure[i] = lure;
 
   // ALCANCE DE CAPTURA MORFOLÓGICO (Capa 2): los apéndices que apuntan AL FRENTE (plan.fwdReach, en radios de
@@ -110,7 +110,7 @@ export function computePhenotype(sim, i) {
   // elongación empuja a herbívoros (anchos) y carnívoros (aerodinámicos) a formas OPUESTAS → divergencia por dieta.
   // Solo rinde al que de verdad pasta (effHerb); el carnívoro ancho gana ~nada (come carne) → no se ensancha por esto.
   const breadth = 1 - Math.min(1, (plan.elongN - 1) / (lo.elongMax - 1)); // 1 = ancho/redondo · 0 = aerodinámico
-  sim.absEff[i] = cfg.resource.absRate * (0.5 + metab) *
+  sim.absEff[i] = cfg.resource.absRate * (cfg.resource.absMetabBase + metab) *
     (1 + en.k_graze * (massMul - 1)) * (1 + en.k_grazeWide * breadth);
 
   // COSTE del ALETEO (Capa 3): el golpe activo gasta energía → aletear MULTIPLICA el coste de NADO (sim.js).

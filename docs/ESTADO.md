@@ -31,7 +31,7 @@ Genoma de **201 genes/agente** (SoA, typed arrays):
   la materia total se CONSERVA y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA. El
   modelo abierto (el sol crea biomasa de la nada) queda como alternativa (toggle del lab). Nació de una auditoría de
   energía (el abierto no conserva: ~17% de la entrada es biomasa conjurada; la pop se clava en `maxAgents`). Régimen de
-  **RED TRÓFICA** por defecto (`closedRegen` 0.0034 + `maxAgents` 2000 + `fleeSpeed` 1.2 + `scavPenalty` 0.30 →
+  **RED TRÓFICA** por defecto (`closedRegen` + `maxAgents` + `fleeSpeed` + `scavPenalty`, valores en `config.js` →
   herbívoros + carroñeros + cazadores coexisten, trío en ~4/6 siembras; los cazadores, minoría ápice fluctuante); el
   nutriente libre `N` se ve en la cabecera. Mecánica → [SPEC §3ter](SPEC_EVOLUCION.md); lección → memoria `energy-ledger-not-conserved`.
 
@@ -47,7 +47,7 @@ parches densos, expuesta en claros pastados) · selección sexual (orn/pref) · 
 **morfología funcional (Capas 1-3):** la FORMA de cada nodo evoluciona (`tipShape`: púa/garra/tentáculo ↔ elipse ↔
 aleta/paleta) con compromiso físico; apéndices frontales dan **alcance de caza** (`morphReach`) y los cuerpos
 anchos **mejor pastoreo** (`k_grazeWide`) → nichos divergentes cazador↔pastador; el **modo de propulsión** evoluciona
-(`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty` (0.15).
+(`gaitMode`: ondular=crucero barato ↔ aletear=ráfaga cara). La especialización la destraba `diet.omniPenalty`.
 · **CARROÑA y GUSANO carroñero:** toda muerte deja cadáver (campo `carrion`, decae→pasto = ciclo de nutrientes); el
 gen `scav` reparte la carne en CAZAR↔CARROÑEAR (`effHunt`/`effScav`, `scavPenalty`) y el carroñeo rinde con cuerpo
 FINO (`k_scavThin`) → emerge un **gusano** pequeño y elongado que ronda los cadáveres (proto-forma sembrada para

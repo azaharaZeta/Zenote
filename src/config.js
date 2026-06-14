@@ -29,6 +29,8 @@ export const config = {
     nutrientDiffuse: 0.15, // (UI) (pecera) Difusión del campo de NUTRIENTE libre por tick: 0 = manchas fértiles muy LOCALES y
                          //      persistentes (donde muere algo, el pasto rebrota antes ahí) … alto → se reparte casi global (como el
                          //      N escalar previo). 0.15 = manchas que se difuminan despacio (ciclo de nutrientes geográfico). Solo cerrado. En vivo.
+    birthGatherR: 2,     // (pecera) Radio EN CELDAS del vecindario (2·R+1)² del progenitor del que la cría reúne materia para construir
+                         //      su cuerpo al nacer (una celda sola no basta de golpe). Conserva sea cual sea R (sim.js/world.takeNutrientAround).
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
@@ -38,10 +40,15 @@ export const config = {
     R_max: 1.0,         // Recurso máximo por celda
     R_regen: 0.0035,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
+    capFloor: 0.1,      // Suelo de la capacidad de carga (fracción de R_max) en el gradiente 'perlin': ninguna celda baja de
+                        //      capFloor·R_max → ningún baldío permanente (ver world._buildGradient). El modo 'center' usa su propia forma.
     patchiness: 0.75,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
                         //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
+    seedFloor: 0.04,    // Rebrote espontáneo mínimo (banco de semillas) en el rebrote logístico: una calva total aislada rebrota
+                        //      lentísimo en vez de quedar a cero → evita el estado ABSORBENTE (vegetación global a cero). world.regen/_regenClosed.
     tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
     absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
+    absMetabBase: 0.5,  // Suelo del factor metabólico en la absorción de pasto: absEff ∝ (absMetabBase + metab) → a metab 0 aún se pasta algo (organism.absEff).
     energyPerUnit: 10,  // (UI) Energía obtenida por unidad de recurso comida
     grazeRefuge: 0.20,   // (UI) Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
     forageReach: 5,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
@@ -58,6 +65,8 @@ export const config = {
                         //      puede procesar carne (∝ effCarn). Alto = vacían el cadáver rápido. Medido headless (R_regen
                         //      0.0035): 0 → carnívoros ~48; 0.30 → ~284 (×6, pero sobre-dispara); 0.15 = puente SUAVE.
                         //      (Fase 1: el carroñeo lo hace effCarn; la Fase 2 lo hará un eje de dieta propio → gusano.)
+    carrionScent: 3,    // Escala del "olfato" de carroña en el gradiente de búsqueda: ∇carroña pesa effScav/(energyPerUnit·carrionScent)
+                        //      frente a ∇pasto (sim.js). Más alto = la carroña tira menos. Solo navegación; NO afecta a la materia.
   },
 
   // ───── Población ─────
@@ -258,17 +267,19 @@ export const config = {
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
     failDamage: 0.1,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
     fleeSpeed: 1.0,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
-                        //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope 0.95). Hace que huir/cazar sea un DUELO de
+                        //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope `fleeCap`). Hace que huir/cazar sea un DUELO de
                         //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
                         //      cobertura baja (refuge.strength) o el escondite lo enmascara. 0 = solo cobertura (modelo previo).
                         //      (2026-06-14, tuning DIVERSIDAD) 1.0: caza algo más fácil → sostiene los cazadores en 6/6 siembras junto al resto del
                         //      combo (matterBudget 60k, closedRegen 0.004, forageReach 5). (El viejo aviso "1.0 = boom-bust" era en el régimen anterior,
                         //      no en este combo.) Afecta también al modelo abierto.
                         //      >4 o cobertura nula → la presa escapa demasiado y los cazadores se quedan sin comer (medido).
+    fleeCap: 0.95,       // Tope de la probabilidad de escape por velocidad (la presa nunca se zafa con certeza absoluta). Ver fleeSpeed y sim.js.
     handlingTime: 31,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
     preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
+    lureGate: 0.12,      // Umbral del gen 'orn' a partir del cual el organismo expresa SEÑUELO bioluminiscente (gate del órgano; ver organism.js).
     lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
     lureAttract: 0.5,    // (UI) (P1, EMBOSCADA) ATRACCIÓN de presa por el señuelo: lo emiten como "comida aparente" → sesga el
                          //      gradiente de comida de los vecinos que lo VEN hacia el portador (∝ prominencia · 1/dist²). Hace emerger

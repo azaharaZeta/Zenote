@@ -79,8 +79,8 @@ export class World {
     // carga FIJA, suelo 0.1·Rmax para que ninguna celda sea baldío permanente). La estructura de PARCHES
     // ya no se esculpe aquí: EMERGE de la dinámica de rebrote (ver regen() y resource.patchiness).
     const noise = this._valueNoiseField();
-    const N = cols * rows;
-    for (let i = 0; i < N; i++) this.capacity[i] = Rmax * (0.1 + 0.9 * noise[i]);
+    const N = cols * rows, capFloor = this.cfg.resource.capFloor; // suelo de capacidad (fracción de R_max): ninguna celda es baldío permanente
+    for (let i = 0; i < N; i++) this.capacity[i] = Rmax * (capFloor + (1 - capFloor) * noise[i]);
   }
 
   // Ruido fractal (varias octavas) PERIÓDICO → la capacidad tesela sin costura en el toro.
@@ -141,7 +141,7 @@ export class World {
   // O(celdas·4); lee del snapshot del tick anterior (_resPrev) para ser independiente del orden de barrido.
   regen() {
     if (this.cfg.world.closedMatter) { this._regenClosed(); return; } // pecera: el pasto crece consumiendo N (abajo)
-    const dr = this.cfg.resource.R_regen;
+    const dr = this.cfg.resource.R_regen, seedFloor = this.cfg.resource.seedFloor; // seedFloor = banco de semillas (rebrote espontáneo mínimo)
     const cap = this.capacity, res = this.resource;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
     if (p <= 0) {
@@ -161,9 +161,9 @@ export class World {
           const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
           const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
           // Rebrote logístico (necesita biomasa local) + colonización desde vecinos (ambos ∝ cap) + un
-          // SUELO de semilla espontánea (0.04) que da a una calva total aislada un rebrote lentísimo →
+          // SUELO de semilla espontánea (resource.seedFloor) que da a una calva total aislada un rebrote lentísimo →
           // evita el estado absorbente (vegetación global a cero del que nunca se sale). Banco de semillas.
-          let logGrow = dr * (0.04 + r / c + meanNb / c); if (logGrow > head) logGrow = head;
+          let logGrow = dr * (seedFloor + r / c + meanNb / c); if (logGrow > head) logGrow = head;
           let linGrow = dr < head ? dr : head;                // el clásico (para mezclar según p)
           res[i] = r + (1 - p) * linGrow + p * logGrow;
         }
@@ -177,7 +177,7 @@ export class World {
   // llega para todo, ESCALA el crecimiento por igual (factor f, sin sesgo de orden de barrido) y resta de N lo captado.
   _regenClosed() {
     const wc = this.cfg.world;                              // tasa de fotosíntesis PROPIA del modo cerrado (no pisa resource.R_regen del abierto)
-    const dr = wc.closedRegen != null ? wc.closedRegen : this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit;
+    const dr = wc.closedRegen != null ? wc.closedRegen : this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit, seedFloor = this.cfg.resource.seedFloor;
     const cap = this.capacity, res = this.resource, grow = this._grow;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
     const cols = this.cols, rows = this.rows;
@@ -193,7 +193,7 @@ export class World {
           if (head <= 0) { grow[i] = 0; continue; }
           const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
           const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
-          let logGrow = dr * (0.04 + r / c + meanNb / c); if (logGrow > head) logGrow = head;
+          let logGrow = dr * (seedFloor + r / c + meanNb / c); if (logGrow > head) logGrow = head;
           const linGrow = dr < head ? dr : head;
           let inc = (1 - p) * linGrow + p * logGrow; if (inc < 0) inc = 0;
           grow[i] = inc; need += inc;
