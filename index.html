@@ -25,8 +25,14 @@
     </header>
 
     <div class="readout">
-      <span id="fps">— FPS</span>
-      <span id="stat">—</span>
+      <!-- Los stats (fps · t/s · pob · mundo · tick) envuelven DENTRO de su propio bloque (gap pequeño entre líneas);
+           el botón de modo queda a su DERECHA, centrado, sin participar del wrap del texto (no infla la línea). -->
+      <div class="readout-stats">
+        <span id="fps">— FPS</span>
+        <span id="stat">—</span>
+      </div>
+      <!-- Botón Simple/Laboratorio: a la derecha del bloque de stats, bajo "contemplar". -->
+      <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
     </div>
 
     <!-- Velocidad de simulación: arriba del todo, bajo el título (control principal). En contemplación se reubica a la barra flotante (controls.js setHidden). -->
@@ -40,8 +46,14 @@
       <div id="speedReal" class="speed-real">velocidad real: —</div>
     </div>
 
+    <!-- Zoom: justo bajo Velocidad (control principal de vista). Visible en ambos modos. -->
+    <div class="ctrl">
+      <label>Zoom <output id="zoomVal"></output></label>
+      <input id="zoomSlider" type="range" min="1" max="20" step="0.1" value="1" />
+    </div>
+
+    <!-- Fila de acción: aviso "pendiente reiniciar" + Calidad (en SIMPLE; en LAB, Calidad → Rendimiento). El botón de modo se movió arriba, al readout. -->
     <div class="row btn-row">
-      <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
       <!-- Aviso: hay parámetros ↻ cambiados que aún no se han aplicado. Oculto hasta que se toca uno; pulsarlo reinicia. -->
       <button id="reseedPending" class="reseed-pending" type="button" title="Hay cambios (↻) que requieren Reiniciar para aplicarse. Pulsa para reiniciar ahora.">↻ pendiente reiniciar</button>
       <button id="qualityBtn" class="mode-btn" title="Calidad gráfica: Baja (móvil) · Alta · Máxima. Baja va más fluido (sin bloom ni adornos).">Calidad: Alta</button>
@@ -102,11 +114,6 @@
     <div class="death-chart">
       <canvas id="birthChart" class="chart"></canvas>
       <canvas id="deathChart" class="chart"></canvas>
-    </div>
-
-    <div class="ctrl">
-      <label>Zoom <output id="zoomVal"></output></label>
-      <input id="zoomSlider" type="range" min="1" max="20" step="0.1" value="1" />
     </div>
 
     <!-- Sección LABORATORIO: inline en el panel, visible solo en modo avanzado (#panel.advanced) -->

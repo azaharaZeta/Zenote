@@ -135,9 +135,9 @@ function frame(now) {
     // Readout COMÚN a ambos modos: fps · t/s · población · tick. Ancho FIJO (padStart + monospace) → no "bailan".
     const pad = (v, n) => String(v).padStart(n);
     fpsEl.textContent = `${pad(fps, 3)} FPS · ${pad(tps, 4)} t/s`;
-    // En PECERA CERRADA se muestra también el nutriente libre (gris, igual que en la gráfica de biomasa). pob en azul; tick en su span (oculto en simple).
-    const nutr = app.cfg.world.closedMatter ? `<span style="color:#a0a4ac"> · nutriente ${pad(Math.round(simProxy.N), 5)}</span>` : '';
-    statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span>${nutr}<span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
+    // Readout: pob (azul) · mundo = TAMAÑO del mundo en unidades (gris) · tick (en su span, oculto en simple). El nutriente libre se ve en la curva de biomasa.
+    const wsz = `<span style="color:#8a93a0"> · mundo ${pad(app.cfg.world.size, 4)}</span>`;
+    statEl.innerHTML = `<span style="color:#5a7cd1">pob ${pad(simProxy.popCount, 4)}</span>${wsz}<span class="r-tick"> · tick ${pad(simProxy.tick, 6)}</span>`;
     const realTpf = fps > 0 ? (tps / fps).toFixed(1) : '0';
     if (speedRealEl) speedRealEl.textContent = `velocidad real: ${tps} ticks/s · ${realTpf} ticks/frame · ${fps} fps`;
   }

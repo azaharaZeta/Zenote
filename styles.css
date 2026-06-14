@@ -55,8 +55,13 @@ html, body {
 #panel h1 { font-size: 15px; font-weight: 400; margin: 0; letter-spacing: 1px; color: var(--accent); }
 
 /* monospace + white-space:pre → los `padStart` del readout reservan hueco fijo por dígito → los valores no "bailan". */
-.readout { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin: 8px 0;
-           font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+/* readout = [bloque de stats, que envuelve INTERNAMENTE] + [botón de modo a la derecha, centrado vertical]. El botón
+   NO participa del wrap del texto: antes, al ser más alto, inflaba una línea → caía DEBAJO en lab y dejaba un salto
+   grande entre las dos líneas de texto en simple. Ahora va de hermano fijo a la derecha (bajo "contemplar"). */
+.readout { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); margin: 8px 0; }
+.readout-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; flex: 1 1 auto; min-width: 0;
+                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+.readout .mode-btn { margin: 0; flex: 0 0 auto; }
 
 .row { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
 

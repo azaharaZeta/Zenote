@@ -687,9 +687,10 @@ function setupLab(app, send) {
     // El botón Calidad vive en la sección "Rendimiento" en LAB y vuelve al btn-row (junto a "Laboratorio") en SIMPLE
     // → el modo simple queda igual que antes. Mover el nodo conserva su listener (un único botón, sin duplicar).
     const qBtn = $('qualityBtn'), perfRow = $('perfRow'), perfBody = perfRow && perfRow.querySelector('.perf-body');
+    const btnRow = panel.querySelector('.btn-row');                     // modeBtn ya NO vive en el btn-row (se movió al readout); Calidad vuelve aquí en SIMPLE
     if (qBtn && perfBody) {
       if (adv) perfBody.insertBefore(qBtn, perfBody.firstChild);        // primer control del bloque Rendimiento
-      else modeBtn.parentNode.insertBefore(qBtn, modeBtn.nextSibling);  // de vuelta al btn-row (junto a "Laboratorio")
+      else if (btnRow) btnRow.insertBefore(qBtn, btnRow.firstChild);    // de vuelta al btn-row (modo simple)
     }
     // En modo SIMPLE el color es siempre "visión real" (el selector "Colorear por" queda oculto) → fuérzalo.
     // (Disparamos 'change' en el <select> para reusar su handler, que vive en otro ámbito y actualiza la leyenda.)
