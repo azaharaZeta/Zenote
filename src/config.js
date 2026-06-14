@@ -253,7 +253,7 @@ export const config = {
   combat: {
     enabled: true,       // (UI) Activar depredación/combate
     sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
-    failDamage: 0.2,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
+    failDamage: 0.1,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
     fleeSpeed: 1.0,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
                         //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope 0.95). Hace que huir/cazar sea un DUELO de
                         //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
