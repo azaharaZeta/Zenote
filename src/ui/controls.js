@@ -428,10 +428,8 @@ export function setupControls(app) {
 // Fuente única de verdad: lee los valores iniciales de la config (defaults de config.js) y, al mover un
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
-  { cat: '🫧 Pecera sellada (materia)', items: [
-    { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
-    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
-  ]},
+  // El toggle "Ecosistema cerrado (pecera)" se RETIRÓ de la UI: la pecera es PERMANENTE (config.world.closedMatter sigue
+  // true por defecto; el modo abierto solo se podría reactivar editando config.js). "Fotosíntesis" se movió a "Comida y recurso".
   { cat: '👥 Población y sembrado', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
     { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
@@ -441,6 +439,8 @@ const LAB_SPEC = [
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
   { cat: '🍃 Comida y recurso', items: [
+    // Fotosíntesis (pecera): regulador PRINCIPAL de la comida del mundo (pecera permanente → siempre activo). Antes vivía en la sección "Pecera sellada", ya retirada.
+    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regulador principal de la comida del mundo (más alto = más organismos y depredadores).' },
     { k: 'resource.R_regen', mode: 'open', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Rebrote del pasto en el modo ABIERTO: regulador principal de cuánta comida sostiene el mundo. En la pecera cerrada manda "Fotosíntesis (pecera)".' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que no se puede pastar (queda como semilla): frena el sobrepastoreo.' },
     { k: 'resource.forageReach', label: 'Alcance de forrajeo (talla)', min: 0, max: 8, step: 1, dec: 0, d: 'Cuántas celdas alrededor pasta un cuerpo grande: da ventaja a la talla (hace emerger el grupo grande). 0 = solo su celda.' },
@@ -662,9 +662,9 @@ function setupLab(app, send) {
       det.appendChild(grid); body.appendChild(det);
     });
   }
-  // Atenúa los controles que NO aplican en el modo actual (pecera ↔ abierto): p.ej. "Fotosíntesis (pecera)" solo
-  // rige con el ecosistema cerrado ON; "Comida disponible (rebrote)" y "Reciclaje de cadáveres", solo con OFF.
-  // Evita mover un slider inerte sin saberlo. Se refresca al construir el lab y al togglear "Ecosistema cerrado".
+  // Atenúa los controles que NO aplican en el modo actual (pecera ↔ abierto): la pecera es PERMANENTE (closedMatter
+  // siempre ON; el toggle se retiró de la UI) → los de modo ABIERTO ("Comida disponible (rebrote)", "Reciclaje de
+  // cadáveres") quedan SIEMPRE atenuados, y los de pecera ("Fotosíntesis"), siempre activos. Se refresca al construir el lab.
   function refreshModeGating() {
     const closed = !!cfg.world.closedMatter;
     for (const { row, mode } of modeGated) {
