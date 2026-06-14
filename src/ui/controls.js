@@ -459,6 +459,8 @@ const LAB_SPEC = [
   { cat: '⚡ Energía y costes', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
     { k: 'energy.massExp', label: 'Escala talla→masa', min: 1, max: 2.2, step: 0.05, dec: 2, d: 'Cuánto pesa ser grande (exponente alométrico): alto = la masa y sus costes se disparan con la talla.' },
+    { k: 'expr.size.min', label: 'Talla mínima (px)', min: 1, max: 5, step: 0.1, dec: 1, d: 'Radio MÍNIMO al que puede encoger un organismo. SUBIRLA pone un SUELO a la talla → frena la deriva a cuerpos diminutos que a largo plazo saturan el pool y extinguen al cazador (clave para que el trío aguante). Afecta a la energía (talla→masa→eMax). Se aplica a las crías nuevas.' },
+    { k: 'expr.size.max', label: 'Talla máxima (px)', min: 6, max: 14, step: 0.5, dec: 1, d: 'Radio MÁXIMO que puede alcanzar un organismo grande: amplía o limita el techo de tamaño. Se aplica a las crías nuevas.' },
     { k: 'energy.k_metab', label: 'Coste por metabolismo', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto encarece el gen de metabolismo el coste basal (metabolismo alto = come y gasta más).' },
     { k: 'energy.k_sense', label: 'Coste por visión', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste energético de ver lejos: presiona a invertir en vista solo si compensa.' },
     { k: 'energy.kleiber', label: 'Metabolismo de escala', min: 0.5, max: 1, step: 0.02, dec: 2, d: 'Cómo escala el coste con la masa (Kleiber): 0.75 = los grandes gastan menos por unidad de masa.' },

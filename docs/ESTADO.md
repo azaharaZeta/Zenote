@@ -31,8 +31,10 @@ Genoma de **201 genes/agente** (SoA, typed arrays):
   la materia total se CONSERVA y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA. El
   modelo abierto (el sol crea biomasa de la nada) queda como alternativa (toggle del lab). Nació de una auditoría de
   energía (el abierto no conserva: ~17% de la entrada es biomasa conjurada; la pop se clava en `maxAgents`). Régimen de
-  **RED TRÓFICA** por defecto (`closedRegen` + `maxAgents` + `fleeSpeed` + `scavPenalty`, valores en `config.js` →
-  herbívoros + carroñeros + cazadores coexisten, trío en ~4/6 siembras; los cazadores, minoría ápice fluctuante); el
+  **RED TRÓFICA** por defecto (`closedRegen` + `maxAgents` + `fleeSpeed` + `scavPenalty` + **`expr.size.min`** (suelo de
+  talla), valores en `config.js` → herbívoros + carroñeros + cazadores coexisten; el suelo de talla evita la deriva a
+  cuerpos diminutos que a largo plazo saturaba el pool y extinguía al cazador → trío ROBUSTO a 30k+ ticks (medido 7/7
+  siembras); los cazadores, minoría ápice fluctuante); el
   nutriente libre `N` se ve en la cabecera. Mecánica → [SPEC §3ter](SPEC_EVOLUCION.md); lección → memoria `energy-ledger-not-conserved`.
 
 ## Qué EMERGE (no cableado)

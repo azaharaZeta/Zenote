@@ -12,12 +12,12 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   a ojo (familias del mismo color). (Hubo una sintonía color↔"luz local" que lo hacía adaptativo; retirada
   2026-06-11 porque el campo de luz era invisible — acoplaba el color a una selección que no se veía; ver
   CHANGELOG.) El verde se evita en el sembrado para no fundirse con la fosforescencia teal del sustrato.
-- **Movimiento orgánico.** Interpolar posiciones; evitar saltos. Estela/halo suave
-  opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía (los
-  hambrientos se atenúan: la muerte se *ve* venir).
-  *Ojo con el toro:* un agente que cruza un borde envuelto NO debe interpolarse entre
-  los dos lados (daría un latigazo de lado a lado). Detectar el salto > medio mundo y, ese
-  frame, dibujarlo sin interpolar.
+- **Movimiento orgánico.** El carácter vivo viene de la **ondulación del cuerpo** (la onda
+  viajera de los nodos, que avanza con los ticks) y del giro suave, NO de interpolar
+  posiciones entre frames: el render dibuja la posición del tick actual (decisión deliberada
+  — visualmente queda fluido y evita el latigazo del toro sin necesidad de interpolar).
+  Estela/halo suave opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía
+  (los hambrientos se atenúan: la muerte se *ve* venir).
 - **El suelo = sustrato abisal (Cenote).** Único escenario. El fondo es una **nebulosa casi negra**
   sobre-muestreada: tinte sutil por **temperatura** del mundo (frío = azul casi negro; cálido =
   azul-violeta apagado), con moteado orgánico por ruido periódico (tesela sin costura en el toro).

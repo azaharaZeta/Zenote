@@ -355,7 +355,14 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 1.7, max: 9 },    // gen size → radio (px); solo render/contacto, NO afecta a la energía
+    size:      { min: 2.0, max: 9 },    // gen size → radio (px). SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste
+                                        //      basal/cría. `min` SUBIDO 1.7→3.4 (2026-06-14, fix TRÍO A LARGO PLAZO): pone un SUELO a la
+                                        //      talla. Sin él, a >10k ticks la pop derivaba a cuerpos DIMINUTOS (size µ≈0.13) que como
+                                        //      r-estrategas SATURABAN el pool (maxAgents, no la materia) y borraban la base de presa con
+                                        //      talla → el gremio CAZADOR se extinguía (trío solo transitorio). Con el suelo, la MATERIA
+                                        //      vuelve a ser el límite (pop < tope) y el cazador PERSISTE a 30k (medido headless 7/7 seeds).
+                                        //      refRadius=(min+max)/2 sigue dando sizeMass≈1 al organismo medio → la alometría no se recalibra.
+                                        // Nota Azahara: cambio temporalmenet de 3.4 (el valor recomendado en pruebas) a 2.0 para ejecutar pruebas manuales
     sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (px)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)

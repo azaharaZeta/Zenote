@@ -393,13 +393,21 @@ materia — como un ecosistema real). **Moneda única** (materia = unidades de e
   sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
 - **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";
   el seed decide → cada Sembrar varía. Con los valores por defecto (`world.closedRegen` + `pop.maxAgents` +
-  `combat.fleeSpeed` + `diet.scavPenalty`, todos en `config.js`) → régimen de **RED TRÓFICA**: herbívoros + carroñeros +
+  `combat.fleeSpeed` + `diet.scavPenalty` + **`expr.size.min`** (suelo de talla), todos en `config.js`) → régimen de **RED TRÓFICA**: herbívoros + carroñeros +
   CAZADORES de presa viva coexisten (trío estable en la mayoría de siembras; los cazadores son una minoría ÁPICE
   fluctuante, los carroñeros el grueso del comecarne, los herbívoros la base). CLAVE: cazar presa viva exige
   productividad alta (mundo magro → solo el carroñeo rinde), y esa productividad sube la pop → exige holgura de pool
   (`maxAgents` con margen; si queda corto, satura y se distorsiona). Bajar `closedRegen` → pecera magra y contemplativa
   pero el gremio CAZADOR es FRÁGIL (colapsa en varias siembras → solo herbívoro/carroñero); bajarlo aún más → población
   plácida solo-herbívora. La siembra de proto-carnívoros (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
+- **SUELO DE TALLA (`expr.size.min`) = freno del colapso a LARGO PLAZO.** Sin suelo, a horizontes largos (>10k ticks)
+  el mundo deriva al runaway r-estratega: cuerpos cada vez más DIMINUTOS (que crían rápido y, al pesar poca materia,
+  caben muchos) → la población **satura `maxAgents`** (el pool, no la materia: queda nutriente libre sin usar) y, al
+  desaparecer la talla, se borra la base de presa → el gremio CAZADOR se extingue (el trío resultaba **transitorio**:
+  válido a ~5-8k ticks, colapsado a 30k). Poner un **suelo a `expr.size.min`** impide los cuerpos infinitesimales → la
+  población no puede inflarse → la **MATERIA vuelve a ser el límite endógeno** (pop por debajo del pool) y queda una base
+  de presa con talla → el cazador **persiste a 30k+** (medido headless 7/7 seeds, verificado en vivo). Es la palanca que
+  hace honesto el principio "la capacidad de carga la pone la materia, no `maxAgents`" también a largo plazo.
 - **Guard de `energyPerUnit`** (epu): es el tipo de cambio recurso↔materia y entra en el balance. Cambiarlo EN VIVO
   reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`) cuando
   `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva

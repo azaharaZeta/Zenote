@@ -311,3 +311,4 @@ cadáveres = leak?» → RESUELTO (no es bug); «visor de especie» → Mejoras 
 de arrastre en locomoción».)*
 - analizar por qué el ajuste de performance de resolución no parece afectar al performance (mismos fps en mínima vs maxima resolución)
 - estudiar viablidad y efectos de ampliar el espacio del mundo (sólo más espacio)
+- corregir el zoom para que pueda verse el total del ecosistema en zoom minimo en la ventana (depende de resolución de ventana y resizes)
