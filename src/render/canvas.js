@@ -134,69 +134,89 @@ export class Renderer {
     {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
       const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo del sustrato (baja 3× · alta 4× · máxima 6×) → suaviza la rejilla del recurso
       let cv = this._abyssLow;
+      const NP = NW * NH;
       if (!cv || cv.width !== NW) {
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
         this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = NW; this._abyssSmooth.height = NH;
         this._abyssSmoothCtx = this._abyssSmooth.getContext('2d'); // buffer DIFUMINADO (disuelve la rejilla de celda del recurso)
-        this._abyssTimer = 0; // realloc (cambio de calidad) → fuerza recomputar el ruido
+        // CACHÉS del sustrato (ESTÁTICOS: no cambian con el tiempo, solo con resolución/temperatura):
+        this._subBase = new Float32Array(NP * 3);  // color de fondo YA moteado (rr·mott, gg·mott, bb·mott)
+        this._subIdx  = new Int32Array(NP * 4);     // índices del bilineal del food (i00,i10,i01,i11)
+        this._subWx   = new Float32Array(NP);       // peso fxc (smoothstep)
+        this._subWy   = new Float32Array(NP);       // peso fyc
+        this._subStaticTimer = 0;                   // realloc → fuerza recomputar la capa estática
       }
-      if (this._abyssTimer <= 0) {   // #4: el ruido del sustrato es del MUNDO (no de la cámara) → recomputar por TIMER, no en cada paneo/seguimiento
-      const d = this._abyssImg.data;
-      const vegI = cfg.render.vegIntensity != null ? cfg.render.vegIntensity : 1; // brillo de la vegetación (slider lab, en vivo)
-      const vegBoost = cfg.render.vegBoost != null ? cfg.render.vegBoost : 0.77;   // realce del pasto tenue (UI 0→1, slider lab)
-      const vegExp = 1.5 - vegBoost * 1.3; // 0→1 (realce) → exponente 1.5→0.2: como food∈[0,1], exponente BAJO sube los mids → el pasto tenue brilla. Alto vegBoost = más realce.
-      const hash = (ix, iy, sd) => { let h = (ix * 374761393 + iy * 668265263 + sd * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-      // value-noise PERIÓDICO: rejilla px×py que ENVUELVE (módulo) → tesela sin costura en el toro. u,v ∈ [0,1).
-      const pnoise = (u, v, px, py, sd) => {
-        const fx = u * px, fy = v * py, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
-        const x0 = ((ix % px) + px) % px, x1 = (x0 + 1) % px, y0 = ((iy % py) + py) % py, y1 = (y0 + 1) % py;
-        const a = hash(x0, y0, sd), b = hash(x1, y0, sd), c = hash(x0, y1, sd), e = hash(x1, y1, sd);
-        const su = tx * tx * (3 - 2 * tx), sv = ty * ty * (3 - 2 * ty);
-        return a + (b - a) * su + (c - a) * sv + (a - b - c + e) * su * sv; };
-      for (let j = 0; j < NH; j++) for (let i = 0; i < NW; i++) {
-        const wx = (i + 0.5) / NW * W, wy = (j + 0.5) / NH * H;
-        // BILINEAL sobre los centros de celda (toro) → comida y temperatura SUAVES, sin cuadrados de rejilla.
-        const gxc = wx / cellW - 0.5, gyc = wy / cellH - 0.5;
-        const x0 = Math.floor(gxc), y0 = Math.floor(gyc), fxr = gxc - x0, fyr = gyc - y0;
-        const fxc = fxr * fxr * (3 - 2 * fxr), fyc = fyr * fyr * (3 - 2 * fyr); // smoothstep → interpolación SUAVE (C1) del food/temp: mata las facetas/rejilla del bilinear
-        const xa = ((x0 % cols) + cols) % cols, xb = (xa + 1) % cols;
-        const ya = ((y0 % rows) + rows) % rows, yb = (ya + 1) % rows;
-        const i00 = ya * cols + xa, i10 = ya * cols + xb, i01 = yb * cols + xa, i11 = yb * cols + xb;
-        const tT = temp[i00] + (temp[i10] - temp[i00]) * fxc, tB = temp[i01] + (temp[i11] - temp[i01]) * fxc;
-        const tv = tT + (tB - tT) * fyc;
-        const rT = res[i00] + (res[i10] - res[i00]) * fxc, rB = res[i01] + (res[i11] - res[i01]) * fxc;
-        let food = (rT + (rB - rT) * fyc) / Rmax; food = food > 1 ? 1 : food < 0 ? 0 : food;
-        // (E) PALETA ABISAL: fondo CASI NEGRO donde no hay vegetación (azul profundo) → así la vegetación se lee
-        // por CONTRASTE contra la oscuridad, no por brillo. Frío = azul casi negro; cálido = azul-violeta apagado.
-        let rr, gg, bb;
-        if (tv < 0.5) { const u = tv / 0.5; rr = 1 + u * 1.5; gg = 2 + u * 4; bb = 12 + u * 4; }
-        else { const u = (tv - 0.5) / 0.5; rr = 2.5 + u * 7; gg = 6 + u * -1; bb = 16 + u * 4; }
-        const u = wx / W, v = wy / H;
-        const n = 0.62 * pnoise(u, v, 26, 17, 0) + 0.38 * pnoise(u, v, 70, 47, 7); // (A) moteado 2 octavas PERIÓDICO (sin costura)
-        const mott = 0.7 + n * 0.72;
-        const o = (j * NW + i) * 4;
-        // (C) VEGETACIÓN = fosforescencia TENUE teal/algas (verde-azul desaturado), DISTINTA del cian brillante de
-        // los bichos. Dim a propósito (techo de brillo bajo): la legibilidad la da el contraste con el fondo negro.
-        const fg = Math.pow(food, vegExp); // vegExp derivado de vegBoost: exponente bajo realza los MIDS (pasto tenue se nota); alto → solo el lush
-        d[o]     = rr * mott + fg * 10 * vegI; // poco rojo (teal cálido)
-        d[o + 1] = gg * mott + fg * 64 * vegI; // verde (teal/algas) — brillo escalado por vegIntensity (UI)
-        d[o + 2] = bb * mott + fg * 70 * vegI; // azul-verde; sin pasto (fg=0) el fondo sigue oscuro (penumbra intacta)
-        d[o + 3] = 255;
+      // ---- (1) CAPA ESTÁTICA (CARA: ruido pnoise + temperatura): NO cambia con el mundo → se cachea y recomputa
+      // muy de vez en cuando. Aquí guardamos el color de fondo y los índices/pesos del bilineal del food. #4 ----
+      if (this._subStaticTimer <= 0) {
+        const base = this._subBase, sIdx = this._subIdx, sWx = this._subWx, sWy = this._subWy;
+        const hash = (ix, iy, sd) => { let h = (ix * 374761393 + iy * 668265263 + sd * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+        // value-noise PERIÓDICO: rejilla px×py que ENVUELVE (módulo) → tesela sin costura en el toro. u,v ∈ [0,1).
+        const pnoise = (u, v, px, py, sd) => {
+          const fx = u * px, fy = v * py, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+          const x0 = ((ix % px) + px) % px, x1 = (x0 + 1) % px, y0 = ((iy % py) + py) % py, y1 = (y0 + 1) % py;
+          const a = hash(x0, y0, sd), b = hash(x1, y0, sd), c = hash(x0, y1, sd), e = hash(x1, y1, sd);
+          const su = tx * tx * (3 - 2 * tx), sv = ty * ty * (3 - 2 * ty);
+          return a + (b - a) * su + (c - a) * sv + (a - b - c + e) * su * sv; };
+        for (let j = 0; j < NH; j++) for (let i = 0; i < NW; i++) {
+          const idx = j * NW + i;
+          const wx = (i + 0.5) / NW * W, wy = (j + 0.5) / NH * H;
+          // BILINEAL sobre los centros de celda (toro) → comida y temperatura SUAVES, sin cuadrados de rejilla.
+          const gxc = wx / cellW - 0.5, gyc = wy / cellH - 0.5;
+          const x0 = Math.floor(gxc), y0 = Math.floor(gyc), fxr = gxc - x0, fyr = gyc - y0;
+          const fxc = fxr * fxr * (3 - 2 * fxr), fyc = fyr * fyr * (3 - 2 * fyr); // smoothstep (C1): mata las facetas del bilineal
+          const xa = ((x0 % cols) + cols) % cols, xb = (xa + 1) % cols;
+          const ya = ((y0 % rows) + rows) % rows, yb = (ya + 1) % rows;
+          const i00 = ya * cols + xa, i10 = ya * cols + xb, i01 = yb * cols + xa, i11 = yb * cols + xb;
+          const q = idx * 4; sIdx[q] = i00; sIdx[q + 1] = i10; sIdx[q + 2] = i01; sIdx[q + 3] = i11; sWx[idx] = fxc; sWy[idx] = fyc; // cachea el bilineal del food (estático)
+          const tT = temp[i00] + (temp[i10] - temp[i00]) * fxc, tB = temp[i01] + (temp[i11] - temp[i01]) * fxc;
+          const tv = tT + (tB - tT) * fyc;
+          // (E) PALETA ABISAL: fondo CASI NEGRO donde no hay vegetación (azul profundo) → así la vegetación se lee
+          // por CONTRASTE contra la oscuridad, no por brillo. Frío = azul casi negro; cálido = azul-violeta apagado.
+          let rr, gg, bb;
+          if (tv < 0.5) { const u = tv / 0.5; rr = 1 + u * 1.5; gg = 2 + u * 4; bb = 12 + u * 4; }
+          else { const u = (tv - 0.5) / 0.5; rr = 2.5 + u * 7; gg = 6 + u * -1; bb = 16 + u * 4; }
+          const u = wx / W, v = wy / H;
+          const n = 0.62 * pnoise(u, v, 26, 17, 0) + 0.38 * pnoise(u, v, 70, 47, 7); // (A) moteado 2 octavas PERIÓDICO (sin costura)
+          const mott = 0.7 + n * 0.72;
+          const b3 = idx * 3; base[b3] = rr * mott; base[b3 + 1] = gg * mott; base[b3 + 2] = bb * mott; // color de fondo cacheado (sin food)
+        }
+        this._subStaticTimer = 90; // temperatura/moteado no cambian (o muy lento) → recachear rara vez (capta deriva ambiental)
       }
-      this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
-      // DIFUMINADO del sustrato en su propio espacio (barato: NW×NH, solo al recomputar): el blur disuelve la
-      // estructura de celda del recurso (cellW≈19px) que la vegetación realzada revelaba como rejilla. El radio
-      // (UI vegBlur) está en px de BUFFER → ~4.7× en el mundo. La interpolación suave ya estaba; esto la remata.
-      const vegBlur = cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8;
-      const sc = this._abyssSmoothCtx;
-      sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(0, 0, NW, NH);
-      sc.filter = vegBlur > 0 ? `blur(${vegBlur}px)` : 'none';
-      sc.drawImage(cv, 0, 0);
-      sc.filter = 'none';
-      this._abyssTimer = 18;
+      this._subStaticTimer--;
+      // ---- (2) CAPA DINÁMICA (BARATA: solo el FOOD): se recompone EN CADA refresco → la vegetación FLUYE con el
+      // mundo (sin el gate de 18 frames que la hacía ir "a golpes"). Sin pnoise ni pow por píxel: base e índices ya
+      // cacheados, y el pow va por LUT. (C) VEGETACIÓN = fosforescencia teal/algas, dim a propósito. ----
+      {
+        const vegI = cfg.render.vegIntensity != null ? cfg.render.vegIntensity : 1;   // brillo de la vegetación (slider lab, en vivo)
+        const vegBoost = cfg.render.vegBoost != null ? cfg.render.vegBoost : 0.77;     // realce del pasto tenue (UI 0→1, slider lab)
+        const vegExp = 1.5 - vegBoost * 1.3; // 0→1 (realce) → exponente 1.5→0.2: como food∈[0,1], exponente BAJO sube los mids → el pasto tenue brilla. Alto vegBoost = más realce.
+        if (this._fgExp !== vegExp || !this._fgLUT) { // LUT food→brillo (food^vegExp): se recomputa SOLO si cambia el exponente, no por píxel
+          if (!this._fgLUT) this._fgLUT = new Float32Array(1024);
+          for (let k = 0; k < 1024; k++) this._fgLUT[k] = Math.pow(k / 1023, vegExp);
+          this._fgExp = vegExp;
+        }
+        const d = this._abyssImg.data, base = this._subBase, sIdx = this._subIdx, sWx = this._subWx, sWy = this._subWy, lut = this._fgLUT;
+        const invR = 1 / Rmax, cR = 10 * vegI, cG = 64 * vegI, cB = 70 * vegI;
+        for (let idx = 0; idx < NP; idx++) {
+          const q = idx * 4, a0 = res[sIdx[q]], fxc = sWx[idx];               // bilineal del food con índices/pesos cacheados
+          const rT = a0 + (res[sIdx[q + 1]] - a0) * fxc, c0 = res[sIdx[q + 2]];
+          const rB = c0 + (res[sIdx[q + 3]] - c0) * fxc;
+          let food = (rT + (rB - rT) * sWy[idx]) * invR; food = food > 1 ? 1 : food < 0 ? 0 : food;
+          const fg = lut[(food * 1023) | 0], b3 = idx * 3;
+          d[q] = base[b3] + fg * cR; d[q + 1] = base[b3 + 1] + fg * cG; d[q + 2] = base[b3 + 2] + fg * cB; d[q + 3] = 255; // fondo cacheado + vegetación viva
+        }
+        this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
+        // DIFUMINADO del sustrato en su propio espacio (NW×NH): el blur disuelve la estructura de celda del recurso
+        // (cellW≈19px) que la vegetación realzada revelaba como rejilla. Radio (UI vegBlur) en px de BUFFER → ~4.7× en mundo.
+        const vegBlur = cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8;
+        const sc = this._abyssSmoothCtx;
+        sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(0, 0, NW, NH);
+        sc.filter = vegBlur > 0 ? `blur(${vegBlur}px)` : 'none';
+        sc.drawImage(cv, 0, 0);
+        sc.filter = 'none';
       }
-      this._abyssTimer--;
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; // suaviza el upscaling del sustrato → menos rejilla del recurso
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
         ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
@@ -229,15 +249,19 @@ export class Renderer {
       // Opacidad ∝ N normalizado por su MÁXIMO → solo destacan las concentraciones; el fondo difuso casi no se ve.
       const nutrient = Wld.nutrient;
       if (nutrient && nutrient.length) {
-        let maxN = 0; for (let k = 0; k < nutrient.length; k++) if (nutrient[k] > maxN) maxN = nutrient[k];
-        if (maxN > 0.001) {
+        // La viz resalta el CONTRASTE (concentración SOBRE la media), no el valor absoluto: un campo UNIFORME
+        // (p.ej. el nutriente recién repartido al reiniciar) NO debe pintar una rejilla de celdas — solo las MANCHAS
+        // reales de concentración. (Antes se normalizaba al máximo → uniforme ⇒ todas las celdas a tope ⇒ rejilla brillante.)
+        let maxN = 0, sumN = 0; for (let k = 0; k < nutrient.length; k++) { const v = nutrient[k]; sumN += v; if (v > maxN) maxN = v; }
+        const meanN = sumN / nutrient.length, span = maxN - meanN;
+        if (span > meanN * 0.15 + 0.001) {   // solo si hay RELIEVE real (manchas); campo casi uniforme → no se pinta nada
           if (!this._nutrientSprite) {
             const S = 48, sp = document.createElement('canvas'); sp.width = sp.height = S;
             const sx = sp.getContext('2d'), g = sx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
             g.addColorStop(0, 'rgba(124,108,214,1)'); g.addColorStop(1, 'rgba(124,108,214,0)'); // índigo-violeta (nutriente mineral)
             sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._nutrientSprite = sp;
           }
-          const sprite = this._nutrientSprite, inv = 1 / maxN, sz = cellW * 2.0;
+          const sprite = this._nutrientSprite, inv = 1 / span, sz = cellW * 2.0;
           ctx.globalCompositeOperation = 'lighter';
           for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
             ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
@@ -246,9 +270,9 @@ export class Renderer {
             let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
             let cy1 = ((this.camY + vhHalf - ty * H) / cellH | 0) + 1; if (cy1 > rows - 1) cy1 = rows - 1;
             for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-              const nv = nutrient[cy * cols + cx] * inv;       // 0..1 normalizado al máximo del campo
-              if (nv < 0.25) continue;                          // solo concentraciones notables (no el fondo difuso)
-              ctx.globalAlpha = (nv - 0.25) * 0.32;             // sutil (máx ≈ 0.24)
+              const nv = (nutrient[cy * cols + cx] - meanN) * inv;  // 0..1: EXCESO sobre la media, normalizado al pico → uniforme = 0
+              if (nv < 0.25) continue;                               // solo las concentraciones POR ENCIMA de la media
+              ctx.globalAlpha = (nv - 0.25) * 0.32;                  // sutil (máx ≈ 0.24)
               ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);
             }
           }

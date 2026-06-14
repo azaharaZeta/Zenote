@@ -334,7 +334,7 @@ export const config = {
     lodOutline: 4,            // nodo por debajo de este tamaño → se OMITE su contorno (outline invisible)
     lodTexture: 10,           // nodo por ENCIMA de este tamaño → bandas de TEXTURA (piel)
     grassDensity: 6800,       // Nº de motas de plancton/micro-flora repartidas por el mundo (chispas abisales)
-    grassRefreshFrames: 15,   // Cada cuántos frames se redibuja la capa de sustrato
+    grassRefreshFrames: 3,    // Cada cuántos frames se recompone el sustrato (vegetación FLUIDA con el mundo). El ruido caro está cacheado aparte (capa estática) → el refresco del food es barato (~3ms). Antes 15 → la vegetación iba "a golpes"
   },
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
