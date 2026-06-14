@@ -430,14 +430,14 @@ export function setupControls(app) {
 const LAB_SPEC = [
   { cat: '🫧 Pecera sellada (materia)', items: [
     { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
-    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, min: 10000, max: 100000, step: 2500, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
+    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
     { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
-    { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 5000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
-    { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, min: 20, max: 2000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
+    { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
+    { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, scales: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
     { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
-    { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
+    { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, scales: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
   { cat: '🍃 Comida y recurso', items: [
@@ -448,7 +448,7 @@ const LAB_SPEC = [
     { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 24, step: 1, dec: 0, d: 'Energía que da cada unidad de recurso comido (sube la rentabilidad de pastar).' },
     { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = pasto uniforme; subir = parches que se agotan y migran solos (premia buscar).' },
     { k: 'resource.carrionDecay', label: 'Descomposición de cadáveres', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Ritmo al que se pudre la carroña: bajo = los cadáveres duran más para el carroñero.' },
-    { k: 'resource.carrionAbsRate', label: 'Ritmo de carroñeo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Velocidad a la que un carroñero vacía un cadáver.' },
+    { k: 'resource.carrionAbsRate', label: 'Ritmo de carroñeo', min: 0, max: 0.5, step: 0.05, dec: 2, d: 'Velocidad a la que un carroñero vacía un cadáver.' },
     { k: 'energy.corpseReturn', mode: 'open', label: 'Reciclaje de cadáveres (→ pasto)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Fracción de la carroña que, al pudrirse, vuelve al pasto (ciclo de nutrientes). Solo en modo ABIERTO; en la pecera la carroña mineraliza íntegra al nutriente.' },
   ]},
   { cat: '⚡ Energía y costes', items: [
@@ -487,8 +487,8 @@ const LAB_SPEC = [
   { cat: '⚔ Combate y dieta', items: [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación. Off = solo herbívoros pastando.' },
     { k: 'combat.sizeAdvantage', label: 'Ventaja de tamaño', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto pesa el tamaño en quién gana un combate: alto = el grande gana casi siempre.' },
-    { k: 'combat.failDamage', label: 'Daño al fallar ataque', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Energía que pierde el atacante al fallar (× su máximo): bajo = carnívoros resilientes; ≥1 = muerte casi segura.' },
-    { k: 'combat.fleeSpeed', label: 'Escape por velocidad', min: 0, max: 4, step: 0.5, dec: 1, d: 'La presa más rápida que su cazador se zafa → la persecución es un duelo de velocidad. Necesita la cobertura del refugio baja para notarse.' },
+    { k: 'combat.failDamage', label: 'Daño al fallar ataque', min: 0, max: 1, step: 0.05, dec: 2, d: 'Energía que pierde el atacante al fallar (× su máximo): bajo = carnívoros resilientes; ≥1 = muerte casi segura.' },
+    { k: 'combat.fleeSpeed', label: 'Escape por velocidad', min: 0, max: 4, step: 0.2, dec: 1, d: 'La presa más rápida que su cazador se zafa → la persecución es un duelo de velocidad. Necesita la cobertura del refugio baja para notarse.' },
     { k: 'combat.preyBandLo', label: 'Suelo de banda de caza', min: 0, max: 1, step: 0.05, dec: 2, d: 'Ratio mínimo presa/depredador atacable: ignora presas demasiado pequeñas.' },
     { k: 'combat.preyBandHi', label: 'Techo de banda de caza', min: 0.5, max: 3, step: 0.05, dec: 2, d: 'Ratio máximo presa/depredador atacable: bajo = solo presa menor; >1 = puede atacar presa mayor (caro).' },
     { k: 'combat.morphReach', label: 'Alcance de caza (apéndices)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto extienden el alcance de captura los apéndices frontales (garras/tentáculos): forma de cazador.' },
@@ -504,7 +504,7 @@ const LAB_SPEC = [
   ]},
   { cat: '🏊 Locomoción y visión', items: [
     { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 12, step: 0.1, dec: 1, d: 'Calibra la velocidad típica de la morfología: más alto = todos nadan más rápido.' },
-    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 0.5, step: 0.05, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados). El default es muy bajo a propósito (la cabeza es casi carga, no motor).' },
+    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 1, step: 0.02, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados). El default es muy bajo a propósito (la cabeza es casi carga, no motor).' },
     { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad de cualquier cuerpo.' },
     { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base: más alto = giran más rápido hacia donde quieren ir.' },
     { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar descoordinado: alto = presiona a una natación coordinada (onda limpia).' },
@@ -539,6 +539,26 @@ function setupLab(app, send) {
   const commit = (k, v, needsReseed) => {
     if (needsReseed) { pending[k] = v; if (app.markReseedPending) app.markReseedPending(); }   // ↻ → pendiente hasta Reiniciar (no toca la sim viva)
     else { send({ type: 'set', key: k, value: v }); setLocal(k, v); }                            // resto → en vivo (al instante / crías nuevas)
+  };
+
+  // ── ANOTACIÓN "base → efectivo" para los parámetros que ESCALAN con el tamaño del mundo (Modelo A). El slider
+  // muestra el valor a mundo 1000 (base, = posición del thumb); este hint añade EN VIVO el valor EFECTIVO en el
+  // mundo PENDIENTE → mata la confusión "pongo 60k pero el mundo tiene 240k". Solo aparece si la escala ≠ 1 (a
+  // tamaño estándar 1000, sin ruido). Replica sim._aScale; usa los valores PENDIENTES (lo que se aplicará al Reiniciar).
+  const scaledHints = [];                                                          // [{k, el}] de los sliders con `scales:true`
+  const REF_SIZE = 1000, POOL_CEIL = cfg.pop.maxAgentsCeiling || 8000;
+  const pendVal = (k) => (pending[k] != null ? pending[k] : get(k));
+  const worldAScale = () => { const kk = pendVal('world.size') / REF_SIZE; return Math.min(kk * kk, POOL_CEIL / pendVal('pop.maxAgents')); };
+  const effMaxAgents = () => Math.min(Math.round(pendVal('pop.maxAgents') * worldAScale()), POOL_CEIL);
+  const effectiveOf = (k) => { const a = worldAScale();
+    if (k === 'world.matterBudget') return pendVal(k) * a;
+    if (k === 'pop.maxAgents') return effMaxAgents();
+    if (k === 'pop.initial') return Math.min(Math.round(pendVal(k) * a), effMaxAgents());
+    return pendVal(k); };
+  const fmtK = (v) => v >= 1000 ? (+(v / 1000).toFixed(v >= 10000 ? 0 : 1)) + 'k' : String(Math.round(v));
+  app.refreshScaledHints = () => {                                                 // recomputa los hints (al mover Tamaño del mundo / pool / el propio param)
+    const scaled = Math.abs(worldAScale() - 1) > 1e-6;                             // a mundo 1000 la escala es 1 → sin anotación
+    for (const h of scaledHints) h.el.textContent = scaled ? ('→ ' + fmtK(effectiveOf(h.k))) : '';
   };
 
   // ---- Tooltip informativo compartido: escritorio = hover con RETARDO; móvil = TAP en el icono ⓘ. ----
@@ -614,7 +634,9 @@ function setupLab(app, send) {
           const right = document.createElement('span'); right.className = 'lab-right';
           const out = document.createElement('output'); out.textContent = (+def).toFixed(it.dec);
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          right.appendChild(out); if (it.d) right.appendChild(makeInfo(it.d)); right.appendChild(rb);
+          right.appendChild(out);
+          if (it.scales) { const eff = document.createElement('span'); eff.className = 'lab-eff'; eff.style.cssText = 'font-size:10px;color:#6f7a8a;margin-left:5px;font-variant-numeric:tabular-nums;'; right.appendChild(eff); scaledHints.push({ k: it.k, el: eff }); }
+          if (it.d) right.appendChild(makeInfo(it.d)); right.appendChild(rb);
           head.appendChild(name); head.appendChild(right);
           const slider = document.createElement('div'); slider.className = 'lab-slider';
           const inp = document.createElement('input'); inp.type = 'range';
@@ -622,12 +644,13 @@ function setupLab(app, send) {
           // Señal de ALTERADO: el pulsador y el rango relleno (accent-color) + el valor se tiñen ROJIZO si está por
           // DEBAJO del valor base, VERDOSO si por ENCIMA, neutro si coincide → de un vistazo se ve qué se ha tocado.
           const paint = () => { const c = Math.abs(+inp.value - def) < 1e-9 ? '' : (+inp.value < def ? '#e0795f' : '#79c47a'); inp.style.accentColor = c; out.style.color = c; };
-          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); commit(it.k, v, needsReseed); paint(); if (it.k.indexOf('render.') === 0 && app.renderer) { app.renderer._abyssTimer = 0; app.renderer._grassTimer = 0; } });
+          inp.addEventListener('input', () => { const v = +inp.value; out.textContent = v.toFixed(it.dec); commit(it.k, v, needsReseed); paint(); if (it.k.indexOf('render.') === 0 && app.renderer) { app.renderer._abyssTimer = 0; app.renderer._grassTimer = 0; } if (it.scales || it.k === 'world.size') app.refreshScaledHints(); });
           const notch = document.createElement('span'); notch.className = 'lab-notch'; // muesca = valor por defecto
           notch.style.left = (100 * (def - it.min) / (it.max - it.min)) + '%';
           slider.appendChild(inp); slider.appendChild(notch);
           const reset = () => {
             inp.value = def; out.textContent = (+def).toFixed(it.dec); commit(it.k, +def, needsReseed); paint();
+            if (it.scales || it.k === 'world.size') app.refreshScaledHints();
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
@@ -653,6 +676,7 @@ function setupLab(app, send) {
     }
   }
   refreshModeGating();
+  app.refreshScaledHints();   // anotación inicial "base → efectivo" en los sliders que escalan con el tamaño del mundo
   // Alternar VISTA SIMPLE ↔ MODO LABORATORIO: añade/quita .advanced al panel (revela la sección del
   // laboratorio y compacta la vista simple). Recuerda el modo entre recargas (localStorage).
   const panel = $('panel'), modeBtn = $('modeBtn');

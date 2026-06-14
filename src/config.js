@@ -135,7 +135,7 @@ export const config = {
                         //          pastador ANCHO). 0 = el carroñero no gana por ser fino (no diverge la forma). Afinar midiendo.
     k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
                         //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
-    k_effort: 1.59,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
+    k_effort: 1.6,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
     moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad) · dimensión u⁻² (ver cabecera UNIDADES)
     k_haul: 0.2,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
                         //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
@@ -151,7 +151,7 @@ export const config = {
                         //      0 = INERTE (el arrastre solo frena). Se lee en vivo (no recachea el fenotipo).
     dragRef: 1.1,       // (UI) Arrastre de REFERENCIA del coste B: solo el Dmul por ENCIMA de dragRef paga (max(0, Dmul−dragRef)) → colchón
                         //      para no cobrar el arrastre típico. Medido: Dmul mediana≈1.17, p90≈1.36 (mínimo 1.0 = cuerpo sin arrastre extra).
-    E_max_base: 71,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
+    E_max_base: 70,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla
     carcassValue: 0.25, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía: la captura rinde preyGain·(E_presa
@@ -298,7 +298,7 @@ export const config = {
                         //      no en este combo.) Afecta también al modelo abierto.
                         //      >4 o cobertura nula → la presa escapa demasiado y los cazadores se quedan sin comer (medido).
     fleeCap: 0.95,       // Tope de la probabilidad de escape por velocidad (la presa nunca se zafa con certeza absoluta). Ver fleeSpeed y sim.js.
-    handlingTime: 31,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
+    handlingTime: 32,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
     dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
     preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
     preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
@@ -332,7 +332,7 @@ export const config = {
                               //      del toro → se ve dónde acaba un mundo y empieza su repetición (mosaico), sin barras vacías ni
                               //      romper la inmersión. Honestidad/comprensión del toro. Solo render (no toca la sim). En vivo.
     vegIntensity: 1.0,        // (UI) Realce de la VEGETACIÓN (brillo del teal del pasto en el sustrato): 0 = invisible · alto = más presente. En vivo (lab).
-    vegBoost: 0.77,           // (UI) Realce del pasto tenue (0→1): ALTO = hasta el pasto ralo se nota · BAJO = solo el denso brilla. Mapea a un exponente food→brillo (food∈[0,1]). En vivo (lab).
+    vegBoost: 0.75,           // (UI) Realce del pasto tenue (0→1): ALTO = hasta el pasto ralo se nota · BAJO = solo el denso brilla. Mapea a un exponente food→brillo (food∈[0,1]). En vivo (lab).
     vegBlur: 1.8,             // (UI) Difuminado del sustrato (px de buffer ≈ ×4.7 en mundo): disuelve la rejilla de celda del recurso. 0 = nítido (rejilla visible). En vivo (lab).
     nutrientEase: 0.1,        // (UI) Suavizado TEMPORAL (EMA por refresco) de las manchas de NUTRIENTE: bajo = respiran despacio (no titilan) · alto = siguen al instante el campo (titilan al ritmo de los ticks). Solo visual, en vivo.
     // ── COLORES del sustrato (CONSTANTES; sin slider → cambiarlos requiere recargar). Antes hardcodeados en canvas.js. ──
