@@ -39,7 +39,10 @@ las estrategias o las formas "buenas". Esas deben emerger.
 > Catálogo dimensional completo en la cabecera de `src/config.js`.
 
 - Rejilla continua (coordenadas float), por defecto un **toro** (bordes envueltos) para
-  evitar artefactos de borde. El mundo es **CUADRADO**: un solo valor `world.size` (lado en u).
+  evitar artefactos de borde. El mundo es **CUADRADO**: un solo valor `world.size` (lado en u). El **ecosistema ESCALA**
+  con `world.size` (**Modelo A**): lo EXTENSIVO (`matterBudget`, `pop.maxAgents`, fundadores, rejilla `gridCols/Rows`)
+  crece con el ÁREA a densidad y dinámica constantes (con un TECHO de pool, `pop.maxAgentsCeiling`, por rendimiento; por
+  encima, agrandar el mundo solo lo hace más disperso); lo INTENSIVO (talla, sensores, velocidades, tasas, costes) no escala.
 - **Recurso difuso** ("energía solar/química") en un campo escalar de baja resolución
   (`resource.gridCols`×`gridRows`). Capacidad por celda según `resource.gradient`
   (`perlin` | `center` | `uniform`). Se acumula hasta `R_max` por celda.

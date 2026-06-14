@@ -32,7 +32,7 @@ export const config = {
                          //      nutriente del pool y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia,
                          //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
                          //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
-    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter. Reparto inicial: vegetación + (E+cuerpo)
+    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter, A TAMAÑO DE MUNDO 1000: ESCALA ×ÁREA con world.size (Modelo A → mundo grande = más materia, MISMA densidad). Reparto inicial: vegetación + (E+cuerpo)
                          //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
                          //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
                          //      (2026-06-14, tuning DIVERSIDAD) 60000: alimenta la pirámide trófica de 3 niveles (sostiene cazadores); SATURA
@@ -52,7 +52,7 @@ export const config = {
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
   resource: {
-    gridCols: 56,       // Columnas de la rejilla de recurso. IGUAL a gridRows → CELDAS CUADRADAS en el mundo cuadrado (world.size).
+    gridCols: 56,       // Columnas de la rejilla (a tamaño 1000). IGUAL a gridRows → celdas cuadradas. ESCALA ×size con world.size (√área) → el TAMAÑO de celda se mantiene constante a cualquier tamaño de mundo.
     gridRows: 56,       // Filas. Mantener = gridCols para celdas cuadradas. 56×56 ≈ mismo nº de celdas y ÁREA de celda que el 64×48 previo
                         //      (≈313 u²) → sin anisotropía y sin tocar la escala del campo de comida ni la capacidad de carga (cerrado: la pone matterBudget).
     R_max: 1.0,         // Recurso máximo por celda
@@ -89,12 +89,17 @@ export const config = {
 
   // ───── Población ─────
   pop: {
-    initial: 400,            // Nº de fundadores al sembrar
-    maxAgents: 2000,         // (UI ↻) Tope físico del pool (límite duro de memoria) · ÚNICO límite de población (la capacidad de
+    initial: 400,            // (UI ↻) Nº de fundadores al TAMAÑO DE MUNDO DE REFERENCIA (1000 u); ESCALA con el área (size²) → densidad
+                             //      inicial ~constante a cualquier world.size. Slider "Sembrado inicial" (muy bajo↔muy alto). Acotado a
+                             //      maxAgents; en la pecera la MATERIA limita la pop sostenida (sembrar de más → reajuste inicial). Ver sim._initialCount.
+    maxAgents: 2000,         // (UI ↻) Tope físico del pool (límite de memoria) A TAMAÑO 1000; ESCALA ×ÁREA con world.size hasta maxAgentsCeiling · ÚNICO límite de población (la capacidad de
                              //      carga la pone el recurso/materia, no este número — ver auditoría #5). SUBIDO 1000→2000 para dar HOLGURA a la
                              //      red trófica de la pecera (closedRegen 0.0034 lleva la pop a ~1000-2000; con 1000 saturaba). Afecta también al
                              //      modelo abierto (más CPU, pop posible mayor; ~460 t/s a 1000 agentes en 1 hilo → margen de sobra). Cambiarlo
                              //      requiere Reiniciar (re-asigna los arrays SoA + speciesOf en el worker). Slider del lab para experimentar.
+    maxAgentsCeiling: 8000,  // Techo ABSOLUTO del pool tras escalar con el tamaño del mundo (límite de RENDIMIENTO). El ecosistema
+                             //      (materia/pool/fundadores/rejilla) escala con el área HASTA aquí; por encima, world.size solo DISPERSA
+                             //      (no añade más agentes). = IDENT_CAP del proxy (main.js). Subirlo permite mundos grandes más densos a costa de CPU.
     seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
     seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
     carnivoreSeedFrac: 0.20, // (UI ↻) Fracción de fundadores sembrados como proto-carnívoros. Es condición INICIAL (cruza el valle

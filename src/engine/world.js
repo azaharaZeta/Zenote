@@ -2,12 +2,15 @@
 // Coordenadas siempre lógicas (config.world). El render no entra aquí.
 
 export class World {
-  constructor(cfg, rng) {
+  constructor(cfg, rng, aScale = 1) {
     this.cfg = cfg;
     this.rng = rng;
-    const r = cfg.resource;
-    this.cols = r.gridCols;
-    this.rows = r.gridRows;
+    // REJILLA ∝ size (√área): el CONTEO de celdas escala con el área del mundo, pero el TAMAÑO de celda se mantiene
+    // ~constante (granularidad del campo de comida fija a cualquier world.size). `aScale` lo pasa Sim (área, acotada
+    // al techo de pool) → la rejilla deja de crecer cuando lo hace el ecosistema. A aScale=1 (tamaño 1000) → gridCols base.
+    const r = cfg.resource, lScale = Math.sqrt(aScale);
+    this.cols = Math.max(4, Math.round(r.gridCols * lScale));
+    this.rows = Math.max(4, Math.round(r.gridRows * lScale));
     this.cellW = cfg.world.size / this.cols;
     this.cellH = cfg.world.size / this.rows;
 

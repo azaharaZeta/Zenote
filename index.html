@@ -53,13 +53,8 @@
       </div>
     </details>
 
-    <div class="row" id="seedRow">
-      <input id="seedInput" type="text" placeholder="semilla" />
-      <label class="div-row" title="Diversidad inicial del sembrado (se aplica al pulsar Reiniciar): monótono ↔ variado">
-        Diversidad inicial <output id="divVal">0.00</output>
-        <input id="divSlider" type="range" min="0" max="1" step="0.05" value="0" />
-      </label>
-    </div>
+    <!-- Semilla (oculta; la lee app.reseed). La "Diversidad inicial" es ahora un slider del laboratorio (Población y sembrado). -->
+    <input id="seedInput" type="text" placeholder="semilla" style="display:none" />
 
     <!-- Fila 1: curva de población a ancho completo (el histograma se movió junto a sus selectores, abajo) -->
     <div class="charts">

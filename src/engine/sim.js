@@ -17,9 +17,16 @@ export class Sim {
     const cfg = this.cfg;
     this.seed = seed;
     this.rng = makeRng(seed);
-    this.world = new World(cfg, this.rng);
+    // ── ESCALA DEL ECOSISTEMA con el tamaño del mundo (Modelo A) ──────────────────────────────────────────────
+    // Lo EXTENSIVO (materia, pool, fundadores, rejilla) escala con el ÁREA (size² respecto a REF=1000 u) → un mundo
+    // grande = ecosistema proporcionalmente mayor, MISMA densidad/dinámica y conservación EXACTA. Acotado por un
+    // TECHO de pool (perf, `pop.maxAgentsCeiling`): por encima, el ecosistema deja de crecer y el mundo solo se hace
+    // más DISPERSO. Lo INTENSIVO (talla, sensores, velocidades, tasas, costes) NO escala (ver cabecera de config.js).
+    const REF = 1000, kw = cfg.world.size / REF, ceil = cfg.pop.maxAgentsCeiling || 8000;
+    this._aScale = Math.min(kw * kw, ceil / cfg.pop.maxAgents);                 // factor de escala (ÁREA), acotado al techo de pool
+    this.world = new World(cfg, this.rng, this._aScale);
 
-    const cap = cfg.pop.maxAgents;
+    const cap = Math.min(Math.round(cfg.pop.maxAgents * this._aScale), ceil);   // pool ∝ área (≤ techo)
     this.cap = cap;
     this.world.setCapacity(cap);
 
@@ -115,9 +122,10 @@ export class Sim {
     // E y cuerpo de los fundadores). A partir de aquí N + vegetación + (E+cuerpo)·vivos + carroña se CONSERVA.
     if (cfg.world.closedMatter) {
       const epu = cfg.resource.energyPerUnit;
+      const budget = cfg.world.matterBudget * this._aScale;     // materia total ∝ ÁREA del mundo (Modelo A); a tamaño 1000, aScale=1 → presupuesto base
       let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
       let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
-      let n0 = cfg.world.matterBudget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante de materia → nutriente libre inicial
+      let n0 = budget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante de materia → nutriente libre inicial
       this.world.N.fill(n0 / this.world.N.length); // repartido UNIFORME por el campo (la dinámica lo concentra luego en manchas)
     }
   }
@@ -156,12 +164,22 @@ export class Sim {
     this.deaths++;
   }
 
+  // Nº de FUNDADORES al sembrar: `pop.initial` es la cuenta al tamaño de mundo de REFERENCIA (1000 u); ESCALA con
+  // el ÁREA (size²) → densidad inicial ~constante sea cual sea `world.size` (un mundo grande no arranca casi vacío).
+  // Acotado al pool (maxAgents); en la pecera la MATERIA limita la pop SOSTENIDA → sembrar de más solo causa un
+  // reajuste inicial, no más población final. Lo usan _seedInitial y _seedSimple.
+  _initialCount() {
+    const n = Math.round(this.cfg.pop.initial * this._aScale);   // fundadores ∝ ÁREA, MISMO factor que materia/pool/rejilla → conserva
+    return Math.min(Math.max(1, n), this.cap);                   // (this._aScale y this.cap se fijan en reset, antes de sembrar)
+  }
+
   _seedInitial() {
     if (this.cfg.pop.simpleStart) { this._seedSimple(); return; }
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
     const dietLow = cfg.pop.seedDietLow;
-    const nCarn = cfg.combat.enabled ? (cfg.pop.initial * cfg.pop.carnivoreSeedFrac) | 0 : 0;
-    for (let n = 0; n < cfg.pop.initial; n++) {
+    const nInit = this._initialCount();                          // fundadores escalados al ÁREA del mundo (ver _initialCount)
+    const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
+    for (let n = 0; n < nInit; n++) {
       const i = this._alloc();
       if (i < 0) break;
       // Genoma inicial: cada gen uniforme [0,1] e independiente.
@@ -212,7 +230,8 @@ export class Sim {
   // nube inicial distinta) diverge por un camino diferente. NO codifica conducta: solo la condición inicial.
   _seedSimple() {
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
-    const nCarn = cfg.combat.enabled ? (cfg.pop.initial * cfg.pop.carnivoreSeedFrac) | 0 : 0;
+    const nInit = this._initialCount();                          // fundadores escalados al ÁREA del mundo (ver _initialCount)
+    const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
     // DIVERSIDAD DE SEMBRADO (UI, slider junto a "Sembrar"): 0 = monótono (fundadores casi idénticos a su línea
     // base) · 1 = variado (el sembrado actual). Escala el jitter de los genes base Y la dispersión de los genes
     // decorativos (vía blend), así un único knob va de super monótono a super variado.
@@ -235,7 +254,7 @@ export class Sim {
     const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
     const blend = (base, sample) => base + (sample - base) * div;
     const jit = (v) => { const x = v + rng.gaussian() * J; return x < 0 ? 0 : x > 1 ? 1 : x; };
-    for (let n = 0; n < cfg.pop.initial; n++) {
+    for (let n = 0; n < nInit; n++) {
       const i = this._alloc();
       if (i < 0) break;
       const b = i * NUM_GENES;

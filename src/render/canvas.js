@@ -57,7 +57,12 @@ export class Renderer {
   _initTufts() {
     const rng = makeRng(20240607);
     const W = this.cfg.world;
-    const n = this.cfg.render.grassDensity;
+    this._tuftSize = W.size;   // tamaño de mundo para el que se sembró el plancton → main.js re-siembra si world.size cambia
+    // Nº de motas ∝ ÁREA del mundo (mismo factor ACOTADO que el ecosistema, Modelo A) → densidad de plancton ~constante
+    // a cualquier world.size (sin esto, un mundo grande sale casi sin plancton). Cap = el del pool, como el resto.
+    const ceil = this.cfg.pop.maxAgentsCeiling || 8000, kw = W.size / 1000;
+    const aScale = Math.min(kw * kw, ceil / this.cfg.pop.maxAgents);
+    const n = Math.max(1, Math.round(this.cfg.render.grassDensity * aScale));
     this.nTufts = n;
     // CHISPAS de plancton (abisal): puntito con halo radial suave, en teal/cian/verde-teal desaturado.
     // Pre-renderizadas → drawImage barato por mota. La vegetación = textura TENUE, distinta del glow de los bichos.

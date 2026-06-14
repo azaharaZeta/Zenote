@@ -172,17 +172,8 @@ export function setupControls(app) {
   $('reseed').addEventListener('click', app.reseed);
   if (reseedPendingEl) reseedPendingEl.addEventListener('click', () => app.reseed());   // pulsar el aviso reinicia (atajo)
 
-  // ---- Slider de DIVERSIDAD del sembrado (junto a Sembrar): monótono ↔ variado. Aplica al próximo Sembrar. ----
-  const divSlider = $('divSlider'), divVal = $('divVal');
-  if (divSlider) {
-    const syncDiv = () => { const v = +divSlider.value; if (divVal) divVal.textContent = v.toFixed(2); };
-    divSlider.addEventListener('input', () => {
-      const v = +divSlider.value; syncDiv();
-      cfg.pop.startDiversity = v;                                  // config del hilo principal
-      send({ type: 'set', key: 'pop.startDiversity', value: v });  // y del worker → se usa en el próximo reset (Sembrar)
-    });
-    syncDiv();
-  }
+  // ---- Diversidad inicial del sembrado: MOVIDA al laboratorio (LAB_SPEC, "Población y sembrado") como slider ↻
+  //      (junto a "Sembrado inicial" y "Tamaño del mundo"). Ya no vive en #seedRow → no aparece en modo simple. ----
 
   // ---- Calidad gráfica (Alta/Baja): BAJA = DPR 1, sin bloom, menos nieve, sustrato simple, LOD agresivo →
   // mucho mejor rendimiento en móvil. Autodetecta táctil/pantalla pequeña; el botón permite forzarla. ----
@@ -444,6 +435,8 @@ const LAB_SPEC = [
   ]},
   { cat: '👥 Población y sembrado', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 5000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
+    { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, min: 20, max: 2000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
+    { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},

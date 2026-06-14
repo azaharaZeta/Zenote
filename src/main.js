@@ -11,7 +11,7 @@ import { setupControls, updateInspector } from './ui/controls.js';
 // `identity` (lista activa = índice; la foto ya viene compactada 0..n-1) debe cubrir el MÁXIMO de población que el
 // slider del lab permita: `pop.maxAgents` es ajustable en vivo (+ Reiniciar). Se SOBREDIMENSIONA a un tope generoso
 // (independiente de maxAgents) para no re-asignarlo al cambiar el tope → siempre activeCount ≤ identity.length.
-const IDENT_CAP = Math.max(3000, config.pop.maxAgents);
+const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || config.pop.maxAgents);   // cubre el pool MÁXIMO tras escalar con world.size (ver sim.reset)
 const identity = new Int32Array(IDENT_CAP);
 for (let i = 0; i < IDENT_CAP; i++) identity[i] = i;
 
@@ -59,6 +59,14 @@ worker.onmessage = (e) => {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
     w.capacity = m.capacity; w.temp = m.temp;
+    // Si cambió el TAMAÑO del mundo (world.size, p.ej. al subirlo y Reiniciar): RE-SEMBRAR las capas decorativas
+    // ancladas al mundo (plancton + nieve marina) sobre el NUEVO tamaño y recentrar la cámara. Si no, se quedan
+    // ATRAPADAS en el cuadrante del tamaño viejo (bug del resize). En un reseed del MISMO tamaño no se toca nada.
+    if (renderer._tuftSize !== config.world.size) {
+      renderer._initTufts();                                   // re-posiciona + re-escala el plancton sobre el nuevo world.size
+      renderer._snow = null;                                   // la nieve se re-siembra en el próximo draw sobre el nuevo tamaño
+      renderer.camX = renderer.camY = config.world.size / 2;   // recentra la vista en el nuevo mundo
+    }
     renderer._gz = NaN;           // forzar re-render del sustrato
   } else if (m.type === 'frame') {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
