@@ -29,6 +29,17 @@
       <span id="stat">—</span>
     </div>
 
+    <!-- Velocidad de simulación: arriba del todo, bajo el título (control principal). En contemplación se reubica a la barra flotante (controls.js setHidden). -->
+    <div class="ctrl" id="speedBlock">
+      <label>Velocidad (t/s) <output id="ticksVal"></output></label>
+      <div class="speed-row">
+        <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
+        <input id="ticks" type="range" min="1" max="1000" step="1" value="486" />
+        <button id="maxBtn" class="maxbtn" title="Máxima velocidad posible">max</button>
+      </div>
+      <div id="speedReal" class="speed-real">velocidad real: —</div>
+    </div>
+
     <div class="row btn-row">
       <button id="modeBtn" class="mode-btn" title="Alternar entre vista simple (observador) y modo laboratorio">Laboratorio</button>
       <!-- Aviso: hay parámetros ↻ cambiados que aún no se han aplicado. Oculto hasta que se toca uno; pulsarlo reinicia. -->
@@ -91,16 +102,6 @@
     <div class="death-chart">
       <canvas id="birthChart" class="chart"></canvas>
       <canvas id="deathChart" class="chart"></canvas>
-    </div>
-
-    <div class="ctrl" id="speedBlock">
-      <label>Velocidad (t/s) <output id="ticksVal"></output></label>
-      <div class="speed-row">
-        <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
-        <input id="ticks" type="range" min="1" max="1000" step="1" value="486" />
-        <button id="maxBtn" class="maxbtn" title="Máxima velocidad posible">max</button>
-      </div>
-      <div id="speedReal" class="speed-real">velocidad real: —</div>
     </div>
 
     <div class="ctrl">

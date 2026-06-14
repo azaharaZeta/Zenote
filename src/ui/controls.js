@@ -430,11 +430,11 @@ export function setupControls(app) {
 const LAB_SPEC = [
   { cat: '🫧 Pecera sellada (materia)', items: [
     { k: 'world.closedMatter', label: 'Ecosistema cerrado (pecera)', toggle: true, reseedOnChange: true, d: 'Cierra el mundo en MATERIA: la biomasa total es constante y circula (nutriente↔pasto↔organismos↔carroña) en vez de que el sol la cree. Re-siembra al cambiar.' },
-    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total de la pecera: más alta = más biomasa y más margen. Requiere Reiniciar.' },
     { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regula la población (más alto = más organismos y depredadores).' },
   ]},
   { cat: '👥 Población y sembrado', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
+    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
     { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, scales: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
     { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, scales: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
