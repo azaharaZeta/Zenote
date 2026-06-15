@@ -620,7 +620,9 @@ function setupLab(app, send) {
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
           inp.addEventListener('change', () => { commit(it.k, inp.checked, needsReseed); paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); });
-          lab.appendChild(inp); lab.appendChild(document.createTextNode(' ' + (needsReseed ? '↻ ' : '') + it.label));
+          lab.appendChild(inp); lab.appendChild(document.createTextNode(' '));
+          if (needsReseed) { const m = document.createElement('span'); m.className = 'reseed-mark'; m.textContent = '↻'; lab.appendChild(m); lab.appendChild(document.createTextNode(' ')); } // ↻ dorado (requiere Reiniciar)
+          lab.appendChild(document.createTextNode(it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
           const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; commit(it.k, !!def, needsReseed); } paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); };
           rb.addEventListener('click', reset); resets.push(reset);
@@ -630,7 +632,9 @@ function setupLab(app, send) {
         } else {
           const row = document.createElement('div'); row.className = 'lab-row';
           const head = document.createElement('div'); head.className = 'lab-lab';
-          const name = document.createElement('span'); name.className = 'lab-name'; name.textContent = (needsReseed ? '↻ ' : '') + it.label;
+          const name = document.createElement('span'); name.className = 'lab-name';
+          if (needsReseed) { const m = document.createElement('span'); m.className = 'reseed-mark'; m.textContent = '↻'; name.appendChild(m); name.appendChild(document.createTextNode(' ')); } // ↻ dorado (requiere Reiniciar)
+          name.appendChild(document.createTextNode(it.label));
           const right = document.createElement('span'); right.className = 'lab-right';
           const out = document.createElement('output'); out.textContent = (+def).toFixed(it.dec);
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';

@@ -8,11 +8,16 @@ import { makeRng } from '../util/rng.js';
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
 function lineageHue(id) { return (Math.imul(id + 1, 2654435761) >>> 0) % 360; }
 
-// Escala de REFERENCIA del LOD (nivel de detalle). El LOD depende SOLO de la CALIDAD (lodMul) y el ZOOM — NUNCA de la
-// resolución (ni la nativa del dispositivo ni `maxInternalPx`). El "tamaño aparente" con el que se decide el detalle es
-// `LOD_REF · zoom · radio_mundo`; la resolución solo cambia la NITIDEZ del pegote final, no QUÉ se dibuja. 1 = el mundo
-// (px lógicos) en unidades de referencia a zoom 1. Los umbrales `config.render.lod*` se calibran contra esto.
+// Escala de REFERENCIA del LOD (nivel de detalle). El LOD depende de la CALIDAD (lodMul), el ZOOM y el TAMAÑO DEL MUNDO
+// — NUNCA de la resolución (ni la nativa del dispositivo ni `maxInternalPx`). El "tamaño aparente" con el que se decide
+// el detalle es `LOD_REF · zoom · (WORLD_REF/world.size) · radio_mundo`: a zoom 1 el mundo entero cabe en pantalla, así
+// que un mundo K× más grande hace a cada organismo K× más pequeño EN PANTALLA → debe dibujarse más grueso. La resolución
+// solo cambia la NITIDEZ del pegote final, no QUÉ se dibuja. Los umbrales `config.render.lod*` se calibran a WORLD_REF.
 const LOD_REF = 1;
+// Tamaño de mundo de REFERENCIA para el LOD (= world.size por defecto): a este tamaño el LOD es IDÉNTICO al histórico
+// (factor 1). Mundos mayores obtienen un LOD proporcionalmente más grueso (puntos/elipses al alejar) en vez de dibujar
+// grafos completos para organismos de ~1px (detalle invisible, carísimo a miles de agentes). NO toca la simulación.
+const WORLD_REF = 1000;
 
 export class Renderer {
   constructor(canvas, sim, cfg) {
@@ -569,9 +574,10 @@ export class Renderer {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
     const active = sim.active, n = sim.activeCount;
     const mode = this.colorMode;
-    // El LOD depende SOLO de calidad (lodMul) × ZOOM, no de la resolución. `lodSc` = tamaño aparente (referencia fija ×
-    // zoom) → mover la Resolución cambia la nitidez, no el detalle. El dibujo real lo escala el ctx del buffer.
-    const lodSc = LOD_REF * this.zoom;
+    // El LOD depende de calidad (lodMul) × ZOOM × (WORLD_REF/world.size), NO de la resolución. `lodSc` = tamaño aparente:
+    // mover la Resolución cambia la nitidez, no el detalle; agrandar el MUNDO sí (a zoom 1 cabe entero → más grande = más
+    // pequeño en pantalla → LOD más grueso). A world.size=1000 es idéntico al histórico. Clave para miles de agentes a escala.
+    const lodSc = LOD_REF * this.zoom * (WORLD_REF / (this.cfg.world.size || WORLD_REF));
     this._drawScale = lodSc;                       // escala del LOD (SIN resolución): TODAS las decisiones de detalle
     this._bufScale = this._scale();                // escala REAL del buffer (CON resolución) → SOLO suelos sub-píxel, no LOD
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
