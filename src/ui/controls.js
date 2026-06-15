@@ -428,48 +428,57 @@ export function setupControls(app) {
 // Fuente única de verdad: lee los valores iniciales de la config (defaults de config.js) y, al mover un
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
-  // El toggle "Ecosistema cerrado (pecera)" se RETIRÓ de la UI: la pecera es PERMANENTE (config.world.closedMatter sigue
-  // true por defecto; el modo abierto solo se podría reactivar editando config.js). "Fotosíntesis" se movió a "Comida y recurso".
-  { cat: '👥 Población y sembrado', items: [
+  // La pecera (closedMatter) es PERMANENTE → los parámetros que SOLO aplican al modelo ABIERTO se han RETIRADO de la UI
+  // (no salen en ningún caso): `resource.R_regen` (en pecera manda `world.closedRegen`), `energy.corpseReturn` y
+  // `energy.scrapReturn` (en pecera la carroña se reparte/mineraliza por conservación). Siguen en config.js por si se
+  // reactivara el modo abierto editando `config.world.closedMatter`. Sin marca `mode` ni gating: todo lo de aquí aplica.
+  { cat: '🌍 Mundo y población', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
-    { k: 'world.matterBudget', mode: 'closed', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
+    { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
     { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, scales: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
     { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
     { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, scales: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
-  { cat: '🍃 Comida y recurso', items: [
+  { cat: '🍃 Comida y vegetación', items: [
     // Fotosíntesis (pecera): regulador PRINCIPAL de la comida del mundo (pecera permanente → siempre activo). Antes vivía en la sección "Pecera sellada", ya retirada.
-    { k: 'world.closedRegen', mode: 'closed', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regulador principal de la comida del mundo (más alto = más organismos y depredadores).' },
-    { k: 'resource.R_regen', mode: 'open', label: 'Comida disponible (rebrote)', min: 0, max: 0.012, step: 0.0001, dec: 4, d: 'Rebrote del pasto en el modo ABIERTO: regulador principal de cuánta comida sostiene el mundo. En la pecera cerrada manda "Fotosíntesis (pecera)".' },
+    { k: 'world.closedRegen', label: 'Fotosíntesis (pecera)', min: 0.0006, max: 0.006, step: 0.0001, dec: 4, d: 'Ritmo de fotosíntesis en la pecera: regulador principal de la comida del mundo (más alto = más organismos y depredadores).' },
     { k: 'resource.grazeRefuge', label: 'Reserva de rebrote', min: 0, max: 0.8, step: 0.01, dec: 2, d: 'Fracción de cada celda que no se puede pastar (queda como semilla): frena el sobrepastoreo.' },
     { k: 'resource.forageReach', label: 'Alcance de forrajeo (talla)', min: 0, max: 8, step: 1, dec: 0, d: 'Cuántas celdas alrededor pasta un cuerpo grande: da ventaja a la talla (hace emerger el grupo grande). 0 = solo su celda.' },
     { k: 'resource.absRate', label: 'Ritmo de absorción', min: 0, max: 0.4, step: 0.005, dec: 3, d: 'Velocidad a la que un organismo absorbe el recurso de su celda (alto = comen rápido, pero la arrasan).' },
     { k: 'resource.energyPerUnit', label: 'Energía por unidad', min: 5, max: 24, step: 1, dec: 0, d: 'Energía que da cada unidad de recurso comido (sube la rentabilidad de pastar).' },
     { k: 'resource.patchiness', label: 'Comida en parches', min: 0, max: 1, step: 0.05, dec: 2, d: '0 = pasto uniforme; subir = parches que se agotan y migran solos (premia buscar).' },
+    // Ingreso de pasto por FORMA del cuerpo (efficiencia de pastoreo): vive aquí (con la comida), no en metabolismo.
+    { k: 'energy.k_graze', label: 'Pasto extra por masa', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto más pasta un cuerpo con más masa (ata la complejidad al nicho herbívoro).' },
+    { k: 'energy.k_grazeWide', label: 'Pasto extra por anchura', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto más pasta un cuerpo ANCHO: premia la forma de pastador (aletas/hojas anchas).' },
+  ]},
+  { cat: '💀 Carroña', items: [
     { k: 'resource.carrionDecay', label: 'Descomposición de cadáveres', min: 0, max: 0.02, step: 0.001, dec: 3, d: 'Ritmo al que se pudre la carroña: bajo = los cadáveres duran más para el carroñero.' },
     { k: 'resource.carrionAbsRate', label: 'Ritmo de carroñeo', min: 0, max: 0.5, step: 0.05, dec: 2, d: 'Velocidad a la que un carroñero vacía un cadáver.' },
-    { k: 'energy.corpseReturn', mode: 'open', label: 'Reciclaje de cadáveres (→ pasto)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Fracción de la carroña que, al pudrirse, vuelve al pasto (ciclo de nutrientes). Solo en modo ABIERTO; en la pecera la carroña mineraliza íntegra al nutriente.' },
+    { k: 'energy.k_scavThin', label: 'Carroñeo por cuerpo fino', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto mejor carroñea un cuerpo FINO/elongado: empuja a los carroñeros a forma de gusano.' },
   ]},
-  { cat: '⚡ Energía y costes', items: [
+  { cat: '⚡ Metabolismo y cuerpo', items: [
     { k: 'energy.c_base', label: 'Coste basal', min: 0, max: 0.06, step: 0.002, dec: 3, d: 'Gasto metabólico de existir, por tick. Más alto = la vida es más cara y la población baja.' },
-    { k: 'energy.massExp', label: 'Escala talla→masa', min: 1, max: 2.2, step: 0.05, dec: 2, d: 'Cuánto pesa ser grande (exponente alométrico): alto = la masa y sus costes se disparan con la talla.' },
-    { k: 'expr.size.min', label: 'Talla mínima (px)', min: 1, max: 5, step: 0.1, dec: 1, d: 'Radio MÍNIMO al que puede encoger un organismo. SUBIRLA pone un SUELO a la talla → frena la deriva a cuerpos diminutos que a largo plazo saturan el pool y extinguen al cazador (clave para que el trío aguante). Afecta a la energía (talla→masa→eMax). Se aplica a las crías nuevas.' },
-    { k: 'expr.size.max', label: 'Talla máxima (px)', min: 6, max: 14, step: 0.5, dec: 1, d: 'Radio MÁXIMO que puede alcanzar un organismo grande: amplía o limita el techo de tamaño. Se aplica a las crías nuevas.' },
     { k: 'energy.k_metab', label: 'Coste por metabolismo', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto encarece el gen de metabolismo el coste basal (metabolismo alto = come y gasta más).' },
     { k: 'energy.k_sense', label: 'Coste por visión', min: 0, max: 1, step: 0.02, dec: 2, d: 'Coste energético de ver lejos: presiona a invertir en vista solo si compensa.' },
     { k: 'energy.kleiber', label: 'Metabolismo de escala', min: 0.5, max: 1, step: 0.02, dec: 2, d: 'Cómo escala el coste con la masa (Kleiber): 0.75 = los grandes gastan menos por unidad de masa.' },
-    { k: 'energy.k_graze', label: 'Pasto extra por masa', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto más pasta un cuerpo con más masa (ata la complejidad al nicho herbívoro).' },
-    { k: 'energy.k_grazeWide', label: 'Pasto extra por anchura', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto más pasta un cuerpo ANCHO: premia la forma de pastador (aletas/hojas anchas).' },
-    { k: 'energy.k_scavThin', label: 'Carroñeo por cuerpo fino', min: 0, max: 2, step: 0.05, dec: 2, d: 'Cuánto mejor carroñea un cuerpo FINO/elongado: empuja a los carroñeros a forma de gusano.' },
+    { k: 'energy.massExp', label: 'Escala talla→masa', min: 1, max: 2.2, step: 0.05, dec: 2, d: 'Cuánto pesa ser grande (exponente alométrico): alto = la masa y sus costes se disparan con la talla.' },
+    { k: 'expr.size.min', label: 'Talla mínima (px)', min: 1, max: 5, step: 0.1, dec: 1, d: 'Radio MÍNIMO al que puede encoger un organismo. SUBIRLA pone un SUELO a la talla → frena la deriva a cuerpos diminutos que a largo plazo saturan el pool y extinguen al cazador (clave para que el trío aguante). Afecta a la energía (talla→masa→eMax). Se aplica a las crías nuevas.' },
+    { k: 'expr.size.max', label: 'Talla máxima (px)', min: 6, max: 14, step: 0.5, dec: 1, d: 'Radio MÁXIMO que puede alcanzar un organismo grande: amplía o limita el techo de tamaño. Se aplica a las crías nuevas.' },
+    { k: 'energy.E_max_base', label: 'Energía máxima base', min: 40, max: 150, step: 5, dec: 0, d: 'Energía máxima que almacena un organismo (escala con su tamaño): más reserva ante hambrunas.' },
+  ]},
+  { cat: '🏊 Locomoción y visión', items: [
+    { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 12, step: 0.1, dec: 1, d: 'Calibra la velocidad típica de la morfología: más alto = todos nadan más rápido.' },
+    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 1, step: 0.02, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados). El default es muy bajo a propósito (la cabeza es casi carga, no motor).' },
+    { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad de cualquier cuerpo.' },
+    { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base: más alto = giran más rápido hacia donde quieren ir.' },
+    { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar descoordinado: alto = presiona a una natación coordinada (onda limpia).' },
+    // Costes de NADO (antes en "Energía"): viven con la locomoción que encarecen.
     { k: 'energy.k_effort', label: 'Coste por esfuerzo', min: 0, max: 3, step: 0.05, dec: 2, d: 'Coste extra de nadar a tope: limita la velocidad por presupuesto energético.' },
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coste de moverse ∝ velocidad²: frena la carrera de velocidad.' },
     { k: 'energy.k_haul', label: 'Coste de transporte (masa)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar arrastrar masa: alto = un cuerpo grande gasta más al desplazarse, no solo al mantenerse.' },
     { k: 'energy.k_drag', label: 'Coste de arrastre (forma)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar el ARRASTRE de la forma (cuerpo/aletas anchos, apéndices): complementa el coste por masa — distingue la forma hidrodinámica del bulto. 0 = el arrastre solo frena, no cuesta.' },
-    { k: 'energy.E_max_base', label: 'Energía máxima base', min: 40, max: 150, step: 5, dec: 0, d: 'Energía máxima que almacena un organismo (escala con su tamaño): más reserva ante hambrunas.' },
-    { k: 'energy.preyGain', label: 'Energía de la presa', min: 0, max: 1, step: 0.02, dec: 2, d: 'Fracción de la energía almacenada de la presa que aprovecha el cazador.' },
-    { k: 'energy.carcassValue', label: 'Valor del cadáver (biomasa)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto alimenta el CUERPO de la presa al cazarla, además de su energía. Alto = cazar es viable aunque la presa esté magra; muy alto puede disparar oscilaciones.' },
-    { k: 'energy.scrapReturn', label: 'Sobras de la caza (carroña)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánta carroña deja una presa CAZADA (las muertes naturales dejan el cuerpo entero).' },
+    { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Reparte el presupuesto visual: bajo = cono frontal largo (cazador); alto = panorámica corta (presa).' },
   ]},
   { cat: '🥚 Reproducción', items: [
     { k: 'repro.cooldown', label: 'Enfriamiento de cría', min: 0, max: 200, step: 5, dec: 0, d: 'Ticks de espera entre crías: más alto = se reproducen más despacio.' },
@@ -484,6 +493,11 @@ const LAB_SPEC = [
     { k: 'mut.bigRate', label: 'Tasa de macromutación', min: 0, max: 0.01, step: 0.001, dec: 3, d: 'Probabilidad de una mutación grande y rara (salto), además de la deriva fina.' },
     { k: 'mut.recomb', label: 'Recombinación (ligamiento)', min: 0, max: 0.5, step: 0.01, dec: 2, d: 'Cruce sexual por gen: 0.5 = cada gen al azar; bajo = se heredan tramos contiguos (complejos co-adaptados intactos).' },
   ]},
+  { cat: '⬡ Edad y longevidad', items: [
+    // La edad de madurez es ahora un GEN evolucionable (#12), no un parámetro global. Aquí solo la escala base.
+    { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (el gen de ritmo de vida la escala): más alto = vidas más cortas.' },
+    { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta ser longevo: alto = la vida larga sale cara (evita que todos sean "inmortales").' },
+  ]},
   { cat: '⚔ Combate y dieta', items: [
     { k: 'combat.enabled', label: 'Combate activo', toggle: true, d: 'Activa la depredación. Off = solo herbívoros pastando.' },
     { k: 'combat.sizeAdvantage', label: 'Ventaja de tamaño', min: 0, max: 3, step: 0.1, dec: 1, d: 'Cuánto pesa el tamaño en quién gana un combate: alto = el grande gana casi siempre.' },
@@ -495,25 +509,15 @@ const LAB_SPEC = [
     { k: 'combat.lureAttract', label: 'Atracción del señuelo (emboscada)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto ATRAE el señuelo a la presa que lo ve (emboscada anglerfish): la presa se acerca al portador. 0 = el señuelo solo extiende el alcance de captura, no atrae.' },
     { k: 'combat.handlingTime', label: 'Tiempo de manejo (digestión)', min: 0, max: 120, step: 4, dec: 0, d: 'Ticks de enfriamiento tras cazar: limita la tasa de caza y amortigua las oscilaciones.' },
     { k: 'combat.dietMargin', label: 'Margen de dieta (presa)', min: 0, max: 0.6, step: 0.02, dec: 2, d: 'Diferencia de dieta mínima para ver a otro como presa (evita que los parecidos se coman).' },
+    // Energética de la DEPREDACIÓN (antes en "Energía"): viven con el combate que las produce.
+    { k: 'energy.preyGain', label: 'Energía de la presa', min: 0, max: 1, step: 0.02, dec: 2, d: 'Fracción de la energía almacenada de la presa que aprovecha el cazador.' },
+    { k: 'energy.carcassValue', label: 'Valor del cadáver (biomasa)', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto alimenta el CUERPO de la presa al cazarla, además de su energía. Alto = cazar es viable aunque la presa esté magra; muy alto puede disparar oscilaciones.' },
     { k: 'diet.omniPenalty', label: 'Penalización omnívora', min: 0, max: 1, step: 0.05, dec: 2, d: 'Penaliza la dieta intermedia: alta = especializarse (herbívoro o carnívoro puro) rinde más.' },
     { k: 'diet.scavPenalty', label: 'Penalización caza/carroña', min: 0, max: 1, step: 0.05, dec: 2, d: 'Penaliza cazar Y carroñear a la vez: alta = obliga a elegir cazador o carroñero (diverge el gusano).' },
   ]},
   { cat: '🌿 Refugio de presa', items: [
     { k: 'refuge.enabled', label: 'Refugio de presa', toggle: true, d: 'La vegetación densa esconde a la presa (refugio que se mueve con el pasto) → los carnívoros no se extinguen.' },
     { k: 'refuge.strength', label: 'Cobertura del refugio', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto protege la cobertura: alto = en zonas tupidas la presa casi siempre escapa. 0 = sin refugio.' },
-  ]},
-  { cat: '🏊 Locomoción y visión', items: [
-    { k: 'loco.kThrust', label: 'Empuje base', min: 0.5, max: 12, step: 0.1, dec: 1, d: 'Calibra la velocidad típica de la morfología: más alto = todos nadan más rápido.' },
-    { k: 'loco.headThrust', label: 'Empuje de la cabeza', min: 0, max: 1, step: 0.02, dec: 2, d: 'Cuánto propulsa la cabeza sola: bajo = nadar bien exige cola/aletas (cuerpos más variados). El default es muy bajo a propósito (la cabeza es casi carga, no motor).' },
-    { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad de cualquier cuerpo.' },
-    { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base: más alto = giran más rápido hacia donde quieren ir.' },
-    { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar descoordinado: alto = presiona a una natación coordinada (onda limpia).' },
-    { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Reparte el presupuesto visual: bajo = cono frontal largo (cazador); alto = panorámica corta (presa).' },
-  ]},
-  { cat: '⬡ Edad', items: [
-    // La edad de madurez es ahora un GEN evolucionable (#12), no un parámetro global. Aquí solo la escala base.
-    { k: 'age.mortality', label: 'Mortalidad por edad', min: 0, max: 0.003, step: 0.0001, dec: 4, d: 'Probabilidad base de morir de viejo (el gen de ritmo de vida la escala): más alto = vidas más cortas.' },
-    { k: 'energy.k_lifespan', label: 'Coste de longevidad', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto cuesta ser longevo: alto = la vida larga sale cara (evita que todos sean "inmortales").' },
   ]},
   { cat: '🎨 Estética (solo render)', items: [
     { k: 'render.worldBounds', label: 'Límite del mundo', toggle: true, d: 'Dibuja un borde TENUE en los límites del mundo (toro): ayuda a ver dónde acaba un mundo y empieza su repetición en el mosaico. Sutil, solo visual.' },
@@ -526,7 +530,6 @@ const LAB_SPEC = [
 
 function setupLab(app, send) {
   const cfg = app.cfg;
-  const modeGated = [];  // controles que solo aplican en pecera (mode:'closed') o solo en abierto (mode:'open') → atenuados en el otro modo
   const $ = (id) => document.getElementById(id);
   const get = (path) => { const ks = path.split('.'); let t = cfg; for (const k of ks) t = t[k]; return t; };
   // Espeja el cambio en la config del HILO PRINCIPAL (no solo en el worker) → el readout (N) y el render leen el valor real.
@@ -619,15 +622,14 @@ function setupLab(app, send) {
           const inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!def;
           // Señal de ALTERADO (toggle): VERDOSO si activado por encima del base, ROJIZO si desactivado por debajo.
           const paintT = () => { const c = (inp.checked === !!def) ? '' : (inp.checked ? '#79c47a' : '#e0795f'); inp.style.accentColor = c; lab.style.color = c; };
-          inp.addEventListener('change', () => { commit(it.k, inp.checked, needsReseed); paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); });
+          inp.addEventListener('change', () => { commit(it.k, inp.checked, needsReseed); paintT(); });
           lab.appendChild(inp); lab.appendChild(document.createTextNode(' '));
           if (needsReseed) { const m = document.createElement('span'); m.className = 'reseed-mark'; m.textContent = '↻'; lab.appendChild(m); lab.appendChild(document.createTextNode(' ')); } // ↻ dorado (requiere Reiniciar)
           lab.appendChild(document.createTextNode(it.label));
           const rb = document.createElement('button'); rb.className = 'lab-reset'; rb.type = 'button'; rb.textContent = '↺'; rb.title = 'Restaurar valor por defecto';
-          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; commit(it.k, !!def, needsReseed); } paintT(); if (it.k === 'world.closedMatter') refreshModeGating(); };
+          const reset = () => { if (inp.checked !== !!def) { inp.checked = !!def; commit(it.k, !!def, needsReseed); } paintT(); };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(lab); if (it.d) row.appendChild(makeInfo(it.d)); row.appendChild(rb);
-          if (it.mode) { row.classList.add('lab-modegate'); modeGated.push({ row, mode: it.mode }); }
           grid.appendChild(row);
         } else {
           const row = document.createElement('div'); row.className = 'lab-row';
@@ -658,7 +660,6 @@ function setupLab(app, send) {
           };
           rb.addEventListener('click', reset); resets.push(reset);
           row.appendChild(head); row.appendChild(slider);
-          if (it.mode) { row.classList.add('lab-modegate'); modeGated.push({ row, mode: it.mode }); }
           grid.appendChild(row);
         }
       });
@@ -666,20 +667,6 @@ function setupLab(app, send) {
       det.appendChild(grid); body.appendChild(det);
     });
   }
-  // Atenúa los controles que NO aplican en el modo actual (pecera ↔ abierto): la pecera es PERMANENTE (closedMatter
-  // siempre ON; el toggle se retiró de la UI) → los de modo ABIERTO ("Comida disponible (rebrote)", "Reciclaje de
-  // cadáveres") quedan SIEMPRE atenuados, y los de pecera ("Fotosíntesis"), siempre activos. Se refresca al construir el lab.
-  function refreshModeGating() {
-    const closed = !!cfg.world.closedMatter;
-    for (const { row, mode } of modeGated) {
-      const inert = mode === 'closed' ? !closed : closed;
-      row.classList.toggle('lab-inert', inert);
-      row.title = inert
-        ? (mode === 'closed' ? 'Solo aplica en la pecera cerrada (ahora: modo abierto)' : 'Solo aplica en el modo abierto (ahora: pecera cerrada)')
-        : '';
-    }
-  }
-  refreshModeGating();
   app.refreshScaledHints();   // anotación inicial "base → efectivo" en los sliders que escalan con el tamaño del mundo
   // Alternar VISTA SIMPLE ↔ MODO LABORATORIO: añade/quita .advanced al panel (revela la sección del
   // laboratorio y compacta la vista simple). Recuerda el modo entre recargas (localStorage).
