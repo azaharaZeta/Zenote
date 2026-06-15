@@ -156,15 +156,17 @@ export const config = {
     E_max_base: 70,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
                         //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
     preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla
-    carcassValue: 0.25, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía: la captura rinde preyGain·(E_presa
-                        //      + carcassValue·eMax_presa). 0 = solo cuenta la energía ALMACENADA (modelo previo) → en
-                        //      mundo escaso la presa cría hasta el tope pero MAGRA (poca E) y cazarla da calorías
-                        //      vacías → los carnívoros se extinguen rodeados de presa abundante (medido headless: a
-                        //      R_regen 0.003, 3/4 semillas extinguen carnívoros). >0 = un cuerpo vale su tejido (∝
-                        //      masa) ADEMÁS de sus reservas → comer un animal alimenta aunque viniera hambriento. 0.25
-                        //      rescata el nicho carnívoro en mundo escaso (≈6% estable) conservando el gradiente
-                        //      presa-gorda-vale-más (freno L-V parcial). OJO: subirlo mucho ablanda ese freno → en
-                        //      comida abundante puede disparar oscilaciones depredador-presa. Afinar por medición.
+    carcassValue: 0.20, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía al cazar: rinde preyGain·(E_presa +
+                        //      carcassValue·eMax_presa). 0 = solo la energía ALMACENADA → en mundo escaso cazar da calorías
+                        //      vacías y los carnívoros se extinguen (medido). >0 = el cuerpo vale su tejido → comer alimenta.
+                        //      PALANCA DOMINANTE del balance HERBIVORÍA↔CARNIVORÍA (ver docs/ANALISIS_PARAMETROS.md, Bucle 4):
+                        //      demasiado ALTO → la carne es tan rentable que la dieta BARRE a carnívora → la base herbívora
+                        //      COLAPSA a un monocultivo comecarne (medido a 0.25 / régimen 4.0/0.0055: herb 5%, pirámide 1/6 —
+                        //      estado todo-carnívoro mantenido por depredación que suprime a los herbívoros). BAJADO 0.25→0.20
+                        //      (2026-06-15, barrido + validación 25k/6 seeds): restaura la base (herb 38%) con el TRÍO completo
+                        //      (herbívoros + carroñeros + cazadores 4/6 seeds), estable a 25k. OJO: el balance es BIMODAL/no-monótono
+                        //      (0.18 salió PEOR que 0.15 Y 0.20 → todo-carroñero) → NO afinar con precisión (ruido). Alternativa: 0.15
+                        //      da base más fuerte (herb 50%) pero casi sin cazadores (1/6) — un mundo más herbívoro/carroñero.
     scrapReturn: 0.15,  // (UI) SOBRAS: al CAZAR una presa, fracción de su biomasa (carcassValue·eMax) que queda como
                         //      carroña (el depredador ya se llevó casi todo) → "restos". Muertes NATURALES dejan el
                         //      cuerpo entero (factor 1). Bajo = la caza casi no deja nada para carroñeros.
