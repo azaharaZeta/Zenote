@@ -368,6 +368,28 @@ export class Sim {
           this.genes[nb + 9] = jit(0);                         // gaitMode ondular
         }
       }
+      // PROTO-CAZADOR-GARRA (cohorte cazadora, PAR): mantiene la COLA propulsora (nodo 1, ya sembrada arriba) y añade un
+      // par de APÉNDICES FRONTALES (garras/púas que apuntan al FRENTE: emit≈0 → cos>0 → suman a plan.fwdReach → alcance de
+      // captura morphReach). Cruza el VALLE de la garra igual que el proto-gusano cruza el del cuerpo fino — medido: subir
+      // morphReach NO la induce desde cero (el intermedio FRENA el nado antes de que el alcance pague → valle); hay que
+      // SEMBRARLA. La cola propulsa; la garra frena (gait<0) pero morphReach la rentabiliza al cazar → la selección decide
+      // si persiste (bootstrapping legítimo, como el gusano/los proto-carnívoros; la forma sigue evolucionando).
+      if (n < nCarn && (n % 2) === 0) {
+        for (let k = 2; k < NODE_COUNT; k++) {                 // nodo 2 = garra frontal bilateral; 3-7 ausentes (la propulsión es la cola, nodo 1)
+          const nb = b + G['n' + k + '_present'];
+          const claw = k === 2;
+          this.genes[nb + 0] = claw ? 1 : jit(0);              // present
+          this.genes[nb + 1] = 0;                              // parent = cabeza (la garra sale del morro)
+          this.genes[nb + 2] = jit(0.5);                       // size (garra sustancial → alcance, sin frenar de más)
+          this.genes[nb + 3] = jit(0.7);                       // aspect alto → apéndice LARGO y fino (púa/tentáculo)
+          this.genes[nb + 4] = jit(0.13);                      // angle bajo → emit≈0.41 rad (AL FRENTE; lateral → par bilateral) → fwdReach
+          this.genes[nb + 5] = jit(0.3);                       // attach cerca de la base (sale del morro)
+          this.genes[nb + 6] = jit(0.3);                       // osc_amp bajo (la garra agarra, no rema)
+          this.genes[nb + 7] = blend(baseOsc, rng.next());     // osc_phase coordinada (a div=0)
+          this.genes[nb + 8] = jit(0.28);                      // tipShape < 0.5 → AFILA (púa/garra: +alcance, −arrastre)
+          this.genes[nb + 9] = jit(0);                         // gaitMode ondular
+        }
+      }
       computePhenotype(this, i);
       this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
       this.x[i] = rng.next() * W.size; this.y[i] = rng.next() * W.size;
