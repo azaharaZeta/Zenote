@@ -79,6 +79,7 @@ cruzar el valle morfológico; mantenida por inercia + streamlining). Tres nichos
 | `CLAUDE.md` | Instrucciones de trabajo | reglas innegociables, pila técnica, cómo contribuir | cambia el proceso/reglas |
 | `docs/SPEC_EVOLUCION.md` | **Fuente de verdad del MODELO** | mecánica: genoma, herencia, mutación, selección, energética, física por nodos, rendimiento | cambian las REGLAS del modelo |
 | `src/config.js` | **Parámetros (fuente única)** | cada parámetro: valor, comentario, si es *(UI)*; agrupado por bloque | se añade/quita/cambia un parámetro |
+| `docs/ANALISIS_PARAMETROS.md` | **Mapa de interacciones** | qué hace cada subsistema *a nivel de ecuación*, bucles de realimentación, modos de fallo, jerarquía de palancas (base del finetuning). NO duplica config.js (valores) — analiza la DINÁMICA | cambia el modelo o se afina la parametrización |
 | `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad, UI, responsive | cambia el render/estética |
 | `docs/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, archivada) | análisis física/diseño/muleta, catálogo de genes, **backlog CERRADO 14/14**, el *porqué* de v2.0 | congelado (no se modifica) |
 | `docs/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` | surge / avanza / cierra una idea |

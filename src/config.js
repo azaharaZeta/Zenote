@@ -38,11 +38,13 @@ export const config = {
                          //      (2026-06-14, tuning DIVERSIDAD) 60000: alimenta la pirámide trófica de 3 niveles (sostiene cazadores); SATURA
                          //      aquí (medido: 75k/90k no mejoran, el exceso queda como N libre). Da MENOS pop que 30k (≈914 vs 1309: la cadena
                          //      trófica más larga reparte la materia → menos individuos, más diversidad y más fluido).
-    closedRegen: 0.004,  // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (que rige
-                         //      el modelo abierto, sin tocarlo). (2026-06-14, tuning DIVERSIDAD) 0.004 = régimen de RED TRÓFICA con los 3
-                         //      gremios (herbívoros + carroñeros + CAZADORES) coexistiendo en 6/6 siembras (medido headless multi-seed, junto a
-                         //      matterBudget 60k + forageReach 5 + massExp 1.3 + k_haul 0.2 + fleeSpeed 1.0). Más productividad = cadena trófica
-                         //      más larga. DOS atractores: bajar a ~0.0017 → pecera magra (solo herbívoro/carroñero, sin cazadores); 0.0012 → ~350 plácido. En vivo.
+    closedRegen: 0.0055, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (modelo abierto).
+                         //      PRODUCTIVIDAD primaria = MOTOR del cazador (más comida → cadena trófica más larga; ver docs/ANALISIS_PARAMETROS.md
+                         //      Bucle 1→3). (2026-06-15) SUBIDO 0.004→0.0055 junto a expr.size.min 2.0→4.0 por barrido 2D + validación 25k/6 seeds:
+                         //      a size.min 4.0 la pop es materia-limitada (no satura), así que esta productividad alta va a la cadena trófica, no a un
+                         //      enjambre r → cazador robusto (4/6 seeds) + patchiness alta (CV 0.38) + población calmada (~410). A size.min bajo, en
+                         //      cambio, esta misma productividad ACELERA la saturación del pool (por eso size.min y closedRegen se fijan JUNTOS).
+                         //      Alternativa medida: 0.004 da ~1000 individuos (mundo más poblado) pero vegetación más uniforme (CV 0.14). En vivo.
     nutrientDiffuse: 0.15, // (UI) (pecera) Difusión del campo de NUTRIENTE libre por tick: 0 = manchas fértiles muy LOCALES y
                          //      persistentes (donde muere algo, el pasto rebrota antes ahí) … alto → se reparte casi global (como el
                          //      N escalar previo). 0.15 = manchas que se difuminan despacio (ciclo de nutrientes geográfico). Solo cerrado. En vivo.
@@ -383,14 +385,15 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 2.0, max: 9 },    // gen size → radio en u (unidades de mundo, ver cabecera). SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste
-                                        //      basal/cría. `min` SUBIDO 1.7→3.4 (2026-06-14, fix TRÍO A LARGO PLAZO): pone un SUELO a la
-                                        //      talla. Sin él, a >10k ticks la pop derivaba a cuerpos DIMINUTOS (size µ≈0.13) que como
-                                        //      r-estrategas SATURABAN el pool (maxAgents, no la materia) y borraban la base de presa con
-                                        //      talla → el gremio CAZADOR se extinguía (trío solo transitorio). Con el suelo, la MATERIA
-                                        //      vuelve a ser el límite (pop < tope) y el cazador PERSISTE a 30k (medido headless 7/7 seeds).
-                                        //      refRadius=(min+max)/2 sigue dando sizeMass≈1 al organismo medio → la alometría no se recalibra.
-                                        // Nota Azahara: cambio temporalmenet de 3.4 (el valor recomendado en pruebas) a 2.0 para ejecutar pruebas manuales
+    size:      { min: 4.0, max: 9 },    // gen size → radio en u. SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste basal/cría.
+                                        //      `min` = SUELO de talla = TECHO de la tasa reproductiva máxima (reproRef ∝ sizeMass ∝ min^massExp). Palanca
+                                        //      MAESTRA del régimen (ver docs/ANALISIS_PARAMETROS.md, Bucle 2): bajo → cuerpos baratísimos → r-runaway →
+                                        //      satura el pool (maxAgents) → todos diminutos, pasto uniforme, CAZADOR extinto. Alto → cría lenta → la MATERIA
+                                        //      limita por debajo del pool → queda estructura de talla → el cazador vive.
+                                        //      4.0 elegido por BARRIDO 2D (size.min × closedRegen) + VALIDACIÓN 25k/6 seeds (2026-06-15, va con closedRegen 0.0055):
+                                        //      cazador robusto (4/6 seeds), pool con holgura (poolFrac 0.21, ESTABLE 15k→25k, 0/6 satura), patchiness alta (CV 0.38).
+                                        //      El viejo "3.4" resultó BORDE (2/6 cazadores, 1/6 satura, NO medido con cuidado); 4.5 da 6/6 pero comprime la
+                                        //      diversidad de talla. refRadius=(min+max)/2=6.5 → sizeMass≈1 al organismo medio (la alometría no se recalibra).
     sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (u)
     repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
     invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)
