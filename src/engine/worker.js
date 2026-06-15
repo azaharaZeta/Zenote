@@ -23,11 +23,11 @@ const sim = new Sim(config);
 
 let running = true, maxSpeed = false, geneIdx = 0, selectedId = -1;
 // Identidad del organismo seleccionado (para detectar su muerte aunque su slot se reutilice).
-let selLineage = -1, selGeneration = -1, selSpeciesId = -1;
+let selSpeciesId = -1, selSerial = -1;
 function setSelected(i) {
   selectedId = i;
-  if (i >= 0) { selLineage = sim.lineage[i]; selGeneration = sim.generation[i]; selSpeciesId = speciesOf[i]; }
-  else { selLineage = selGeneration = selSpeciesId = -1; }
+  if (i >= 0) { selSpeciesId = speciesOf[i]; selSerial = sim.serialOf[i]; }
+  else { selSpeciesId = selSerial = -1; }
 }
 function findSpeciesMember(sp) {           // un miembro vivo de la especie `sp` (o -1)
   if (sp < 0) return -1;
@@ -203,7 +203,7 @@ function snapshot() {
   // Si el seleccionado MURIÓ (o su slot se reutilizó por otro distinto), seguir a otro miembro de SU
   // especie (seguir observando la especie); si la especie se extinguió, deseleccionar.
   if (selectedId >= 0) {
-    const same = s.alive[selectedId] && s.lineage[selectedId] === selLineage && s.generation[selectedId] === selGeneration;
+    const same = s.alive[selectedId] && s.serialOf[selectedId] === selSerial; // serial = id ÚNICO por organismo: lineage+generation NO basta (dos hermanos los comparten → un hermano que reutilice el slot daría falso positivo y el inspector "saltaría" a otro bicho creyéndolo el mismo)
     if (!same) setSelected(findSpeciesMember(selSpeciesId));
     else selSpeciesId = speciesOf[selectedId];
   }
@@ -320,7 +320,7 @@ onmessage = (e) => {
     case 'pick': setSelected(pick(m.wx, m.wy)); needSnap = true; break;
     case 'deselect': setSelected(-1); needSnap = true; break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); needSnap = true; break; // navegar por especies (◀ ▶ en el inspector)
-    case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selLineage = selGeneration = selSpeciesId = -1;
+    case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selSpeciesId = selSerial = -1;
       if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // maxAgents pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
       clearHistory(); postWorld(); needSnap = true; break;

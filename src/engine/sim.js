@@ -508,9 +508,10 @@ export class Sim {
         const reachMax = myR + maxRadius + reachExt;
         const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
         for (let oy = -scanR; oy <= scanR; oy++) {
+          const rowBase = (((hy + oy) % hRows + hRows) % hRows) * hCols; // fila envuelta (toro) precalculada por oy → no recomputar el wrap+base de fila por celda
           for (let ox = -scanR; ox <= scanR; ox++) {
-            const gx = ((hx + ox) % hCols + hCols) % hCols, gy = ((hy + oy) % hRows + hRows) % hRows; // wrap toroidal correcto para |offset|>1 (scanR llega a 2-3 con visión larga: el wrap de una sola celda fallaba en la costura)
-            let j = W.cellHead[gy * hCols + gx];
+            const gx = ((hx + ox) % hCols + hCols) % hCols;             // wrap toroidal de columna (correcto para |offset|>1; scanR 2-3 con visión larga)
+            let j = W.cellHead[rowBase + gx];
             while (j !== -1) {
               if (j !== i && this.alive[j]) {
                 let ddx = x[j] - x[i], ddy = y[j] - y[i];
@@ -750,7 +751,7 @@ export class Sim {
         const forageR = forageReach > 0 ? Math.round(forageReach * this.genes[i * NG + G.size]) : 0;
         if (forageR === 0) {
           // — una sola celda (ruta base, idéntica al modelo previo) —
-          const cell = W.cellIndexAt(x[i], y[i]);
+          const cell = tcell;                                          // = celda tras moverse (ya calculada en ENERGÉTICA); la posición no cambió → evita recomputar cellIndexAt
           const grazable = res[cell] - grazeRefuge * W.capacity[cell]; // solo por encima del refugio de rebrote
           if (grazable > 0) {
             let units = grazable * absE;
@@ -788,7 +789,7 @@ export class Sim {
       // cuerpo fino lo vacía rápido; el cazador puro (scav bajo) apenas aprovecha la carroña → nichos divergentes.
       const effC = this.effScav[i];
       if (effC > 1e-4 && E[i] < eMaxI) {
-        const ccell = W.cellIndexAt(x[i], y[i]);
+        const ccell = tcell;                                           // = celda tras moverse (ya calculada en ENERGÉTICA); la posición no cambió → evita recomputar cellIndexAt
         const avail = carrion[ccell];
         if (avail > 0) {
           let got = avail * carrionAbsRate * effC;
