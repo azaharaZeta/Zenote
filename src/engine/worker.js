@@ -309,6 +309,12 @@ onmessage = (e) => {
         for (let i = 0; i < N.length; i++) { const v = N[i] + r[i] * d; N[i] = v > 0 ? v : 0; } // compensa Σres·epu POR CELDA → la materia total no salta
       }
       setPath(config, m.key, m.value);
+      // Los parámetros (UI) que se EXPRESAN en el fenotipo (costes, masa, velocidad, visión, eficiencias…) se cachean al
+      // nacer (organism.computePhenotype). Para que el slider afecte EN VIVO a la población existente —no solo a las
+      // crías— re-expresamos a todos los vivos. Las claves de SOLO-RENDER no tocan el fenotipo (ni el motor) → se omiten.
+      // Cuesta un barrido por cambio de slider (barato; idempotente si la clave no afecta al fenotipo). needSnap → la foto
+      // se repinta aunque la sim esté en pausa (el cambio de radio/etc. se ve al instante).
+      if (!m.key.startsWith('render.')) { sim.recomputePhenotypes(); needSnap = true; }
       break;
     case 'gene': geneIdx = m.index; needSnap = true; break;
     case 'pick': setSelected(pick(m.wx, m.wy)); needSnap = true; break;

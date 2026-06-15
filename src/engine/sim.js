@@ -389,6 +389,17 @@ export class Sim {
     this.activeCount = c;
   }
 
+  // Re-expresa el fenotipo (radio, eMax, vmax, costes, eficiencias, visión…) de TODOS los vivos desde su genoma con la
+  // config ACTUAL. Lo llama el worker cuando un slider (UI) que se EXPRESA en el fenotipo cambia EN VIVO, para que el
+  // cambio afecte a la población existente y no solo a las crías futuras (CLAUDE.md #4 / SPEC §6: los (UI) en tiempo
+  // real). NO toca E, edad, posición, memoria del cerebro ni bodyMatter (la materia ya bloqueada en el cuerpo se
+  // construyó con la config de su nacimiento → recalcularla rompería la conservación; el gen→fenotipo no mueve materia).
+  // Barre TODOS los slots vivos (no solo `active`, que se reconstruye por tick) → incluye crías del último tick.
+  recomputePhenotypes() {
+    const alive = this.alive, cap = this.cap;
+    for (let i = 0; i < cap; i++) if (alive[i]) computePhenotype(this, i);
+  }
+
   // ---- Un tick de simulación ----
   step() {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
@@ -438,10 +449,15 @@ export class Sim {
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
     const res = W.resource, cols = W.cols, rows = W.rows;
     const carrion = W.carrion, carrionAbsRate = cfg.resource.carrionAbsRate || 0; // carroña + ritmo de carroñeo (Fase 1: vía effCarn)
+    // Marca de agua de serial al INICIO del tick: un slot cuyo ocupante tenga serial MAYOR nació ESTE tick (reutilizó,
+    // por la pila LIFO, un slot liberado por una muerte previa del mismo tick). No debe re-procesarse en su tick de
+    // nacimiento — el guard `!alive` no basta porque el slot "revive". serialOf se incrementa en cada _alloc y nunca se
+    // reinicia, así que `> maxSerial` identifica con exactitud a los nacidos en este tick.
+    const maxSerial = this._serial;
 
     for (let a = 0; a < count; a++) {
       const i = active[a];
-      if (!this.alive[i]) continue; // pudo morir como presa este tick
+      if (!this.alive[i] || this.serialOf[i] > maxSerial) continue; // muerto este tick, o slot reutilizado por una cría de este tick
 
       // ---------- PERCEPCIÓN + DESEO ----------
       // Término comida: ascenso por el gradiente del campo de recurso (físico, O(1)).
@@ -493,9 +509,7 @@ export class Sim {
         const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
         for (let oy = -scanR; oy <= scanR; oy++) {
           for (let ox = -scanR; ox <= scanR; ox++) {
-            let gx = hx + ox, gy = hy + oy;
-            if (gx < 0) gx = hCols - 1; else if (gx >= hCols) gx = 0;
-            if (gy < 0) gy = hRows - 1; else if (gy >= hRows) gy = 0;
+            const gx = ((hx + ox) % hCols + hCols) % hCols, gy = ((hy + oy) % hRows + hRows) % hRows; // wrap toroidal correcto para |offset|>1 (scanR llega a 2-3 con visión larga: el wrap de una sola celda fallaba en la costura)
             let j = W.cellHead[gy * hCols + gx];
             while (j !== -1) {
               if (j !== i && this.alive[j]) {
@@ -870,11 +884,13 @@ export class Sim {
     // juntos (crossover) → co-evolucionan → runaway de Fisher (ornamentos exagerados y divergentes).
     const prefI = this.genes[i * NUM_GENES + G.pref];
     let best = -1, bestScore = -1;
-    for (let oy = -1; oy <= 1; oy++) {
-      for (let ox = -1; ox <= 1; ox++) {
-        let gx = hx + ox, gy = hy + oy;
-        if (gx < 0) gx = hCols - 1; else if (gx >= hCols) gx = 0;
-        if (gy < 0) gy = hRows - 1; else if (gy >= hRows) gy = 0;
+    // Radio de escaneo ADAPTATIVO a mateRadius: el hash mide hashCell (= sense.max) por celda, así que un mateRadius
+    // MAYOR que la celda exige mirar más de 3×3 o se perderían parejas válidas (el slider llega a 150 u > 80 de celda).
+    // Cap a 3 como en la percepción. Con wrap toroidal correcto (|offset|>1 fallaba con el wrap de una sola celda).
+    const scanR = Math.min(3, Math.max(1, Math.ceil(mr / hc)));
+    for (let oy = -scanR; oy <= scanR; oy++) {
+      for (let ox = -scanR; ox <= scanR; ox++) {
+        const gx = ((hx + ox) % hCols + hCols) % hCols, gy = ((hy + oy) % hRows + hRows) % hRows;
         let j = W.cellHead[gy * hCols + gx];
         while (j !== -1) {
           if (j !== i && this.alive[j]) {
