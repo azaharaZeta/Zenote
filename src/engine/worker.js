@@ -46,7 +46,7 @@ let needSnap = true;
 // umbral, o funda una nueva. Los centroides siguen a sus miembros (k-means con umbral) → ids estables. ---
 let speciesReps = [];                 // [{ id, gene:Float32Array(NG), count, sum }]
 let nextSpeciesId = 1, speciesCount = 0, lastClassify = -1e9;
-let speciesOf = new Float32Array(config.pop.maxAgents); // especie por id estable de agente (se re-asigna en 'reset' si cambia maxAgents)
+let speciesOf = new Float32Array(sim.cap); // especie por id estable de agente. Se dimensiona al POOL REAL (sim.cap = maxAgents·áreaMundo, acotado al techo), no a maxAgents: con world.size>1000 sim.cap > maxAgents → indexar speciesOf[i] (i<sim.cap) se saldría del array. Se re-asigna en 'reset' si cambia.
 
 // ---- Histórico para las gráficas: muestreado por TICKS DE SIMULACIÓN (no por frames de reloj) → la curva
 // es correcta y densa a CUALQUIER velocidad (a máx. velocidad un frame avanza cientos de ticks; si se

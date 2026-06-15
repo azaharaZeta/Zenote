@@ -138,9 +138,10 @@ export class Renderer {
     {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
       const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo del sustrato (baja 3× · alta 4× · máxima 6×) → suaviza la rejilla del recurso
       const PAD = 16, WW = NW + 2 * PAD, WH = NH + 2 * PAD; // margen para el BLUR TOROIDAL (≥ radio del blur ~3·vegBlur; tope del slider 4 → 12px)
-      let cv = this._abyssLow;
+      let cv = this._abyssLow, realloced = false;
       const NP = NW * NH;
       if (!cv || cv.width !== NW) {
+        realloced = true;                                   // buffers re-creados (resize/calidad) → el food debe recomputarse
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
         // Buffers AMPLIADOS con padding TOROIDAL (WW×WH): _abyssWrap = sustrato + sus bordes ENVUELTOS (mosaico 3×3);
@@ -159,7 +160,9 @@ export class Renderer {
       }
       // ---- (1) CAPA ESTÁTICA (CARA: ruido pnoise + temperatura): NO cambia con el mundo → se cachea y recomputa
       // muy de vez en cuando. Aquí guardamos el color de fondo y los índices/pesos del bilineal del food. #4 ----
+      let staticRecomputed = false;
       if (this._subStaticTimer <= 0) {
+        staticRecomputed = true;                            // base/índices recacheados → el food (que se compone sobre la base) también
         const base = this._subBase, sIdx = this._subIdx, sWx = this._subWx, sWy = this._subWy;
         const hash = (ix, iy, sd) => { let h = (ix * 374761393 + iy * 668265263 + sd * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
         // value-noise PERIÓDICO: rejilla px×py que ENVUELVE (módulo) → tesela sin costura en el toro. u,v ∈ [0,1).
@@ -195,12 +198,19 @@ export class Renderer {
         this._subStaticTimer = 90; // temperatura/moteado no cambian (o muy lento) → recachear rara vez (capta deriva ambiental)
       }
       this._subStaticTimer--;
-      // ---- (2) CAPA DINÁMICA (BARATA: solo el FOOD): se recompone EN CADA refresco → la vegetación FLUYE con el
-      // mundo (sin el gate de 18 frames que la hacía ir "a golpes"). Sin pnoise ni pow por píxel: base e índices ya
-      // cacheados, y el pow va por LUT. (C) VEGETACIÓN = fosforescencia teal/algas, dim a propósito. ----
+      // ---- (2) CAPA DINÁMICA (solo el FOOD): la vegetación fluye con el mundo. Antes se recomputaba en CADA refresco,
+      // incluido el paneo/zoom SIN avance de tick → 50k px + blur tirados (el food no había cambiado). Ahora solo se
+      // recompone si el food cambió DE VERDAD: avanzó el tick, cambió un slider de vegetación, hubo realloc (resize/
+      // calidad) o se recomputó la capa estática. El buffer world-space `_abyssSmooth` persiste y SIEMPRE se re-tesela
+      // con la cámara (abajo) → panear/zoom es barato. Sin pnoise ni pow por píxel (base/índices cacheados, pow por LUT). #perf
       {
         const vegI = cfg.render.vegIntensity != null ? cfg.render.vegIntensity : 1;   // brillo de la vegetación (slider lab, en vivo)
         const vegBoost = cfg.render.vegBoost != null ? cfg.render.vegBoost : 0.77;     // realce del pasto tenue (UI 0→1, slider lab)
+        const vegSig = vegI + vegBoost * 7.31 + (cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8) * 53.7; // firma de los params de vegetación
+        const tick = this.sim.tick;
+        const foodDirty = realloced || staticRecomputed || this._foodTick !== tick || this._vegSig !== vegSig;
+        if (foodDirty) {
+        this._foodTick = tick; this._vegSig = vegSig;
         const vegExp = 1.5 - vegBoost * 1.3; // 0→1 (realce) → exponente 1.5→0.2: como food∈[0,1], exponente BAJO sube los mids → el pasto tenue brilla. Alto vegBoost = más realce.
         if (this._fgExp !== vegExp || !this._fgLUT) { // LUT food→brillo (food^vegExp): se recomputa SOLO si cambia el exponente, no por píxel
           if (!this._fgLUT) this._fgLUT = new Float32Array(1024);
@@ -232,6 +242,7 @@ export class Renderer {
         sc.filter = vegBlur > 0 ? `blur(${vegBlur}px)` : 'none';
         sc.drawImage(this._abyssWrap, 0, 0);
         sc.filter = 'none';
+        } // fin if(foodDirty): si el food no cambió, se reutiliza `_abyssSmooth` y solo se re-tesela (abajo) → paneo/zoom barato
       }
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; // suaviza el upscaling del sustrato → menos rejilla del recurso
       for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {

@@ -141,13 +141,21 @@ export class Charts {
       [Car, '#a8835c'],   // carroña / detrito (marrón)
       [N,   '#a0a4ac'],   // nutriente libre (GRIS: la materia que NO es viva ni carroña) — en la cima
     ];
-    for (let k = stack.length; k >= 1; k--) {               // k = nº de bandas (desde la base) bajo el techo de esta área
+    // Techos acumulados (fracción del total) POR MUESTRA, precalculados UNA vez en scratch reutilizable → O(bandas·n)
+    // en vez de O(bandas²·n) (antes se re-sumaba el acumulado desde cero por banda y muestra, cada frame dibujado).
+    const SB = stack.length;
+    let tops = this._bioTops;
+    if (!tops || tops.length !== n * SB) tops = this._bioTops = new Float32Array(n * SB);
+    for (let i = 0; i < n; i++) {
+      const inv = 1 / (N[i] + Gr[i] + Bio[i] + Car[i] || 1);
+      let cum = 0, o = i * SB;
+      for (let k = 0; k < SB; k++) { cum += stack[k][0][i]; tops[o + k] = cum * inv; } // techo de las k+1 bandas inferiores
+    }
+    for (let k = SB; k >= 1; k--) {                         // de la banda más ALTA (área completa) a la más baja
       ctx.fillStyle = stack[k - 1][1];                      // color de la banda cuyo techo es este borde superior
       ctx.beginPath();
       for (let i = 0; i < n; i++) {
-        const tot = N[i] + Gr[i] + Bio[i] + Car[i] || 1;
-        let cum = 0; for (let j = 0; j < k; j++) cum += stack[j][0][i];   // techo acumulado = suma de las k bandas inferiores
-        const x = xOf(i), yv = yOf(cum / tot);
+        const x = xOf(i), yv = yOf(tops[i * SB + (k - 1)]);
         if (i === 0) ctx.moveTo(x, yv); else ctx.lineTo(x, yv);
       }
       ctx.lineTo(xOf(n - 1), yOf(0)); ctx.lineTo(xOf(0), yOf(0));   // baja y cierra contra la base
