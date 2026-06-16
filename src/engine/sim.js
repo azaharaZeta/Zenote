@@ -51,10 +51,11 @@ export class Sim {
 
     // --- Fenotipo cacheado (expresión fija durante la vida) ---
     this.radius = new Float32Array(cap);
-    this.vmax = new Float32Array(cap);     // velocidad-capacidad (emerge de la morfología · esfuerzo)
+    this.vmax = new Float32Array(cap);     // velocidad-capacidad = velocidad terminal a esfuerzo MÁXIMO (emerge de la morfología)
+    this.velResp = new Float32Array(cap);  // respuesta de velocidad (modelo de fuerza): 1=ágil, →0=mucha inercia (∝1/masa)
     this.turnRate = new Float32Array(cap); // agilidad de giro (emerge de asimetría/tamaño/elongación)
-    this.heading = new Float32Array(cap);  // rumbo persistente (rad) para el render: se conserva cuando v≈0
-    this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
+    this.heading = new Float32Array(cap);  // rumbo persistente (rad): en el modelo de fuerza = dirección de EMPUJE (la velocidad la arrastra detrás)
+    this.effort = new Float32Array(cap);   // capacidad muscular (modelo viejo: gen speed; fuerza: 1) → coste/amplitud
     this.flapCost = new Float32Array(cap); // Capa 3: coste de NADO extra por aletear (golpe activo); ver organism.js
     this.haulMul = new Float32Array(cap);  // (A) coste de TRANSPORTE ∝ masa: multiplica el coste de NADO; ver organism.js
     this.drag = new Float32Array(cap);     // (B) ARRASTRE emergente de la forma (Dmul de bodyplan): antes solo frenaba; ahora ENCARECE el nado (sim.js); ver organism.js
@@ -349,6 +350,7 @@ export class Sim {
     const ww = world.size, wh = world.size; // mundo siempre toroidal (los bordes envuelven)
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit, Rmax = cfg.resource.R_max;
     const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
+    const forceModel = cfg.loco.forceModel, wander = cfg.loco.wander || 0; // locomoción por fuerza: esfuerzo del cerebro + inercia
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
     const epuScent = epu * cfg.resource.carrionScent; // olfato de carroña: el ∇carroña pesa effScav/epuScent en el gradiente de búsqueda
@@ -553,38 +555,59 @@ export class Sim {
         inp[7] = (res[ci] / Rmax) * 2 - 1;   // cobertura local (uso táctico del refugio)
         inp[8] = preySizeRel;                 // talla relativa de la presa (evitar presa grande)
         inp[9] = preyCover;                   // escapabilidad de la presa (no atacar a la que escapará)
+        const vmI = this.vmax[i];             // propiocepción: velocidad propia / capacidad ∈[−1,1] → el cerebro cierra el lazo de velocidad
+        inp[10] = vmI > 1e-4 ? Math.min(1, Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]) / vmI) * 2 - 1 : -1;
         this._brain(i);
         dx = this._brOut[0]; dy = this._brOut[1];
       }
 
       // ---------- MOVIMIENTO ----------
-      // vmax y turnRate emergen de la morfología. El cuerpo no gira instantáneamente: rota hacia el deseo ≤ turnRate/tick.
+      // vmax (= velocidad terminal a esfuerzo máx) y turnRate emergen de la morfología. El cuerpo no gira al instante.
       const vmaxI = this.vmax[i];
       const turn = this.turnRate[i];
       const dmag = Math.sqrt(dx * dx + dy * dy);
-      if (dmag > 1e-4) {
-        const ddx = dx / dmag, ddy = dy / dmag;          // dirección deseada (unitaria)
-        const cs0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
-        let curx, cury;
-        if (cs0 < 1e-4) { curx = ddx; cury = ddy; }      // parado: arranca hacia el deseo
-        else { curx = vx[i] / cs0; cury = vy[i] / cs0; }
-        // Girar la dirección actual hacia la deseada (interpolación limitada por la agilidad).
-        let ndx = curx + (ddx - curx) * turn, ndy = cury + (ddy - cury) * turn;
-        const nm = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
-        vx[i] = ndx / nm * vmaxI; vy[i] = ndy / nm * vmaxI;
+      let throttle;
+      if (forceModel) {
+        // MODELO DE FUERZA: el MÓDULO del deseo del cerebro = ESFUERZO (0..1); su dirección = rumbo de EMPUJE (giro limitado).
+        // La velocidad se ACERCA a (vmax·esfuerzo·dir) con lag exponencial = INERCIA (velResp ∝ 1/masa). La velocidad nunca se fija.
+        throttle = dmag > 1 ? 1 : dmag;
+        let dirx = Math.cos(this.heading[i]), diry = Math.sin(this.heading[i]); // rumbo (dir de empuje) previo
+        if (dmag > 1e-4) {
+          const ddx = dx / dmag, ddy = dy / dmag;
+          let ndx = dirx + (ddx - dirx) * turn, ndy = diry + (ddy - diry) * turn; // gira el EMPUJE hacia el deseo ≤ turnRate
+          const nm = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
+          dirx = ndx / nm; diry = ndy / nm;
+          this.heading[i] = Math.atan2(diry, dirx);      // el rumbo sigue al empuje; la velocidad lo arrastra detrás (banqueo)
+        } else throttle = 0;                              // sin deseo → no empuja → frena por arrastre (puede pararse: descanso/emboscada)
+        const resp = this.velResp[i];
+        const vtx = dirx * vmaxI * throttle, vty = diry * vmaxI * throttle; // velocidad objetivo (terminal a ESTE esfuerzo)
+        vx[i] += (vtx - vx[i]) * resp; vy[i] += (vty - vy[i]) * resp;        // integración con inercia (estable a cualquier masa)
+        if (wander > 0) { vx[i] += (rng.next() - 0.5) * vmaxI * wander; vy[i] += (rng.next() - 0.5) * vmaxI * wander; } // deriva térmica de fondo (física): explora aunque el cerebro calle
       } else {
-        // Sin deseo: deriva con leve ruido térmico (no es estrategia, es física).
-        const ang = (rng.next() - 0.5) * 0.6;
-        const cs = Math.cos(ang), sn = Math.sin(ang);
-        let nvx = vx[i] * cs - vy[i] * sn, nvy = vx[i] * sn + vy[i] * cs;
-        const sp = Math.sqrt(nvx * nvx + nvy * nvy);
-        if (sp < 1e-3) { nvx = (rng.next() - 0.5); nvy = (rng.next() - 0.5); }
-        const target = 0.3 * vmaxI, m = Math.sqrt(nvx * nvx + nvy * nvy) || 1;
-        vx[i] = nvx / m * target; vy[i] = nvy / m * target;
+        // MODELO VIEJO: la velocidad se FIJA a vmax en la dir deseada (sin control de esfuerzo ni inercia de velocidad).
+        throttle = this.effort[i];
+        if (dmag > 1e-4) {
+          const ddx = dx / dmag, ddy = dy / dmag;          // dirección deseada (unitaria)
+          const cs0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
+          let curx, cury;
+          if (cs0 < 1e-4) { curx = ddx; cury = ddy; }      // parado: arranca hacia el deseo
+          else { curx = vx[i] / cs0; cury = vy[i] / cs0; }
+          let ndx = curx + (ddx - curx) * turn, ndy = cury + (ddy - cury) * turn;
+          const nm = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
+          vx[i] = ndx / nm * vmaxI; vy[i] = ndy / nm * vmaxI;
+        } else {
+          const ang = (rng.next() - 0.5) * 0.6;
+          const cs = Math.cos(ang), sn = Math.sin(ang);
+          let nvx = vx[i] * cs - vy[i] * sn, nvy = vx[i] * sn + vy[i] * cs;
+          const sp = Math.sqrt(nvx * nvx + nvy * nvy);
+          if (sp < 1e-3) { nvx = (rng.next() - 0.5); nvy = (rng.next() - 0.5); }
+          const target = 0.3 * vmaxI, m = Math.sqrt(nvx * nvx + nvy * nvy) || 1;
+          vx[i] = nvx / m * target; vy[i] = nvy / m * target;
+        }
       }
       const dist = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
-      // Rumbo persistente (render): solo se reorienta si hay avance real; si v≈0 conserva el último.
-      if (dist > 1e-3) this.heading[i] = Math.atan2(vy[i], vx[i]);
+      // Rumbo persistente: en modelo de fuerza ya se fijó al empuje arriba; el viejo lo reorienta a la dir de avance.
+      if (!forceModel && dist > 1e-3) this.heading[i] = Math.atan2(vy[i], vx[i]);
       // Guardar la mirada (render): al objetivo si lo hay, si no en la dirección de avance.
       if (!gazeSet) { gzx = vx[i]; gzy = vy[i]; }
       const gm = Math.sqrt(gzx * gzx + gzy * gzy) || 1;
@@ -598,7 +621,9 @@ export class Sim {
       const tcell = W.cellIndexAt(x[i], y[i]);
       // Coste de nado ∝ v²·esfuerzo·aleteo·transporte(masa)·arrastre(forma) → la velocidad la limita el presupuesto energético.
       const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // arrastre de la forma encarece el nado (0 = inerte)
-      const metabCost = this.baseCost[i] + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul;
+      const metabCost = this.baseCost[i] + (forceModel
+        ? moveCost * dist * dist * (0.3 + 0.7 * throttle) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul   // ∝ v²·(suelo+esfuerzo): PARADO (v≈0) es gratis, pero PLANEAR a velocidad cuesta algo → frena al depredador que acecha a la deriva
+        : moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul);
       // Pecera: el coste se topa a la energía disponible (E baja a 0, no a negativo); la materia respirada → nutriente local. Conserva.
       let metabRet = metabCost; const metabAv = E[i] > 0 ? E[i] : 0; if (metabRet > metabAv) metabRet = metabAv;
       W.N[tcell] += metabRet; E[i] -= metabRet;

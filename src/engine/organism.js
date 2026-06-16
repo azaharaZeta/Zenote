@@ -26,7 +26,9 @@ export function computePhenotype(sim, i) {
 
   // Locomoción: velocidad y giro EMERGEN de la morfología (empuje vs arrastre), no son genes directos.
   const lo = cfg.loco;
-  const effort = lo.effortFloor + (1 - lo.effortFloor) * speed; // throttle global (gen speed)
+  // Modelo de FUERZA: el ESFUERZO lo decide el cerebro vivo (throttle, sim.js) → la capacidad de empuje se computa a tope
+  // (effort=1) y la velocidad terminal sale de empuje/arrastre. Modelo viejo: effort = gen `speed` (fijo de por vida).
+  const effort = lo.forceModel ? 1 : lo.effortFloor + (1 - lo.effortFloor) * speed;
 
   // Plan corporal por nodos → física (masa, arrastre, empuje direccional, giro, streamlining). Ver bodyplan.js.
   const nNodes = computeBodyPlan(g, b, lo, effort);
@@ -48,6 +50,9 @@ export function computePhenotype(sim, i) {
   const refRadius = (e.size.min + e.size.max) * 0.5;         // radio del organismo medio (size 0.5)
   const sizeMass = Math.pow(radius / refRadius, en.massExp); // masa de talla
   const mass = sizeMass * massMul;                           // masa física total (talla × complejidad de nodos)
+  // INERCIA (modelo de fuerza): la velocidad se acerca a su objetivo con un lag exponencial (integrador estable).
+  // velResp = 1−e^(−arrastre·forma/masa) ∈ (0,1]: masa grande / poco arrastre → respuesta baja = PLANEA; pequeña → ágil.
+  sim.velResp[i] = lo.forceModel ? Math.max(0.05, 1 - Math.exp(-(lo.dragLin * R.Dmul) / Math.max(0.05, mass))) : 1;
   const eMax = en.E_max_base * mass;
   sim.eMax[i] = eMax;
 

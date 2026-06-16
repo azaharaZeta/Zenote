@@ -24,11 +24,13 @@ export const NODE0 = BASE_GENES.length;          // índice del primer gen de no
 for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.push('n' + k + '_' + f);
 
 // CEREBRO NEURONAL: MLP recurrente (Elman) cuyos PESOS son genes; único motor de conducta. No cuenta en la
-// distancia genética (su deriva dominaría). Entradas (10): 0,1 ∇comida · 2,3 dir-presa · 4,5 dir-amenaza ·
-// 6 energía · 7 cobertura local · 8 talla relativa de la presa · 9 escapabilidad de la presa. Pesos = (gen-0.5)*scale.
-export const BRAIN = { I: 10, H: 5, O: 3, scale: 6 };
+// distancia genética (su deriva dominaría). Entradas (11): 0,1 ∇comida · 2,3 dir-presa · 4,5 dir-amenaza ·
+// 6 energía · 7 cobertura local · 8 talla relativa de la presa · 9 escapabilidad de la presa · 10 VELOCIDAD PROPIA
+// (propiocepción: cierra el lazo de control de velocidad). Salidas (3): 0,1 = empuje deseado (módulo = ESFUERZO,
+// dirección = rumbo) · 2 = impulso de ataque. Pesos = (gen-0.5)*scale.
+export const BRAIN = { I: 11, H: 5, O: 3, scale: 6 };
 // Pesos: entrada→oculta (I·H) + oculta→oculta/memoria (H·H) + sesgos ocultos (H) + oculta→salida (H·O) + sesgos salida (O).
-export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 98
+export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 103
 export const BRAIN0 = BASE_GENES.length;                                          // índice del 1er peso
 export const GENES = BASE_GENES.concat(Array.from({ length: BRAIN_W }, (_, i) => 'br' + i));
 export const NUM_GENES = GENES.length;

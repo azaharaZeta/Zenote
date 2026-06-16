@@ -20,7 +20,7 @@ Genoma de **201 genes/agente** (SoA, typed arrays):
 | Ecología | 11 | size, speed(esfuerzo), sense, metab, diet, **scav (caza↔carroña)**, repro_thr, invest, hue, **mature_age, senescence** (ciclo de vida) |
 | Identidad / display | 8 | e_fov (visión), orn/pref (sex.), c_lum (glow), señuelo (o_*) |
 | Cuerpo por NODOS | 80 | 8 nodos × {present, parent, size, aspect, angle, attach, osc_amp, osc_phase, **tipShape**, **gaitMode**} → grafo generativo |
-| Cerebro | 98 | MLP recurrente (Elman, 10 entradas: +cobertura local, +talla y escapabilidad de la presa); pesos = genes → deseo de movimiento (dx,dy) + impulso de ataque |
+| Cerebro | 103 | MLP recurrente (Elman, 11 entradas: +cobertura, +talla/escapabilidad de presa, +VELOCIDAD PROPIA); pesos = genes → salida cuyo MÓDULO = esfuerzo y dirección = rumbo, + impulso de ataque |
 
 - **Frontera gen→fenotipo única**: `organism.js` + `bodyplan.js`. El cuerpo es un grafo de una sola primitiva;
   masa, arrastre, **empuje direccional**, giro y elongación EMERGEN de la geometría.
@@ -39,9 +39,10 @@ Genoma de **201 genes/agente** (SoA, typed arrays):
 
 ## Qué EMERGE (no cableado)
 Especiación · **conducta 100% neuronal** (cerebro RNN único; cazar/huir/pastar **y atacar** emergen de los
-pesos — sin reglas ni gen `aggro`) · **morfología generativa** y **gait direccional** (colas atrás propulsan,
-frentes penalizan; ondulantes vs remeros) · **coordinación de marcha** (la natación coordinada se premia vía
-coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K) ·
+pesos — sin reglas ni gen `aggro`) · **control de velocidad por ESFUERZO** (el cerebro decide cuánto empuje; la
+velocidad emerge de empuje−arrastre con INERCIA ∝ masa; descansar/crucear/esprintar emergen — modelo de fuerza) ·
+**morfología generativa** y **gait direccional** (colas atrás propulsan, frentes penalizan; ondulantes vs remeros) ·
+**coordinación de marcha** (la natación coordinada se premia vía coherencia de fase → `osc_phase` funcional) · nichos de dieta/talla(r-K) ·
 **ciclo de vida r/K** (madurez precoz+vida rápida ↔ tardía+longeva, con coste de longevidad) ·
 **energética alométrica** (almacén ∝ masa, metabolismo ∝ masa^¾ Kleiber → economía de escala) ·
 depredación estructurada por talla · **refugios móviles** (cobertura por vegetación viva → la presa se esconde en

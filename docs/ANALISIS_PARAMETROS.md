@@ -20,7 +20,9 @@ Dos clases de número, no confundir:
 ΔE = INGRESO − COSTE ;  muere si E ≤ 0 ;  cría si (E ≥ reproNeedE  y  edad ≥ matureAge)
 
 COSTE = baseCost                                                                  ← mantenimiento
-      + moveCost·v²·(1 + k_effort·effort)·(1+flapCost)·haulMul·dragMul             ← nado (∝ v²)
+      + moveCost·v²·(0.3 + 0.7·esfuerzo)·(1+flapCost)·haulMul·dragMul              ← nado por POTENCIA (modelo de fuerza)
+        # esfuerzo = módulo de la salida del cerebro (0..1, decidido tick a tick); parado v≈0 → gratis; esprintar = caro.
+        # la velocidad EMERGE de empuje−arrastre con inercia (∝masa); no se fija. (Modelo viejo: ·(1+k_effort·effort_gen), v fijada a vmax.)
 
 INGRESO (según dieta):
   herbívoro: Σceldas min(grazable·absEff, necesidad)·epu·effHerb   (grazable = res − grazeRefuge·cap)

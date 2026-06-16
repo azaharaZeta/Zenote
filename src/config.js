@@ -62,18 +62,21 @@ export const config = {
     k_scavThin: 1.0,    // UI «Carroñeo por cuerpo fino» (Carroña) · Carroñeo extra ∝ lo fino/elongado del cuerpo: emerge el gusano carroñero.
     k_flap: 0.7,        // no-ui · Coste de nado extra por aletear (∝ flapWork): aletear es ráfaga cara.
     k_effort: 1.6,      // UI «Coste por esfuerzo» (Locomoción y visión) · Coste extra de moverse ∝ esfuerzo (gen speed).
-    moveCost: 0.015,    // UI «Coste de nado (v²)» (Locomoción y visión) · Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad).
+    moveCost: 0.02,     // UI «Coste de nado (v²)» (Locomoción y visión) · Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad). Subido un poco para el modelo de fuerza (el movimiento se abarató al hacerse por esfuerzo).
     k_haul: 0.2,        // UI «Coste de transporte (masa)» (Locomoción y visión) · Coste de transporte ∝ masa: arrastrar un cuerpo grande cuesta al moverse.
     k_drag: 0.4,        // UI «Coste de arrastre (forma)» (Locomoción y visión) · Coste de nado ∝ arrastre de la forma (Dmul); complementa k_haul (masa). 0 = inerte.
     dragRef: 1.1,       // no-ui · Arrastre de referencia del coste k_drag: solo paga el Dmul por encima de esto.
     E_max_base: 70,     // UI «Energía máxima base» (Metabolismo y cuerpo) · Energía máxima base · eMax = E_max_base · masa.
     preyGain: 0.90,     // UI «Energía de la presa» (Combate y dieta) · Fracción de energía de la presa aprovechada al cazarla.
-    carcassValue: 0.20, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa estructural del cuerpo (∝ eMax): se bloquea del pool N al nacer y vuelve como carroña al morir. Palanca dominante herbivoría↔carnivoría.
+    carcassValue: 0.14, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa estructural del cuerpo (∝ eMax): se bloquea del pool N al nacer y vuelve como carroña al morir. Palanca DOMINANTE herbivoría↔carnivoría: bajada para el modelo de fuerza (la caza se volvió más eficaz → menos recompensa por carne recupera la base herbívora).
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
   // Frontera auditable: todo aquí es FÍSICA (geometría→fuerza). Cada empuje va emparejado con su arrastre (trade-off).
   loco: {
+    forceModel: true,   // no-ui ↻ · Locomoción por FUERZA: el cerebro decide el ESFUERZO (módulo de su salida) y la dirección; la velocidad EMERGE de empuje−arrastre con inercia (∝masa). false = modelo viejo (velocidad fijada a vmax).
+    dragLin: 1.0,        // UI «Arrastre del agua» (Locomoción y visión) · Coef. de arrastre lineal del modelo de fuerza: fija la velocidad terminal (↑ = más frenada) y, vía masa, la INERCIA (cuánto tarda en acelerar/parar).
+    wander: 0.08,        // no-ui · Deriva térmica de fondo (física, no estrategia): pequeño jitter de velocidad → explora aunque el cerebro calle (evita que un fundador se congele en un baldío).
     kThrust: 7.1,       // UI «Empuje base» (Locomoción y visión) · Calibra la velocidad-capacidad típica de la morfología.
     headThrust: 0.06,   // UI «Empuje de la cabeza» (Locomoción y visión) · Empuje de la cabeza (motor base débil): bajo → nadar bien exige cola/aletas.
     paddleEff: 0.6,     // no-ui · Peso del remo lateral en el gait (aleta lateral propulsa, menos que la cola trasera).
@@ -127,7 +130,7 @@ export const config = {
   // ───── Refugio de presa: cobertura graduada por la vegetación viva local (estabilizador Lotka-Volterra) ─────
   refuge: {
     enabled: true,      // UI «Refugio de presa» (Refugio de presa) · Activar la cobertura/refugio de presa.
-    strength: 0.3,      // UI «Cobertura del refugio» (Refugio de presa) · Fuerza de la cobertura: prob. de escape = strength · vegetación_local. 0 = sin refugio.
+    strength: 0.45,     // UI «Cobertura del refugio» (Refugio de presa) · Fuerza de la cobertura: prob. de escape = strength · vegetación_local. 0 = sin refugio. Subida para el modelo de fuerza: más presa escapa por cobertura → protege la base herbívora y reduce los colapsos al ápice-carnívoro.
   },
 
   // ───── Edad / mortalidad (la madurez y el ritmo de vida son GENES; aquí solo las escalas base) ─────
@@ -163,7 +166,7 @@ export const config = {
     failDamage: 0.1,     // UI «Daño al fallar ataque» (Combate y dieta) · Energía que pierde el atacante al fallar (× su eMax); muere solo si llega a 0.
     fleeSpeed: 1.0,      // UI «Escape por velocidad» (Combate y dieta) · Escape por velocidad: la presa más rápida que el cazador se zafa. 0 = solo cobertura.
     fleeCap: 0.95,       // no-ui · Tope de la prob. de escape por velocidad (nunca se zafa con certeza).
-    handlingTime: 32,    // UI «Tiempo de manejo (digestión)» (Combate y dieta) · Enfriamiento tras una captura (digestión): satura la tasa de caza.
+    handlingTime: 48,    // UI «Tiempo de manejo (digestión)» (Combate y dieta) · Enfriamiento tras una captura (digestión): satura la tasa de caza. Subido para el modelo de fuerza (la caza por ráfaga se volvió más eficaz → limita la tasa de depredación para que herbívoros/carroñeros aguanten).
     dietMargin: 0.08,    // UI «Margen de dieta (presa)» (Combate y dieta) · Diferencia de dieta mínima para considerar a otro "presa".
     preyBandLo: 0.15,    // UI «Suelo de banda de caza» (Combate y dieta) · Ratio presa/depredador mínimo cazable.
     preyBandHi: 1.10,    // UI «Techo de banda de caza» (Combate y dieta) · Ratio presa/depredador máximo atacable (>1 = presa mayor, arriesgada).

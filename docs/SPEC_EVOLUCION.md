@@ -78,14 +78,14 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `mature_age`, `senescence` |
 | **Identidad / display** | 8 | `e_fov`, `orn`, `pref`, `c_lum`, `o_len`, `o_bulb`, `o_hue`, `o_num` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
-| **Cerebro neuronal** | 98 | pesos de la RNN (ver §cerebro; 10 entradas) |
+| **Cerebro neuronal** | 103 | pesos de la RNN (ver §cerebro; 11 entradas) |
 
 **Genes de ecología/fisiología:**
 
 | Gen | Expresión / efecto |
 |-----|--------------------|
 | `size` | radio = `lerp(expr.size)` px → **masa alométrica** (§3): mayor tamaño → más `E_max` (almacén ∝ masa) y ventaja en combate, pero más coste metabólico absoluto (∝ masa^¾) y peor giro. **No afecta a la velocidad** (ver §2bis). |
-| `speed` | **ESFUERZO de nado** (acelerador 0..1), NO velocidad. Modula la amplitud de oscilación de los nodos (`effort`) y el coste de moverse. La velocidad EMERGE de la forma (§2bis). |
+| `speed` | (modelo de fuerza, por defecto: **inactivo** — el esfuerzo lo decide el cerebro tick a tick, §2bis; candidato a repurposar a capacidad muscular). Modelo viejo: ESFUERZO de nado fijo (acelerador 0..1) que modula amplitud y coste. |
 | `sense` | inversión visual → alcance base de visión + coste (`k_sense`). El reparto alcance↔ángulo lo hace `e_fov` (§2ter). |
 | `metab` | escala a la vez el ritmo de alimentación y el coste basal (`k_metab`). Alto = come y rinde más pero quema más. Trade-off, sin "mejor". |
 | `diet` | 0 = herbívoro puro (come del campo), 1 = carnívoro puro (caza). Intermedio = omnívoro penalizado (`omniPenalty`). |
@@ -117,10 +117,11 @@ Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*
 - Topología `BRAIN = {I:10, H:5, O:3}`, **98 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
   entrada→oculta, **oculta→oculta (memoria)**, sesgos ocultos, oculta→salida, sesgos salida.
   El estado oculto **persiste entre ticks** (memoria → búsqueda/persistencia emergente).
-- **Entradas (10):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
+- **Entradas (11):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
   energía, **cobertura local** (vegetación de su celda → uso táctico del refugio), **talla relativa de la presa**
-  (evitar presa grande) y **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
-  escapará). Las entradas 7-9 se siembran a peso ~0 → su uso EMERGE, no cableado.
+  (evitar presa grande), **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
+  escapará) y **velocidad propia** (#10, propiocepción → cierra el lazo del control de velocidad, §2bis). Las entradas
+  7-10 se siembran a peso ~0 → su uso EMERGE, no cableado. Salida: módulo = esfuerzo, dirección = rumbo, +impulso de ataque.
   **Salidas (3):** deseo de movimiento (dx,dy) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]`.
   Pesos = `(gen−0.5)·scale`.
 - Nada de estrategia programada: pastar/cazar/huir **y atacar/agredir** emergen **100% de los pesos
@@ -175,8 +176,8 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
 - **Empuje DIRECCIONAL por nodo:** `gait = −cos(emit) + paddleEff·sin²(emit)`.
   → atrás (π) = **+1** (propulsa hacia delante), frente (0) = **−1** (frena), lateral (π/2) = **+paddleEff**
   (rema). Un cuerpo "ilógico" (mucha superficie frontal) tiene empuje **neto negativo**.
-- **Amplitud de oscilación por nodo:** `amp = (oscFloor + (1−oscFloor)·osc_amp) · effort`, con
-  `effort = effortFloor + (1−effortFloor)·speed` (el throttle global, gen `speed`).
+- **Amplitud de oscilación por nodo:** `amp = (oscFloor + (1−oscFloor)·osc_amp) · effort`. En el modelo de fuerza
+  `effort = 1` (capacidad a tope; el esfuerzo vivo lo decide el cerebro, abajo); en el viejo `effort = effortFloor + (1−effortFloor)·speed`.
 - **Empuje total con COHERENCIA DE FASE:** cada nodo propulsor aporta un **fasor** `c_k·e^{iφ_k}`, con
   `c_k = (ar·eff + limbAr·limbThrust)·amp·gait` y `φ_k = osc_phase·2π`. Las contribuciones **hacia delante**
   (`c_k>0`) se suman como vectores: en fase → refuerzan; dispersas (aleteo descoordinado) → se cancelan
@@ -190,15 +191,23 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   menos arrastre). Sustituye al viejo gen `m_elong`.
 - **Arrastre total** `Dmul`: base 1 + arrastre de segmentos (`segDrag`), módulos (`modDrag`),
   tentáculos (`limbDrag`) y cuerpo ancho (`bodyDrag`).
-- **Velocidad-capacidad:** `v = kThrust · PsumEff · straight · (stream / Dmul)`, acotada a `[vMin, vMax]`.
-  **`effort` NO se vuelve a multiplicar** (ya está dentro de `amp`; si no, sería `effort²`).
+- **Velocidad TERMINAL a esfuerzo máximo:** `vmax = kThrust · PsumEff · straight · (stream / Dmul)`, acotada a `[vMin, vMax]`.
+  Es la **cota física** de la morfología, NO la velocidad de cada tick.
 - **Giro:** `turn = turnBase + turnAsym·asym − turnSize·size − turnElong·(elongN−1) − segTurn·nSeg`,
   acotado a `[turnMin, 1]`. La **asimetría del grafo** (`straight < 1`) desvía empuje a giro: cuerpos
   asimétricos viran mejor pero avanzan menos recto. Grandes/elongados/con muchos segmentos giran peor.
-- **Coste de nado ∝ v²** (arrastre real): se cobra en el movimiento (`moveCost·dist²·(1+k_effort·effort)`),
-  no en el basal. Ir al máximo es carísimo → la velocidad la limita el presupuesto energético: la presa
-  (renta de pasto pobre) no puede ir al máximo; el depredador (energía rica de la presa) sí → recupera
-  ventaja de velocidad. **Mecanismo clásico depredador-presa, ahora 100% emergente de la forma.**
+- **CONTROL POR FUERZA (`loco.forceModel`, por defecto).** El organismo **no elige velocidad: elige ESFUERZO.** El cerebro
+  emite un vector de deseo cuyo **módulo = esfuerzo** (throttle 0..1, decidido tick a tick) y cuya dirección = rumbo de empuje
+  (gira ≤ `turnRate`). La velocidad **no se fija**: se acerca a `vmax·esfuerzo·dir` con lag exponencial = **INERCIA**
+  (`velResp = 1−e^(−dragLin·Dmul/masa)`; masa grande / poco arrastre → planea; pequeña → ágil). Así decide **cuándo moverse,
+  cuándo parar** (esfuerzo→0 → frena por arrastre: descanso/emboscada), **cuándo esprintar y a dónde** — todo del MISMO output
+  neuronal, sin if/else. Una entrada de **propiocepción** (velocidad propia, entrada #10) cierra el lazo de control. Medido:
+  la dispersión de esfuerzo es ~7× la del modelo viejo (que iba en piloto automático a `vmax`). En este modelo `effort = 1`
+  (la capacidad se computa a tope; el esfuerzo vivo lo pone el cerebro), así que el gen `speed` queda inactivo (candidato a repurposar).
+- **Coste por POTENCIA:** `moveCost·v²·(0.3 + 0.7·esfuerzo)·(1+flapCost)·haulMul·dragMul`. Parado (v≈0) es casi gratis
+  (descanso/emboscada); planear a velocidad cuesta algo; esprintar es caro. El presupuesto enseña al cerebro a **dosificar**
+  → crucero al forrajear, ráfaga al cazar, escape al huir: las velocidades por nicho EMERGEN. (Modelo viejo `forceModel=false`:
+  la velocidad se FIJA a `vmax` en la dir deseada y el coste usa el gen `speed`; sin control de esfuerzo ni inercia.)
 
 > **Resultado esperado:** divergencia morfológica por nicho — depredadores fusiformes con colas
 > propulsoras (nadadores rápidos); herbívoros redondos/lobulados (pastadores baratos y maniobrables).
