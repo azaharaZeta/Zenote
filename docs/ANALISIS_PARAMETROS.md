@@ -19,7 +19,7 @@ Dos clases de número, no confundir:
 ```
 ΔE = INGRESO − COSTE ;  muere si E ≤ 0 ;  cría si (E ≥ reproNeedE  y  edad ≥ matureAge)
 
-COSTE = baseCost·(1 + k_temp·|tempPref−Tlocal|)                                   ← mantenimiento
+COSTE = baseCost                                                                  ← mantenimiento
       + moveCost·v²·(1 + k_effort·effort)·(1+flapCost)·haulMul·dragMul             ← nado (∝ v²)
 
 INGRESO (según dieta):
@@ -139,7 +139,6 @@ botín = preyGain·(E_presa + carcassValue·eMax_presa)·effHunt
 - **Ciclo de vida** (`expr.mature_age · gen senescence · age.{mortality,scale,senesSlow,senesFast} · k_lifespan`): muerte por vejez `P = mortality·senesMult·((edad−Tm)/scale)²`. Eje vivir-rápido↔longevo; `k_lifespan` = coste de longevidad (disposable soma) que impide el "inmortal".
 - **Reproducción/especiación** (`expr.repro_thr/invest · cooldown · sexual/asexual · mateRadius · speciesGenThreshold · mut.recomb`): sexual = pareja compatible (`dist<speciesGenThreshold`) en `mateRadius`, si no → asexual. Especies = clústeres por distancia genética sobre genes FUNCIONALES (excluye cerebro/decorativos). `recomb` = ligamiento.
 - **Mutación** (`rate·sigma·bigRate·bigSigmaMult`): velocidad de exploración evolutiva. Crítica para la especiación (junto a `speciesGenThreshold`).
-- **Térmico** (`gen temp_pref · tempFreq · k_temp`): desviarse del óptimo local multiplica `baseCost`. Segundo eje de nicho espacial.
 - **Selección sexual / señuelo** (`gen orn/pref · lureGate · k_lure`): runaway de Fisher (orn/pref); `orn` gatea el señuelo bioluminiscente (funcional en caza). `k_lure` = coste.
 
 ## 8. Escala y población (estructural)

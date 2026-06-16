@@ -24,10 +24,6 @@ export class World {
     this._buildGradient();
     this.resource.set(this.capacity);                          // arranca lleno
 
-    // Campo de temperatura [0,1] por celda (segundo eje ambiental; el gen temp_pref se adapta).
-    this.temp = new Float32Array(this.cols * this.rows);
-    this._buildField(this.temp, cfg.resource.tempFreq);
-
     // Spatial hash uniforme (lista enlazada): celda = mayor radio de visión posible.
     this.hashCell = cfg.expr.sense.max; // 80px
     this.hCols = Math.ceil(cfg.world.size / this.hashCell);
@@ -91,25 +87,6 @@ export class World {
     }
     for (let i = 0; i < out.length; i++) out[i] /= totalAmp;
     return out;
-  }
-
-  // Rellena `out` [0,1] con ruido de valor de baja frecuencia (PERIÓDICO) → bandas amplias sin costura.
-  _buildField(out, freq) {
-    const { cols, rows, rng } = this;
-    const grid = new Float32Array(freq * freq);
-    for (let i = 0; i < grid.length; i++) grid[i] = rng.next();
-    for (let y = 0; y < rows; y++) {
-      const fy = (y / rows) * freq, y0 = Math.floor(fy), ty = smooth(fy - y0);
-      const y0m = y0 % freq, y1m = (y0 + 1) % freq;
-      for (let x = 0; x < cols; x++) {
-        const fx = (x / cols) * freq, x0 = Math.floor(fx), tx = smooth(fx - x0);
-        const x0m = x0 % freq, x1m = (x0 + 1) % freq;
-        const a = grid[y0m * freq + x0m], b = grid[y0m * freq + x1m];
-        const c = grid[y1m * freq + x0m], d = grid[y1m * freq + x1m];
-        const top = a + (b - a) * tx, bot = c + (d - c) * tx;
-        out[y * cols + x] = top + (bot - top) * ty;
-      }
-    }
   }
 
   // Regeneración del pasto por tick (pecera). Las plantas crecen CONSUMIENDO nutriente libre N (el sol solo

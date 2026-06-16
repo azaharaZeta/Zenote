@@ -79,7 +79,6 @@ export class Sim {
     this.atkOut = new Float32Array(cap);   // impulso de ataque (3ª salida del cerebro) ∈[0,1] del último tick
     this.atkDrive = new Float32Array(cap); // impulso de ataque SUAVIZADO (EMA) → "ceño" del render (emergente)
     this.hue = new Float32Array(cap);
-    this.tempPref = new Float32Array(cap);
 
     // --- Pool (free stack) + lista activa ---
     this.free = new Int32Array(cap);
@@ -201,9 +200,8 @@ export class Sim {
     const baseHue = ((180 + rng.next() * 250) % 360) / 360;
     const baseOhue = rng.next();                          // tono base del bulbo del señuelo (acento por run)
     // blend() interpola entre la base per-run (div=0 → todos iguales) y la muestra individual (div=1 → variado).
-    const baseTex2 = rng.next();
     const baseOsc = rng.next();                           // fase de oscilación base por run (div=0 → marcha COORDINADA y uniforme)
-    const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
+    const baseLum = 0.4 + rng.next() * rng.next() * 0.5;
     const blend = (base, sample) => base + (sample - base) * div;
     const jit = (v) => { const x = v + rng.gaussian() * J; return x < 0 ? 0 : x > 1 ? 1 : x; };
     for (let n = 0; n < nInit; n++) {
@@ -219,16 +217,14 @@ export class Sim {
       // Conducta: herbívoro tranquilo (la dieta emerge; las ganas de atacar emergen del cerebro)
       this.genes[b + G.diet] = jit(0.08);
       this.genes[b + G.scav] = jit(0.12); // eje caza↔carroña: sesgo cazador por defecto (neutro en herbívoros, meat≈0)
-      this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
+      this.genes[b + G.hue] = jit(baseHue);
       // Historia de vida (#12): arranque a rango medio (≈madurez 308 ticks, ritmo medio) → r/K emerge por deriva
       this.genes[b + G.mature_age] = jit(0.4); this.genes[b + G.senescence] = jit(0.5);
-      // Color/ojos/ornamento (la forma se siembra abajo en el bloque de NODOS).
-      this.genes[b + G.c_eye] = jit(0.5);
+      // Display/ornamento (la forma se siembra abajo en el bloque de NODOS).
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
-      // c_lum/c_sat (glow/color) por individuo con sesgo bajo y cola alta (rng·rng) → la mayoría tenue, algunos brillan.
-      this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55);
+      // c_lum (glow) por individuo con sesgo bajo y cola alta (rng·rng) → la mayoría tenue, algunos brillan.
+      this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5);
       this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y pocos de partida
-      this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // piel
       // Cohorte proto-carnívora: solo sesga la ecología (dieta/caza); la morfología cazadora emerge. Par = cazador
       // (grande, rápido, visión frontal); impar = carroñero proto-gusano (cuerpo barato → vive de la carroña escasa).
       if (n < nCarn) {
@@ -355,7 +351,6 @@ export class Sim {
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
     const epuScent = epu * cfg.resource.carrionScent; // olfato de carroña: el ∇carroña pesa effScav/epuScent en el gradiente de búsqueda
-    const kTemp = cfg.energy.k_temp; // coste por desviarse del óptimo térmico
     const NG = NUM_GENES, sizeAdv = cfg.combat.sizeAdvantage;
     const handlingTime = cfg.combat.handlingTime;
     const failDamage = cfg.combat.failDamage != null ? cfg.combat.failDamage : 1; // energía perdida al fallar (×eMax); ≥1 ≈ muerte segura
@@ -599,12 +594,10 @@ export class Sim {
       x[i] = nx; y[i] = ny;
 
       // ---------- ENERGÉTICA ----------
-      // Coste térmico: desviarse del óptimo (temp_pref) multiplica el coste basal (segundo eje de nicho).
       const tcell = W.cellIndexAt(x[i], y[i]);
-      let tmis = this.tempPref[i] - W.temp[tcell]; if (tmis < 0) tmis = -tmis;
       // Coste de nado ∝ v²·esfuerzo·aleteo·transporte(masa)·arrastre(forma) → la velocidad la limita el presupuesto energético.
       const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // arrastre de la forma encarece el nado (0 = inerte)
-      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul;
+      const metabCost = this.baseCost[i] + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul;
       // Pecera: el coste se topa a la energía disponible (E baja a 0, no a negativo); la materia respirada → nutriente local. Conserva.
       let metabRet = metabCost; const metabAv = E[i] > 0 ? E[i] : 0; if (metabRet > metabAv) metabRet = metabAv;
       W.N[tcell] += metabRet; E[i] -= metabRet;

@@ -19,10 +19,10 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   Estela/halo suave opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía
   (los hambrientos se atenúan: la muerte se *ve* venir).
 - **El suelo = sustrato abisal (Cenote).** Único escenario. El fondo es una **nebulosa casi negra**
-  sobre-muestreada: tinte sutil por **temperatura** del mundo (frío = azul casi negro; cálido =
+  sobre-muestreada: tinte sutil por **ruido de baja frecuencia** (frío = azul casi negro; cálido =
   azul-violeta apagado), con moteado orgánico por ruido periódico (tesela sin costura en el toro).
-  Es world-space (panea/zoomea con la cámara) y se ve a qué clima se adapta cada organismo (gen
-  `temp_pref`), pero por contraste suave, no por colores chillones.
+  Es world-space (panea/zoomea con la cámara) y es **solo decorativo** (no es un campo de la sim),
+  por contraste suave, no por colores chillones.
 - **El recurso como fosforescencia.** El campo de recurso se dibuja, sobre el sustrato, como una
   **fosforescencia tenue teal/algas** (verde-azul desaturado, DISTINTA del cian brillante de los
   bichos) que se lee por contraste contra la oscuridad. Encima, motas de **micro-flora/plancton**
@@ -50,8 +50,8 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   Los nodos **crecen** al aparecer (presencia graduada). Al **girar** (la mirada difiere del rumbo) las aletas
   laterales se **inclinan asimétricamente** hacia el giro (pista visual de "remar para virar"; solo render, no
   toca la física del giro). Es la **misma geometría que usa la física** (`bodyplan.js`) → lo que ves coincide con cómo nada.
-  Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color por partes, glow,
-  saturación y textura de piel salen de los genes decorativos (`c_*`, `o_*`, `tex2`).
+  Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color sale de `hue` (linaje);
+  el glow y el estilo del señuelo, de los genes decorativos (`c_lum`, `o_*`).
 - Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo
   más grande y translúcido (más rápido que blur real). Medir FPS antes de abusar.
 - Estelas: dibujar el fondo con una capa negra a baja opacidad cada frame en vez de

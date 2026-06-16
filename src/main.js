@@ -56,7 +56,7 @@ worker.onmessage = (e) => {
   if (m.type === 'world') {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
-    w.capacity = m.capacity; w.temp = m.temp;
+    w.capacity = m.capacity;
     // Si cambió el tamaño del mundo: re-sembrar las capas decorativas (plancton/nieve) y recentrar la cámara.
     if (renderer._tuftSize !== config.world.size) {
       renderer._initTufts();                                   // re-posiciona + re-escala el plancton sobre el nuevo world.size

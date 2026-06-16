@@ -3,15 +3,14 @@
 
 const BASE_GENES = [
   // Ecología / fisiología (núcleo de nichos). La conducta vive en el cerebro neuronal, no en genes-atajo.
-  'size', 'speed', 'sense', 'metab', 'diet', 'scav', 'repro_thr', 'invest', 'hue', 'temp_pref',
+  'size', 'speed', 'sense', 'metab', 'diet', 'scav', 'repro_thr', 'invest', 'hue',
   // Historia de vida (eje r/K): edad de madurez y ritmo de vida (senescencia).
   'mature_age', 'senescence',
-  // Identidad / display (color, ojos, selección sexual, señuelo, piel); la FORMA vive en el bloque de NODOS.
-  'e_fov', 'c_eye',     // visión (campo de visión funcional) + color de ojos (neutro)
+  // Identidad / display (color, selección sexual, señuelo); la FORMA vive en el bloque de NODOS.
+  'e_fov',              // visión (campo de visión funcional)
   'orn', 'pref',        // selección sexual: cuánto exhibe + ornamento preferido en la pareja (runaway)
-  'c_lum', 'c_sat',     // luminosidad (glow) y vivacidad de color (neutros)
+  'c_lum',              // luminosidad (glow, neutro)
   'o_len', 'o_bulb', 'o_hue', 'o_num', // estilo del señuelo (decorativos)
-  'tex2',               // piel: escala/densidad del patrón (neutro)
 ];
 
 // CUERPO GENERATIVO POR NODOS: un cuerpo = grafo de hasta NODE_COUNT nodos (cabeza/segmentos/apéndices emergen
@@ -45,20 +44,16 @@ export const GENE_LABELS = {
   repro_thr: 'Umbral de reproducción',
   invest: 'Inversión en crías',
   hue: 'Color (linaje)',
-  temp_pref: 'Pref. térmica',
   mature_age: 'Edad de madurez',
   senescence: 'Ritmo de vida (senescencia)',
   e_fov: 'Campo de visión',
-  c_eye: 'Color de ojos',
   orn: 'Ornamento (cresta)',
   pref: 'Preferencia de pareja',
   c_lum: 'Luminosidad',
-  c_sat: 'Vivacidad de color',
   o_len: 'Señuelo: largo',
   o_bulb: 'Señuelo: tamaño bulbo',
   o_hue: 'Señuelo: color',
   o_num: 'Señuelo: número',
-  tex2: 'Piel (escala/densidad)',
 };
 
 // Agrupación temática de los genes de fenotipo para la UI (histograma/inspector). Sin pesos del cerebro.
@@ -68,8 +63,7 @@ export const GENE_GROUPS = [
   { label: 'Dieta',                genes: ['diet', 'scav'] },
   { label: 'Locomoción',           genes: ['speed'] },
   { label: 'Visión',               genes: ['sense', 'e_fov'] },
-  { label: 'Térmico',              genes: ['temp_pref'] },
-  { label: 'Color y ornamento',    genes: ['hue', 'c_eye', 'orn', 'pref', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num', 'tex2'] },
+  { label: 'Color y ornamento',    genes: ['hue', 'orn', 'pref', 'c_lum', 'o_len', 'o_bulb', 'o_hue', 'o_num'] },
 ];
 GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0 + NODE_COUNT * NODE_STRIDE) });
 
@@ -79,7 +73,7 @@ GENES.forEach((name, i) => { G[name] = i; });
 
 // Genes DECORATIVOS (solo render): no afectan a la física y NO cuentan en la distancia genética → morfos de
 // color intra-especie por deriva neutral. La forma (nodos) sí es funcional.
-const DECOR_NAMES = ['tex2', 'c_eye', 'c_lum', 'c_sat', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
+const DECOR_NAMES = ['c_lum', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // osc_phase por nodo afecta a la física pero se deja NEUTRAL para la especie (solo importa la dispersión de
 // fases dentro de un cuerpo, no su valor absoluto → evita especiación espuria por un offset arbitrario).

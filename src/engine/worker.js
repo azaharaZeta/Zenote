@@ -8,7 +8,7 @@ import { trophicRole } from './organism.js';
 const NF = FUNCTIONAL.length;   // nº de genes que definen una especie
 
 const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de nodo (la forma, para el render por grafo)
-const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_ORN = G.orn; // genes para dibujar los ojos
+const G_SENSE = G.sense, G_FOV = G.e_fov, G_ORN = G.orn; // genes para dibujar los ojos
 
 const HIST_BINS = 24;
 config.pop.seed = (Math.random() * 2147483647) >>> 0; // semilla aleatoria → mundo distinto en cada carga
@@ -128,7 +128,7 @@ function postWorld() {
   const W = sim.world;
   postMessage({
     type: 'world', cols: W.cols, rows: W.rows, cellW: W.cellW, cellH: W.cellH,
-    capacity: W.capacity.slice(), temp: W.temp.slice(),
+    capacity: W.capacity.slice(),
   });
 }
 
@@ -140,9 +140,9 @@ function snapshot() {
   const lineage = new Float32Array(n), geneSel = new Float32Array(n);
   const heading = new Float32Array(n), spd = new Float32Array(n); // para orientar/animar el cuerpo
   const tint = new Float32Array(n * 1);                           // [orn]/agente (gatea el señuelo)
-  const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, atkDrive]/agente
+  const eye = new Float32Array(n * 3);                            // ojos: [sense, e_fov, atkDrive]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
-  const deco = new Float32Array(n * 7);                           // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente
+  const deco = new Float32Array(n * 5);                           // [c_lum, o_len, o_bulb, o_hue, o_num]/agente
   const nodes = new Float32Array(n * NODEB);                      // genes de nodo/agente (cuerpo, para el render por grafo)
   const hT = config.combat.handlingTime || 1;
   const hist = new Float32Array(HIST_BINS);
@@ -166,14 +166,13 @@ function snapshot() {
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
-    const ib = i * NG, eb = k * 4;
+    const ib = i * NG, eb = k * 3;
     tint[k] = s.genes[ib + G_ORN];                                 // #13: tint = solo ornamento (gatea el señuelo)
     eye[eb] = s.genes[ib + G_SENSE]; eye[eb + 1] = s.genes[ib + G_FOV];
-    eye[eb + 2] = s.genes[ib + G_EYE]; eye[eb + 3] = s.atkDrive[i]; // "ceño" = impulso de ataque suavizado (emergente)
-    const db = k * 7;
-    deco[db] = s.genes[ib + G.c_lum]; deco[db + 1] = s.genes[ib + G.c_sat];
-    deco[db + 2] = s.genes[ib + G.o_len]; deco[db + 3] = s.genes[ib + G.o_bulb]; deco[db + 4] = s.genes[ib + G.o_hue]; deco[db + 5] = s.genes[ib + G.o_num];
-    deco[db + 6] = s.genes[ib + G.tex2];
+    eye[eb + 2] = s.atkDrive[i];                                   // "ceño" = impulso de ataque suavizado (emergente)
+    const db = k * 5;
+    deco[db] = s.genes[ib + G.c_lum];
+    deco[db + 1] = s.genes[ib + G.o_len]; deco[db + 2] = s.genes[ib + G.o_bulb]; deco[db + 3] = s.genes[ib + G.o_hue]; deco[db + 4] = s.genes[ib + G.o_num];
     const fb = k * 3;
     face[fb] = s.gazeX[i]; face[fb + 1] = s.gazeY[i];
     let atk = s.attackCD[i] / hT; face[fb + 2] = atk > 1 ? 1 : atk; // recencia de ataque (boca/fogonazo)

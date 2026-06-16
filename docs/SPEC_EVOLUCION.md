@@ -49,8 +49,6 @@ las estrategias o las formas "buenas". Esas deben emerger.
 - **Rebrote** (`world.closedRegen`, fotosíntesis N→pasto) por celda. Con `resource.patchiness > 0` el rebrote es **logístico +
   difusión de semilla** → los **parches de recurso emergen y migran** del juego pastoreo↔rebrote
   (no son fijos). `grazeRefuge` reserva una fracción intocable por celda (evita el sobrepastoreo letal).
-- **Temperatura:** eje escalar continuo por región con gradiente espacial (`resource.tempFreq`).
-  El gen `temp_pref` es el óptimo térmico; desviarse multiplica el coste basal (`energy.k_temp`).
 - **Refugio de presa = COBERTURA graduada** (`refuge`, #7): no hay zona binaria "no cazable". La **vegetación
   VIVA local** (el propio campo de recurso) es escondite: en el combate (§3.1) la presa **escapa** con
   probabilidad `refuge.strength · vegetación_de_su_celda`. Como el pasto se come y rebrota, la cobertura es
@@ -77,8 +75,8 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Bloque | Nº | Genes |
 |--------|----|-------|
-| **Ecología / fisiología** | 12 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `temp_pref`, `mature_age`, `senescence` |
-| **Identidad / display** | 11 | `e_fov`, `c_eye`, `orn`, `pref`, `c_lum`, `c_sat`, `o_len`, `o_bulb`, `o_hue`, `o_num`, `tex2` |
+| **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `mature_age`, `senescence` |
+| **Identidad / display** | 8 | `e_fov`, `orn`, `pref`, `c_lum`, `o_len`, `o_bulb`, `o_hue`, `o_num` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
 | **Cerebro neuronal** | 98 | pesos de la RNN (ver §cerebro; 10 entradas) |
 
@@ -95,14 +93,12 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `repro_thr` | umbral de energía para criar: `lerp(expr.repro_thr)` de la referencia (§4). |
 | `invest` | energía transferida a cada cría: `lerp(expr.invest)` de la referencia. |
 | `hue` | tono del organismo (su color en pantalla). Gen **neutro** (no afecta a la física): deriva libre y se hereda → traza el linaje a ojo. Muta como cualquier gen. |
-| `temp_pref` | óptimo térmico; la desviación frente a la temperatura local multiplica el coste basal (`k_temp`). Segundo eje de nicho. |
 | `mature_age` | **historia de vida (#12)**: edad de madurez `Tm = lerp(expr.mature_age)`. Gatea la reproducción (no se cría antes de `Tm`) **e** inicia la senescencia (no hay muerte por vejez antes de `Tm`). Madurar pronto = criar antes (r) pero envejecer antes; tarde = retrasar la cría pero vivir más (K). |
 | `senescence` | **historia de vida (#12)**: ritmo de vida `lifeFast ∈ [0,1]`. Escala la pendiente de la mortalidad por vejez (`senesMult`, ver §3) y, por **disposable soma**, el coste basal: ser longevo (`lifeFast` bajo) cuesta más mantenerse. Crea el eje r/K vivir-rápido↔longevo sin degenerar. |
 
-**Genes de identidad / display:** color de ojo (`c_eye`),
-luminosidad/saturación (`c_lum`, `c_sat`), estilo del señuelo (`o_len`, `o_bulb`, `o_hue`, `o_num`)
-y piel (`tex2`) son **NEUTRALES** (solo render, derivan por linaje → identidad visual de especie;
-**excluidos de la distancia genética**). Dos excepciones **funcionales** en este bloque:
+**Genes de identidad / display:** luminosidad/glow (`c_lum`) y estilo del señuelo
+(`o_len`, `o_bulb`, `o_hue`, `o_num`) son **NEUTRALES** (solo render, derivan por linaje → identidad
+visual de especie; **excluidos de la distancia genética**). Dos excepciones **funcionales** en este bloque:
 - `e_fov` = **campo de visión** (reparte el presupuesto de `sense` entre alcance y ángulo, §2ter).
 - `orn`/`pref` = **selección sexual** (`orn` = cuánto exhibe el señuelo; `pref` = ornamento
   preferido en la pareja). Dirigen la elección de pareja → runaway de Fisher (§4). `orn` además
@@ -481,7 +477,7 @@ Métrica única (compatibilidad sexual + clústeres de especie): **euclídea nor
 FUNCIONALES** → `dist = sqrt( Σ_func (g1ᵢ − g2ᵢ)² / n_func ) ∈ [0,1]`.
 - **FUNCIONALES** = ecología + `e_fov` + `orn`/`pref` + **forma de nodos** (incl. `osc_amp`).
 - **EXCLUIDOS:** el **cerebro** (98 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
-  (colores, `c_eye`, `c_lum`, `c_sat`, estilo de señuelo `o_*`, `tex2`). **`osc_phase`** también se excluye
+  (color `hue`, glow `c_lum`, estilo de señuelo `o_*`). **`osc_phase`** también se excluye
   aunque afecta a la física: solo importa su **dispersión dentro de un cuerpo**, no el valor absoluto (dos
   bichos igual de coordinados con fase global distinta nadan idéntico) → contarlo daría especiación espuria.
 
@@ -509,7 +505,7 @@ Objetivo: miles de agentes a 30–60 ticks/s en el navegador. Decisiones obligat
   auditoría #5; y el `maxAgents` escalable por área, 2026-06). Al alcanzarlo, el nacimiento se bloquea y el progenitor reintenta tras el cooldown.
 
 Estructura de archivos:
-- `engine/world.js` — estado, grid espacial, recurso, campos (luz, temperatura, refugio).
+- `engine/world.js` — estado, grid espacial, recurso, campos (nutriente, capacidad/luz).
 - `engine/organism.js` — **frontera gen→fenotipo** (expresión, energética). Llama a `bodyplan.js`.
 - `engine/bodyplan.js` — **geometría del cuerpo por nodos** → escalares de física (masa, arrastre,
   empuje direccional, giro, streamlining). Fuente única de la forma.

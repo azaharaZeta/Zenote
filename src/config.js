@@ -24,7 +24,6 @@ export const config = {
     capFloor: 0.1,      // no-ui · Suelo de la capacidad de carga (fracción de R_max): ningún baldío permanente.
     patchiness: 0.75,   // UI «Comida en parches» (Comida y vegetación) · Dinámica de rebrote: 0 = lineal · 1 = logístico + difusión → parches que migran.
     seedFloor: 0.04,    // no-ui · Rebrote espontáneo mínimo (banco de semillas): evita el estado absorbente (todo a cero).
-    tempFreq: 3,        // no-ui · Frecuencia del campo térmico (bajo = zonas climáticas grandes).
     absRate: 0.20,      // UI «Ritmo de absorción» (Comida y vegetación) · Ritmo de pastado por tick (alto = pelan zonas → escasez local).
     absMetabBase: 0.5,  // no-ui · Suelo del factor metabólico en la absorción: a metab 0 aún se pasta algo.
     energyPerUnit: 10,  // UI «Energía por unidad» (Comida y vegetación) · Energía obtenida por unidad de recurso comida.
@@ -57,7 +56,6 @@ export const config = {
     k_sense: 0.3,       // UI «Coste por visión» (Metabolismo y cuerpo) · Coste de la visión (alcance).
     k_metab: 0.6,       // UI «Coste por metabolismo» (Metabolismo y cuerpo) · Coste del metabolismo.
     k_lifespan: 0.35,   // UI «Coste de longevidad» (Edad y longevidad) · Coste basal extra de la longevidad (disposable soma): evita la senescencia "inmortal".
-    k_temp: 1.9,        // no-ui · Coste por desviarse del óptimo térmico (0 = sin selección térmica).
     k_lure: 0.13,       // no-ui · Coste de mantener el señuelo bioluminiscente (∝ prominencia).
     k_graze: 0.50,      // UI «Pasto extra por masa» (Comida y vegetación) · Pasto extra ∝ masa de nodos (ata la complejidad al nicho herbívoro).
     k_grazeWide: 0.5,   // UI «Pasto extra por anchura» (Comida y vegetación) · Pasto extra ∝ anchura del cuerpo: premia la forma de pastador.

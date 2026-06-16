@@ -117,7 +117,6 @@ export class Renderer {
     const Wld = this.sim.world, ctx = this.grassCtx, c = this.canvas, cfg = this.cfg;
     const Rmax = cfg.resource.R_max;
     const res = Wld.resource, cols = Wld.cols, rows = Wld.rows, cellW = Wld.cellW, cellH = Wld.cellH;
-    const temp = Wld.temp;
     const W = cfg.world.size, H = cfg.world.size, s = this._scale();
     const offX = c.width / 2 - this.camX * s, offY = c.height / 2 - this.camY * s;
     const vwHalf = c.width / (2 * s), vhHalf = c.height / (2 * s);
@@ -126,7 +125,7 @@ export class Renderer {
     const margin = 60 / s; // holgura en coords de mundo para no recortar las motas al borde
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
-    // Sustrato abisal: nebulosa (paleta por temperatura + moteado por ruido) + comida fosforescente donde hay recurso.
+    // Sustrato abisal: nebulosa (paleta por ruido de baja frecuencia + moteado por ruido) + comida fosforescente donde hay recurso.
     {
       const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo (suaviza la rejilla del recurso)
       const PAD = 16, WW = NW + 2 * PAD, WH = NH + 2 * PAD; // margen para el blur toroidal
@@ -141,14 +140,14 @@ export class Renderer {
         this._abyssWrapCtx = this._abyssWrap.getContext('2d');
         this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = WW; this._abyssSmooth.height = WH;
         this._abyssSmoothCtx = this._abyssSmooth.getContext('2d'); // buffer DIFUMINADO (mosaico blureado; la región central = sustrato sin costura)
-        // CACHÉS del sustrato (ESTÁTICOS: no cambian con el tiempo, solo con resolución/temperatura):
+        // CACHÉS del sustrato (ESTÁTICOS: no cambian con el tiempo, solo con la resolución):
         this._subBase = new Float32Array(NP * 3);  // color de fondo YA moteado (rr·mott, gg·mott, bb·mott)
         this._subIdx  = new Int32Array(NP * 4);     // índices del bilineal del food (i00,i10,i01,i11)
         this._subWx   = new Float32Array(NP);       // peso fxc (smoothstep)
         this._subWy   = new Float32Array(NP);       // peso fyc
         this._subStaticTimer = 0;                   // realloc → fuerza recomputar la capa estática
       }
-      // (1) Capa ESTÁTICA (ruido + temperatura): no cambia con el mundo → se cachea (color de fondo + bilineal del food) y se recomputa rara vez.
+      // (1) Capa ESTÁTICA (ruido): no cambia con el mundo → se cachea (color de fondo + bilineal del food) y se recomputa rara vez.
       let staticRecomputed = false;
       if (this._subStaticTimer <= 0) {
         staticRecomputed = true;                            // base/índices recacheados → el food (que se compone sobre la base) también
@@ -172,8 +171,9 @@ export class Renderer {
           const ya = ((y0 % rows) + rows) % rows, yb = (ya + 1) % rows;
           const i00 = ya * cols + xa, i10 = ya * cols + xb, i01 = yb * cols + xa, i11 = yb * cols + xb;
           const q = idx * 4; sIdx[q] = i00; sIdx[q + 1] = i10; sIdx[q + 2] = i01; sIdx[q + 3] = i11; sWx[idx] = fxc; sWy[idx] = fyc; // cachea el bilineal del food (estático)
-          const tT = temp[i00] + (temp[i10] - temp[i00]) * fxc, tB = temp[i01] + (temp[i11] - temp[i01]) * fxc;
-          const tv = tT + (tB - tT) * fyc;
+          // Gradiente de color de la nebulosa: ruido perlin de baja frecuencia SOLO de render (antes el campo de temperatura, ya retirado de la sim).
+          const tnu = wx / W, tnv = wy / H;
+          let tv = 0.5 * pnoise(tnu, tnv, 4, 3, 23) + 0.5 * pnoise(tnu, tnv, 7, 5, 41); if (tv < 0) tv = 0; else if (tv > 1) tv = 1;
           // Paleta abisal: fondo casi negro (la vegetación se lee por contraste). Frío = azul casi negro; cálido = azul-violeta.
           let rr, gg, bb;
           if (tv < 0.5) { const u = tv / 0.5; rr = 1 + u * 1.5; gg = 2 + u * 4; bb = 12 + u * 4; }
@@ -183,7 +183,7 @@ export class Renderer {
           const mott = 0.7 + n * 0.72;
           const b3 = idx * 3; base[b3] = rr * mott; base[b3 + 1] = gg * mott; base[b3 + 2] = bb * mott; // color de fondo cacheado (sin food)
         }
-        this._subStaticTimer = 90; // temperatura/moteado no cambian (o muy lento) → recachear rara vez (capta deriva ambiental)
+        this._subStaticTimer = 90; // el gradiente/moteado no cambian → recachear rara vez
       }
       this._subStaticTimer--;
       // (2) Capa DINÁMICA (solo el food): se recompone solo si el food cambió de verdad (tick nuevo, slider de vegetación,
@@ -578,8 +578,8 @@ export class Renderer {
         // VIBRANCIA la dispara el ornamento (`orn`, gen de selección sexual): la mayoría va apagada y solo
         // los muy ornamentados lucen colores vivos (exhibición). La absorción usa el gen crudo (sim.js).
         default: {
-          const cSat = deco ? deco[i * 7 + 1] : 0.35;   // VIVACIDAD (deriva libre)
-          const cLumC = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD (deriva libre)
+          const cSat = 0.5;                              // VIVACIDAD (constante; gen c_sat retirado)
+          const cLumC = deco ? deco[i * 5 + 0] : 0.35;   // LUMINOSIDAD (deriva libre)
           h = sim.hue[i] * 360;                // rueda completa (el verde se evita solo en el sembrado)
           s = 18 + cSat * cSat * 82;           // saturación
           l = 31 + ef * 24 + cLumC * cLumC * 14; // brillo = energía + luminosidad
@@ -592,7 +592,7 @@ export class Renderer {
       // Halo por agente (solo calidad alta y bichos no diminutos; los puntos ya brillan con el bloom global).
       if (glow && !lowQ && (ultraFull || rPx > haloThr)) {
         // Halo pre-renderizado por cubo de tono (drawImage barato); radio e intensidad varían por agente.
-        const cLumG = deco ? deco[i * 7 + 0] : 0.35;
+        const cLumG = deco ? deco[i * 5 + 0] : 0.35;
         const gr = r * (1.65 + cLumG * cLumG * 3.0); // halo algo mayor
         let a0 = 0.21 + cLumG * cLumG * 0.48; if (a0 > 1) a0 = 1; // intensidad por agente (vía globalAlpha)
         const spr = this._haloSprite(h);
@@ -602,9 +602,9 @@ export class Renderer {
       }
       if (tier === 2) {
         // Grafo completo (nodos, ojos, señuelo, onda). Con caché, `skel` = atlas pre-horneado (la onda sigue viva); si no, reconstrucción vectorial.
-        const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 7, eye, i * 4, tint, i) : null;
+        const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 5, eye, i * 3, tint, i) : null;
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                            eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7, skel);
+                            eye, i * 3, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 5, skel);
       } else if (tier === 1) {
         this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]); // elipse orientada (sin nodos/ojos/señuelo)
       } else {
@@ -659,7 +659,7 @@ export class Renderer {
       coreMid: `hsl(${h},${s}%,${Math.max(12, l - 3)}%)`,
       coreDark: `hsl(${h},${Math.min(100, s + 12)}%,${Math.max(4, l - 26)}%)`,
       coreOut: `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`,
-      tex2: deco ? deco[dco + 6] : 0.5, inkLine: `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`,
+      tex2: 0.5, inkLine: `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`,
       outW, full, lm, ds: rPx / r, lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10, llx: llx0, lly: lly0,
     };
     // 1) medir cada celda de NODO (silueta + contorno): una fila por nodo, columnas contorno|cuerpo
@@ -683,7 +683,7 @@ export class Renderer {
       if (ex > dmaxX) dmaxX = ex; if (-er0 * 1.5 < dminX) dminX = -er0 * 1.5; if (ey > dmaxY) dmaxY = ey; if (-ey < dminY) dminY = -ey;
     }
     if (orn > 0.12 && deco && doLure) {                                // señuelo: tallo + bulbo + halo, al frente (+x)
-      hasDeco = true; const plen = r * (0.5 + deco[dco + 2] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 3] * 0.34)), br = bulbR * 1.5, ax0 = hr * elong * 0.85; // 1.5 cubre el br máx (0.9+0.4·orn)·pulso ≈ 1.48 → no recorta el halo
+      hasDeco = true; const plen = r * (0.5 + deco[dco + 1] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 2] * 0.34)), br = bulbR * 1.5, ax0 = hr * elong * 0.85; // 1.5 cubre el br máx (0.9+0.4·orn)·pulso ≈ 1.48 → no recorta el halo
       const fwd = ax0 + plen + br * 4, side = plen * 0.55 + br * 4;
       if (fwd > dmaxX) dmaxX = fwd; if (side > dmaxY) dmaxY = side; if (-side < dminY) dminY = -side;
     }
@@ -832,7 +832,7 @@ export class Renderer {
   _drawDeco(ctx, r, pr0, pl0, h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, ds) {
     const orn = tint ? tint[to] : 0;
     if (orn > 0.12 && deco && doLure) {
-      const oLen = deco[dco + 2], oBulb = deco[dco + 3], oHue = deco[dco + 4], oNum = deco[dco + 5];
+      const oLen = deco[dco + 1], oBulb = deco[dco + 2], oHue = deco[dco + 3], oNum = deco[dco + 4];
       const fmin = (px) => px / ds;
       const hr = pr0, elong = pl0 / pr0;
       const np = 1 + ((oNum * oNum * 6) | 0);
@@ -881,7 +881,7 @@ export class Renderer {
       }
     }
     if (showEyes && eye) {
-      const senseG = eye[eo], cEye = eye[eo + 2], atkDrive = eye[eo + 3];
+      const senseG = eye[eo], cEye = 0.5, atkDrive = eye[eo + 2]; // cEye constante (gen c_eye retirado) → ojos del tono del cuerpo
       const hr = pr0, elong = pl0 / pr0;
       const er0 = Math.max(0.8, hr * (0.16 + 0.34 * senseG));
       const nEye = senseG < 0.3 ? 1 : senseG < 0.72 ? 2 : 4 + ((senseG - 0.72) * 12 | 0);
@@ -936,7 +936,7 @@ export class Renderer {
       const coreOut = `hsl(${h},${Math.min(100, s + 6)}%,${Math.max(6, l - 22)}%)`;
       const chh = Math.cos(heading), shh = Math.sin(heading);
       const llx = -0.7 * chh + -0.7 * shh, lly = 0.7 * chh + -0.7 * shh; // dir de luz (mundo -0.7,-0.7) → local
-      const tex2 = deco ? deco[dco + 6] : 0.5;
+      const tex2 = 0.5; // gen tex2 retirado → densidad de piel constante
       const ds = this._drawScale || 1, outW = Math.max(0.8, r * 0.07);
       const inkLine = `hsla(${h},${Math.min(100, s + 8)}%,${Math.max(4, l - 16)}%,0.28)`;
       st = { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
@@ -1015,16 +1015,15 @@ export class Renderer {
     pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
     const tint = this._pTint || (this._pTint = new Float32Array(1));
     tint[0] = genes[G.orn];   // #13: tint = solo ornamento (gatea el señuelo)
-    const pdeco = this._pDeco || (this._pDeco = new Float32Array(7)); // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]
-    pdeco[0] = genes[G.c_lum]; pdeco[1] = genes[G.c_sat];
-    pdeco[2] = genes[G.o_len]; pdeco[3] = genes[G.o_bulb]; pdeco[4] = genes[G.o_hue]; pdeco[5] = genes[G.o_num];
-    pdeco[6] = genes[G.tex2];
-    const eye = this._pEye || (this._pEye = new Float32Array(4));
-    eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = genes[G.c_eye]; eye[3] = atkArg || 0; // ceño = impulso de ataque
+    const pdeco = this._pDeco || (this._pDeco = new Float32Array(5)); // [c_lum, o_len, o_bulb, o_hue, o_num]
+    pdeco[0] = genes[G.c_lum];
+    pdeco[1] = genes[G.o_len]; pdeco[2] = genes[G.o_bulb]; pdeco[3] = genes[G.o_hue]; pdeco[4] = genes[G.o_num];
+    const eye = this._pEye || (this._pEye = new Float32Array(3));
+    eye[0] = genes[G.sense]; eye[1] = genes[G.e_fov]; eye[2] = atkArg || 0; // ceño = impulso de ataque
     const heading = (headingArg != null) ? headingArg : -Math.PI / 2; // por defecto mira arriba; si se da, usa el del mundo
     const face = this._pFace || (this._pFace = new Float32Array(3));
     face[0] = Math.cos(heading); face[1] = Math.sin(heading); face[2] = 0; // pupila al frente, sin boca
-    const cSat = genes[G.c_sat], cLumP = genes[G.c_lum]; // igual que en el mundo (rueda completa de tono + sat/luz)
+    const cSat = 0.5, cLumP = genes[G.c_lum]; // igual que en el mundo (sat constante + tono/luz)
     const h = genes[G.hue] * 360, s = 18 + cSat * cSat * 82;
     const l = 31 + (ef || 0.5) * 24 + cLumP * cLumP * 14;
     const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;

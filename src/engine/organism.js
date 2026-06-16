@@ -111,7 +111,6 @@ export function computePhenotype(sim, i) {
   // Conducta (moverse y atacar) = cerebro neuronal (sim.js). No hay genes-atajo de conducta.
   sim.diet[i]     = diet;
   sim.hue[i]      = g[b + G.hue];
-  sim.tempPref[i] = g[b + G.temp_pref]; // óptimo térmico (coste por desviarse, ver sim.js)
 }
 
 // Clasificación trófica — fuente ÚNICA del "oficio" (la usan la curva de población y el color 'role'). Es una
