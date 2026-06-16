@@ -7,7 +7,7 @@
 >
 > **Metodología.** Derivado de las ECUACIONES del motor (`organism.js`, `bodyplan.js`, `sim.js`, `world.js`,
 > `genome.js`). NO me fío de comentarios ni de los rangos de los sliders de la UI: la verdad la da el código.
-> Analiza la "pecera" cerrada (`world.closedMatter`, modo por defecto). Fecha: 2026-06-15.
+> Analiza la "pecera" cerrada en materia (único escenario). Fecha: 2026-06-15.
 
 ## Marco
 
@@ -117,7 +117,7 @@ absEff  = absRate·(absMetabBase+metab)·(1+k_graze·(massMul−1))·(1+k_grazeW
 ---
 
 ## 6. Depredación / combate
-`combat.{sizeAdvantage, failDamage, fleeSpeed, fleeCap, handlingTime, dietMargin, preyBandLo/Hi, morphReach, lure*} · refuge.strength · energy.{carcassValue, preyGain, scrapReturn}`
+`combat.{sizeAdvantage, failDamage, fleeSpeed, fleeCap, handlingTime, dietMargin, preyBandLo/Hi, morphReach, lure*} · refuge.strength · energy.{carcassValue, preyGain}`
 ```
 ataca si (solapan) preyBandLo ≤ R_presa/R_att ≤ preyBandHi ; diet_att−diet_presa > dietMargin ; rng < impulso(cerebro)
 escapa si rng < refuge.strength·veg_celda  O  rng < min(fleeCap, fleeSpeed·(vmax_presa/vmax_att −1))
@@ -130,12 +130,12 @@ botín = preyGain·(E_presa + carcassValue·eMax_presa)·effHunt
 - `handlingTime` (digestión) satura la tasa de caza → amortigua oscilaciones.
 - `failDamage` (coste al fallar) = freno **denso-dependiente** (sin él, sobre-disparo y colapso).
 - `carcassValue` (el más sutil): el cuerpo vale su biomasa ∝eMax **además** de su energía → cazar presa magra rinde; sin él, carnívoros extintos rodeados de presa pobre.
-- `preyGain` eficiencia trófica · `scrapReturn` sobras al carroñero · `sizeAdvantage` peso de la talla · `morphReach`/`lure*` alcance de captura.
+- `preyGain` eficiencia trófica · `sizeAdvantage` peso de la talla · `morphReach`/`lure*` alcance de captura.
 
 ---
 
 ## 7. Otros subsistemas (denso)
-- **Carroña** (`carrionDecay·carrionAbsRate·carrionScent·corpseReturn`): toda muerte deja cuerpo; decae→`N` (pecera); lo consumen los carroñeros (`effScav`). Puente que da colchón al comecarne en la escasez.
+- **Carroña** (`carrionDecay·carrionAbsRate·carrionScent`): toda muerte deja cuerpo; decae→mineraliza a `N` (pecera); lo consumen los carroñeros (`effScav`). Puente que da colchón al comecarne en la escasez.
 - **Ciclo de vida** (`expr.mature_age · gen senescence · age.{mortality,scale,senesSlow,senesFast} · k_lifespan`): muerte por vejez `P = mortality·senesMult·((edad−Tm)/scale)²`. Eje vivir-rápido↔longevo; `k_lifespan` = coste de longevidad (disposable soma) que impide el "inmortal".
 - **Reproducción/especiación** (`expr.repro_thr/invest · cooldown · sexual/asexual · mateRadius · speciesGenThreshold · mut.recomb`): sexual = pareja compatible (`dist<speciesGenThreshold`) en `mateRadius`, si no → asexual. Especies = clústeres por distancia genética sobre genes FUNCIONALES (excluye cerebro/decorativos). `recomb` = ligamiento.
 - **Mutación** (`rate·sigma·bigRate·bigSigmaMult`): velocidad de exploración evolutiva. Crítica para la especiación (junto a `speciesGenThreshold`).
@@ -143,8 +143,8 @@ botín = preyGain·(E_presa + carcassValue·eMax_presa)·effHunt
 - **Selección sexual / señuelo** (`gen orn/pref · lureGate · k_lure`): runaway de Fisher (orn/pref); `orn` gatea el señuelo bioluminiscente (funcional en caza). `k_lure` = coste.
 
 ## 8. Escala y población (estructural)
-- **`world.size`** — dial de DENSIDAD (Modelo A: escala materia/pool/fundadores/rejilla con el ÁREA). Grande = disperso → menos depredación, más especies.
-- **`maxAgents`** — tope DURO del pool (memoria), **no** punto de operación. Cuando la comida NO limita por debajo (r-runaway), este número se vuelve el límite real → degradación.
+- **`world.size`** — dial de DENSIDAD (Modelo A: escala materia/fundadores/rejilla con el ÁREA; el pool NO escala). Grande = disperso → menos depredación, más especies.
+- **`maxAgentsCeiling`** — tope DURO del pool (memoria), fijo (no escala con el mundo), **no** punto de operación. Cuando la comida NO limita por debajo (r-runaway), este número se vuelve el límite real → degradación.
 - **`carnivoreSeedFrac`** siembra inicial de proto-carnívoros · **`startDiversity`/`simpleStart`** variedad inicial · **`targetTPS`** solo velocidad de sim (el tick es la unidad de tiempo).
 
 ---
@@ -156,8 +156,8 @@ botín = preyGain·(E_presa + carcassValue·eMax_presa)·effHunt
 **Bucle 2 — Eje talla → r/K → saturación del pool. (MODO DE FALLO CENTRAL.)**
 ```
 size.min ↓ → reproNeedE_mín ↓ → cría r explosiva → ¿qué frena la población?
-   ├─ la frena la COMIDA → pop estable < maxAgents → queda estructura de talla → cazador vive ✅
-   └─ la frena el POOL (maxAgents) → saturación → todos diminutos, pasto cropeado uniforme
+   ├─ la frena la COMIDA → pop estable < maxAgentsCeiling → queda estructura de talla → cazador vive ✅
+   └─ la frena el POOL (maxAgentsCeiling) → saturación → todos diminutos, pasto cropeado uniforme
                                     → desaparece la presa con talla en banda → CAZADOR muere ❌
 ```
 Condición de fallo: r-runaway hasta el pool cuando el cuerpo más barato cría más rápido de lo que la comida lo frena. Palancas: `size.min` (dominante), `massExp`, `forageReach`, `E_max_base`, `repro_thr/invest`, `cooldown`, `mut.rate`, y `closedRegen`/`matterBudget` (más comida → más fácil saturar). Por eso `size.min` es palanca maestra (decide la rama), no un dial fino.
@@ -178,10 +178,10 @@ Condición de fallo: r-runaway hasta el pool cuando el cuerpo más barato cría 
 5. **`carcassValue` alto:** rescata al cazador vs ablanda el freno L-V → boom-bust.
 
 ### Jerarquía de palancas
-- **Maestras (deciden el RÉGIMEN):** `expr.size.min`, `closedRegen`, `matterBudget`, `maxAgents`, `massExp`, `forageReach`.
+- **Maestras (deciden el RÉGIMEN):** `expr.size.min`, `closedRegen`, `matterBudget`, `maxAgentsCeiling`, `massExp`, `forageReach`.
 - **De gremio (QUIÉN coexiste):** `omniPenalty`, `scavPenalty`, `carcassValue`, `fleeSpeed`, `refuge.strength`, `dietMargin`, `preyBand*`, `handlingTime`, `carrionAbsRate`.
 - **De morfología:** `k_grazeWide`, `k_scavThin`, `morphReach`, `headThrust`, `kThrust`, pares thrust/drag.
 - **Finos (matizan, no cambian régimen):** mayoría de `k_*` de coste, `vision.*`, `age.*`, `repro.cooldown`, `mut.*` (salvo su efecto en especiación).
 
 ### Conclusión operativa
-El sistema tiene un **punto de bifurcación (Bucle 2)** gobernado sobre todo por `size.min` × productividad × `maxAgents`; la **salud del cazador (Bucle 3)** es el indicador que primero se rompe. Finetuning: **primero fijar el régimen (Bucle 2), luego ajustar gremios (Bucle 4)** sobre él.
+El sistema tiene un **punto de bifurcación (Bucle 2)** gobernado sobre todo por `size.min` × productividad × `maxAgentsCeiling`; la **salud del cazador (Bucle 3)** es el indicador que primero se rompe. Finetuning: **primero fijar el régimen (Bucle 2), luego ajustar gremios (Bucle 4)** sobre él.

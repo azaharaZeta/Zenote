@@ -123,7 +123,7 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 - **Rendimiento es calidad de *render*, no de simulación.** En equipos lentos se baja la **calidad** (a Baja:
   sin bloom, sin halos por agente, sin nieve, LOD agresivo) y se puede reducir
   `sim.targetTPS` —que solo cambia la *velocidad* a la que vemos avanzar el tiempo,
-  no el resultado—. **No se baja `pop.maxAgents` automáticamente**, porque eso sí cambiaría
+  no el resultado—. **No se baja `pop.maxAgentsCeiling` automáticamente**, porque eso sí cambiaría
   el ecosistema; si el usuario quiere ese ajuste, que sea un control consciente y avisado.
   Detección barata por defecto: si el viewport es estrecho (`< 700px`) o los FPS caen,
   arrancar con `glow:false` (o calidad Baja).
@@ -145,7 +145,7 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 ## Interacción mínima pero deliciosa
 - Play / pausa. Slider de velocidad de simulación en **ticks por segundo** (`sim.targetTPS`,
   desacoplado de los fps).
-- Sliders de `mut_rate`, `mut_sigma`, `R_regen` para "jugar a ser el ambiente" y
+- Sliders de `mut_rate`, `mut_sigma`, `closedRegen` para "jugar a ser el ambiente" y
   ver cómo responde la evolución en directo.
 - **Cámara con zoom y paneo toroidal:** rueda (o pinza en móvil) para zoom, arrastrar para
   desplazarse. El mundo es un toro y se renderiza **en mosaico**, así el paneo recorre el

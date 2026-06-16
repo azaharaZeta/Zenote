@@ -38,15 +38,15 @@ las estrategias o las formas "buenas". Esas deben emerger.
 > densidad, sense/mundo, etc.). La biomasa también es adimensional en px (`sizeMass=(radio/refRadius)^massExp`, normalizada).
 > Catálogo dimensional completo en la cabecera de `src/config.js`.
 
-- Rejilla continua (coordenadas float), por defecto un **toro** (bordes envueltos) para
+- Rejilla continua (coordenadas float), **siempre un toro** (bordes envueltos) para
   evitar artefactos de borde. El mundo es **CUADRADO**: un solo valor `world.size` (lado en u). El **ecosistema ESCALA**
-  con `world.size` (**Modelo A**): lo EXTENSIVO (`matterBudget`, `pop.maxAgents`, fundadores, rejilla `gridCols/Rows`)
-  crece con el ÁREA a densidad y dinámica constantes (con un TECHO de pool, `pop.maxAgentsCeiling`, por rendimiento; por
-  encima, agrandar el mundo solo lo hace más disperso); lo INTENSIVO (talla, sensores, velocidades, tasas, costes) no escala.
+  con `world.size` (**Modelo A**): lo EXTENSIVO (`matterBudget`, fundadores, rejilla `gridCols/Rows`)
+  crece con el ÁREA a densidad y dinámica constantes; lo INTENSIVO (talla, sensores, velocidades, tasas, costes) no escala.
+  El pool de agentes es un **tope duro fijo** (`pop.maxAgentsCeiling`, por rendimiento) que NO escala con el mundo.
 - **Recurso difuso** ("energía solar/química") en un campo escalar de baja resolución
   (`resource.gridCols`×`gridRows`). Capacidad por celda según `resource.gradient`
   (`perlin` | `center` | `uniform`). Se acumula hasta `R_max` por celda.
-- **Rebrote** `R_regen` por celda. Con `resource.patchiness > 0` el rebrote es **logístico +
+- **Rebrote** (`world.closedRegen`, fotosíntesis N→pasto) por celda. Con `resource.patchiness > 0` el rebrote es **logístico +
   difusión de semilla** → los **parches de recurso emergen y migran** del juego pastoreo↔rebrote
   (no son fijos). `grazeRefuge` reserva una fracción intocable por celda (evita el sobrepastoreo letal).
 - **Temperatura:** eje escalar continuo por región con gradiente espacial (`resource.tempFreq`).
@@ -57,10 +57,8 @@ las estrategias o las formas "buenas". Esas deben emerger.
   **espacialmente dinámica** → refugios que migran solos (Huffaker emergente): la presa está a salvo en parches
   densos y expuesta en los claros pastados. Estabilizador Lotka-Volterra (la presa nunca llega a cero) sin la
   muleta del interruptor. Es física del mundo, no conducta.
-- **Mundo CERRADO vs abierto en materia** (`world.closedMatter`): el modo **POR DEFECTO** es la "pecera" CERRADA — la
-  **materia total es constante** y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga endógena. El
-  modo **abierto** (`closedMatter=false`: el sol crea biomasa, el cuerpo se conjura al morir) queda como alternativa.
-  Mecánica completa en **§3ter**.
+- **Mundo CERRADO en materia** (la "pecera", único escenario): la **materia total es constante** y circula
+  (nutriente↔pasto↔organismos↔carroña), con capacidad de carga endógena. Mecánica completa en **§3ter**.
 
 ## 2. El organismo
 
@@ -293,10 +291,9 @@ Por tick, cada organismo:
   y `senesMult = lerp(age.senesSlow, age.senesFast, lifeFast)` (gen `senescence`). Antes de madurar no hay
   riesgo de vejez. Sin tope duro.
 - **Reciclaje del cadáver:** toda muerte deposita un cuerpo en el campo `carrion` de su celda (la presa
-  **cazada** solo deja *sobras* —`scrapReturn`— porque el depredador ya se llevó casi todo); la carroña
-  **decae** y realimenta el ciclo de nutrientes (vuelve en parte al pasto vía `corpseReturn` en el modelo
-  abierto, o **mineraliza** al nutriente `N` en la pecera cerrada) y la **consumen los carroñeros**.
-  Mecánica completa en **§3bis** (carroña) y **§3ter** (pecera).
+  **cazada** solo deja *restos* —lo no extraído por el depredador, que ya se llevó casi todo); la carroña
+  **decae** y **mineraliza** íntegra al nutriente `N` de su celda (cierra el ciclo de materia) y la
+  **consumen los carroñeros**. Mecánica completa en **§3bis** (carroña) y **§3ter** (pecera).
 
 La selección **NO es una función de fitness explícita**: simplemente, **los que se quedan sin energía
 mueren y no se reproducen.** El fitness emerge.
@@ -341,14 +338,14 @@ Afilar (`tipShape < 0.5`, alarga el nodo) da más alcance → liga la Capa 1 (fo
 - **Resolución estocástica:** fuerza de cada contendiente `f = (size+0.1)^combat.sizeAdvantage` (tamaño + azar;
   ya no pesa `aggro` — las ganas de atacar están en la tasa de decisión `a`). `P(gana atacante) = f_att / (f_att
   + f_def)`. Nadie gana "por regla".
-- **Al vencer:** el perdedor muere (deja solo SOBRAS de carroña, `scrapReturn·biomasa`, ver §3bis); el ganador recibe `preyGain · (E_perdedor +
-  carcassValue · eMax_perdedor) · effCarn` (limitado a `E_max`). El término `carcassValue·eMax` es la
-  **biomasa** del cuerpo (∝ masa), que alimenta ADEMÁS de la energía almacenada → comer un animal nutre
-  aunque viniera hambriento. Sin él (`carcassValue=0`, modelo previo) la ganancia = solo energía almacenada:
-  en un mundo escaso la presa cría hasta la capacidad de carga pero **magra** (poca E), y cazarla da calorías
-  vacías → los carnívoros **se extinguen rodeados de presa abundante** (medido). Un herbívoro puro (`effCarn≈0`)
-  no gana nada atacando → la agresión solo se sostiene si la dieta carnívora coevoluciona (emergencia, no la
-  regla "los herbívoros no atacan").
+- **Al vencer:** el perdedor muere; el ganador recibe `preyGain · (E_perdedor + bodyMatter_perdedor) · effCarn`
+  (limitado a `E_max`; lo no extraído por ineficiencia trófica + lo que rebose el tope → **restos** de carroña /
+  nutriente, ver §3bis). `bodyMatter = carcassValue·eMax` es la **biomasa estructural** del cuerpo (∝ masa, bloqueada
+  del pool `N` al nacer), que alimenta ADEMÁS de la energía almacenada → comer un animal nutre aunque viniera
+  hambriento. Con `carcassValue` bajo la ganancia ≈ solo energía almacenada: en un mundo escaso la presa cría hasta
+  la capacidad de carga pero **magra** (poca E), y cazarla da calorías vacías → los carnívoros **se extinguen
+  rodeados de presa abundante** (medido). Un herbívoro puro (`effCarn≈0`) no gana nada atacando → la agresión solo
+  se sostiene si la dieta carnívora coevoluciona (emergencia, no la regla "los herbívoros no atacan").
 - **Coste al fallar (`failDamage`):** si el ataque falla, el atacante **pierde energía**
   (`failDamage · su eMax`) y muere solo si llega a 0. Es el **freno denso-dependiente** que estabiliza
   la depredación: sin coste al fallar, los carnívoros sobre-disparan y colapsan el sistema.
@@ -357,14 +354,15 @@ El combate puede desactivarse (`combat.enabled=false`) para validar la selecció
 
 ### 3bis. Carroña (cadáveres) — hacia el nicho carroñero
 Toda muerte deposita un **cuerpo** en el campo `carrion` de su celda (en unidades de energía directa):
-- **Muerte natural** (vejez, hambre, combate): cuerpo entero = energía que quede + **biomasa** (`carcassValue·eMax`,
-  el tejido). El que muere de hambre tiene `E≈0` → deja solo tejido (cadáver magro).
-- **Cazado:** solo **sobras** (`scrapReturn·biomasa`); el depredador ya se llevó casi todo → "restos".
+- **Muerte natural** (vejez, hambre, combate): cuerpo entero = energía que quede + **biomasa estructural**
+  (`bodyMatter = carcassValue·eMax`, el tejido). El que muere de hambre tiene `E≈0` → deja solo tejido (cadáver magro).
+- **Cazado:** la depredación (§3.1) ya repartió la materia de la presa → la muerte en sí deposita **0** (sin doble
+  conteo); los **restos** (ineficiencia trófica + lo no comido) los deposita el propio combate.
 
-La carroña **decae** cada tick (`resource.carrionDecay`); lo descompuesto vuelve en parte al pasto
-(`energy.corpseReturn`) → **ciclo de nutrientes** (cadáver→descomposición→vegetación). La **consume** quien puede
-procesar carne (`effCarn`, ritmo `resource.carrionAbsRate`) → puente carroñero que da colchón a los carnívoros en la
-escasez (medido a `R_regen` bajo: el carroñeo multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
+La carroña **decae** cada tick (`resource.carrionDecay`) y **mineraliza** íntegra al nutriente `N` de su celda
+→ **ciclo de materia** (cadáver→descomposición→nutriente→pasto). La **consume** quien puede procesar carne
+(`effCarn`, ritmo `resource.carrionAbsRate`) → puente carroñero que da colchón a los carnívoros en la escasez
+(medido a `closedRegen` bajo: el carroñeo multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
 
 **Eje CAZA ↔ CARROÑA (Fase 2, gen `scav`):** la capacidad carnívora (`meat = diet·omni`) se reparte entre cazar
 presa VIVA (`effHunt = meat·(1−scav)·spec`) y CARROÑEAR cadáveres (`effScav = meat·scav·spec·(1+k_scavThin·thin)`),
@@ -376,14 +374,13 @@ GUSANO: carroñero pequeño y elongado. La proto-forma (cadena axial de nodos) s
 para cruzar el valle morfológico (el nicho solo no basta para una forma compleja); cruzado, se mantiene por inercia +
 streamlining. Especies/herencia: `scav` es gen base → cuenta en la distancia genética (un carroñero es otra especie).
 
-### 3ter. Ecosistema CERRADO en materia ("pecera", `world.closedMatter` — modo POR DEFECTO)
-El modo **abierto** (`closedMatter=false`, NO el default) es **abierto en energía**: el sol crea biomasa de la nada
-(`regen` rellena el recurso hasta su capacidad) y la biomasa estructural del cuerpo se "conjura" al morir/cazar
-(`carcassValue·eMax`, ver §3.1/§3bis). Medido: esa creación ≈17% de toda la entrada de energía (el resto es sol), y la
-población se asienta en `maxAgents`, no en la capacidad de carga. Es un modelo abierto válido, pero NO conserva.
+### 3ter. Ecosistema CERRADO en materia ("pecera" — único escenario)
+> Rationale (histórico): un modelo **abierto en materia** —el sol creando biomasa de la nada y el cuerpo
+> "conjurándose" al morir— se midió creando ≈17% de la entrada de la nada y asentando la población en el tope
+> del pool, no en la capacidad de carga: NO conservaba. Por eso la pecera cerrada es el único modelo.
 
-Con `world.closedMatter=true` el mundo pasa a **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en
-materia — como un ecosistema real). **Moneda única** (materia = unidades de energía); cantidad **conservada**:
+El mundo es **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en materia — como un ecosistema real).
+**Moneda única** (materia = unidades de energía); cantidad **conservada**:
 
 > `Σ N[celda] + Σ(recurso·epu) + Σ_vivos(E + bodyMatter) + Σ(carroña) = constante` (= `world.matterBudget`)
 
@@ -394,36 +391,36 @@ materia — como un ecosistema real). **Moneda única** (materia = unidades de e
   5×5 del progenitor al nacer** (el cuerpo se construye reuniendo materia de la ZONA, no de una sola celda que no bastaría
   de golpe) — y **nacer se BLOQUEA si la zona no tiene `bodyMatter`** → la cría se acopla a la fertilidad local; se
   **devuelve a la carroña al morir**. Ya no se conjura: el cuerpo se paga con materia real.
-- **Rebrote** (`_regenClosed`): cada celda crece CONSUMIENDO su `N` LOCAL a ritmo `world.closedRegen` (parámetro **propio**
-  del modo cerrado, separado de `resource.R_regen` que rige el abierto) → el pasto rebrota DONDE hay nutriente (manchas
-  fértiles). Si el `N` local no llega, se escala ESA celda. El sol ya no crea materia: solo permite convertir `N`→pasto.
+- **Rebrote** (`World.regen`): cada celda crece CONSUMIENDO su `N` LOCAL a ritmo `world.closedRegen` (la fotosíntesis,
+  N→pasto) → el pasto rebrota DONDE hay nutriente (manchas fértiles). Si el `N` local no llega, se escala ESA celda.
+  El sol no crea materia: solo permite convertir `N`→pasto.
 - **Retornos a `N`** (la materia no se evapora), todos en la **CELDA donde ocurren**: metabolismo + nado, pérdida trófica
   de la depredación, conversión de pasto no asimilada (`1−effHerb`), y el sobrante por tope de `eMax`. El metabolismo no
   puede dejar `E` negativa (se topa a 0: no se gasta materia que no se tiene). La **carroña mineraliza ÍNTEGRA** al `N` de
-  su celda (`carrionDecay`; en cerrado se ignora `corpseReturn`, del abierto) → el cadáver fertiliza su propia zona.
-- **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgents`. El
+  su celda (`carrionDecay`) → el cadáver fertiliza su propia zona.
+- **Techo ENDÓGENO**: la capacidad de carga la pone la materia (y el ritmo `closedRegen`), no el sol ni `maxAgentsCeiling`. El
   sobrante de materia por encima de la capacidad ecológica queda como `N` libre = **buffer** de la pecera.
 - **DOS ATRACTORES** (medido headless multi-seed): "pequeño-numeroso-con-carroñeros" ↔ "grande-escaso-solo-herbívoro";
-  el seed decide → cada Sembrar varía. Con los valores por defecto (`world.closedRegen` + `pop.maxAgents` +
+  el seed decide → cada Sembrar varía. Con los valores por defecto (`world.closedRegen` + `pop.maxAgentsCeiling` +
   `combat.fleeSpeed` + `diet.scavPenalty` + **`expr.size.min`** (suelo de talla), todos en `config.js`) → régimen de **RED TRÓFICA**: herbívoros + carroñeros +
   CAZADORES de presa viva coexisten (trío estable en la mayoría de siembras; los cazadores son una minoría ÁPICE
   fluctuante, los carroñeros el grueso del comecarne, los herbívoros la base). CLAVE: cazar presa viva exige
   productividad alta (mundo magro → solo el carroñeo rinde), y esa productividad sube la pop → exige holgura de pool
-  (`maxAgents` con margen; si queda corto, satura y se distorsiona). Bajar `closedRegen` → pecera magra y contemplativa
+  (`maxAgentsCeiling` con margen; si queda corto, satura y se distorsiona). Bajar `closedRegen` → pecera magra y contemplativa
   pero el gremio CAZADOR es FRÁGIL (colapsa en varias siembras → solo herbívoro/carroñero); bajarlo aún más → población
   plácida solo-herbívora. La siembra de proto-carnívoros (`carnivoreSeedFrac`) ayuda al gremio a establecerse.
 - **SUELO DE TALLA (`expr.size.min`) = freno del colapso a LARGO PLAZO.** Sin suelo, a horizontes largos (>10k ticks)
   el mundo deriva al runaway r-estratega: cuerpos cada vez más DIMINUTOS (que crían rápido y, al pesar poca materia,
-  caben muchos) → la población **satura `maxAgents`** (el pool, no la materia: queda nutriente libre sin usar) y, al
+  caben muchos) → la población **satura `maxAgentsCeiling`** (el pool, no la materia: queda nutriente libre sin usar) y, al
   desaparecer la talla, se borra la base de presa → el gremio CAZADOR se extingue (el trío resultaba **transitorio**:
   válido a ~5-8k ticks, colapsado a 30k). Poner un **suelo a `expr.size.min`** impide los cuerpos infinitesimales → la
   población no puede inflarse → la **MATERIA vuelve a ser el límite endógeno** (pop por debajo del pool) y queda una base
   de presa con talla → el cazador **persiste a 30k+** (medido headless 7/7 seeds, verificado en vivo). Es la palanca que
-  hace honesto el principio "la capacidad de carga la pone la materia, no `maxAgents`" también a largo plazo.
+  hace honesto el principio "la capacidad de carga la pone la materia, no `maxAgentsCeiling`" también a largo plazo.
 - **Guard de `energyPerUnit`** (epu): es el tipo de cambio recurso↔materia y entra en el balance. Cambiarlo EN VIVO
-  reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`) cuando
-  `closedMatter` → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
-  solo (solo cambia el equilibrio). `matterBudget`/`closedMatter`/`maxAgents` requieren **Reiniciar** para aplicarse.
+  reescalaría la materia de la vegetación en pie → el worker ABSORBE el salto en `N` (`N -= Σrecurso·Δepu`)
+  → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
+  solo (solo cambia el equilibrio). `matterBudget`/`maxAgentsCeiling` requieren **Reiniciar** para aplicarse.
 
 Validado headless: la materia se conserva con una deriva de **±0.05 %** (ruido de acumulación en `Float32`, no error
 sistemático); el motor enruta toda pérdida a un pool sea cual sea el valor de los coeficientes, por eso conserva ante
@@ -507,9 +504,9 @@ Objetivo: miles de agentes a 30–60 ticks/s en el navegador. Decisiones obligat
   cero asignaciones por nacimiento, sin inflar el SoA por agente.
 - **Render con Canvas 2D** (no DOM por agente). El cuerpo se dibuja desde el grafo de nodos.
 - **Sin asignaciones en el bucle caliente.** Pool de agentes (índices libres) para nacimientos/muertes.
-- **Tope de población** `pop.maxAgents`: límite **duro del pool** (memoria/FPS), no un punto de
-  operación — la capacidad de carga la pone el recurso, no un número (se retiró el viejo `maxAlive`,
-  auditoría #5). Al alcanzarlo, el nacimiento se bloquea y el progenitor reintenta tras el cooldown.
+- **Tope de población** `pop.maxAgentsCeiling`: límite **duro del pool** (memoria/FPS) que NO escala con el mundo,
+  no un punto de operación — la capacidad de carga la pone el recurso, no un número (se retiró el viejo `maxAlive`,
+  auditoría #5; y el `maxAgents` escalable por área, 2026-06). Al alcanzarlo, el nacimiento se bloquea y el progenitor reintenta tras el cooldown.
 
 Estructura de archivos:
 - `engine/world.js` — estado, grid espacial, recurso, campos (luz, temperatura, refugio).
@@ -534,7 +531,7 @@ Sin tocar el código de estrategias ni de formas, debe observarse al menos:
 3. Con carnívoros, oscilaciones tipo depredador-presa reconocibles en las curvas de población.
 4. **Divergencia morfológica:** cuerpos distintos por nicho (p. ej. depredadores fusiformes con cola
    vs. herbívoros redondos) — la forma y el modo de nadar responden a la selección.
-5. Reversibilidad: cambiar `mut.sigma`, `R_regen` o `combat.*` altera visiblemente qué estrategias y
+5. Reversibilidad: cambiar `mut.sigma`, `world.closedRegen` o `combat.*` altera visiblemente qué estrategias y
    formas dominan, demostrando que la selección responde al ambiente.
 
 Estos criterios deben poder comprobarse desde la propia UI (gráficas, inspector), no leyendo logs.

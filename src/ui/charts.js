@@ -1,7 +1,7 @@
 // Gráficas a mano en Canvas 2D (sin dependencias): curva de población + histograma de un gen.
 // Ver el histograma deslizarse es la prueba visual de la selección (criterio §7.1).
 
-import { NUM_GENES, G, GENES, GENE_LABELS } from '../engine/genome.js';
+import { G, GENES, GENE_LABELS } from '../engine/genome.js';
 
 export class Charts {
   constructor(popCanvas, histCanvas, sim, deathCanvas, birthCanvas, bioCanvas) {

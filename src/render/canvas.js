@@ -1,8 +1,8 @@
 // Render con Canvas 2D. El mundo es lógico y fijo; aquí solo se MUESTRA, con una cámara
 // (zoom + paneo toroidal en mosaico). Nada de esto toca la simulación.
 
-import { NUM_GENES, G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
-import { EPS_AXIS, PRES_LO, presWeight } from '../engine/bodyplan.js';
+import { G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
+import { EPS_AXIS, presWeight } from '../engine/bodyplan.js';
 import { makeRng } from '../util/rng.js';
 
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).

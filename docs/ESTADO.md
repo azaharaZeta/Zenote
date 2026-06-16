@@ -27,11 +27,11 @@ Genoma de **201 genes/agente** (SoA, typed arrays):
 - **Herencia**: sexual (crossover con ligamiento) + asexual fallback; mutación única por locus; especies por
   distancia genética (ecología + forma de nodos).
 - **Fitness 100% emergente** (sobrevivir + criar). Motor en Web Worker; render Canvas 2D desde los nodos.
-- **Mundo CERRADO en materia** (`world.closedMatter`, "pecera") — **modo POR DEFECTO** (la app arranca en la pecera):
-  la materia total se CONSERVA y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA. El
-  modelo abierto (el sol crea biomasa de la nada) queda como alternativa (toggle del lab). Nació de una auditoría de
-  energía (el abierto no conserva: ~17% de la entrada es biomasa conjurada; la pop se clava en `maxAgents`). Régimen de
-  **RED TRÓFICA** por defecto (`closedRegen` + `maxAgents` + `fleeSpeed` + `scavPenalty` + **`expr.size.min`** (suelo de
+- **Mundo CERRADO en materia** ("pecera") — **único escenario**:
+  la materia total se CONSERVA y circula (nutriente↔pasto↔organismos↔carroña), con capacidad de carga ENDÓGENA. Nació
+  de una auditoría de energía (un modelo abierto no conservaba: ~17% de la entrada era biomasa conjurada y la pop se
+  clavaba en el tope del pool; el modo abierto se eliminó en 2026-06). Régimen de
+  **RED TRÓFICA** (`closedRegen` + `maxAgentsCeiling` + `fleeSpeed` + `scavPenalty` + **`expr.size.min`** (suelo de
   talla), valores en `config.js` → herbívoros + carroñeros + cazadores coexisten; el suelo de talla evita la deriva a
   cuerpos diminutos que a largo plazo saturaba el pool y extinguía al cazador → trío ROBUSTO a 30k+ ticks (medido 7/7
   siembras); los cazadores, minoría ápice fluctuante); el

@@ -3,7 +3,7 @@
 // FRONTERA: aquí se define la FÍSICA de la forma (geometría→fuerza); qué forma es buena lo dicta la selección.
 // Todo en unidades del radio de cabeza (r se cancela: empuje y arrastre escalan igual con el tamaño).
 
-import { G, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
+import { NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 
 const CAP_NODES = NODE_COUNT;
 export const EPS_AXIS = 0.35;        // banda axial: |ang−eje| < EPS → nodo MEDIAL (1×); fuera → LATERAL (par ×2). El render usa el mismo umbral.
