@@ -1004,15 +1004,17 @@ export class Renderer {
 
   // Retrato del organismo seleccionado para el inspector: dibuja el bicho centrado en un canvas
   // pequeño a partir de su genoma completo. Reutiliza _drawBodyGraph (mismo aspecto que en el mundo).
-  drawPortrait(pctx, genes, t, ef, headingArg, spdArg, atkArg) {   // heading/spd/atk opcionales → orienta, ondula y entorna el ojo IGUAL que en el mundo
+  drawPortrait(pctx, genes, t, ef, headingArg, spdArg, atkArg, transparentBg) {   // heading/spd/atk opcionales → orienta, ondula y entorna el ojo IGUAL que en el mundo. transparentBg=true → la criatura flota (sin caja: deja ver lo que haya detrás, p.ej. el mundo difuminado del intro).
     const cw = pctx.canvas.width, ch = pctx.canvas.height;
     pctx.clearRect(0, 0, cw, ch);
     if (!genes) return;
     this._drawScale = 1; this._bufScale = 1; this._lodMul = 1; // el retrato dibuja en píxeles directos (sin transform) → ojo grande → detalle completo (y _forceFull salta gates igualmente)
-    // Fondo abisal oscuro (degradado suave) → resaltan los contornos y el glow de la criatura.
-    const bg = pctx.createLinearGradient(0, 0, 0, ch);
-    bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c');
-    pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
+    if (!transparentBg) {
+      // Fondo abisal oscuro (degradado suave) → resaltan los contornos y el glow de la criatura (inspector in-game).
+      const bg = pctx.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c');
+      pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
+    }
     const tint = this._pTint || (this._pTint = new Float32Array(1));
     const _lg = this.cfg.combat.lureGate, _ol = genes[G.o_len];   // prominencia del señuelo (misma fórmula que organism.js)
     tint[0] = _ol > _lg ? ((_ol - _lg) / (1 - _lg)) * (0.4 + genes[G.o_bulb]) : 0;
@@ -1027,9 +1029,22 @@ export class Renderer {
     const cSat = 0.5, cLumP = genes[G.c_lum]; // igual que en el mundo (sat constante + tono/luz)
     const h = genes[G.hue] * 360, s = 18 + cSat * cSat * 82;
     const l = 31 + (ef || 0.5) * 24 + cLumP * cLumP * 14;
-    const r = Math.min(cw, ch) * 0.16, px = cw * 0.5, py = ch * 0.44;
-    pctx.fillStyle = 'rgba(0,0,0,0.16)';               // sombra de contacto suave → volumen
-    pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
+    // AUTOAJUSTE: el señuelo se proyecta HACIA DELANTE (heading) y puede ser largo → escala el cuerpo y lo
+    // centra para que quepa entero (señuelo + cuerpo + apéndices traseros) con margen. Vale para retrato e inspector.
+    const fx = Math.cos(heading), fy = Math.sin(heading);
+    const lureFwd = tint[0] > 0 ? (0.5 + genes[G.o_len] * 5.5) + 2.0 : 0.9;   // alcance del señuelo en unidades de r (+bulbo/halo)
+    const backExt = 2.6, latExt = 2.6;                                        // cuerpo + apéndices traseros · semiancho (en r)
+    const axialSpan = lureFwd + backExt, latSpan = 2 * latExt, m = 0.9;
+    const needX = axialSpan * Math.abs(fx) + latSpan * Math.abs(fy);          // ancho requerido (en r) según la orientación
+    const needY = axialSpan * Math.abs(fy) + latSpan * Math.abs(fx);
+    let r = Math.min(cw * m / needX, ch * m / needY);
+    if (r > Math.min(cw, ch) * 0.18) r = Math.min(cw, ch) * 0.18;            // tope: no agrandar de más a los que casi no tienen señuelo
+    const px = cw * 0.5 - fx * r * (lureFwd - backExt) * 0.5;                 // desplaza el cuerpo en sentido OPUESTO al heading → sitio para el señuelo delante
+    const py = ch * 0.5 - fy * r * (lureFwd - backExt) * 0.5;
+    if (!transparentBg) {                              // sombra de contacto (solo con caja; el héroe flotante no la lleva)
+      pctx.fillStyle = 'rgba(0,0,0,0.16)';             // sombra de contacto suave → volumen
+      pctx.beginPath(); pctx.ellipse(px, py + r * 0.6, r * 1.5, r * 0.5, 0, 0, 6.2832); pctx.fill();
+    }
     // GLOW/halo: MISMA fórmula que en el mundo (_drawAgents) para que el retrato se vea igual de luminoso.
     // Gateado por la misma config de glow → coinciden con el efecto encendido/apagado.
     if (this.cfg.render.glow) {

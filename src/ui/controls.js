@@ -691,19 +691,40 @@ function setupLab(app, send) {
     // hue acotado a [0.62, 0.68]: con la rueda completa del render (hue·360) eso da ~223-245° → entorno al AZUL.
     g('size', R(0.58, 0.66)); g('hue', R(0.62, 0.68)); g('sense', 0.5); g('metab', 0.5);
     g('diet', R(0.38, 0.44)); // sin gen `aggro`: las ganas de atacar emergen del cerebro
-    // FORMA del mascot vía NODOS: cabeza redonda + un par de "orejas" laterales; resto de nodos ausentes.
-    g('n0_present', 1); g('n0_size', 0.55); g('n0_aspect', 0.3); g('n0_osc_amp', 0.55);
-    g('n1_present', 0.95); g('n1_size', 0.5); g('n1_aspect', 0.68); g('n1_angle', 0.32); g('n1_attach', 0.7); g('n1_osc_amp', 0.5);
-    g('n2_present', 0.9); g('n2_size', 0.42); g('n2_aspect', 0.55); g('n2_angle', 0.6); g('n2_attach', 0.6); g('n2_osc_amp', 0.5);
+    // FORMA del mascot vía NODOS: cabeza redonda + un par de aletas BARRIDAS HACIA ATRÁS (angle≈0.7 → emit>π/2 =
+    // detrás del eje, como una cola/aletas que arrastran; lo común al evolucionar nadando). Random SUTIL → varía entre cargas.
+    g('n0_present', 1); g('n0_size', R(0.5, 0.6)); g('n0_aspect', R(0.26, 0.4)); g('n0_osc_amp', R(0.45, 0.6));
+    g('n1_present', R(0.9, 1)); g('n1_size', R(0.44, 0.56)); g('n1_aspect', R(0.5, 0.66)); g('n1_angle', R(0.64, 0.76)); g('n1_attach', R(0.62, 0.74)); g('n1_osc_amp', R(0.45, 0.58));
+    g('n2_present', R(0.78, 0.95)); g('n2_size', R(0.34, 0.46)); g('n2_aspect', R(0.46, 0.6)); g('n2_angle', R(0.72, 0.84)); g('n2_attach', R(0.5, 0.64)); g('n2_osc_amp', R(0.45, 0.58));
     for (let k = 3; k < NODE_COUNT; k++) g('n' + k + '_present', 0.1);
     g('e_fov', R(0.32, 0.4));   // #13: c_eye/c_app/c_tip retirados
     g('orn', R(0.54, 0.66)); g('c_lum', R(0.66, 0.78));
-    g('o_len', R(0.7, 0.82)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22)); // o_len > lureGate → la mascota luce su señuelo
+    g('o_len', R(0.58, 0.7)); g('o_bulb', R(0.46, 0.58)); g('o_hue', R(0.42, 0.58)); g('o_num', R(0.13, 0.22)); // o_len > lureGate (0.5) → la mascota luce su señuelo (moderado, el retrato lo encuadra entero)
     const ictx = introCanvas.getContext('2d');
+    // El lienzo del héroe se dimensiona a su CAJA CSS × DPR → nítido a tamaño grande (la criatura es el héroe del menú).
+    const sizeHero = () => {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = introCanvas.clientWidth || 360, h = introCanvas.clientHeight || 460;
+      const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+      if (introCanvas.width !== bw || introCanvas.height !== bh) { introCanvas.width = bw; introCanvas.height = bh; }
+    };
     let raf = 0, on = true;
-    const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5, 0.2); } catch (e) {} raf = requestAnimationFrame(loop); };
+    window.addEventListener('resize', sizeHero);
+    const loop = () => {
+      if (!on) return;
+      sizeHero();
+      const tt = performance.now() * 0.001;
+      // VIDA (no "clavado"): deriva + cabeceo lentos del lienzo, viraje suave del rumbo y glow que RESPIRA.
+      const driftX = Math.sin(tt * 0.23) * 10 + Math.sin(tt * 0.07) * 6, bobY = Math.sin(tt * 0.55) * 9;
+      introCanvas.style.transform = `translate(${driftX.toFixed(1)}px, ${bobY.toFixed(1)}px)`;
+      const heading = -Math.PI / 2 + Math.sin(tt * 0.31) * 0.14;   // vira/cabecea suave (banqueo)
+      const ef = 0.82 + Math.sin(tt * 0.9) * 0.13;                 // energía → el glow late despacio
+      const spd = 0.5 + Math.sin(tt * 0.7) * 0.18;                 // ritmo de ondulación
+      try { app.renderer.drawPortrait(ictx, mascot, tt, ef, heading, spd, 0.16, true); } catch (e) {} // transparentBg=true → flota en el mundo difuminado, sin caja
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop); // arranca en el primer frame (tras el primer draw) + try/catch → nunca rompe la init
-    enterBtn.addEventListener('click', () => { intro.classList.add('hidden'); on = false; cancelAnimationFrame(raf); });
+    enterBtn.addEventListener('click', () => { intro.classList.add('hidden'); on = false; cancelAnimationFrame(raf); window.removeEventListener('resize', sizeHero); });
   }
 }
 
