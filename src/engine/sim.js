@@ -103,14 +103,12 @@ export class Sim {
     this._rebuildActive();
 
     // Pecera: el nutriente libre inicial = presupuesto − materia ya bloqueada (vegetación + E y cuerpo de los fundadores).
-    if (cfg.world.closedMatter) {
-      const epu = cfg.resource.energyPerUnit;
-      const budget = cfg.world.matterBudget * this._aScale;     // materia total ∝ área del mundo
-      let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
-      let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
-      let n0 = budget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante → nutriente libre inicial
-      this.world.N.fill(n0 / this.world.N.length); // repartido uniforme (la dinámica lo concentra en manchas)
-    }
+    const epu = cfg.resource.energyPerUnit;
+    const budget = cfg.world.matterBudget * this._aScale;     // materia total ∝ área del mundo
+    let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
+    let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
+    let n0 = budget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante → nutriente libre inicial
+    this.world.N.fill(n0 / this.world.N.length); // repartido uniforme (la dinámica lo concentra en manchas)
   }
 
   _alloc() {
@@ -125,17 +123,8 @@ export class Sim {
   _kill(i, cause) {
     if (cause) this.deathCause[cause]++; // demografía: causa de muerte
     // Toda muerte deja carroña. Muerte natural = cuerpo entero; cazado = solo sobras (el depredador se llevó casi todo).
-    const cfg = this.cfg;
-    let carcass;
-    if (cfg.world.closedMatter) {
-      // Pecera: deposita la materia real (E + bodyMatter). La presa cazada ya la repartió la depredación → aquí nada (sin doble conteo).
-      carcass = cause === 'eaten' ? 0 : (this.E[i] > 0 ? this.E[i] : 0) + this.bodyMatter[i];
-    } else {
-      const biomass = (cfg.energy.carcassValue || 0) * this.eMax[i];
-      carcass = cause === 'eaten'
-        ? (cfg.energy.scrapReturn != null ? cfg.energy.scrapReturn : 0.15) * biomass
-        : (this.E[i] > 0 ? this.E[i] : 0) + biomass;
-    }
+    // Pecera: deposita la materia real (E + bodyMatter). La presa cazada ya la repartió la depredación → aquí nada (sin doble conteo).
+    const carcass = cause === 'eaten' ? 0 : (this.E[i] > 0 ? this.E[i] : 0) + this.bodyMatter[i];
     if (carcass > 0) this._depositCarrion(this.x[i], this.y[i], carcass);
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
@@ -363,7 +352,6 @@ export class Sim {
     const wrap = world.wrap, ww = world.size, wh = world.size;
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit, Rmax = cfg.resource.R_max;
     const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
-    const carcassValue = en.carcassValue || 0; // biomasa del cadáver (∝ eMax) que SUMA a la energía almacenada de la presa al cazarla
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
     const forageReach = cfg.resource.forageReach || 0; // (prototipo, 0=INERTE) celdas de alcance de forrajeo a talla máx → el grande pasta de un ÁREA (∝ radio)
     const epuScent = epu * cfg.resource.carrionScent; // olfato de carroña: el ∇carroña pesa effScav/epuScent en el gradiente de búsqueda
@@ -387,11 +375,10 @@ export class Sim {
     const age = cfg.age, combat = cfg.combat.enabled, sexual = cfg.repro.sexual, allowAsexual = cfg.repro.asexual;
     const baseCD = cfg.repro.cooldown;
     const birthGatherR = world.birthGatherR;                               // (pecera) radio en celdas del vecindario del que la cría reúne materia al nacer
-    const closed = world.closedMatter; // CERRADO EN MATERIA: re-enruta toda pérdida al pool de nutriente (W.N) en vez de evaporarla
 
     W.regen();
-    W.decayCarrion();   // los cadáveres se descomponen (y devuelven parte al pasto = ciclo de nutrientes)
-    if (closed) W.diffuseNutrient(); // CERRADO: el campo de nutriente libre se difunde despacio → manchas fértiles que migran
+    W.decayCarrion();   // los cadáveres se descomponen y mineralizan a nutriente local = ciclo de materia
+    W.diffuseNutrient(); // el campo de nutriente libre se difunde despacio → manchas fértiles que migran
 
     // Reconstruir lista activa + spatial hash (O(n), sin asignaciones).
     this._rebuildActive();
@@ -511,40 +498,26 @@ export class Sim {
           const fi = Math.pow(this.genes[i * NG + G.size] + 0.1, sizeAdv);
           const fj = Math.pow(this.genes[j * NG + G.size] + 0.1, sizeAdv);
           if (rng.next() < fi / (fi + fj)) {
-            // Gana i: la presa muere; i gana preyGain·(E_presa + carcassValue·eMax). El tope eMax evita el descontrol.
-            if (closed) {
-              // Pecera: la presa aporta su materia real (E + bodyMatter); lo no extraído → restos; lo que rebosa → pool. Conserva.
-              const Mj = (E[j] > 0 ? E[j] : 0) + this.bodyMatter[j];
-              const g = en.preyGain * Mj * this.effHunt[i];
-              const remainder = Mj - g;                                   // ineficiencia trófica + lo no comido → restos
-              let stored = g, room = this.eMax[i] - E[i]; if (room < 0) room = 0;
-              if (stored > room) { W.N[ci] += (stored - room); stored = room; } // rebosa el tope → nutriente local (celda del depredador)
-              E[i] += stored;
-              if (remainder > 0) this._depositCarrion(x[j], y[j], remainder);
-            } else {
-              // Abierto: el término carcassValue·eMax es biomasa conjurada (no sale de ningún almacén).
-              const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effHunt[i];
-              E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
-            }
+            // Gana i: la presa muere. Pecera: la presa aporta su materia real (E + bodyMatter); lo no extraído → restos; lo que rebosa → pool. Conserva.
+            const Mj = (E[j] > 0 ? E[j] : 0) + this.bodyMatter[j];
+            const g = en.preyGain * Mj * this.effHunt[i];
+            const remainder = Mj - g;                                   // ineficiencia trófica + lo no comido → restos
+            let stored = g, room = this.eMax[i] - E[i]; if (room < 0) room = 0;
+            if (stored > room) { W.N[ci] += (stored - room); stored = room; } // rebosa el tope → nutriente local (celda del depredador)
+            E[i] += stored;
+            if (remainder > 0) this._depositCarrion(x[j], y[j], remainder);
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
           } else {
             // Gana el defensor: el atacante i pierde failDamage·eMax y solo muere si llega a 0 (freno denso-dependiente graduado).
             const dmg = failDamage * this.eMax[i];
-            if (closed) {
-              // Pecera: i pierde como mucho lo que tiene; j aprovecha su bocado; el resto → nutriente. Conserva.
-              let loss = dmg; const av = E[i] > 0 ? E[i] : 0; if (loss > av) loss = av;
-              E[i] -= loss;
-              const g = en.preyGain * loss * this.effHunt[j];
-              let stored = g, room = this.eMax[j] - E[j]; if (room < 0) room = 0; if (stored > room) stored = room;
-              E[j] += stored;
-              W.N[ci] += (loss - stored); // herida disipada + lo que rebosa el tope de j → nutriente local
-            } else {
-              const bite = dmg < E[i] ? dmg : (E[i] > 0 ? E[i] : 0); // j no puede arrancar más energía de la que i tiene → conservación
-              E[i] -= dmg;
-              const g = en.preyGain * bite * this.effHunt[j]; // j aprovecha SOLO el bocado real (no-cazador effHunt≈0 → nada)
-              E[j] += g; if (E[j] > this.eMax[j]) E[j] = this.eMax[j];
-            }
+            // Pecera: i pierde como mucho lo que tiene; j aprovecha su bocado; el resto → nutriente. Conserva.
+            let loss = dmg; const av = E[i] > 0 ? E[i] : 0; if (loss > av) loss = av;
+            E[i] -= loss;
+            const g = en.preyGain * loss * this.effHunt[j];
+            let stored = g, room = this.eMax[j] - E[j]; if (room < 0) room = 0; if (stored > room) stored = room;
+            E[j] += stored;
+            W.N[ci] += (loss - stored); // herida disipada + lo que rebosa el tope de j → nutriente local
             this.attackCD[j] = handlingTime;
             if (E[i] <= 0) {
               this._kill(i, 'combat'); // muerte de atacante: NO cuenta como presa abatida (this.kills es solo depredación)
@@ -643,13 +616,9 @@ export class Sim {
       // Coste de nado ∝ v²·esfuerzo·aleteo·transporte(masa)·arrastre(forma) → la velocidad la limita el presupuesto energético.
       const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // arrastre de la forma encarece el nado (0 = inerte)
       const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul;
-      if (closed) {
-        // Pecera: el coste se topa a la energía disponible (E baja a 0, no a negativo); la materia respirada → nutriente local. Conserva.
-        let ret = metabCost; const av = E[i] > 0 ? E[i] : 0; if (ret > av) ret = av;
-        W.N[tcell] += ret; E[i] -= ret;
-      } else {
-        E[i] -= metabCost;
-      }
+      // Pecera: el coste se topa a la energía disponible (E baja a 0, no a negativo); la materia respirada → nutriente local. Conserva.
+      let metabRet = metabCost; const metabAv = E[i] > 0 ? E[i] : 0; if (metabRet > metabAv) metabRet = metabAv;
+      W.N[tcell] += metabRet; E[i] -= metabRet;
 
       // Alimentación herbívora: absorbe del campo de recurso. forageReach>0 → un cuerpo grande pasta de un área (payoff de talla).
       const eMaxI = this.eMax[i], effH = this.effHerb[i];
@@ -667,7 +636,7 @@ export class Sim {
             if (units > maxByNeed) units = maxByNeed;
             E[i] += units * epu * effH;
             res[cell] -= units; // baja en unidades de recurso (nunca por debajo del refugio)
-            if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente LOCAL (conserva)
+            W.N[cell] += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente LOCAL (conserva)
           }
         } else {
           // — barrido de área (2·forageR+1)² celdas: el grande cubre más terreno y deplea más ancho —
@@ -687,7 +656,7 @@ export class Sim {
               const gain = units * epu * effH;
               E[i] += gain; eFalta -= gain;
               res[cell] -= units;
-              if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido no asimilado → nutriente local (conserva)
+              W.N[cell] += units * epu * (1 - effH); // pasto removido no asimilado → nutriente local (conserva)
             }
           }
         }
@@ -736,16 +705,16 @@ export class Sim {
           else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
           const bm = (cfg.energy.carcassValue || 0) * this.eMax[child]; // materia estructural del cuerpo de la cría
-          if (closed && W.nutrientAround(tcell, birthGatherR) < bm) {
+          if (W.nutrientAround(tcell, birthGatherR) < bm) {
             // Pecera sin nutriente para construir el cuerpo → NO nace (techo de población endógeno). Rollback del _alloc.
             this.alive[child] = 0; this.free[this.freeTop++] = child; this.popCount--;
           } else {
             this.bodyMatter[child] = bm;
-            if (closed) W.takeNutrientAround(tcell, birthGatherR, bm);              // el cuerpo se construye con nutriente de la zona (conserva)
+            W.takeNutrientAround(tcell, birthGatherR, bm);              // el cuerpo se construye con nutriente de la zona (conserva)
             if (sexualBirth) this.birthCount.sexual++; else this.birthCount.asexual++;
             E[i] -= this.investE[i];
             const childE = Math.min(this.investE[i], this.eMax[child]);
-            if (closed) { const excess = this.investE[i] - childE; if (excess > 0) W.N[tcell] += excess; } // sobra de inversión (tope de la cría) → nutriente local
+            const excess = this.investE[i] - childE; if (excess > 0) W.N[tcell] += excess; // sobra de inversión (tope de la cría) → nutriente local
             let ox = x[i] + (rng.next() - 0.5) * 6, oy = y[i] + (rng.next() - 0.5) * 6;
             if (wrap) {
               if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww;

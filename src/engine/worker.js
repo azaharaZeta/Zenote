@@ -276,7 +276,7 @@ onmessage = (e) => {
     case 'tps': config.sim.targetTPS = m.value; break;
     case 'set':
       // Pecera: cambiar epu en vivo reescalaría la materia del pasto en pie → lo absorbe el pool N para que el total no salte.
-      if (m.key === 'resource.energyPerUnit' && config.world.closedMatter) {
+      if (m.key === 'resource.energyPerUnit') {
         const oldEpu = config.resource.energyPerUnit, d = oldEpu - m.value, N = sim.world.N, r = sim.world.resource;
         for (let i = 0; i < N.length; i++) { const v = N[i] + r[i] * d; N[i] = v > 0 ? v : 0; }
       }

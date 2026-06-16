@@ -15,8 +15,8 @@ export class World {
     this.resource = new Float32Array(this.cols * this.rows);   // campo de recurso/pasto [0, R_max]
     this._resPrev = new Float32Array(this.cols * this.rows);   // snapshot del tick previo (regen orden-independiente)
     this.carrion = new Float32Array(this.cols * this.rows);    // carroña por celda (energía); se deposita al morir, decae cada tick
-    // Pecera (closedMatter): campo espacial de nutriente libre. Las plantas lo captan localmente (regen); lo
-    // alimentan metabolismo/muerte; difunde despacio; Σ del campo = pool global (conserva). En abierto queda inerte.
+    // Pecera: campo espacial de nutriente libre. Las plantas lo captan localmente (regen); lo alimentan
+    // metabolismo/muerte; difunde despacio; Σ del campo = pool global (conserva).
     this.N = new Float32Array(this.cols * this.rows);
     this._nPrev = new Float32Array(this.cols * this.rows);     // scratch de difusión del nutriente
     this._grow = new Float32Array(this.cols * this.rows);      // scratch del rebrote cerrado
@@ -112,43 +112,12 @@ export class World {
     }
   }
 
-  // Regeneración del pasto por tick. `patchiness` (p): 0 = rebrote lineal (sin parches); p>0 = logístico +
-  // difusión de semilla → los parches emergen y migran del pastoreo↔rebrote. Lee snapshot (orden-independiente).
+  // Regeneración del pasto por tick (pecera). Las plantas crecen CONSUMIENDO nutriente libre N (el sol solo
+  // convierte N→pasto). `patchiness` (p): 0 = rebrote lineal (sin parches); p>0 = logístico + difusión de semilla →
+  // los parches emergen y migran del pastoreo↔rebrote. Dos pasadas: (A) incremento deseado por celda; (B) si N no
+  // llega, escala esa celda. Conserva. Lee snapshot (orden-independiente).
   regen() {
-    if (this.cfg.world.closedMatter) { this._regenClosed(); return; } // pecera: el pasto crece consumiendo N
-    const dr = this.cfg.resource.R_regen, seedFloor = this.cfg.resource.seedFloor;
-    const cap = this.capacity, res = this.resource;
-    let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
-    if (p <= 0) {
-      for (let i = 0; i < res.length; i++) {                 // rebrote lineal clásico
-        const v = res[i] + dr;
-        res[i] = v > cap[i] ? cap[i] : v;
-      }
-    } else {
-      const cols = this.cols, rows = this.rows, prev = this._resPrev;
-      prev.set(res);
-      for (let y = 0; y < rows; y++) {
-        const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
-        for (let x = 0; x < cols; x++) {
-          const i = row + x, c = cap[i], r = prev[i];
-          const head = c - r;                                 // sitio que queda hasta la capacidad
-          if (head <= 0) { res[i] = r > c ? c : r; continue; }
-          const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
-          const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
-          // Logístico (biomasa local) + colonización desde vecinos + seedFloor (rebrote mínimo) → evita el estado absorbente.
-          let logGrow = dr * (seedFloor + r / c + meanNb / c); if (logGrow > head) logGrow = head;
-          let linGrow = dr < head ? dr : head;                // el clásico (para mezclar según p)
-          res[i] = r + (1 - p) * linGrow + p * logGrow;
-        }
-      }
-    }
-  }
-
-  // Rebrote en la pecera: las plantas crecen CONSUMIENDO nutriente libre N (el sol solo convierte N→pasto). Dos
-  // pasadas: (A) incremento deseado por celda (misma dinámica que regen); (B) si N no llega, escala esa celda. Conserva.
-  _regenClosed() {
-    const wc = this.cfg.world;
-    const dr = wc.closedRegen != null ? wc.closedRegen : this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit, seedFloor = this.cfg.resource.seedFloor;
+    const dr = this.cfg.world.closedRegen, epu = this.cfg.resource.energyPerUnit, seedFloor = this.cfg.resource.seedFloor;
     const cap = this.capacity, res = this.resource, grow = this._grow;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
     const cols = this.cols, rows = this.rows;
@@ -183,18 +152,14 @@ export class World {
     }
   }
 
-  // Decaimiento de la carroña por tick. En pecera: mineraliza íntegra a N local (cierra el ciclo). En abierto:
-  // una fracción (corpseReturn) vuelve al pasto, el resto se pierde.
+  // Decaimiento de la carroña por tick (pecera): mineraliza íntegra a N local (cierra el ciclo).
   decayCarrion() {
     const cd = this.cfg.resource.carrionDecay || 0; if (cd <= 0) return;
-    const carrion = this.carrion, res = this.resource, cap = this.capacity;
-    const closed = this.cfg.world.closedMatter;
-    const ret = this.cfg.energy.corpseReturn || 0, epu = this.cfg.resource.energyPerUnit;
+    const carrion = this.carrion;
     for (let i = 0; i < carrion.length; i++) {
       const cv = carrion[i]; if (cv <= 0) continue;
       const d = cv * cd; carrion[i] = cv - d;                        // energía que se descompone este tick
-      if (closed) { this.N[i] += d; }                                // pecera: mineraliza a nutriente local (conserva)
-      else if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // abierto: fracción→pasto
+      this.N[i] += d;                                                // mineraliza a nutriente local (conserva)
     }
   }
 

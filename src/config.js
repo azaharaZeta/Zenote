@@ -10,7 +10,6 @@ export const config = {
   world: {
     size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD; no cambia el alimento total.
     wrap: true,    // no-ui · Mundo toroidal (los bordes envuelven).
-    closedMatter: true,  // no-ui ↻ · Pecera: la materia total es CONSTANTE y circula (N↔pasto↔organismos↔carroña). false = modelo abierto.
     matterBudget: 60000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
     closedRegen: 0.0055, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
     nutrientDiffuse: 0.15, // no-ui · Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
@@ -22,7 +21,6 @@ export const config = {
     gridCols: 56,       // no-ui · Columnas de la rejilla (a tamaño 1000); escala ×size → celda de tamaño constante.
     gridRows: 56,       // no-ui · Filas (= gridCols → celdas cuadradas).
     R_max: 1.0,         // no-ui · Recurso máximo por celda.
-    R_regen: 0.0035,    // no-ui · Ritmo de rebrote del pasto en el modelo ABIERTO (en la pecera manda world.closedRegen).
     gradient: 'perlin', // no-ui · Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'.
     capFloor: 0.1,      // no-ui · Suelo de la capacidad de carga (fracción de R_max): ningún baldío permanente.
     patchiness: 0.75,   // UI «Comida en parches» (Comida y vegetación) · Dinámica de rebrote: 0 = lineal · 1 = logístico + difusión → parches que migran.
@@ -73,9 +71,7 @@ export const config = {
     dragRef: 1.1,       // no-ui · Arrastre de referencia del coste k_drag: solo paga el Dmul por encima de esto.
     E_max_base: 70,     // UI «Energía máxima base» (Metabolismo y cuerpo) · Energía máxima base · eMax = E_max_base · masa.
     preyGain: 0.90,     // UI «Energía de la presa» (Combate y dieta) · Fracción de energía de la presa aprovechada al cazarla.
-    carcassValue: 0.20, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa del cadáver (∝ eMax) que suma a su energía al cazar. Palanca dominante herbivoría↔carnivoría.
-    scrapReturn: 0.15,  // no-ui · Sobras: fracción de la biomasa de una presa CAZADA que queda como carroña (modelo abierto).
-    corpseReturn: 0.5,  // no-ui · Fracción de la carroña decaída que vuelve al pasto (modelo abierto; en pecera mineraliza a N).
+    carcassValue: 0.20, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa estructural del cuerpo (∝ eMax): se bloquea del pool N al nacer y vuelve como carroña al morir. Palanca dominante herbivoría↔carnivoría.
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────

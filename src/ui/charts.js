@@ -62,7 +62,7 @@ export class Charts {
 
   draw() {
     this._drawPop();
-    if (this.bioCtx) this._drawBiomass();   // biomasa: en pecera Y en abierto (permite comparar el total)
+    if (this.bioCtx) this._drawBiomass();   // biomasa total de la pecera (se conserva)
     this._drawHist();
     if (this.deathCtx) this._drawDeaths();
     if (this.birthCtx) this._drawBirths();
@@ -118,7 +118,7 @@ export class Charts {
   }
 
   // Curva de BIOMASA: reparto de la materia entre sus 4 compartimentos (organismos, vegetación, carroña, nutriente)
-  // como fracción del total (gráfica apilada al 100%). En pecera el total se conserva; en abierto crece.
+  // como fracción del total (gráfica apilada al 100%). En la pecera el total se conserva.
   _drawBiomass() {
     const ctx = this.bioCtx, c = this.bioCanvas, w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);

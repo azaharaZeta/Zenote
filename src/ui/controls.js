@@ -413,10 +413,8 @@ export function setupControls(app) {
 // Fuente única de verdad: lee los valores iniciales de la config (defaults de config.js) y, al mover un
 // control, envía {type:'set', key, value} al worker. Reseed = el cambio solo cuaja al volver a Sembrar.
 const LAB_SPEC = [
-  // La pecera (closedMatter) es PERMANENTE → los parámetros que SOLO aplican al modelo ABIERTO se han RETIRADO de la UI
-  // (no salen en ningún caso): `resource.R_regen` (en pecera manda `world.closedRegen`), `energy.corpseReturn` y
-  // `energy.scrapReturn` (en pecera la carroña se reparte/mineraliza por conservación). Siguen en config.js por si se
-  // reactivara el modo abierto editando `config.world.closedMatter`. Sin marca `mode` ni gating: todo lo de aquí aplica.
+  // La pecera de materia cerrada es el ÚNICO escenario: la materia total es constante y circula
+  // (N↔pasto↔organismos↔carroña). El modelo abierto y sus parámetros se han eliminado. Sin marca `mode` ni gating: todo lo de aquí aplica.
   { cat: '🌍 Mundo y población', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
     { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },

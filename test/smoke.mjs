@@ -13,7 +13,7 @@ const check = (cond, msg) => { console.log((cond ? '  ok  ' : 'FAIL  ') + msg); 
 // 1) Genoma: el conteo debe casar con la SPEC (23 base + 8×10 nodos + 83 cerebro = 186).
 check(NUM_GENES === 201, `NUM_GENES === 201 (real: ${NUM_GENES})`);
 
-// Materia total (modo cerrado) = N libre + pasto·epu + Σ(E+cuerpo) de los vivos + carroña. Debe conservarse.
+// Materia total (pecera cerrada) = N libre + pasto·epu + Σ(E+cuerpo) de los vivos + carroña. Debe conservarse.
 const matter = (sim) => {
   const W = sim.world, epu = config.resource.energyPerUnit;
   let res = 0; for (let k = 0; k < W.resource.length; k++) res += W.resource[k];
@@ -24,7 +24,6 @@ const matter = (sim) => {
 
 config.pop.seed = 123;                       // semilla fija → corrida reproducible
 const sim = new Sim(config);
-const closed = config.world.closedMatter;
 const M0 = matter(sim), pop0 = sim.popCount;
 
 const N = 1500;
@@ -38,13 +37,9 @@ check(sim.tick === N, `tick avanzó a ${N} (real: ${sim.tick})`);
 check(pop1 > 0, `población viva tras ${N} ticks (inicio ${pop0} → fin ${pop1})`);
 check(Number.isFinite(M1), 'materia finita (no NaN/Inf)');
 
-// 3) Conservación de materia (solo en cerrado; ±0.05% es ruido de acumulación Float32, ver SPEC §3ter).
-if (closed) {
-  const drift = (M1 - M0) / M0 * 100;
-  check(Math.abs(drift) < 0.1, `materia conservada: deriva ${drift.toFixed(4)}% (< 0.1%)`);
-} else {
-  console.log('  --  modo abierto: no se comprueba conservación de materia');
-}
+// 3) Conservación de materia (pecera cerrada; ±0.05% es ruido de acumulación Float32, ver SPEC §3ter).
+const drift = (M1 - M0) / M0 * 100;
+check(Math.abs(drift) < 0.1, `materia conservada: deriva ${drift.toFixed(4)}% (< 0.1%)`);
 
 // 4) Red trófica activa (combate ON por defecto): hubo depredación.
 if (config.combat.enabled) check(sim.kills > 0, `depredación activa (${sim.kills} presas abatidas)`);
