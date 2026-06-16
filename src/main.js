@@ -9,7 +9,7 @@ import { setupControls, updateInspector } from './ui/controls.js';
 
 // --- Proxy del Sim alimentado por el worker ---
 // `identity` (lista activa = índice; la foto ya viene compactada 0..n-1). Sobredimensionado al pool máximo para no re-asignarlo.
-const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || config.pop.maxAgents);
+const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || 8000);
 const identity = new Int32Array(IDENT_CAP);
 for (let i = 0; i < IDENT_CAP; i++) identity[i] = i;
 

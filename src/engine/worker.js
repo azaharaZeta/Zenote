@@ -290,7 +290,7 @@ onmessage = (e) => {
     case 'deselect': setSelected(-1); needSnap = true; break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); needSnap = true; break; // navegar por especies (◀ ▶ en el inspector)
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selSpeciesId = selSerial = -1;
-      if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // maxAgents pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
+      if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // el tope de población pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
       clearHistory(); postWorld(); needSnap = true; break;
   }

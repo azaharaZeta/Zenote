@@ -19,11 +19,11 @@ export class Sim {
     this.rng = makeRng(seed);
     // Escala del ecosistema con el tamaño del mundo (Modelo A): lo extensivo (materia, pool, fundadores, rejilla)
     // escala con el ÁREA → mundo grande = ecosistema mayor, misma densidad. Acotado por el techo de pool (perf).
-    const REF = 1000, kw = cfg.world.size / REF, ceil = cfg.pop.maxAgentsCeiling || 8000;
-    this._aScale = Math.min(kw * kw, ceil / cfg.pop.maxAgents);                 // factor de escala (ÁREA), acotado al techo de pool
+    const REF = 1000, kw = cfg.world.size / REF;
+    this._aScale = kw * kw;                                                     // factor de escala (ÁREA): lo extensivo (materia, fundadores, rejilla) crece con el área del mundo
     this.world = new World(cfg, this.rng, this._aScale);
 
-    const cap = Math.min(Math.round(cfg.pop.maxAgents * this._aScale), ceil);   // pool ∝ área (≤ techo)
+    const cap = cfg.pop.maxAgentsCeiling || 8000;                              // pool = tope duro de población (UI); NO escala con el mundo
     this.cap = cap;
     this.world.setCapacity(cap);
 

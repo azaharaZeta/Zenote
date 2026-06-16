@@ -57,8 +57,7 @@ export class Renderer {
     const W = this.cfg.world;
     this._tuftSize = W.size;   // tamaño de mundo del sembrado (main.js re-siembra si world.size cambia)
     // Nº de motas ∝ área del mundo → densidad de plancton ~constante a cualquier world.size.
-    const ceil = this.cfg.pop.maxAgentsCeiling || 8000, kw = W.size / 1000;
-    const aScale = Math.min(kw * kw, ceil / this.cfg.pop.maxAgents);
+    const kw = W.size / 1000, aScale = kw * kw;
     const n = Math.max(1, Math.round(this.cfg.render.grassDensity * aScale));
     this.nTufts = n;
     // Chispas de plancton pre-renderizadas (drawImage barato por mota).

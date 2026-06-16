@@ -152,7 +152,7 @@ export function setupControls(app) {
     const si = $('seedInput');                       // campo semilla oculto de momento → si no existe/vacío, semilla aleatoria
     const raw = si ? si.value.trim() : '';
     const seed = raw === '' ? null : (Number.isFinite(+raw) ? +raw : hashStr(raw));
-    if (app._flushPending) app._flushPending();   // aplica los cambios ↻ PENDIENTES (world.size, maxAgents, matterBudget…) al worker+config ANTES de resembrar (no en caliente)
+    if (app._flushPending) app._flushPending();   // aplica los cambios ↻ PENDIENTES (world.size, maxAgentsCeiling, matterBudget…) al worker+config ANTES de resembrar (no en caliente)
     send({ type: 'reset', seed });   // el motor (worker) re-siembra y reenvía el mundo
     charts.clear();
     renderer.resize();
@@ -422,7 +422,7 @@ const LAB_SPEC = [
     { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
     { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, scales: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
     { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
-    { k: 'pop.maxAgents', label: 'Tope de población', reseed: true, scales: true, min: 200, max: 3000, step: 100, dec: 0, d: 'Tope duro de población (memoria); el punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
+    { k: 'pop.maxAgentsCeiling', label: 'Tope de población', reseed: true, min: 500, max: 8000, step: 250, dec: 0, d: 'Tope duro de población (memoria/rendimiento); NO escala con el tamaño del mundo. El punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
   ]},
   { cat: '🍃 Comida y vegetación', items: [
@@ -532,14 +532,12 @@ function setupLab(app, send) {
   // Anotación "base → efectivo" para los parámetros que escalan con el tamaño del mundo: el slider muestra el valor a
   // mundo 1000 y el hint añade el efectivo en el mundo pendiente. Replica sim._aScale. Solo aparece si la escala ≠ 1.
   const scaledHints = [];                                                          // [{k, el}] de los sliders con `scales:true`
-  const REF_SIZE = 1000, POOL_CEIL = cfg.pop.maxAgentsCeiling || 8000;
+  const REF_SIZE = 1000;
   const pendVal = (k) => (pending[k] != null ? pending[k] : get(k));
-  const worldAScale = () => { const kk = pendVal('world.size') / REF_SIZE; return Math.min(kk * kk, POOL_CEIL / pendVal('pop.maxAgents')); };
-  const effMaxAgents = () => Math.min(Math.round(pendVal('pop.maxAgents') * worldAScale()), POOL_CEIL);
+  const worldAScale = () => { const kk = pendVal('world.size') / REF_SIZE; return kk * kk; };   // escala ÁREA (Modelo A); el pool ya NO la acota
   const effectiveOf = (k) => { const a = worldAScale();
     if (k === 'world.matterBudget') return pendVal(k) * a;
-    if (k === 'pop.maxAgents') return effMaxAgents();
-    if (k === 'pop.initial') return Math.min(Math.round(pendVal(k) * a), effMaxAgents());
+    if (k === 'pop.initial') return Math.min(Math.round(pendVal(k) * a), pendVal('pop.maxAgentsCeiling'));
     return pendVal(k); };
   const fmtK = (v) => v >= 1000 ? (+(v / 1000).toFixed(v >= 10000 ? 0 : 1)) + 'k' : String(Math.round(v));
   app.refreshScaledHints = () => {                                                 // recomputa los hints (al mover Tamaño del mundo / pool / el propio param)

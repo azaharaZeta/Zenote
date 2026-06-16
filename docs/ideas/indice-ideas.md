@@ -305,15 +305,11 @@ Conclusión: comportamiento correcto; el "leak" solo existe en abierto y es cohe
 ## Bandeja de entrada (sin procesar)
 *Ideas crudas del usuario, a analizar y convertir en ideas con su pitch cuando se aborden.*
 
-*(Vacía — procesada el 2026-06-14. Reparto de lo que había: «diversidad de talla bajo sexual», «revisar señuelos» y
-«cadáveres con forma» → ideas con pitch arriba; «gráfica de biomasa» → ya estaba HECHA (`_drawBiomass`); «¿reciclaje de
-cadáveres = leak?» → RESUELTO (no es bug); «visor de especie» → Mejoras de UI (c); «revisar nado» → se solapa con «coste
-de arrastre en locomoción».)*
+
 - analizar por qué el ajuste de performance de resolución no parece afectar al performance (mismos fps en mínima vs maxima resolución)
-- estudiar viablidad y efectos de ampliar el espacio del mundo (sólo más espacio)
-- corregir el zoom para que pueda verse el total del ecosistema en zoom minimo en la ventana (depende de resolución de ventana y resizes)
 
 
 - revisar si velocidad tiene en cuenta bien el tamaño. está penalizando por peso, ok, pero también debería beneficiar por talla grande (zancadas más grandes). La velocidad debería ser quizá relativa al tamaño? los organismos pequeñitos se mueven muy rápido, pero rápido en su escala pequeña, con lo que apenas deberían desplazarse en el mundo. los organismos grandes, en cambio, se pueden mover más lentos, por su masa, pero en su mundo macroscópico, dan grandes zancadas comparado con los pequeños.
 
-- el tope de población: no escalarlo con el tamaño del mundo, y mover el slide a "rendimiento ". o bien escalarlo pero solo linealmente. el tope de población no debería existir como característica del mundo, pero lo necesitamos por limitaciones de rendimiento de la aplicación, para evitar que la cpu se sautre.
+
+- Los organismos deberían poder decidir a qué velocidad ir, o pararse!!

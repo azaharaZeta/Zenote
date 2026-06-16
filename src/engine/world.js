@@ -36,8 +36,8 @@ export class World {
     this.cellNext = null; // se dimensiona con el pool (setCapacity)
   }
 
-  setCapacity(maxAgents) {
-    this.cellNext = new Int32Array(maxAgents);
+  setCapacity(cap) {
+    this.cellNext = new Int32Array(cap);
   }
 
   // Gradiente de capacidad de carga: 'perlin' (ruido fractal) | 'center' | 'uniform'.
