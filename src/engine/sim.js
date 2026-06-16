@@ -349,7 +349,7 @@ export class Sim {
   // ---- Un tick de simulación ----
   step() {
     const cfg = this.cfg, W = this.world, world = this.cfg.world, rng = this.rng;
-    const wrap = world.wrap, ww = world.size, wh = world.size;
+    const ww = world.size, wh = world.size; // mundo siempre toroidal (los bordes envuelven)
     const en = cfg.energy, moveCost = en.moveCost, kEffort = en.k_effort, epu = cfg.resource.energyPerUnit, Rmax = cfg.resource.R_max;
     const kDrag = en.k_drag || 0, dragRef = en.dragRef != null ? en.dragRef : 1; // (B) coste de nado ∝ arrastre de la forma (Dmul); leídos en vivo (0 = inerte)
     const grazeRefuge = cfg.resource.grazeRefuge; // fracción protegida de cada celda
@@ -445,10 +445,8 @@ export class Sim {
             while (j !== -1) {
               if (j !== i && this.alive[j]) {
                 let ddx = x[j] - x[i], ddy = y[j] - y[i];
-                if (wrap) {
-                  if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww;
-                  if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
-                }
+                if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww; // toro: imagen mínima
+                if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
                 const d2 = ddx * ddx + ddy * ddy;
                 if (d2 < scanMax2) {   // early-cull: fuera de visión y de captura → ni se evalúa (la mayoría)
                   // Presa = en la banda de talla y más abajo en dieta; amenaza = lo contrario.
@@ -529,10 +527,8 @@ export class Sim {
 
         if (bestPrey !== -1) {
           let ddx = x[bestPrey] - x[i], ddy = y[bestPrey] - y[i];
-          if (wrap) {
-            if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww;
-            if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
-          }
+          if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww; // toro: imagen mínima
+          if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
           const m = Math.sqrt(bestPreyD) || 1;
           preyDX = ddx / m; preyDY = ddy / m;
           const psr = this.radius[bestPrey] / myR - 1; preySizeRel = psr > 1 ? 1 : psr < -1 ? -1 : psr; // talla relativa (entrada 8): <0 presa menor · >0 mayor
@@ -541,10 +537,8 @@ export class Sim {
         }
         if (bestThreat !== -1) {
           let ddx = x[bestThreat] - x[i], ddy = y[bestThreat] - y[i];
-          if (wrap) {
-            if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww;
-            if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
-          }
+          if (ddx > ww * 0.5) ddx -= ww; else if (ddx < -ww * 0.5) ddx += ww; // toro: imagen mínima
+          if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
           const m = Math.sqrt(bestThreatD) || 1;
           threatDX = ddx / m; threatDY = ddy / m;
           if (!gazeSet) { gzx = ddx; gzy = ddy; gazeSet = true; } // vigila la amenaza
@@ -600,13 +594,8 @@ export class Sim {
       const gm = Math.sqrt(gzx * gzx + gzy * gzy) || 1;
       this.gazeX[i] = gzx / gm; this.gazeY[i] = gzy / gm;
       let nx = x[i] + vx[i], ny = y[i] + vy[i];
-      if (wrap) {
-        if (nx < 0) nx += ww; else if (nx >= ww) nx -= ww;
-        if (ny < 0) ny += wh; else if (ny >= wh) ny -= wh;
-      } else {
-        if (nx < 0) { nx = 0; vx[i] = 0; } else if (nx >= ww) { nx = ww - 0.01; vx[i] = 0; }
-        if (ny < 0) { ny = 0; vy[i] = 0; } else if (ny >= wh) { ny = wh - 0.01; vy[i] = 0; }
-      }
+      if (nx < 0) nx += ww; else if (nx >= ww) nx -= ww; // toro: los bordes envuelven
+      if (ny < 0) ny += wh; else if (ny >= wh) ny -= wh;
       x[i] = nx; y[i] = ny;
 
       // ---------- ENERGÉTICA ----------
@@ -716,10 +705,8 @@ export class Sim {
             const childE = Math.min(this.investE[i], this.eMax[child]);
             const excess = this.investE[i] - childE; if (excess > 0) W.N[tcell] += excess; // sobra de inversión (tope de la cría) → nutriente local
             let ox = x[i] + (rng.next() - 0.5) * 6, oy = y[i] + (rng.next() - 0.5) * 6;
-            if (wrap) {
-              if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww;
-              if (oy < 0) oy += wh; else if (oy >= wh) oy -= wh;
-            }
+            if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww; // toro: los bordes envuelven
+            if (oy < 0) oy += wh; else if (oy >= wh) oy -= wh;
             this.x[child] = ox; this.y[child] = oy;
             this.vx[child] = 0; this.vy[child] = 0;
             this.heading[child] = this.heading[i]; // hereda el rumbo del progenitor (sin él, miraría al este al nacer)
@@ -745,7 +732,7 @@ export class Sim {
   // Busca la pareja compatible más cercana: vecino vivo dentro de mateRadius con distancia genética < umbral. Devuelve índice o -1.
   _findMate(i) {
     const W = this.world, x = this.x, y = this.y, cfg = this.cfg, world = cfg.world;
-    const wrap = world.wrap, ww = world.size, wh = world.size;
+    const ww = world.size, wh = world.size; // mundo siempre toroidal (los bordes envuelven)
     const mr = cfg.repro.mateRadius, mr2 = mr * mr, thr = cfg.repro.speciesGenThreshold;
     const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
     const hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
@@ -760,10 +747,8 @@ export class Sim {
         while (j !== -1) {
           if (j !== i && this.alive[j]) {
             let dx = x[j] - x[i], dy = y[j] - y[i];
-            if (wrap) {
-              if (dx > ww * 0.5) dx -= ww; else if (dx < -ww * 0.5) dx += ww;
-              if (dy > wh * 0.5) dy -= wh; else if (dy < -wh * 0.5) dy += wh;
-            }
+            if (dx > ww * 0.5) dx -= ww; else if (dx < -ww * 0.5) dx += ww; // toro: imagen mínima
+            if (dy > wh * 0.5) dy -= wh; else if (dy < -wh * 0.5) dy += wh;
             const d2 = dx * dx + dy * dy;
             if (d2 < mr2 && geneticDistance(this.genes, i, j) < thr) {
               const ornJ = this.genes[j * NUM_GENES + G.orn];

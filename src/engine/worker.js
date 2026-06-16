@@ -258,10 +258,8 @@ function pick(wx, wy) {
   for (let k = 0; k < n; k++) {
     const i = act[k];
     let dx = s.x[i] - wx, dy = s.y[i] - wy;
-    if (config.world.wrap) {
-      if (dx > ww * 0.5) dx -= ww; else if (dx < -ww * 0.5) dx += ww;
-      if (dy > wh * 0.5) dy -= wh; else if (dy < -wh * 0.5) dy += wh;
-    }
+    if (dx > ww * 0.5) dx -= ww; else if (dx < -ww * 0.5) dx += ww; // toro: imagen mínima
+    if (dy > wh * 0.5) dy -= wh; else if (dy < -wh * 0.5) dy += wh;
     const d = dx * dx + dy * dy, r = s.radius[i] + 6;
     if (d < bd && d < r * r) { bd = d; best = i; }
   }
