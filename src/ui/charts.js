@@ -16,18 +16,16 @@ export class Charts {
     this.deathCtx = this.deathCanvas ? this.deathCanvas.getContext('2d') : null;
     this.birthCtx = this.birthCanvas ? this.birthCanvas.getContext('2d') : null;
     this.bioCtx = this.bioCanvas ? this.bioCanvas.getContext('2d') : null;
-    this.histGene = G.size; // gen a histogramar por defecto: TAMAÑO (cambiable desde UI)
-    // Series temporales: las ACUMULA el worker (muestreo por ticks reales) y las asigna main.js cada frame.
-    // Aquí solo se pintan. histT = tick de cada muestra → eje X en TICKS, constante a cualquier velocidad.
+    this.histGene = G.size; // gen a histogramar por defecto (cambiable desde UI)
+    // Series temporales: las acumula el worker (muestreo por ticks) y las asigna main.js; aquí solo se pintan.
     this.history = []; this.histC = []; this.histScav = []; this.histH = []; this.histO = []; this.histVegFill = []; this.histT = [];
-    this.histN = []; this.histVegMass = []; this.histBio = []; this.histCarrion = [];   // pools de materia (pecera): nutriente libre · pasto · organismos · carroña
-    // (histC = CAZADORES, histScav = CARROÑEROS: los dos tipos de comecarne, ver worker.sampleHistory.)
-    // Demografía del ecosistema por ventana (del worker): nacimientos (sexual/asexual) + muertes (cazado/atacando/hambre/vejez).
-    this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];
+    this.histN = []; this.histVegMass = []; this.histBio = []; this.histCarrion = [];   // pools de materia: N · pasto · organismos · carroña
+    // histC = cazadores, histScav = carroñeros (los dos tipos de comecarne).
+    this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];  // demografía (nacimientos/muertes)
     // Suavizado: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks). Muestra la TENDENCIA, no picos. Subir = más liso.
     this.deathSmooth = 5;
     this.maxHistory = 600;
-    this.windowTicks = 4800; // ventana visible del eje X en ticks (debe coincidir con HIST_WINDOW del worker)
+    this.windowTicks = 4800; // ventana visible del eje X en ticks (= HIST_WINDOW del worker)
     this.bins = new Float32Array(24);
     this._fitDPR(popCanvas, this.popCtx);
     this._fitDPR(histCanvas, this.histCtx);
@@ -78,8 +76,7 @@ export class Charts {
     const histC = this.histC, histScav = this.histScav || [], histH = this.histH, histO = this.histO, histT = this.histT;
     let max = 1;
     for (let i = 0; i < hist.length; i++) if (hist[i] > max) max = hist[i]; // normaliza por el TOTAL → las curvas muestran proporciones
-    // Eje X en TICKS: ventana fija (windowTicks) anclada a la derecha (el último tick = "ahora").
-    // Así cada píxel equivale al MISMO nº de ticks pase lo que pase con la velocidad de reloj.
+    // Eje X en ticks: ventana fija (windowTicks) anclada a la derecha (último tick = "ahora").
     const tEnd = histT[histT.length - 1], span = this.windowTicks || 1;
     // Banda superior RESERVADA para la leyenda (3 filas, a media anchura) → la curva se dibuja SOLO debajo.
     const TOP = 34, ph = h - TOP - 2;
@@ -95,12 +92,12 @@ export class Charts {
     };
     // Series: vegetación (fracción, escala propia) + dieta por banda (herbívoros / omnívoros) + los dos tipos de
     // comecarne (CAZADORES rojo / CARROÑEROS violeta) + población total.
-    if (this.histVegFill.length) line(this.histVegFill, '#6fcf6a', 1); // VEGETACIÓN, métrica LLENADO (histVegFill = fracción 0-1 de la capacidad ocupada por pasto vivo; escala propia) en verde → leyenda "pasto %"
-    if (histH.length) line(histH, '#5ab3d1');               // herbívoros (cian-teal)
-    if (histO.length) line(histO, '#f0b429');               // omnívoros (ámbar)
-    if (histC.length) line(histC, '#ff6b5a');               // CAZADORES (rojo) — comecarne que caza presa viva
-    if (histScav.length) line(histScav, '#b07be0');         // CARROÑEROS (violeta) — comecarne que vive de la carroña
-    line(hist, '#5a7cd1', max, 2);                          // POBLACIÓN TOTAL en azul ('pob') al FINAL y más gruesa → envolvente visible (si no, en mundo herbívoro la tapa la línea herb)
+    if (this.histVegFill.length) line(this.histVegFill, '#6fcf6a', 1); // vegetación (llenado, fracción 0-1, escala propia)
+    if (histH.length) line(histH, '#5ab3d1');               // herbívoros
+    if (histO.length) line(histO, '#f0b429');               // omnívoros
+    if (histC.length) line(histC, '#ff6b5a');               // cazadores
+    if (histScav.length) line(histScav, '#b07be0');         // carroñeros
+    line(hist, '#5a7cd1', max, 2);                          // población total (azul, gruesa, al final → envolvente visible)
     const last = (a) => a.length ? a[a.length - 1] | 0 : 0;
     const vegNow = this.histVegFill.length ? (this.histVegFill[this.histVegFill.length - 1] * 100) | 0 : 0;
     ctx.font = '10px monospace';
@@ -120,9 +117,8 @@ export class Charts {
     }
   }
 
-  // Curva de BIOMASA: cómo se reparte la materia entre sus cuatro compartimentos — organismos vivos (E+cuerpo),
-  // vegetación en pie, carroña y nutriente libre — como FRACCIÓN del total (suman 1). Ver la materia CIRCULAR entre
-  // nutriente ↔ vegetación ↔ vida ↔ carroña es la lectura clave (en pecera el total se conserva; en abierto crece).
+  // Curva de BIOMASA: reparto de la materia entre sus 4 compartimentos (organismos, vegetación, carroña, nutriente)
+  // como fracción del total (gráfica apilada al 100%). En pecera el total se conserva; en abierto crece.
   _drawBiomass() {
     const ctx = this.bioCtx, c = this.bioCanvas, w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);
@@ -132,17 +128,15 @@ export class Charts {
     const TOP = 25, ph = h - TOP - 2;                       // banda superior reservada a la leyenda (hasta 2 filas)
     const xOf = (i) => (1 - (tEnd - T[i]) / span) * w;
     const yOf = (frac) => h - 2 - frac * ph;                // fracción 0 → base abajo · 1 → cima (justo bajo la leyenda)
-    // GRÁFICA APILADA al 100%: cada compartimento es una banda y su GROSOR = su fracción del total de materia (suman 1).
-    // De ABAJO a ARRIBA: organismos · vegetación · carroña · nutriente. Se pinta de la banda más ALTA (área completa)
-    // a la más baja, superponiendo áreas OPACAS desde su techo acumulado hasta la base → cada banda queda visible.
+    // Apilado al 100%: de abajo a arriba organismos · vegetación · carroña · nutriente. Se pinta de la banda más alta
+    // (área completa) a la más baja, superponiendo áreas opacas desde su techo hasta la base → cada banda queda visible.
     const stack = [
       [Bio, '#5a7cd1'],   // organismos (azul) — en la base
       [Gr,  '#6fcf6a'],   // vegetación / pasto en pie (verde)
       [Car, '#a8835c'],   // carroña / detrito (marrón)
       [N,   '#a0a4ac'],   // nutriente libre (GRIS: la materia que NO es viva ni carroña) — en la cima
     ];
-    // Techos acumulados (fracción del total) POR MUESTRA, precalculados UNA vez en scratch reutilizable → O(bandas·n)
-    // en vez de O(bandas²·n) (antes se re-sumaba el acumulado desde cero por banda y muestra, cada frame dibujado).
+    // Techos acumulados por muestra, precalculados en scratch reutilizable → O(bandas·n).
     const SB = stack.length;
     let tops = this._bioTops;
     if (!tops || tops.length !== n * SB) tops = this._bioTops = new Float32Array(n * SB);
@@ -161,8 +155,7 @@ export class Charts {
       ctx.lineTo(xOf(n - 1), yOf(0)); ctx.lineTo(xOf(0), yOf(0));   // baja y cierra contra la base
       ctx.closePath(); ctx.fill();
     }
-    // Leyenda: TOTAL de materia junto a "biomasa:" (≈cte en pecera, CRECE en abierto: el sol crea materia) +
-    // el % actual de cada compartimento en su color (salta de fila si no cabe, igual que las demás gráficas).
+    // Leyenda: total de materia + % actual de cada compartimento en su color.
     const total = N[n - 1] + Gr[n - 1] + Bio[n - 1] + Car[n - 1], tot = total || 1, pct = (v) => Math.round((v / tot) * 100);
     const fmtTot = total >= 1000 ? (total / 1000).toFixed(1) + 'k' : Math.round(total).toString();
     ctx.font = '10px system-ui, sans-serif';
@@ -175,9 +168,8 @@ export class Charts {
     put(`nutriente ${pct(N[n - 1])}%`, '#a0a4ac');
   }
 
-  // Helper: una LÍNEA por serie a lo largo del tiempo (media móvil = tendencia, no picos), normalizadas JUNTAS
-  // (la más alta llega arriba), + leyenda de 1 fila con el total de la ventana de cada serie, de su color.
-  // `defs` = [{ arr, color, label }]. Lo usan _drawBirths y _drawDeaths (mismas escalas/estilo, datos distintos).
+  // Helper: una línea por serie (media móvil = tendencia), normalizadas juntas, + leyenda con el total de cada serie.
+  // `defs` = [{ arr, color, label }]. Lo usan _drawBirths y _drawDeaths.
   _drawSeries(ctx, c, defs, title) {
     const w = c._w, h = c._h;
     ctx.clearRect(0, 0, w, h);
@@ -232,9 +224,7 @@ export class Charts {
     const bw = w / nb;
     for (let i = 0; i < nb; i++) {
       const bh = (bins[i] / max) * (h - 14);
-      // Color del bin = el VALOR del gen (centro del bin), con el MISMO mapeo que los organismos en modo 'gene'
-      // (canvas.js _drawAgents) y la leyenda (controls.js): hsl((1−v)·120, 80%, 52%) → VERDE(0)→amarillo→ROJO(1).
-      // La franja del histograma COINCIDE con el color de los bichos y la leyenda (mismo degradado).
+      // Color del bin = valor del gen, mismo mapeo que los organismos en modo 'gene' y la leyenda: verde(0)→rojo(1).
       const gv = (i + 0.5) / nb;
       ctx.fillStyle = `hsl(${(1 - gv) * 120},80%,52%)`;
       ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);

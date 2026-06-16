@@ -1,24 +1,17 @@
-// Web Worker: AQUÍ vive y corre el motor (Sim). Envía al hilo principal una "foto"
-// (snapshot) compacta por frame con lo que el render necesita, y recibe comandos
-// (pausa, velocidad, reset, sliders de simulación, selección). El render dibuja en el
-// hilo principal a partir de esas fotos. Así la simulación no compite con el render
-// (60 fps fluidos) y sigue corriendo aunque la pestaña esté en segundo plano.
+// Web Worker: aquí corre el motor (Sim). Envía al hilo principal una "foto" (snapshot) compacta por frame y
+// recibe comandos (pausa, velocidad, reset, sliders, selección). Así la sim no compite con el render.
 
 import { config } from '../config.js';
 import { Sim } from './sim.js';
 import { NUM_GENES, G, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
-import { trophicRole } from './organism.js';   // clasificación trófica ÚNICA (curva de población + color 'role')
-const NF = FUNCTIONAL.length;   // nº de genes ecológicos que definen una especie
+import { trophicRole } from './organism.js';
+const NF = FUNCTIONAL.length;   // nº de genes que definen una especie
 
-const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de NODO (contiguo desde NODE0): la FORMA, para el render por grafo
-// Genes para dibujar los ojos (no consecutivos): inversión visual, campo, color. (El "ceño" = impulso de
-// ataque del cerebro, dinámico → s.atkDrive, no un gen.)
-const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_ORN = G.orn;
+const NODEB = NODE_COUNT * NODE_STRIDE; // bloque de genes de nodo (la forma, para el render por grafo)
+const G_SENSE = G.sense, G_FOV = G.e_fov, G_EYE = G.c_eye, G_ORN = G.orn; // genes para dibujar los ojos
 
 const HIST_BINS = 24;
-// Arranque con semilla ALEATORIA → un mundo distinto en cada carga. (config.pop.seed, p.ej. 123,
-// queda como semilla "conocida buena" que puedes teclear en el campo Semilla para reproducirla.)
-config.pop.seed = (Math.random() * 2147483647) >>> 0;
+config.pop.seed = (Math.random() * 2147483647) >>> 0; // semilla aleatoria → mundo distinto en cada carga
 const sim = new Sim(config);
 
 let running = true, maxSpeed = false, geneIdx = 0, selectedId = -1;
@@ -36,41 +29,29 @@ function findSpeciesMember(sp) {           // un miembro vivo de la especie `sp`
   return -1;
 }
 let tickAcc = 0, last = performance.now();
-// ¿hay una foto NUEVA que postear? A targetTPS < 60, la mayoría de los ~60 loops/s no avanzan ningún tick → su
-// snapshot sería IDÉNTICO al anterior (y el hilo principal ya lo descarta por "dibujado bajo demanda"). Evitamos
-// generarlo y clonarlo (postMessage) salvo que la sim avance un tick o llegue un comando de UI que cambie lo mostrado.
+// ¿hay foto nueva que postear? Solo si la sim avanzó un tick o un comando de UI cambió lo mostrado (evita clonar fotos idénticas).
 let needSnap = true;
 
-// --- ESPECIES: clustering por distancia genética (periódico, no cada tick). Cada especie es un
-// "representante" (centroide del genoma); cada agente se asigna a la especie más cercana dentro del
-// umbral, o funda una nueva. Los centroides siguen a sus miembros (k-means con umbral) → ids estables. ---
+// Especies: clustering por distancia genética (periódico). Cada especie = un centroide; cada agente se asigna al más
+// cercano dentro del umbral, o funda uno nuevo (k-means con umbral → ids estables).
 let speciesReps = [];                 // [{ id, gene:Float32Array(NG), count, sum }]
 let nextSpeciesId = 1, speciesCount = 0, lastClassify = -1e9;
-let speciesOf = new Float32Array(sim.cap); // especie por id estable de agente. Se dimensiona al POOL REAL (sim.cap = maxAgents·áreaMundo, acotado al techo), no a maxAgents: con world.size>1000 sim.cap > maxAgents → indexar speciesOf[i] (i<sim.cap) se saldría del array. Se re-asigna en 'reset' si cambia.
+let speciesOf = new Float32Array(sim.cap); // especie por agente; dimensionado al pool real (sim.cap), re-asignado en 'reset' si cambia
 
-// ---- Histórico para las gráficas: muestreado por TICKS DE SIMULACIÓN (no por frames de reloj) → la curva
-// es correcta y densa a CUALQUIER velocidad (a máx. velocidad un frame avanza cientos de ticks; si se
-// muestreara por frame, saldrían 4-5 puntos y la curva se vería rota). El worker ve cada tick, así que aquí
-// el muestreo es fiel. HIST_WINDOW debe coincidir con charts.windowTicks. ----
+// Histórico para las gráficas: muestreado por TICKS de simulación (no por frames) → curva correcta a cualquier velocidad.
 const HIST_K = 40, HIST_WINDOW = 4800;
 const histPop = [], histCarn = [], histScav = [], histVegFill = [], histTick = [];
-const histN = [], histVegMass = [], histBio = [], histCarrion = [];   // pecera cerrada: pools de MATERIA por muestra (nutriente libre N · vegetación en pie · organismos vivos · carroña)
-const histHerb = [], histOmni = [];   // desglose por dieta: herbívoros (<0.4) / omnívoros (0.4–0.6) / comecarne (>0.6),
-                                      // y los comecarne se parten en CAZADORES (histCarn) y CARROÑEROS (histScav) por effScav>effHunt.
-const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana: muertes combate/hambre/vejez/cazado + nacimientos sexual/asexual
+const histN = [], histVegMass = [], histBio = [], histCarrion = [];   // pecera: pools de materia por muestra (N · vegetación · organismos · carroña)
+const histHerb = [], histOmni = [];   // desglose por dieta
+const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana (muertes/nacimientos)
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
 function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
   for (let k = 0; k < n; k++) { const i = act[k];
     const ro = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]);          // MISMA función que el color 'role' (fuente única)
     if (ro === 2) carn++; else if (ro === 1) scav++; else if (ro === 3) omni++; else herb++; }
-  // POOLS DE MATERIA (pecera cerrada): un solo barrido del recurso/carroña da DOS métricas distintas de la vegetación —
-  // el LLENADO (histVegFill = sr/sc, fracción de la capacidad ocupada por pasto vivo, 0-1 → leyenda "pasto %") y la
-  // BIOMASA vegetal (histVegMass = sr·epu, su materia → leyenda "vegetación %") — más la CARROÑA (Σcarrion, ya en
-  // unidades de materia). ORGANISMOS = Σ(E almacenada + cuerpo). Con el
-  // nutriente libre N, los cuatro suman matterBudget (conservación) → la curva de biomasa reparte ese total. En
-  // mundo ABIERTO también se calculan y se muestran: N=0 y el total NO se conserva (el sol crea materia → crece),
-  // lo que permite comparar desde la UI el comportamiento de la biomasa con y sin pecera.
+  // Pools de materia: un barrido da el llenado de pasto (histVegFill = sr/sc), la biomasa vegetal (histVegMass = sr·epu)
+  // y la carroña (Σcarrion). Organismos = Σ(E + cuerpo). En pecera los cuatro + N suman matterBudget (conservación).
   const res = s.world.resource, cap = s.world.capacity, car = s.world.carrion; let sr = 0, sc = 0, scar = 0;
   for (let c = 0; c < res.length; c++) { sr += res[c]; sc += cap[c]; scar += car[c]; }
   let bio = 0; for (let k = 0; k < n; k++) bio += s.E[act[k]] + s.bodyMatter[act[k]];
@@ -123,8 +104,7 @@ function classifySpecies() {
   speciesCount = speciesReps.length;
 }
 
-// Navegar por ESPECIES (no individuos): salta a la especie anterior/siguiente (orden por id) y
-// selecciona su ejemplar más TÍPICO (el más cercano al centroide del clúster = "espécimen tipo").
+// Navegar por especies: salta a la anterior/siguiente y selecciona su ejemplar más típico (más cercano al centroide).
 function pickSpecies(dir) {
   if (speciesReps.length === 0) return;
   const ids = speciesReps.map(r => r.id).sort((a, b) => a - b);
@@ -159,16 +139,16 @@ function snapshot() {
   const hue = new Float32Array(n), diet = new Float32Array(n), eFrac = new Float32Array(n);
   const lineage = new Float32Array(n), geneSel = new Float32Array(n);
   const heading = new Float32Array(n), spd = new Float32Array(n); // para orientar/animar el cuerpo
-  const tint = new Float32Array(n * 1);                           // [orn]/agente (gatea el señuelo) — #13: c_app/c_tip retirados
+  const tint = new Float32Array(n * 1);                           // [orn]/agente (gatea el señuelo)
   const eye = new Float32Array(n * 4);                            // ojos: [sense, e_fov, c_eye, atkDrive]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
-  const deco = new Float32Array(n * 7);                           // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente (#13: sin slot muerto b_aspect)
-  const nodes = new Float32Array(n * NODEB);                      // B2b: genes de nodo/agente (cuerpo generativo, para el render por grafo)
+  const deco = new Float32Array(n * 7);                           // [c_lum, c_sat, o_len, o_bulb, o_hue, o_num, tex2]/agente
+  const nodes = new Float32Array(n * NODEB);                      // genes de nodo/agente (cuerpo, para el render por grafo)
   const hT = config.combat.handlingTime || 1;
   const hist = new Float32Array(HIST_BINS);
   const species = new Float32Array(n);                            // especie (id) por agente
-  const role = new Uint8Array(n);                                 // OFICIO dominante (color 'role'): 0 herbívoro · 1 carroñero · 2 cazador
-  const serial = new Int32Array(n);                               // id único por organismo (clave estable del caché de sprites del render)
+  const role = new Uint8Array(n);                                 // oficio: 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro
+  const serial = new Int32Array(n);                               // id único por organismo (clave del caché de sprites)
   let carn = 0;
   for (let k = 0; k < n; k++) {
     const i = act[k];
@@ -179,12 +159,10 @@ function snapshot() {
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
-    // OFICIO trófico — MISMA función que la curva de población (trophicRole, fuente única en organism.js) → coinciden
-    // exactamente. 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro. Para el color 'role' (lectura, no afecta a la sim).
-    role[k] = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]);
+    role[k] = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]); // oficio (color 'role'), misma función que la curva de población
     serial[k] = s.serialOf[i];
-    heading[k] = s.heading[i]; // rumbo persistente (sim ya conserva el último válido cuando v≈0)
-    const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad ABSOLUTA (÷ vMax global), no fracción de su propia capacidad → la animación de nodos sigue al desplazamiento REAL
+    heading[k] = s.heading[i]; // rumbo persistente
+    const v = Math.hypot(s.vx[i], s.vy[i]) / (config.loco.vMax || 3);  // velocidad absoluta (÷ vMax global) → la animación sigue al desplazamiento real
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
@@ -200,10 +178,9 @@ function snapshot() {
     face[fb] = s.gazeX[i]; face[fb + 1] = s.gazeY[i];
     let atk = s.attackCD[i] / hT; face[fb + 2] = atk > 1 ? 1 : atk; // recencia de ataque (boca/fogonazo)
   }
-  // Si el seleccionado MURIÓ (o su slot se reutilizó por otro distinto), seguir a otro miembro de SU
-  // especie (seguir observando la especie); si la especie se extinguió, deseleccionar.
+  // Si el seleccionado murió (o su slot se reutilizó), seguir a otro miembro de su especie; si se extinguió, deseleccionar.
   if (selectedId >= 0) {
-    const same = s.alive[selectedId] && s.serialOf[selectedId] === selSerial; // serial = id ÚNICO por organismo: lineage+generation NO basta (dos hermanos los comparten → un hermano que reutilice el slot daría falso positivo y el inspector "saltaría" a otro bicho creyéndolo el mismo)
+    const same = s.alive[selectedId] && s.serialOf[selectedId] === selSerial; // serial = id único (lineage+generation no basta: dos hermanos lo comparten)
     if (!same) setSelected(findSpeciesMember(selSpeciesId));
     else selSpeciesId = speciesOf[selectedId];
   }
@@ -226,10 +203,7 @@ function snapshot() {
     };
   }
   const resource = s.world.resource.slice(), carrion = s.world.carrion.slice(), nutrient = s.world.N.slice();
-  // TRANSFERIBLES: los TypedArrays creados FRESCOS en esta foto se MUEVEN al hilo principal (cero copia) en lugar de
-  // clonarse (structured clone). Tras transferirse quedan "detached" aquí, pero el próximo snapshot crea otros nuevos →
-  // seguro. NO se incluyen los arrays histó* (los RETIENE el worker entre frames; además son Array normal, no TypedArray)
-  // ni `sel`/escalares → se copian. `nodes` (n·80 floats) es el mayor; transferirlo evita su copia por frame.
+  // Transferibles: los TypedArrays frescos de esta foto se MUEVEN al hilo principal (cero copia). Los hist* se retienen y copian.
   const transfer = [x.buffer, y.buffer, radius.buffer, hue.buffer, diet.buffer, eFrac.buffer, lineage.buffer,
     geneSel.buffer, heading.buffer, spd.buffer, tint.buffer, eye.buffer, face.buffer, deco.buffer, nodes.buffer,
     hist.buffer, species.buffer, role.buffer, serial.buffer, resource.buffer, carrion.buffer, nutrient.buffer];
@@ -301,19 +275,14 @@ onmessage = (e) => {
     case 'maxSpeed': maxSpeed = m.value; break;
     case 'tps': config.sim.targetTPS = m.value; break;
     case 'set':
-      // PECERA CERRADA: 'energía por unidad' (epu) es el tipo de cambio vegetación↔materia y entra en el balance
-      // (M = N + Σres·epu + …). Cambiarlo en vivo reescalaría la materia de la vegetación EN PIE → un salto puntual.
-      // Lo ABSORBE el pool de nutriente: N -= Σres·Δepu → la MATERIA total no salta (se reparte distinto, no se crea/borra).
+      // Pecera: cambiar epu en vivo reescalaría la materia del pasto en pie → lo absorbe el pool N para que el total no salte.
       if (m.key === 'resource.energyPerUnit' && config.world.closedMatter) {
         const oldEpu = config.resource.energyPerUnit, d = oldEpu - m.value, N = sim.world.N, r = sim.world.resource;
-        for (let i = 0; i < N.length; i++) { const v = N[i] + r[i] * d; N[i] = v > 0 ? v : 0; } // compensa Σres·epu POR CELDA → la materia total no salta
+        for (let i = 0; i < N.length; i++) { const v = N[i] + r[i] * d; N[i] = v > 0 ? v : 0; }
       }
       setPath(config, m.key, m.value);
-      // Los parámetros (UI) que se EXPRESAN en el fenotipo (costes, masa, velocidad, visión, eficiencias…) se cachean al
-      // nacer (organism.computePhenotype). Para que el slider afecte EN VIVO a la población existente —no solo a las
-      // crías— re-expresamos a todos los vivos. Las claves de SOLO-RENDER no tocan el fenotipo (ni el motor) → se omiten.
-      // Cuesta un barrido por cambio de slider (barato; idempotente si la clave no afecta al fenotipo). needSnap → la foto
-      // se repinta aunque la sim esté en pausa (el cambio de radio/etc. se ve al instante).
+      // Los sliders (UI) que se expresan en el fenotipo se cachean al nacer → re-expresar a los vivos para que afecten en vivo.
+      // Las claves de solo-render no tocan el fenotipo → se omiten.
       if (!m.key.startsWith('render.')) { sim.recomputePhenotypes(); needSnap = true; }
       break;
     case 'gene': geneIdx = m.index; needSnap = true; break;

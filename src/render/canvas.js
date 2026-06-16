@@ -34,19 +34,13 @@ export class Renderer {
     this.camX = cfg.world.size / 2;
     this.camY = cfg.world.size / 2;
 
-    // Capa de SUSTRATO abisal (`grass`/`grassCtx`: nombre histórico). Búfer del tamaño de la PANTALLA:
-    // se dibuja con la cámara aplicada (nítido a cualquier zoom) y solo se re-renderiza cuando la cámara
-    // se mueve o cambia el recurso. La disposición de mechones es fija (semilla).
+    // Capa de SUSTRATO abisal (búfer del tamaño de pantalla): se re-renderiza solo al mover la cámara o cambiar el recurso.
     this.grass = document.createElement('canvas');
     this.grassCtx = this.grass.getContext('2d');
-    // Capa de ORGANISMOS (transparente): se compone sobre el suelo. Permite "estelas": en vez de
-    // borrarla cada frame, se desvanece un poco → rastros de movimiento (antes no funcionaba porque
-    // el suelo opaco se redibujaba encima y borraba el rastro).
+    // Capa de ORGANISMOS (transparente): se compone sobre el suelo.
     this.fx = document.createElement('canvas');
     this.fxCtx = this.fx.getContext('2d');
-    // Búfer de BLOOM a baja resolución (¼ del backing store, dimensionado en resize): desenfocar una miniatura y
-    // reescalarla aditivamente cuesta ~16× menos que blurear a pantalla completa, con el mismo halo (el glow es de
-    // baja frecuencia). Ver _bloomPass.
+    // Búfer de BLOOM a baja resolución (¼): desenfocar una miniatura y reescalarla cuesta ~16× menos. Ver _bloomPass.
     this._bloom = document.createElement('canvas');
     this._bloomCtx = this._bloom.getContext('2d');
     this._grassTimer = 0;
@@ -57,21 +51,18 @@ export class Renderer {
     this.resize();
   }
 
-  // Posiciones + chispa asignada a cada mota de plancton (todo fijo; solo el brillo/tamaño
-  // cambia con el recurso local). El catálogo de chispas se dibuja UNA vez al arrancar.
+  // Posiciones + chispa de cada mota de plancton (fijas; solo el brillo/tamaño cambia con el recurso local).
   _initTufts() {
     const rng = makeRng(20240607);
     const W = this.cfg.world;
-    this._tuftSize = W.size;   // tamaño de mundo para el que se sembró el plancton → main.js re-siembra si world.size cambia
-    // Nº de motas ∝ ÁREA del mundo (mismo factor ACOTADO que el ecosistema, Modelo A) → densidad de plancton ~constante
-    // a cualquier world.size (sin esto, un mundo grande sale casi sin plancton). Cap = el del pool, como el resto.
+    this._tuftSize = W.size;   // tamaño de mundo del sembrado (main.js re-siembra si world.size cambia)
+    // Nº de motas ∝ área del mundo → densidad de plancton ~constante a cualquier world.size.
     const ceil = this.cfg.pop.maxAgentsCeiling || 8000, kw = W.size / 1000;
     const aScale = Math.min(kw * kw, ceil / this.cfg.pop.maxAgents);
     const n = Math.max(1, Math.round(this.cfg.render.grassDensity * aScale));
     this.nTufts = n;
-    // CHISPAS de plancton (abisal): puntito con halo radial suave, en teal/cian/verde-teal desaturado.
-    // Pre-renderizadas → drawImage barato por mota. La vegetación = textura TENUE, distinta del glow de los bichos.
-    this.sparkSprites = (this.cfg.render.planktonHues || [150, 165, 180, 196, 212]).map((h) => this._makeSparkSprite(h)); // verde-algas → cian → azul-cian (variedad)
+    // Chispas de plancton pre-renderizadas (drawImage barato por mota).
+    this.sparkSprites = (this.cfg.render.planktonHues || [150, 165, 180, 196, 212]).map((h) => this._makeSparkSprite(h));
     const nSpark = this.sparkSprites.length;
     // Posiciones fijas de cada mota de plancton (solo el brillo/tamaño cambia con el recurso local).
     this.tuftX = new Float32Array(n);
@@ -121,9 +112,8 @@ export class Renderer {
     return sp;
   }
 
-  // Re-renderiza el SUSTRATO abisal (nebulosa + comida fosforescente + plancton) en el búfer de
-  // pantalla con la cámara aplicada (nítido a cualquier zoom) y teselando el toro. Solo dibuja las
-  // motas visibles (culling). Se llama solo si cambia cámara o recurso.
+  // Re-renderiza el SUSTRATO abisal (nebulosa + comida fosforescente + plancton) en el búfer de pantalla, teselando
+  // el toro y con culling de las motas visibles. Solo se llama si cambia la cámara o el recurso.
   _refreshGrass() {
     const Wld = this.sim.world, ctx = this.grassCtx, c = this.canvas, cfg = this.cfg;
     const Rmax = cfg.resource.R_max;
@@ -137,21 +127,17 @@ export class Renderer {
     const margin = 60 / s; // holgura en coords de mundo para no recortar las motas al borde
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
-    // --- ABISMO: sustrato orgánico. Nebulosa sobre-muestreada con (E) paleta de región rica por
-    // temperatura, (A) moteado orgánico por ruido anclado al mundo, y (C) comida fosforescente +
-    // micro-flora luminosa donde hay recurso. Se reconstruye en el refresco (la comida cambia). ---
-    {  // sustrato abisal (Cenote): nebulosa + comida fosforescente + micro-flora luminosa
-      const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo del sustrato (baja 3× · alta 4× · máxima 6×) → suaviza la rejilla del recurso
-      const PAD = 16, WW = NW + 2 * PAD, WH = NH + 2 * PAD; // margen para el BLUR TOROIDAL (≥ radio del blur ~3·vegBlur; tope del slider 4 → 12px)
+    // Sustrato abisal: nebulosa (paleta por temperatura + moteado por ruido) + comida fosforescente donde hay recurso.
+    {
+      const SS = cfg.render.quality === 'low' ? 3 : cfg.render.quality === 'ultra' ? 6 : 4, NW = cols * SS, NH = rows * SS; // sobre-muestreo (suaviza la rejilla del recurso)
+      const PAD = 16, WW = NW + 2 * PAD, WH = NH + 2 * PAD; // margen para el blur toroidal
       let cv = this._abyssLow, realloced = false;
       const NP = NW * NH;
       if (!cv || cv.width !== NW) {
         realloced = true;                                   // buffers re-creados (resize/calidad) → el food debe recomputarse
         cv = this._abyssLow = document.createElement('canvas'); cv.width = NW; cv.height = NH;
         this._abyssLowCtx = cv.getContext('2d'); this._abyssImg = this._abyssLowCtx.createImageData(NW, NH);
-        // Buffers AMPLIADOS con padding TOROIDAL (WW×WH): _abyssWrap = sustrato + sus bordes ENVUELTOS (mosaico 3×3);
-        // _abyssSmooth = ese mosaico blureado. El blur promedia los bordes con el lado OPUESTO real (no con el vacío)
-        // → al teselar el toro NO quedan costuras. Se tesela la región CENTRAL (PAD,PAD,NW,NH). Ver el bloque del blur.
+        // Buffers con padding toroidal (mosaico 3×3 + su blur) → el blur promedia los bordes con el lado opuesto → sin costuras al teselar.
         this._abyssWrap = document.createElement('canvas'); this._abyssWrap.width = WW; this._abyssWrap.height = WH;
         this._abyssWrapCtx = this._abyssWrap.getContext('2d');
         this._abyssSmooth = document.createElement('canvas'); this._abyssSmooth.width = WW; this._abyssSmooth.height = WH;
@@ -163,8 +149,7 @@ export class Renderer {
         this._subWy   = new Float32Array(NP);       // peso fyc
         this._subStaticTimer = 0;                   // realloc → fuerza recomputar la capa estática
       }
-      // ---- (1) CAPA ESTÁTICA (CARA: ruido pnoise + temperatura): NO cambia con el mundo → se cachea y recomputa
-      // muy de vez en cuando. Aquí guardamos el color de fondo y los índices/pesos del bilineal del food. #4 ----
+      // (1) Capa ESTÁTICA (ruido + temperatura): no cambia con el mundo → se cachea (color de fondo + bilineal del food) y se recomputa rara vez.
       let staticRecomputed = false;
       if (this._subStaticTimer <= 0) {
         staticRecomputed = true;                            // base/índices recacheados → el food (que se compone sobre la base) también
@@ -190,8 +175,7 @@ export class Renderer {
           const q = idx * 4; sIdx[q] = i00; sIdx[q + 1] = i10; sIdx[q + 2] = i01; sIdx[q + 3] = i11; sWx[idx] = fxc; sWy[idx] = fyc; // cachea el bilineal del food (estático)
           const tT = temp[i00] + (temp[i10] - temp[i00]) * fxc, tB = temp[i01] + (temp[i11] - temp[i01]) * fxc;
           const tv = tT + (tB - tT) * fyc;
-          // (E) PALETA ABISAL: fondo CASI NEGRO donde no hay vegetación (azul profundo) → así la vegetación se lee
-          // por CONTRASTE contra la oscuridad, no por brillo. Frío = azul casi negro; cálido = azul-violeta apagado.
+          // Paleta abisal: fondo casi negro (la vegetación se lee por contraste). Frío = azul casi negro; cálido = azul-violeta.
           let rr, gg, bb;
           if (tv < 0.5) { const u = tv / 0.5; rr = 1 + u * 1.5; gg = 2 + u * 4; bb = 12 + u * 4; }
           else { const u = (tv - 0.5) / 0.5; rr = 2.5 + u * 7; gg = 6 + u * -1; bb = 16 + u * 4; }
@@ -203,11 +187,8 @@ export class Renderer {
         this._subStaticTimer = 90; // temperatura/moteado no cambian (o muy lento) → recachear rara vez (capta deriva ambiental)
       }
       this._subStaticTimer--;
-      // ---- (2) CAPA DINÁMICA (solo el FOOD): la vegetación fluye con el mundo. Antes se recomputaba en CADA refresco,
-      // incluido el paneo/zoom SIN avance de tick → 50k px + blur tirados (el food no había cambiado). Ahora solo se
-      // recompone si el food cambió DE VERDAD: avanzó el tick, cambió un slider de vegetación, hubo realloc (resize/
-      // calidad) o se recomputó la capa estática. El buffer world-space `_abyssSmooth` persiste y SIEMPRE se re-tesela
-      // con la cámara (abajo) → panear/zoom es barato. Sin pnoise ni pow por píxel (base/índices cacheados, pow por LUT). #perf
+      // (2) Capa DINÁMICA (solo el food): se recompone solo si el food cambió de verdad (tick nuevo, slider de vegetación,
+      // realloc o recache de la estática); si no, se reutiliza `_abyssSmooth` y solo se re-tesela con la cámara → paneo barato.
       {
         const vegI = cfg.render.vegIntensity != null ? cfg.render.vegIntensity : 1;   // brillo de la vegetación (slider lab, en vivo)
         const vegBoost = cfg.render.vegBoost != null ? cfg.render.vegBoost : 0.77;     // realce del pasto tenue (UI 0→1, slider lab)
@@ -234,10 +215,7 @@ export class Renderer {
           d[q] = base[b3] + fg * cR; d[q + 1] = base[b3 + 1] + fg * cG; d[q + 2] = base[b3 + 2] + fg * cB; d[q + 3] = 255; // fondo cacheado + vegetación viva
         }
         this._abyssLowCtx.putImageData(this._abyssImg, 0, 0);
-        // DIFUMINADO TOROIDAL: el blur disuelve la rejilla de celda del recurso (cellW≈19px) que el realce de la
-        // vegetación revelaría. Para NO dejar costuras en los bordes del mundo (toro), se blurea sobre un MOSAICO 3×3
-        // del sustrato (su contenido ya es periódico) → el blur de los bordes promedia con el lado OPUESTO real, no con
-        // el vacío transparente (que hundía el alpha del borde y creaba la costura al teselar). Radio (UI vegBlur).
+        // Difuminado toroidal (disuelve la rejilla de celda): se blurea sobre un mosaico 3×3 para no dejar costuras al teselar.
         const vegBlur = cfg.render.vegBlur != null ? cfg.render.vegBlur : 1.8;
         const wrap = this._abyssWrapCtx;
         wrap.setTransform(1, 0, 0, 1, 0, 0); wrap.clearRect(0, 0, WW, WH);
@@ -276,21 +254,15 @@ export class Renderer {
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;                                 // restaurar (las chispas usaron globalAlpha)
-      // NUTRIENTE libre (pecera cerrada): neblina ÍNDIGO/violeta tenue donde se CONCENTRA la materia mineralizada
-      // (manchas fértiles donde murió/respiró algo). Distinta del teal de la vegetación y el gris de la carroña.
-      // Opacidad ∝ N normalizado por su MÁXIMO → solo destacan las concentraciones; el fondo difuso casi no se ve.
+      // Nutriente libre (pecera): neblina índigo donde se concentra la materia mineralizada (manchas fértiles).
       const nutrient = Wld.nutrient;
       if (nutrient && nutrient.length) {
-        // SUAVIZADO TEMPORAL (EMA) del campo SOLO para el DIBUJO: las manchas RESPIRAN despacio en vez de titilar al
-        // ritmo de los ticks (el nutriente fluctúa rápido: difusión + consumo del rebrote + depósitos por muerte). NO
-        // toca la simulación. `render.nutrientEase` = acercamiento por refresco (bajo = más calmado). En pausa no avanza.
+        // Suavizado temporal (EMA) solo para el dibujo → las manchas respiran despacio en vez de titilar (no toca la sim).
         let nut = this._nutSmooth;
         if (!nut || nut.length !== nutrient.length) { nut = this._nutSmooth = new Float32Array(nutrient.length); nut.set(nutrient); }
         const nutEase = cfg.render.nutrientEase != null ? cfg.render.nutrientEase : 0.1;
         for (let k = 0; k < nut.length; k++) nut[k] += (nutrient[k] - nut[k]) * nutEase;
-        // La viz resalta el CONTRASTE (concentración SOBRE la media), no el valor absoluto: un campo UNIFORME
-        // (p.ej. el nutriente recién repartido al reiniciar) NO debe pintar una rejilla de celdas — solo las MANCHAS
-        // reales de concentración. (Antes se normalizaba al máximo → uniforme ⇒ todas las celdas a tope ⇒ rejilla brillante.)
+        // La viz resalta el CONTRASTE (exceso sobre la media), no el valor absoluto → un campo uniforme no pinta rejilla.
         let maxN = 0, sumN = 0; for (let k = 0; k < nut.length; k++) { const v = nut[k]; sumN += v; if (v > maxN) maxN = v; }
         const meanN = sumN / nutrient.length, span = maxN - meanN;
         if (span > meanN * 0.15 + 0.001) {   // solo si hay RELIEVE real (manchas); campo casi uniforme → no se pinta nada
@@ -320,8 +292,7 @@ export class Renderer {
           ctx.globalAlpha = 1;
         }
       }
-      // (Fase 1) CARROÑA: cadáveres como manchas GRISES desaturadas (frío-azuladas, distintas de la fosforescencia
-      // teal de la vegetación) en su celda; opacidad ∝ carroña restante → se desvanecen al decaer o ser consumidas.
+      // Carroña: manchas grises por celda; opacidad ∝ carroña restante → se desvanecen al decaer o ser consumidas.
       const carrion = Wld.carrion;
       if (carrion) {
         if (!this._carrionSprite) {                        // sprite gris suave pre-renderizado (lazy, drawImage barato por celda)
@@ -333,8 +304,7 @@ export class Renderer {
         const sprite = this._carrionSprite, ref = 35, sz = cellW * 1.7; // energía de referencia para la opacidad (cadáver natural ≈ E + carcassValue·eMax)
         for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
           ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-          // CULLING a las celdas VISIBLES de este mosaico (igual que el plancton, arriba): a zoom alto el barrido pasa
-          // de las 3072 celdas a unas pocas (+1 de margen por el tamaño del sprite). A zoom 1 (mundo entero) recorre ~todas.
+          // Culling a las celdas visibles de este mosaico (a zoom alto, unas pocas; a zoom 1, ~todas).
           let cx0 = ((this.camX - vwHalf - tx * W) / cellW | 0) - 1; if (cx0 < 0) cx0 = 0;
           let cx1 = ((this.camX + vwHalf - tx * W) / cellW | 0) + 1; if (cx1 > cols - 1) cx1 = cols - 1;
           let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
@@ -374,12 +344,9 @@ export class Renderer {
     this.dpr = dpr;
     // Ratio REAL backing-store↔CSS (≤ dpr cuando el cap actúa) → el paneo/pick deben usar ESTE, no dpr.
     this.pxRatio = cssW > 0 ? c.width / cssW : dpr;
-    // TODO el render trabaja en el ESPACIO DEL BUFFER (resolución interna); al final el CSS reescala a la pantalla
-    // (un "pegote" escalado) → la pantalla real (4K, 8K…) no entra en ningún cálculo. El LOD (nivel de detalle) depende
-    // SOLO de la CALIDAD y el ZOOM, NUNCA de la resolución (ver _drawAgents / LOD_REF): bajar `maxInternalPx` abarata la
-    // RASTERIZACIÓN (menos píxeles), NO el detalle. El paneo/pick cruzan a coords de CSS vía pxRatio.
-    // Escala "fit/contain": a zoom 1 el MUNDO ENTERO cabe en el viewport. El eje que no llena lo rellena el TORO en
-    // mosaico (continuación sin costura), no barras vacías. El zoom multiplica sobre esta base. (Antes "cover"=Math.max → recortaba un eje.)
+    // El render trabaja en el espacio del buffer (resolución interna) y el CSS reescala → bajar maxInternalPx abarata la
+    // rasterización, no el detalle (el LOD depende de calidad y zoom, no de la resolución; ver _drawAgents).
+    // Escala fit/contain: a zoom 1 el mundo entero cabe; el eje que no llena lo rellena el toro en mosaico.
     this.fitScale = Math.min(c.width / cfg.world.size, c.height / cfg.world.size);
     // Búfer de sustrato y FX a resolución de backing; bloom a ¼ (barato). Forzar re-render tras redimensionar.
     this.grass.width = c.width; this.grass.height = c.height;
@@ -390,9 +357,7 @@ export class Renderer {
 
   _scale() { return this.fitScale * this.zoom; }
 
-  // BLOOM downsampled (#2): desenfoca una MINIATURA (¼) de `src` y la reescala aditivamente al canvas → mismo
-  // halo de baja frecuencia que un blur a pantalla completa, a ~1/16 del coste. `blurPx` se aplica sobre la
-  // miniatura (la reducción + el reescalado ya difuminan, así que basta poco). 'lighter' = aditivo.
+  // Bloom downsampled: desenfoca una miniatura (¼) de `src` y la reescala aditivamente ('lighter') → mismo halo a ~1/16 del coste.
   _bloomPass(src, alpha, blurPx) {
     const ctx = this.ctx, c = this.canvas, bw = this._bloom.width, bh = this._bloom.height, bctx = this._bloomCtx;
     bctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -447,10 +412,8 @@ export class Renderer {
     const ctx = this.ctx, cfg = this.cfg, c = this.canvas;
     const W = cfg.world.size, H = cfg.world.size;
 
-    // Reloj de animación ATADO al avance de la SIMULACIÓN (nº de ticks), no al tiempo real: a baja
-    // velocidad los organismos se animan en CÁMARA LENTA (coherente con el control fino de velocidad);
-    // a alta velocidad se CAPA para no emborronar. Congelado en pausa (dTick=0 y guard de this.paused).
-    const ANIM_K = 50;        // ms de animación por tick → a 20 t/s coincide con el ritmo anterior (real-time)
+    // Reloj de animación atado al avance de la simulación (nº de ticks), no al tiempo real → coherente con la velocidad. Congelado en pausa.
+    const ANIM_K = 50;        // ms de animación por tick (a 20 t/s ≈ tiempo real)
     const ANIM_MAX = 0.8;     // tope de ticks/frame que cuentan para animar → ~2.4× máx a alta velocidad
     const tick = this.sim.tick;
     if (this._lastTick === undefined) { this._lastTick = tick; this._animT = 0; }
@@ -463,10 +426,9 @@ export class Renderer {
     ctx.fillStyle = '#0a0c10';
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // ESCENARIO: Cenote abisal (único). Sustrato de penumbra + comida fosforescente + criaturas
-    // luminosas. El suelo lo pinta _refreshGrass en su búfer; aquí solo se compone.
-    const lowQ = cfg.render.quality === 'low';           // calidad baja (móvil): sin blooms, menos partículas, sustrato simple
-    const ultraQ = cfg.render.quality === 'ultra';       // MÁXIMA: extras de esplendor SOBRE alta (doble bloom, más nieve, …)
+    // Escenario abisal: el suelo lo pinta _refreshGrass en su búfer; aquí solo se compone.
+    const lowQ = cfg.render.quality === 'low';           // baja (móvil): sin blooms/nieve, sustrato simple
+    const ultraQ = cfg.render.quality === 'ultra';       // máxima: doble bloom, más nieve…
     const camMoved = this.camX !== this._gx || this.camY !== this._gy || this.zoom !== this._gz;
     if (this._grassTimer <= 0 || camMoved) {
       this._refreshGrass();
@@ -478,10 +440,9 @@ export class Renderer {
     ctx.globalAlpha = 1;
     ctx.drawImage(this.grass, 0, 0);
     ctx.globalAlpha = 1;
-    // BLOOM de la VEGETACIÓN: copia desenfocada y aditiva → los charcos de comida fosforescente (abisal)
-    // y la vegetación irradian luz. Solo donde brilla suma; el fondo oscuro apenas cambia.
+    // Bloom de la vegetación: la comida fosforescente irradia luz (solo donde brilla suma).
     if (cfg.render.glow && !lowQ) {
-      this._bloomPass(this.grass, 0.5, 1.2);                       // bloom downsampled (#2): ¼ res + reescalado aditivo
+      this._bloomPass(this.grass, 0.5, 1.2);                       // bloom downsampled
       if (ultraQ) this._bloomPass(this.grass, 0.3, 3);             // MÁXIMA: 2º bloom AMPLIO → halo luminoso difuso
     }
 
@@ -499,9 +460,7 @@ export class Renderer {
     const vwHalf = c.width / (2 * s), vhHalf = c.height / (2 * s);
     const txMin = Math.floor((this.camX - vwHalf) / W), txMax = Math.floor((this.camX + vwHalf) / W);
     const tyMin = Math.floor((this.camY - vhHalf) / H), tyMax = Math.floor((this.camY + vhHalf) / H);
-    // PISTA DEL LÍMITE DEL MUNDO (render.worldBounds): hairline TENUE en los bordes [0,0]–[W,H] de CADA tile del toro →
-    // el observador ve dónde acaba un mundo y empieza su repetición (sin barras vacías ni romper la inmersión). En
-    // espacio-MUNDO (panea/zoomea con la cámara), BAJO los organismos. Sutil a propósito. No afecta a la simulación.
+    // Pista del límite del mundo (render.worldBounds): hairline tenue en los bordes de cada tile del toro.
     if (cfg.render.worldBounds) {
       ctx.strokeStyle = 'rgba(10, 67, 88, 0.16)';   // cian-frío muy tenue (coherente con la paleta abisal)
       ctx.lineWidth = 1.2 / s;                        // ≈1.5 px de backing en pantalla (el ctx va escalado por s)
@@ -511,9 +470,8 @@ export class Renderer {
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
-    // (B) NIEVE MARINA: partículas tenues a la deriva (detrito/esporas) → agua profunda viva + profundidad.
-    // Capa propia, BAJO los organismos. Solo abisal. Anclada al mundo (deriva lenta con descenso + parpadeo).
-    if (cfg.render.glow && !lowQ) {           // NIEVE MARINA: solo calidad ALTA (en baja se omite del todo)
+    // Nieve marina: partículas tenues a la deriva (detrito), bajo los organismos. Solo calidad alta/máxima.
+    if (cfg.render.glow && !lowQ) {
       if (!this._snow) { const n = 1280, sn = this._snow = new Float32Array(n * 4), hu = this._snowHue = new Float32Array(n);
         const PAL = [190, 200, 285, 45, 330]; // cian, azul, violeta, oro, rosa (colorcillo raro)
         for (let k = 0; k < n; k++) { sn[k * 4] = Math.random() * W; sn[k * 4 + 1] = Math.random() * H; sn[k * 4 + 2] = Math.random() * 6.283; sn[k * 4 + 3] = 0.4 + Math.random() * Math.random() * 2.1;
@@ -547,11 +505,10 @@ export class Renderer {
     // Componer la capa de organismos sobre el suelo.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.fx, 0, 0);
-    // BLOOM de ORGANISMOS + BULBOS: copia desenfocada y aditiva → todo lo luminoso (halos, bulbos
-    // de los señuelos, puntas) "sangra" luz. Da el aspecto bioluminiscente potente.
+    // Bloom de organismos: todo lo luminoso (halos, bulbos) "sangra" luz → aspecto bioluminiscente.
     if (cfg.render.glow && !lowQ) {
-      this._bloomPass(this.fx, 0.4, 1.2);                          // bloom downsampled (#2)
-      if (ultraQ) this._bloomPass(this.fx, 0.26, 3.5);             // MÁXIMA: 2º halo bioluminiscente AMPLIO
+      this._bloomPass(this.fx, 0.4, 1.2);                          // bloom downsampled
+      if (ultraQ) this._bloomPass(this.fx, 0.26, 3.5);             // máxima: 2º halo amplio
     }
 
     // Viñeta → profundidad y foco al centro (sella la penumbra abisal). Cacheada por tamaño.
@@ -578,14 +535,14 @@ export class Renderer {
     // mover la Resolución cambia la nitidez, no el detalle; agrandar el MUNDO sí (a zoom 1 cabe entero → más grande = más
     // pequeño en pantalla → LOD más grueso). A world.size=1000 es idéntico al histórico. Clave para miles de agentes a escala.
     const lodSc = LOD_REF * this.zoom * (WORLD_REF / (this.cfg.world.size || WORLD_REF));
-    this._drawScale = lodSc;                       // escala del LOD (SIN resolución): TODAS las decisiones de detalle
-    this._bufScale = this._scale();                // escala REAL del buffer (CON resolución) → SOLO suelos sub-píxel, no LOD
+    this._drawScale = lodSc;                       // escala del LOD (sin resolución): decide el detalle
+    this._bufScale = this._scale();                // escala real del buffer (con resolución) → solo nitidez sub-píxel, no LOD
     const t = this._animT * 0.006;     // reloj de animación (congelado en pausa)
     const nodes = sim.nodes, heading = sim.heading, spd = sim.spd, tint = sim.tint, eye = sim.eye, face = sim.face, deco = sim.deco;
-    // Umbrales de tamaño aparente por nivel: punto < dThr ≤ elipse barata < fullThr ≤ grafo completo (×lodMul en BAJA).
-    const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra'; // MÁXIMA (ultraFull) = sin LOD: todo a grafo completo
-    const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos/baratos); alta = 1. (Máxima ignora el LOD, ver ultraFull.)
-    this._lodMul = lodMul;                           // los gates internos de _drawBodyGraph (onda/señuelo/textura/plano/contorno) aplican el MISMO multiplicador
+    // Umbrales de tamaño aparente: punto < dThr ≤ elipse < fullThr ≤ grafo completo (×lodMul en baja; máxima ignora el LOD).
+    const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra';
+    const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos baratos)
+    this._lodMul = lodMul;                           // los gates internos de _drawBodyGraph aplican el mismo multiplicador
     const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
     const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
     const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
@@ -597,8 +554,7 @@ export class Renderer {
       const i = active[a];
       const r = sim.radius[i];                 // radio físico real (sin compresión de dibujo)
       const x = sim.x[i], y = sim.y[i];
-      // CULLING DE VIEWPORT: si toda la extensión del organismo (cuerpo + glow + apéndices ≈ r·11) queda FUERA
-      // de la ventana visible de este mosaico, no se dibuja → gran ahorro con zoom (la mayoría queda fuera de vista).
+      // Culling de viewport: si toda la extensión del organismo (≈ r·11) queda fuera de vista, no se dibuja.
       const cm = r * 11;
       if (x + cm < cullX0 || x - cm > cullX1 || y + cm < cullY0 || y - cm > cullY1) continue;
       const ef = sim.eFrac[i];                 // fracción de energía (precalculada en el worker)
@@ -625,24 +581,19 @@ export class Renderer {
         default: {
           const cSat = deco ? deco[i * 7 + 1] : 0.35;   // VIVACIDAD (deriva libre)
           const cLumC = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD (deriva libre)
-          h = sim.hue[i] * 360;                // rueda COMPLETA: cualquier color (incl. verde) es alcanzable por deriva. El verde se EVITA solo en el sembrado.
-          s = 18 + cSat * cSat * 82;           // suelo y techo subidos → menos gris, más color
-          // brillo = energía + LUMINOSIDAD (cuadrática). Base subida → cuerpos más claros.
-          l = 31 + ef * 24 + cLumC * cLumC * 14;
-          // Los más CARNÍVOROS tienden a algo más oscuros (lectura visual del gen `diet`, SOLO render). Suavizado 7→5.
-          l -= sim.diet[i] * 5;
+          h = sim.hue[i] * 360;                // rueda completa (el verde se evita solo en el sembrado)
+          s = 18 + cSat * cSat * 82;           // saturación
+          l = 31 + ef * 24 + cLumC * cLumC * 14; // brillo = energía + luminosidad
+          l -= sim.diet[i] * 5;                // los más carnívoros, algo más oscuros (lectura visual)
         }
       }
-      const rPx = r * lodSc;                           // tamaño APARENTE (radio mundo × zoom × ref fija) → nivel de detalle (LOD). NO depende de la resolución.
+      const rPx = r * lodSc;                           // tamaño aparente → nivel de detalle (LOD)
       const hasNodes = nodes && nodes.length;
-      const tier = !hasNodes ? 0 : ultraFull ? 2 : rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 cuerpo barato · 2 grafo completo · MÁXIMA → siempre 2 (sin LOD)
-      // HALO por agente: caro (un gradiente/bicho) → solo en calidad ALTA y para bichos no diminutos
-      // (los puntos ya brillan con el bloom GLOBAL de la capa de organismos; no necesitan su propio halo).
+      const tier = !hasNodes ? 0 : ultraFull ? 2 : rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 elipse · 2 grafo completo
+      // Halo por agente (solo calidad alta y bichos no diminutos; los puntos ya brillan con el bloom global).
       if (glow && !lowQ && (ultraFull || rPx > haloThr)) {
-        // HALO pre-renderizado por CUBO DE TONO (#3) en vez de un createRadialGradient + fill por agente: drawImage
-        // es mucho más barato. El radio y la INTENSIDAD siguen variando por agente (luminosidad → gr y globalAlpha);
-        // el tono se cubica (±15°, imperceptible en un glow difuso). El bloom global sigue sumando sobre estos halos.
-        const cLumG = deco ? deco[i * 7 + 0] : 0.35;   // LUMINOSIDAD: gen decorativo de deriva libre (sin runaway)
+        // Halo pre-renderizado por cubo de tono (drawImage barato); radio e intensidad varían por agente.
+        const cLumG = deco ? deco[i * 7 + 0] : 0.35;
         const gr = r * (1.65 + cLumG * cLumG * 3.0); // halo algo mayor
         let a0 = 0.21 + cLumG * cLumG * 0.48; if (a0 > 1) a0 = 1; // intensidad por agente (vía globalAlpha)
         const spr = this._haloSprite(h);
@@ -650,18 +601,15 @@ export class Renderer {
         ctx.drawImage(spr, x - gr, y - gr, gr * 2, gr * 2);
         ctx.globalAlpha = 1;
       }
-      // LOD de 3 niveles según tamaño en pantalla.
       if (tier === 2) {
-        // GRAFO completo (cabeza+nodos, ojos, señuelo, onda). Con caché, `skel` = atlas del organismo → _drawBodyGraph pega
-        // las celdas en vez de reconstruirlas (la onda sigue viva). skel=null → reconstrucción vectorial.
+        // Grafo completo (nodos, ojos, señuelo, onda). Con caché, `skel` = atlas pre-horneado (la onda sigue viva); si no, reconstrucción vectorial.
         const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 7, eye, i * 4, tint, i) : null;
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
                             eye, i * 4, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 7, skel);
       } else if (tier === 1) {
-        // CUERPO BARATO: elipse orientada al rumbo con volumen (1 gradiente), sin nodos/ojos/señuelo/onda.
-        this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]);
+        this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]); // elipse orientada (sin nodos/ojos/señuelo)
       } else {
-        ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;       // PUNTO plano (lo barato para la mayoría)
+        ctx.fillStyle = `hsl(${h},${s}%,${l}%)`;       // punto plano
         ctx.beginPath();
         ctx.arc(x, y, r, 0, 6.2832);
         ctx.fill();
@@ -669,9 +617,7 @@ export class Renderer {
     }
   }
 
-  // LOD tier 1 — CUERPO BARATO: una elipse orientada al rumbo con un degradado de volumen (1 gradiente),
-  // sin recorrer nodos ni dibujar ojos/señuelo/onda. Lee como "un cuerpo con orientación" a coste mínimo
-  // (≈15× más barato que el grafo completo). Para bichos de tamaño medio en pantalla.
+  // LOD tier 1 — cuerpo barato: elipse orientada al rumbo con un gradiente de volumen (≈15× más barato que el grafo).
   _drawBodyCheap(ctx, x, y, r, h, s, l, heading) {
     const rx = r * 1.05, ry = r * 0.72;                          // elipse alargada al eje de nado
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
@@ -683,8 +629,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  // Caché de esqueleto (opt-in): obtiene o hornea el atlas de un organismo (clave = serial). Rehornea al cambiar el cubo
-  // de color o de tamaño; usa el atlas previo si se agota el presupuesto de horneado del frame.
+  // Caché de esqueleto: obtiene o hornea el atlas de un organismo (clave = serial); rehornea al cambiar el cubo de color/tamaño.
   _skelEntry(key, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
     const cache = this._sprCache || (this._sprCache = new Map());
     const pxOn = r * (this._bufScale || 1);                       // radio en píxeles REALES del buffer (nitidez)
@@ -692,7 +637,7 @@ export class Renderer {
     const ck = ((h / 15) | 0) * 4096 + ((s / 12) | 0) * 64 + ((l / 12) | 0); // cubo de COLOR (tono 15° · sat ~12 · luz ~12)
     let e = cache.get(key);
     if (!e || e.sk !== sk || e.ck !== ck) {
-      // presupuesto de horneado agotado + hay atlas previo → úsalo este frame (se rehornea en los siguientes) → sin hitch
+      // si se agotó el presupuesto de horneado y hay atlas previo, úsalo este frame (se rehornea luego) → sin hitch
       if (!(this._sprBakes >= (this.cfg.render.spriteBakeBudget || 120) && e)) {
         e = this._bakeSkeleton(e, sk, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to);
         e.sk = sk; e.ck = ck; cache.set(key, e); this._sprBakes++;
@@ -702,9 +647,8 @@ export class Renderer {
     return e;
   }
 
-  // Hornea el atlas del organismo: por nodo, 2 celdas (contorno|cuerpo) vía _drawNode canónico (rot=0), + 1 celda DECO
-  // (ojos+señuelo). La luz del gradiente se pre-rota −pa[k] para que el brillo quede consistente al rotar la celda.
-  // Layout: 2 columnas (contorno | cuerpo) × filas de nodo, y la celda deco debajo.
+  // Hornea el atlas del organismo: por nodo 2 celdas (contorno|cuerpo, rot=0 canónico) + 1 celda deco (ojos+señuelo).
+  // La luz del gradiente se pre-rota −pa[k] para que el brillo quede consistente al rotar la celda al pegarla.
   _bakeSkeleton(prev, sk, rPx, r, h, s, l, nodes, no, deco, dco, eye, eo, tint, to) {
     const Rc = this.cfg.render, lm = this._lodMul || 1, dens = sk / r, NS = NODE_COUNT;
     this._nodePositions(nodes, no, r);
@@ -841,9 +785,7 @@ export class Renderer {
     if (cache.size > cap) { const arr = [...cache].sort((a, b) => a[1].seen - b[1].seen), drop = cache.size - cap; for (let q = 0; q < drop; q++) cache.delete(arr[q][0]); } // backstop de memoria
   }
 
-  // Silueta del nodo (Capa 1): forma base↔punta según tipShape. Curva cerrada simétrica al eje; wB/wT = medio-ancho
-  // base/punta. Afilar (<0.5) engorda base y afila punta; abrir (>0.5) al revés; 0.5 ≈ elipse. Pinta en coords del
-  // cuerpo (rot+centro) → el gradiente/luz quedan coherentes sin rotar el canvas.
+  // Silueta del nodo (forma base↔punta según tipShape): curva cerrada simétrica al eje; wB/wT = medio-ancho base/punta.
   _silPath(ctx, cx, cy, rot, L, wB, wT) {
     const cR = Math.cos(rot), sR = Math.sin(rot);
     const X = (lx, ly) => cx + lx * cR - ly * sR, Y = (lx, ly) => cy + lx * sR + ly * cR;
@@ -854,8 +796,7 @@ export class Renderer {
     ctx.closePath();
   }
 
-  // Dibuja UN nodo. `st` = estilo del organismo (colores de relieve, dir de luz, textura, gates LOD; ver _drawBodyGraph).
-  // mode 0 = contorno oscuro (va detrás), 1 = cuerpo (gradiente + bandas). Lo usan el render vivo y el horneado del caché.
+  // Dibuja un nodo. `st` = estilo del organismo (colores, luz, textura, gates LOD). mode 0 = contorno · 1 = cuerpo.
   _drawNode(ctx, st, cx, cy, rot, rxx, ryy, mode, tip) {
     const sShape = (tip - 0.5) * 2;                          // −1 afila .. +1 abre
     let wB = ryy * (1.30 - sShape * 0.95);                   // medio-ancho base (afilar engorda)
@@ -888,8 +829,7 @@ export class Renderer {
     }
   }
 
-  // Señuelo + ojos del morro, en el frame head-local (origen = cabeza, +x = rumbo). Lo usan el render vivo y el horneado
-  // del caché. `t` anima el sway/pulso del señuelo y `face` la pupila; el horneado los pasa neutros (t=0, face=null) → estático.
+  // Señuelo + ojos del morro (frame head-local: origen = cabeza, +x = rumbo). `t` anima el pulso; el horneado los pasa neutros (estático).
   _drawDeco(ctx, r, pr0, pl0, h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, ds) {
     const orn = tint ? tint[to] : 0;
     if (orn > 0.12 && deco && doLure) {
@@ -976,26 +916,19 @@ export class Renderer {
     }
   }
 
-  // B2b (EN CONSTRUCCIÓN): dibuja el cuerpo desde el GRAFO DE NODOS (una sola primitiva). Reconstruye las
-  // posiciones recorriendo padres (la física no las necesita; el render sí) y dibuja cada nodo como una
-  // elipse orientada: aspecto bajo → lóbulo redondo; alto → tentáculo alargado. Nodo lateral → par espejado.
-  // PRIMER INCREMENTO: sin ojos/textura/señuelo/contorno fino aún (llegan en incrementos siguientes). El
-  // glow ya lo pinta _drawAgents fuera. nodes[no + k*ST + f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
+  // Dibuja el cuerpo desde el grafo de nodos: reconstruye las posiciones recorriendo padres y dibuja cada nodo orientado.
+  // Nodo lateral → par espejado. El glow lo pinta _drawAgents fuera. nodes[no+k*ST+f]: 0 present,1 parent,2 size,3 aspect,4 angle,5 attach.
   _drawBodyGraph(ctx, x, y, r, h, s, l, nodes, no, heading, spd, t, eye, eo, face, fo, showEyes, tint, to, deco, dco, skel) {
     const NS = NODE_COUNT, ST = NODE_STRIDE;
-    // LOD INTERNO (rPx = radio en pantalla): detalles caros solo a tamaño suficiente. En el retrato (_drawScale=1
-    // y r grande) rPx es enorme → todo activo. `lodWave`=onda viajera + 2ª pasada de contorno; `lodLure`=señuelo.
-    const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1), lm = this._lodMul || 1; // lm = multiplicador de calidad (los gates lo aplican igual que el tier)
-    const full = this._forceFull === true || Rc.quality === 'ultra'; // RETRATO (drawPortrait) o calidad MÁXIMA → sin recortes LOD internos (onda/señuelo/textura/gradiente/contorno): todo a pelo.
-    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // ONDA = solo el MOVIMIENTO (flexión); el contorno se dibuja SIEMPRE (ya no atado a esto). Si no: cuerpo en reposo.
+    // LOD interno (rPxG = radio en pantalla): los detalles caros (onda, señuelo) solo a tamaño suficiente. lm = multiplicador de calidad.
+    const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1), lm = this._lodMul || 1;
+    const full = this._forceFull === true || Rc.quality === 'ultra'; // retrato o calidad máxima → sin recortes LOD internos
+    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // onda = solo el movimiento (flexión); el contorno se dibuja siempre
     const doLure = full || rPxG > (Rc.lodLure || 0) * lm;
-    this._nodePositions(nodes, no, r);                            // posiciones en REPOSO (cabeza en origen); la onda se aplica luego al dibujar
+    this._nodePositions(nodes, no, r);                            // posiciones en reposo; la onda se aplica al dibujar
     const px = this._ngx, py = this._ngy, pr = this._ngr, pl = this._ngl, pa = this._nga, pts = this._ngts, pres = this._ngp, par = this._ngpar, dep = this._ngdep;
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
-    // VOLUMEN (B2b incremento 4): colores de relieve del render clásico + luz desde arriba-izq del MUNDO,
-    // pasada a este frame local (rota −heading) para que el brillo sea coherente sea cual sea el rumbo.
-    // Estilo de nodo (constante por organismo) para _drawNode. Solo se construye SIN caché: con caché (skel) las celdas
-    // ya están horneadas y `st` no se usa → así NO creamos 5 strings HSL por organismo y frame en el camino por DEFECTO.
+    // Estilo de nodo (constante por organismo) para _drawNode. Solo SIN caché (con caché las celdas ya están horneadas → no creamos strings HSL).
     let st = null;
     if (!skel) {
       const coreLight = `hsl(${h},${Math.max(22, s - 16)}%,${Math.min(82, l + 18)}%)`;
@@ -1010,8 +943,7 @@ export class Renderer {
       st = { coreLight, coreMid, coreDark, coreOut, llx, lly, tex2, inkLine, outW, full, lm, ds,
              lodOutline: Rc.lodOutline || 4, lodFlat: Rc.lodFlat || 5, lodTexture: Rc.lodTexture || 10 };
     }
-    // ---- ONDA VIAJERA (B2b): la flexión se ACUMULA del padre al hijo → cadena articulada (anguila). La
-    // cabeza (raíz, prof. 0) queda estable; la cola ondula más (fase por profundidad). Nada más rápido = más onda.
+    // Onda viajera: la flexión se acumula del padre al hijo → cadena articulada (anguila). La cola ondula más; nada más rápido = más onda.
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
     const wpy = this._ngwy || (this._ngwy = new Float32Array(NS));
     const acc = this._ngac || (this._ngac = new Float32Array(NS));  // flexión acumulada hasta el nodo
@@ -1022,12 +954,8 @@ export class Renderer {
       if (!pres[k]) continue;
       const p = par[k], nb = no + k * ST;
       let bend = 0;
-      if (doWave) {                                              // LOD: a tamaño pequeño, cuerpo en REPOSO (sin onda)
-        // ONDULAR vs ALETEAR (Capa 3, SOLO render): el modo se MEZCLA por intensidad de aleteo (gaitMode ponderado
-        // a lo lateral, sin²(emit) — las aletas baten, las colas ondulan). ONDULAR = onda viajera suave del cuerpo
-        // (desfase por profundidad → ripple de anguila). ALETEAR = batido RÁPIDO, AMPLIO, ASIMÉTRICO (golpe de
-        // potencia + recuperación lenta) y DESACOPLADO de la onda del cuerpo (sin desfase por profundidad → la
-        // aleta bate "a su ritmo" mientras el cuerpo planea). La onda ya pivota cada nodo sobre su padre (=eje de la aleta).
+      if (doWave) {                                              // a tamaño pequeño, cuerpo en reposo (sin onda)
+        // Ondular vs aletear (solo render, mezclado por gaitMode×se²): ondular = onda viajera suave; aletear = batido rápido y asimétrico, desacoplado de la onda.
         const phK = nodes[nb + 7] * 6.283185307;                 // fase por nodo (osc_phase)
         const ampK = jointAmp * (oscFloor + (1 - oscFloor) * nodes[nb + 6]);
         const se = Math.sin(pa[k]), flap = nodes[nb + 9] * se * se; // intensidad de aleteo (0 = ondular puro)

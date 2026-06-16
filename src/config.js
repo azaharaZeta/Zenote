@@ -1,404 +1,230 @@
-// Configuración por defecto — "Zenote". ÚNICO lugar de los parámetros (el motor lee de aquí; nada hardcodeado disperso).
-// Cada parámetro lleva su NOMBRE FUNCIONAL para editarlo a mano con rapidez. Los marcados (UI) tienen control
-// en vivo en el modo Laboratorio. Frontera de diseño: el programador define la FÍSICA; la conducta y la forma EVOLUCIONAN.
-//
-// ── UNIDADES (u) · LÉEME antes de tocar tamaños o resolución ────────────────────────────────────────────────
-// El MOTOR trabaja en UNIDADES DE MUNDO (u), NUNCA en píxeles de pantalla. La resolución de dibujo (DPR,
-// render.maxInternalPx, backing store, CSS) NO entra en ningún cálculo lógico NI en el tamaño APARENTE:
-//        aparente_CSS = radio · (viewport_CSS / world.size) · zoom      → DPR / backing / maxInternalPx se CANCELAN
-// (la resolución solo cambia la NITIDEZ del pegote final; jamás QUÉ se simula ni cómo de grande se ve algo).
-// El tamaño ABSOLUTO en u es un GAUGE LIBRE: multiplica TODAS las longitudes (world.size, expr.size,
-// expr.sense, repro.mateRadius, loco.vMin/vMax) por k y energy.moveCost por 1/k² → simulación y apariencia
-// IDÉNTICAS. Solo importan los RATIOS (radio/mundo = densidad, sense/mundo, mateRadius/mundo, velocidad/mundo·tick).
-//   Dimensiones:  LONGITUD¹  → world.size · expr.size (radio) · expr.sense · repro.mateRadius · loco.vMin/vMax (u/tick)
-//                 LONGITUD⁻² → energy.moveCost (coef. del coste ∝ v²)
-//                 ADIMENSIONALES → energía/materia (E_max_base, matterBudget, energyPerUnit, c_base, costes…), genes [0,1],
-//                                  conteos (gridCols/Rows, maxAgents), masas/áreas NORMALIZADAS (sizeMass=(radio/refRadius)^massExp), ratios.
-// EXCEPCIÓN: en el bloque `render` los "px" SÍ son píxeles REALES de dibujo (backing store / pantalla / DPR), no u.
-// ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Configuración por defecto ("Zenote"): ÚNICA fuente de los parámetros (el motor lee de aquí).
+// Marcas: (UI) = slider en el laboratorio · (↻) = requiere Reiniciar para aplicarse.
+// Unidades: el MOTOR trabaja en unidades de mundo (u), no en píxeles; la resolución solo cambia la nitidez.
+// Solo el bloque `render` usa "px" reales. El detalle/historial de tuning vive en docs/ y CHANGELOG.
 
 export const config = {
   // ───── Mundo ─────
   world: {
-    size: 1000,    // (UI ↻) Lado del MUNDO CUADRADO (toro) en u (unidades de mundo; ver cabecera UNIDADES). Antes era width×height
-                   //      (1200×800); ahora UN solo valor. Dial de DENSIDAD: más GRANDE = más disperso → menos depredación, MÁS especies
-                   //      (aislamiento espacial); más pequeño = denso → más depredadores, menos especies. NO cambia el alimento total
-                   //      (rejilla y matterBudget fijos), solo la densidad. (gridCols=gridRows → celdas cuadradas.) Requiere Reiniciar.
+    size: 1000,    // (UI ↻) Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD; no cambia el alimento total.
     wrap: true,    // Mundo toroidal (los bordes envuelven)
-    // ── PROTOTIPO: ECOSISTEMA CERRADO EN MATERIA (pecera sellada) ──
-    closedMatter: true,  // (↻) DEFAULT ON (pecera; receta del trío trófico en closedRegen). false = modelo ABIERTO (el sol CREA biomasa). true = la
-                         //      MATERIA total es CONSTANTE: el sol solo deja a las plantas convertir NUTRIENTE LIBRE (pool N) en
-                         //      biomasa; metabolismo/nado/pérdidas/muerte la DEVUELVEN al ciclo (no se evapora); NACER consume
-                         //      nutriente del pool y se BLOQUEA si no hay → la capacidad de carga es ENDÓGENA (la pone la materia,
-                         //      no el sol ni maxAgents). El cuerpo estructural = energy.carcassValue·eMax, ahora retirado del pool al
-                         //      nacer y devuelto al morir (ya NO conjurado). Energía = abierta (sol→calor); materia = cerrada (real).
-    matterBudget: 60000, // (↻) Materia total del mundo (energía-materia) cuando closedMatter, A TAMAÑO DE MUNDO 1000: ESCALA ×ÁREA con world.size (Modelo A → mundo grande = más materia, MISMA densidad). Reparto inicial: vegetación + (E+cuerpo)
-                         //      de los fundadores + el RESTO como nutriente libre N. REGULADOR del total de biomasa (sustituye al sol
-                         //      como límite). El sobrante (por encima de la capacidad ecológica) queda como N libre = buffer de la pecera.
-                         //      (2026-06-14, tuning DIVERSIDAD) 60000: alimenta la pirámide trófica de 3 niveles (sostiene cazadores); SATURA
-                         //      aquí (medido: 75k/90k no mejoran, el exceso queda como N libre). Da MENOS pop que 30k (≈914 vs 1309: la cadena
-                         //      trófica más larga reparte la materia → menos individuos, más diversidad y más fluido).
-    closedRegen: 0.0055, // (UI) Ritmo de fotosíntesis (captación N→pasto) SOLO en modo cerrado. Separado de resource.R_regen (modelo abierto).
-                         //      PRODUCTIVIDAD primaria = MOTOR del cazador (más comida → cadena trófica más larga; ver docs/ANALISIS_PARAMETROS.md
-                         //      Bucle 1→3). (2026-06-15) SUBIDO 0.004→0.0055 junto a expr.size.min 2.0→4.0 por barrido 2D + validación 25k/6 seeds:
-                         //      a size.min 4.0 la pop es materia-limitada (no satura), así que esta productividad alta va a la cadena trófica, no a un
-                         //      enjambre r → cazador robusto (4/6 seeds) + patchiness alta (CV 0.38) + población calmada (~410). A size.min bajo, en
-                         //      cambio, esta misma productividad ACELERA la saturación del pool (por eso size.min y closedRegen se fijan JUNTOS).
-                         //      Alternativa medida: 0.004 da ~1000 individuos (mundo más poblado) pero vegetación más uniforme (CV 0.14). En vivo.
-    nutrientDiffuse: 0.15, // (UI) (pecera) Difusión del campo de NUTRIENTE libre por tick: 0 = manchas fértiles muy LOCALES y
-                         //      persistentes (donde muere algo, el pasto rebrota antes ahí) … alto → se reparte casi global (como el
-                         //      N escalar previo). 0.15 = manchas que se difuminan despacio (ciclo de nutrientes geográfico). Solo cerrado. En vivo.
-    birthGatherR: 2,     // (pecera) Radio EN CELDAS del vecindario (2·R+1)² del progenitor del que la cría reúne materia para construir
-                         //      su cuerpo al nacer (una celda sola no basta de golpe). Conserva sea cual sea R (sim.js/world.takeNutrientAround).
+    closedMatter: true,  // (↻) Pecera: la materia total es CONSTANTE y circula (N↔pasto↔organismos↔carroña). false = modelo abierto.
+    matterBudget: 60000, // (↻) Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
+    closedRegen: 0.0055, // (UI) Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
+    nutrientDiffuse: 0.15, // (UI) Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
+    birthGatherR: 2,     // Radio en celdas del vecindario del que la cría reúne materia al nacer.
   },
 
   // ───── Recurso / vegetación (campo de comida en rejilla) ─────
   resource: {
-    gridCols: 56,       // Columnas de la rejilla (a tamaño 1000). IGUAL a gridRows → celdas cuadradas. ESCALA ×size con world.size (√área) → el TAMAÑO de celda se mantiene constante a cualquier tamaño de mundo.
-    gridRows: 56,       // Filas. Mantener = gridCols para celdas cuadradas. 56×56 ≈ mismo nº de celdas y ÁREA de celda que el 64×48 previo
-                        //      (≈313 u²) → sin anisotropía y sin tocar la escala del campo de comida ni la capacidad de carga (cerrado: la pone matterBudget).
+    gridCols: 56,       // Columnas de la rejilla (a tamaño 1000); escala ×size → celda de tamaño constante.
+    gridRows: 56,       // Filas (= gridCols → celdas cuadradas).
     R_max: 1.0,         // Recurso máximo por celda
-    R_regen: 0.0035,    // (UI) Ritmo de rebrote del pasto — REGULADOR PRINCIPAL de cuánta comida sostiene el mundo
+    R_regen: 0.0035,    // (UI) Ritmo de rebrote del pasto en el modelo ABIERTO.
     gradient: 'perlin', // Forma del campo de capacidad: 'perlin' | 'center' | 'uniform'
-    capFloor: 0.1,      // Suelo de la capacidad de carga (fracción de R_max) en el gradiente 'perlin': ninguna celda baja de
-                        //      capFloor·R_max → ningún baldío permanente (ver world._buildGradient). El modo 'center' usa su propia forma.
-    patchiness: 0.75,      // (UI) Dinámica de rebrote: 0 = lineal (sin parches) … 1 = logístico + difusión de
-                        //      semilla → los parches EMERGEN y migran del pastoreo↔rebrote (ver world.regen). En vivo.
-    seedFloor: 0.04,    // Rebrote espontáneo mínimo (banco de semillas) en el rebrote logístico: una calva total aislada rebrota
-                        //      lentísimo en vez de quedar a cero → evita el estado ABSORBENTE (vegetación global a cero). world.regen/_regenClosed.
-    tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes → especializarse rinde)
-    absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local visible)
-    absMetabBase: 0.5,  // Suelo del factor metabólico en la absorción de pasto: absEff ∝ (absMetabBase + metab) → a metab 0 aún se pasta algo (organism.absEff).
-    energyPerUnit: 10,  // (UI) Energía obtenida por unidad de recurso comida
-    grazeRefuge: 0.20,   // (UI) Reserva de rebrote intocable por celda (fracción) — evita el sobrepastoreo letal
-    forageReach: 5,     // (UI) Alcance de FORRAJEO por talla (celdas): el grande pasta de un ÁREA (2·forageR+1)²,
-                        //      forageR=round(forageReach·size) → cubre más terreno → da PAYOFF a la talla (la escasez
-                        //      local NO lo borra). Sin esto, el ingreso de pasto no escala con la talla pero la cría
-                        //      (reproRef ∝ sizeMass) sí → todo deriva al mínimo. 0 = solo su celda (modelo previo).
-                        //      (2026-06-14, tuning DIVERSIDAD) 5: con massExp 1.3 + k_haul 0.2 hace emerger un grupo de talla GRANDE (medido
-                        //      headless: big% ~9, sizeσ 0.17) y, al dar presa grande y gorda, ayuda a sostener a los cazadores. Va con omniPenalty 0.15.
-    carrionDecay: 0.005, // (UI) Ritmo al que se descompone la CARROÑA por tick (cadáveres). Lo decaído vuelve en
-                        //      parte al pasto (energy.corpseReturn) = ciclo de nutrientes; el resto se pierde. Bajo =
-                        //      los cadáveres tardan en deshacerse (más tiempo para que un carroñero llegue); alto =
-                        //      se pudren rápido. A 0.005 y 20 t/s un cuerpo dura ~decenas de segundos. 0 = no decae.
-    carrionAbsRate: 0.15, // (UI) Ritmo de CARROÑEO: fracción de la carroña de la celda que absorbe por tick quien
-                        //      puede procesar carne (∝ effCarn). Alto = vacían el cadáver rápido. Medido headless (R_regen
-                        //      0.0035): 0 → carnívoros ~48; 0.30 → ~284 (×6, pero sobre-dispara); 0.15 = puente SUAVE.
-                        //      (Fase 1: el carroñeo lo hace effCarn; la Fase 2 lo hará un eje de dieta propio → gusano.)
-    carrionScent: 3,    // Escala del "olfato" de carroña en el gradiente de búsqueda: ∇carroña pesa effScav/(energyPerUnit·carrionScent)
-                        //      frente a ∇pasto (sim.js). Más alto = la carroña tira menos. Solo navegación; NO afecta a la materia.
+    capFloor: 0.1,      // Suelo de la capacidad de carga (fracción de R_max): ningún baldío permanente.
+    patchiness: 0.75,   // (UI) Dinámica de rebrote: 0 = lineal · 1 = logístico + difusión → parches que migran.
+    seedFloor: 0.04,    // Rebrote espontáneo mínimo (banco de semillas): evita el estado absorbente (todo a cero).
+    tempFreq: 3,        // Frecuencia del campo térmico (bajo = zonas climáticas grandes).
+    absRate: 0.20,      // (UI) Ritmo de pastado por tick (alto = pelan zonas → escasez local).
+    absMetabBase: 0.5,  // Suelo del factor metabólico en la absorción: a metab 0 aún se pasta algo.
+    energyPerUnit: 10,  // (UI) Energía obtenida por unidad de recurso comida.
+    grazeRefuge: 0.20,  // (UI) Reserva de rebrote intocable por celda (fracción): evita el sobrepastoreo letal.
+    forageReach: 5,     // (UI) Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
+    carrionDecay: 0.005, // (UI) Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
+    carrionAbsRate: 0.15, // (UI) Ritmo de carroñeo: fracción de la carroña de la celda que absorbe quien procesa carne.
+    carrionScent: 3,    // Escala del "olfato" de carroña en el gradiente de búsqueda (más alto = la carroña tira menos).
   },
 
   // ───── Población ─────
   pop: {
-    initial: 400,            // (UI ↻) Nº de fundadores al TAMAÑO DE MUNDO DE REFERENCIA (1000 u); ESCALA con el área (size²) → densidad
-                             //      inicial ~constante a cualquier world.size. Slider "Sembrado inicial" (muy bajo↔muy alto). Acotado a
-                             //      maxAgents; en la pecera la MATERIA limita la pop sostenida (sembrar de más → reajuste inicial). Ver sim._initialCount.
-    maxAgents: 2000,         // (UI ↻) Tope físico del pool (límite de memoria) A TAMAÑO 1000; ESCALA ×ÁREA con world.size hasta maxAgentsCeiling · ÚNICO límite de población (la capacidad de
-                             //      carga la pone el recurso/materia, no este número — ver auditoría #5). SUBIDO 1000→2000 para dar HOLGURA a la
-                             //      red trófica de la pecera (closedRegen 0.0034 lleva la pop a ~1000-2000; con 1000 saturaba). Afecta también al
-                             //      modelo abierto (más CPU, pop posible mayor; ~460 t/s a 1000 agentes en 1 hilo → margen de sobra). Cambiarlo
-                             //      requiere Reiniciar (re-asigna los arrays SoA + speciesOf en el worker). Slider del lab para experimentar.
-    maxAgentsCeiling: 8000,  // Techo ABSOLUTO del pool tras escalar con el tamaño del mundo (límite de RENDIMIENTO). El ecosistema
-                             //      (materia/pool/fundadores/rejilla) escala con el área HASTA aquí; por encima, world.size solo DISPERSA
-                             //      (no añade más agentes). = IDENT_CAP del proxy (main.js). Subirlo permite mundos grandes más densos a costa de CPU.
-    seed: 123,               // Semilla por defecto (vacía el campo Semilla y Sembrar → mundo aleatorio)
-    seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false)
-    carnivoreSeedFrac: 0.20, // (UI ↻) Fracción de fundadores sembrados como proto-carnívoros. Es condición INICIAL (cruza el valle
-                             //      de arranque), no estrategia codificada → la selección decide después. 0.20 da una cohorte de
-                             //      establecimiento mayor (antes 0.14 era escasa → en pecera magra el gremio a veces no arrancaba).
-    simpleStart: true,       // Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios
-    startJitter: 0.06,       // Magnitud del jitter gaussiano del sembrado simple
-    startDiversity: 0,       // (UI) Diversidad inicial: 0 = fundadores casi CLONALES, lo más básico (renacuajos
-                             //      simples idénticos + cohorte carnívora) para ver evolucionar desde cero … 1 = variado
+    initial: 400,            // (UI ↻) Nº de fundadores (a tamaño 1000); escala ×área → densidad inicial constante.
+    maxAgents: 2000,         // (UI ↻) Tope físico del pool (memoria); escala ×área hasta maxAgentsCeiling. La capacidad la pone la materia.
+    maxAgentsCeiling: 8000,  // Techo absoluto del pool tras escalar con el mundo (límite de rendimiento).
+    seed: 123,               // Semilla por defecto (vacía el campo Semilla → mundo aleatorio).
+    seedDietLow: false,      // Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false).
+    carnivoreSeedFrac: 0.20, // (UI ↻) Fracción de fundadores sembrados como proto-carnívoros (condición inicial, no estrategia).
+    simpleStart: true,       // Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios.
+    startJitter: 0.06,       // Magnitud del jitter gaussiano del sembrado simple.
+    startDiversity: 0,       // (UI) Diversidad inicial: 0 = fundadores casi clonales … 1 = variados.
   },
 
-  // ───── Energética y costes (qué cuesta vivir, moverse, crecer, criar) ─────
-  // ALOMETRÍA (#3): la talla es una MASA física. eMax ∝ masa (almacén ∝ volumen); metabolismo ∝ masa^kleiber
-  // (ley de Kleiber: economía de escala). Ver organism.js. `massExp`/`kleiber` son tunables; las bases están
-  // recalibradas para que el organismo MEDIO (size 0.5, head-only) conserve ≈ los valores previos.
+  // ───── Energética y costes (qué cuesta vivir, moverse, criar) ─────
+  // Alometría: eMax ∝ masa; metabolismo ∝ masa^kleiber (Kleiber). Expresión en organism.js.
   energy: {
-    c_base: 0.024,      // (UI) Coste basal por tick (recalibrado por la alometría: antes 0.02 con k_size aparte)
-    massExp: 1.3,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp. 1 = lineal; 2 = área 2D.
-                        //      (2026-06-14, tuning DIVERSIDAD) bajado 1.5→1.3: en la pecera CERRADA un cuerpo grande cuesta materia real
-                        //      (bodyMatter ∝ eMax ∝ masa) y 1.5 lo encarecía tanto que los grandes casi no nacían; 1.3 los hace viables → emerge talla grande.
-    kleiber: 0.75,      // (UI) Exponente metabólico: coste basal ∝ masa^kleiber (¾ = Kleiber; <1 = los grandes gastan menos por masa)
-    k_sense: 0.3,       // (UI) Coste de la visión (alcance)
-    k_metab: 0.6,       // (UI) Coste del metabolismo
-    k_lifespan: 0.35,   // (UI) (#12, disposable soma) Coste basal extra de la LONGEVIDAD: factor (1 + k_lifespan·(1−senescence)).
-                        //      Vivir lento/longevo cuesta mantener el cuerpo → evita que la senescencia colapse a "inmortal".
-    k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica)
-    k_lure: 0.13,       // Coste de mantener el SEÑUELO bioluminiscente (∝ prominencia)
-    k_graze: 0.50,      // (UI) Pasto EXTRA ∝ masa corporal de nodos (ata la complejidad al nicho herbívoro)
-    k_grazeWide: 0.5,   // (UI) (Capa 2) Pasto EXTRA ∝ ANCHURA del cuerpo (baja elongación): cuerpos anchos/aplanados barren
-                        //          más recurso → morfología de pastador (aletas/hojas). Reverso del cazador aerodinámico
-    k_scavThin: 1.0,    // (UI) (Fase 2) CARROÑEO extra ∝ lo FINO/elongado del cuerpo: effScav·(1+k_scavThin·elongación).
-                        //          Rastrear carroña dispersa premia el crucero barato → emerge el GUSANO (reverso del
-                        //          pastador ANCHO). 0 = el carroñero no gana por ser fino (no diverge la forma). Afinar midiendo.
-    k_flap: 0.7,        // (Capa 3) Coste de NADO extra por ALETEAR (∝ flapWork): el golpe activo gasta → aletear es
-                        //          ráfaga CARA. Hace honesto el eje ondular (crucero barato) ↔ aletear (ráfaga cara)
-    k_effort: 1.6,     // (UI) Coste extra de moverse ∝ esfuerzo (gen speed)
-    moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad) · dimensión u⁻² (ver cabecera UNIDADES)
-    k_haul: 0.2,        // (UI) (A) Coste de TRANSPORTE ∝ masa: el nado se multiplica por (1 + k_haul·max(0, masa−1)) →
-                        //      arrastrar un cuerpo grande / con muchos apéndices cuesta al MOVERSE (mantenerlo ya se paga
-                        //      en c_base por Kleiber). 0 = nado ciego a la masa (modelo previo); masa ≤ 1 (≤ medio) sin recargo.
-                        //      (2026-06-14, tuning DIVERSIDAD) bajado 0.4→0.2: menos castigo a la masa al moverse → los grandes son viables (va con massExp 1.3).
-    k_drag: 0.4,        // (UI) (B) Coste de nado ∝ ARRASTRE de la FORMA: el nado se multiplica por (1 + k_drag·max(0, Dmul−dragRef)),
-                        //      Dmul = arrastre emergente de la geometría (bodyplan.reducePlan: cuerpo/aletas anchos, apéndices). Complementa
-                        //      A (que es por MASA): difieren en aletas/garras (mucho arrastre, poca masa). Cierra el incentivo PERVERSO del
-                        //      "arrastre gratis" (antes el arrastre solo FRENABA, v=…/Dmul, y como el coste va con v² un cuerpo con arrastre
-                        //      nadaba MÁS BARATO). MEDIDO headless (4000t, pecera): efecto SUTIL en el régimen default —las velocidades son
-                        //      bajas (vmax~0.37), así que moveCost·v² es una fracción menor del balance—; SIN daño (pop/dieta estables a 0.4–0.8,
-                        //      no machaca al pastador ancho). Muerde MÁS bajo presión de velocidad (fleeSpeed alto / carrera depredador-presa).
-                        //      0 = INERTE (el arrastre solo frena). Se lee en vivo (no recachea el fenotipo).
-    dragRef: 1.1,       // (UI) Arrastre de REFERENCIA del coste B: solo el Dmul por ENCIMA de dragRef paga (max(0, Dmul−dragRef)) → colchón
-                        //      para no cobrar el arrastre típico. Medido: Dmul mediana≈1.17, p90≈1.36 (mínimo 1.0 = cuerpo sin arrastre extra).
-    E_max_base: 70,     // (UI) Energía máxima base · eMax = E_max_base · masa. Criar cuesta una fracción de la masa-de-talla
-                        //      (reproRef = E_max_base · sizeMass, SIN la masa de nodos → la complejidad no frena la cría, #4).
-    preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla
-    carcassValue: 0.20, // (UI) BIOMASA del cadáver (∝ eMax) que SUMA a su energía al cazar: rinde preyGain·(E_presa +
-                        //      carcassValue·eMax_presa). 0 = solo la energía ALMACENADA → en mundo escaso cazar da calorías
-                        //      vacías y los carnívoros se extinguen (medido). >0 = el cuerpo vale su tejido → comer alimenta.
-                        //      PALANCA DOMINANTE del balance HERBIVORÍA↔CARNIVORÍA (ver docs/ANALISIS_PARAMETROS.md, Bucle 4):
-                        //      demasiado ALTO → la carne es tan rentable que la dieta BARRE a carnívora → la base herbívora
-                        //      COLAPSA a un monocultivo comecarne (medido a 0.25 / régimen 4.0/0.0055: herb 5%, pirámide 1/6 —
-                        //      estado todo-carnívoro mantenido por depredación que suprime a los herbívoros). BAJADO 0.25→0.20
-                        //      (2026-06-15, barrido + validación 25k/6 seeds): restaura la base (herb 38%) con el TRÍO completo
-                        //      (herbívoros + carroñeros + cazadores 4/6 seeds), estable a 25k. OJO: el balance es BIMODAL/no-monótono
-                        //      (0.18 salió PEOR que 0.15 Y 0.20 → todo-carroñero) → NO afinar con precisión (ruido). Alternativa: 0.15
-                        //      da base más fuerte (herb 50%) pero casi sin cazadores (1/6) — un mundo más herbívoro/carroñero.
-    scrapReturn: 0.15,  // (UI) SOBRAS: al CAZAR una presa, fracción de su biomasa (carcassValue·eMax) que queda como
-                        //      carroña (el depredador ya se llevó casi todo) → "restos". Muertes NATURALES dejan el
-                        //      cuerpo entero (factor 1). Bajo = la caza casi no deja nada para carroñeros.
-    corpseReturn: 0.5,  // (UI) Fracción de la carroña DECAÍDA que vuelve al pasto (ciclo de nutrientes, ver world.decayCarrion); el resto se pierde
+    c_base: 0.024,      // (UI) Coste basal por tick (mantenimiento).
+    massExp: 1.3,       // (UI) Exponente alométrico talla→masa: sizeMass=(radius/refRadius)^massExp.
+    kleiber: 0.75,      // (UI) Exponente metabólico: coste basal ∝ masa^kleiber (¾ = Kleiber).
+    k_sense: 0.3,       // (UI) Coste de la visión (alcance).
+    k_metab: 0.6,       // (UI) Coste del metabolismo.
+    k_lifespan: 0.35,   // (UI) Coste basal extra de la longevidad (disposable soma): evita la senescencia "inmortal".
+    k_temp: 1.9,        // Coste por desviarse del óptimo térmico (0 = sin selección térmica).
+    k_lure: 0.13,       // Coste de mantener el señuelo bioluminiscente (∝ prominencia).
+    k_graze: 0.50,      // (UI) Pasto extra ∝ masa de nodos (ata la complejidad al nicho herbívoro).
+    k_grazeWide: 0.5,   // (UI) Pasto extra ∝ anchura del cuerpo: premia la forma de pastador.
+    k_scavThin: 1.0,    // (UI) Carroñeo extra ∝ lo fino/elongado del cuerpo: emerge el gusano carroñero.
+    k_flap: 0.7,        // Coste de nado extra por aletear (∝ flapWork): aletear es ráfaga cara.
+    k_effort: 1.6,      // (UI) Coste extra de moverse ∝ esfuerzo (gen speed).
+    moveCost: 0.015,    // (UI) Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad).
+    k_haul: 0.2,        // (UI) Coste de transporte ∝ masa: arrastrar un cuerpo grande cuesta al moverse.
+    k_drag: 0.4,        // (UI) Coste de nado ∝ arrastre de la forma (Dmul); complementa k_haul (masa). 0 = inerte.
+    dragRef: 1.1,       // (UI) Arrastre de referencia del coste k_drag: solo paga el Dmul por encima de esto.
+    E_max_base: 70,     // (UI) Energía máxima base · eMax = E_max_base · masa.
+    preyGain: 0.90,     // (UI) Fracción de energía de la presa aprovechada al cazarla.
+    carcassValue: 0.20, // (UI) Biomasa del cadáver (∝ eMax) que suma a su energía al cazar. Palanca dominante herbivoría↔carnivoría.
+    scrapReturn: 0.15,  // (UI) Sobras: fracción de la biomasa de una presa CAZADA que queda como carroña (modelo abierto).
+    corpseReturn: 0.5,  // (UI) Fracción de la carroña decaída que vuelve al pasto (modelo abierto; en pecera mineraliza a N).
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
-  // FRONTERA AUDITABLE (auditoría #8): TODO lo de aquí es FÍSICA (cómo la geometría→fuerza), NO juicios de
-  // "qué forma es buena". Cada empuje (bodyThrust/segThrust/modThrust/limbThrust) va emparejado con su arrastre
-  // (bodyDrag/segDrag/modDrag/limbDrag) → trade-off, sin barra libre; el giro emerge de asimetría/tamaño/elongación.
-  // Qué morfología gana lo decide la SELECCIÓN, no estos números. (Matiz: bodyThrust alto = cabeza buen propulsor
-  // → ver idea "cabeza nadadora" en IDEAS.md; es balance, no una regla de forma.)
+  // Frontera auditable: todo aquí es FÍSICA (geometría→fuerza). Cada empuje va emparejado con su arrastre (trade-off).
   loco: {
-    kThrust: 7.1,       // (UI) Calibra la velocidad-capacidad típica (recalibrado: un nadador con cola ≈ v1; cabeza sola ~0.47)
-    headThrust: 0.06,   // (UI) Empuje de la CABEZA (motor base débil): 1 = cabeza nadadora; bajo = la cabeza es carga
-                        //      y nadar bien EXIGE cola/aletas → emergen propulsores. A 0.06 un cuerpo SIN propulsores casi
-                        //      no avanza (≈vMin) y un "garras-only" queda clavado en el suelo → nadar depende del fenotipo
-                        //      propulsor (mata el residuo de "cabeza voladora"; expone el coste de mobilidad de las garras). Ver bodyplan.js.
-    paddleEff: 0.6,     // B3: peso del remo lateral en el gait (aleta lateral propulsa, aunque menos que cola trasera)
-    oscFloor: 0.15,     // B3: suelo de amplitud de oscilación por nodo (un nodo presente siempre ondula algo)
-    phaseGain: 0.5,     // (UI) B3+: cuánto penaliza la marcha DESCOORDINADA (fases dispersas) el empuje. 0 = sin
-                        //      penalización (modelo previo); 1 = máx. Hace funcional `osc_phase`: nadar coordinado EMERGE.
-    elongMax: 3.0,      // B3: techo de la elongación derivada de la geometría de nodos (streamlining)
-    symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría del grafo desvía empuje a girar)
-    streamBase: 1.0,    // Arrastre base del cuerpo
-    streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica)
-    effortFloor: 0.2,   // Esfuerzo mínimo de nado
-    vMin: 0.15,         // Suelo de velocidad-capacidad (nadie queda 100% inmóvil)
-    vMax: 3.0,          // (UI) Techo de velocidad-capacidad (u/tick)
-    turnBase: 0.18,     // (UI) Agilidad de giro base
-    turnAsym: 0.35,     // La asimetría del grafo de nodos (emergente) mejora el giro
-    turnSize: 0.15,     // Los cuerpos grandes giran peor
-    turnElong: 0.08,    // Los cuerpos elongados giran peor
-    turnMin: 0.08,      // Giro mínimo (nadie queda incapaz de virar)
-    // Complejidad (segmentos/módulos): suma empuje, arrastre y peor giro; vale 0 para un cuerpo simple.
-    segThrust: 0.34,    // Empuje de las patas de los segmentos
-    modThrust: 0.3,     // Empuje de los apéndices de los módulos
-    segDrag: 0.22,      // Arrastre extra por segmento
-    modDrag: 0.6,       // Arrastre extra por módulo
-    segTurn: 0.03,      // Cada segmento extra empeora el giro
-    bodyThrust: 1.0,    // A2 (Pilar v2.0): escala del empuje del CUERPO (cabeza+segmentos que ondulan); propulsor principal
-    // Limbs (tentáculos/aletas finos) y nodos: empuje vs arrastre por unidad de área.
-    limbThrust: 0.12,   // Empuje por unidad de área de limbs (ondulan → propulsión secundaria)
-    limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente)
-    bodyDrag: 0.30,     // Arrastre por unidad de área de nodo ancho (cabeza/lóbulo)
-    bodyMass: 0.30,     // Masa metabólica por área de nodo ancho (el ancho SÍ es volumen real)
-    // FORMA del nodo (Capa 1, gen `tipShape`, NEUTRO en 0.5). Compromiso físico de la silueta base↔punta:
-    tipThrust: 0.4,     // Abrir la punta (aleta/paleta) → +empuje al oscilar; afilar (púa) → −empuje. ±factor a forma extrema
-    tipDrag: 0.5,       // Abrir → +arrastre; afilar → −arrastre (streamlining). ±factor a forma extrema
-    tipReach: 0.35,     // Afilar → +longitud (alcance: tentáculo/púa); abrir → más corto. ±factor a forma extrema
-    // MODO de propulsión (Capa 3, gen `gaitMode`, NEUTRO en 0 = ondular). Aletear = batir:
-    flapGain: 1.2,      // Empuje extra al aletear, ponderado a lo LATERAL (×se²): una aleta que bate propulsa más
-    flapDrag: 0.6,      // Arrastre extra al aletear (golpe de recuperación) → crucero (ondular) vs ráfaga (aletear)
+    kThrust: 7.1,       // (UI) Calibra la velocidad-capacidad típica de la morfología.
+    headThrust: 0.06,   // (UI) Empuje de la cabeza (motor base débil): bajo → nadar bien exige cola/aletas.
+    paddleEff: 0.6,     // Peso del remo lateral en el gait (aleta lateral propulsa, menos que la cola trasera).
+    oscFloor: 0.15,     // Suelo de amplitud de oscilación por nodo.
+    phaseGain: 0.5,     // (UI) Cuánto penaliza la marcha descoordinada → nadar coordinado emerge.
+    elongMax: 3.0,      // Techo de la elongación derivada de la geometría de nodos (streamlining).
+    symBase: 0.4,       // Empuje útil hacia delante mínimo (la asimetría desvía empuje a girar).
+    streamBase: 1.0,    // Arrastre base del cuerpo.
+    streamGain: 0.5,    // Cuánto reduce el arrastre la elongación (hidrodinámica).
+    effortFloor: 0.2,   // Esfuerzo mínimo de nado.
+    vMin: 0.15,         // Suelo de velocidad-capacidad.
+    vMax: 3.0,          // (UI) Techo de velocidad-capacidad (u/tick).
+    turnBase: 0.18,     // (UI) Agilidad de giro base.
+    turnAsym: 0.35,     // La asimetría del grafo de nodos mejora el giro.
+    turnSize: 0.15,     // Los cuerpos grandes giran peor.
+    turnElong: 0.08,    // Los cuerpos elongados giran peor.
+    turnMin: 0.08,      // Giro mínimo (nadie queda incapaz de virar).
+    segThrust: 0.34,    // Empuje de las patas de los segmentos.
+    modThrust: 0.3,     // Empuje de los apéndices de los módulos.
+    segDrag: 0.22,      // Arrastre extra por segmento.
+    modDrag: 0.6,       // Arrastre extra por módulo.
+    segTurn: 0.03,      // Cada segmento extra empeora el giro.
+    bodyThrust: 1.0,    // Escala del empuje del cuerpo (cabeza+segmentos que ondulan): propulsor principal.
+    limbThrust: 0.12,   // Empuje por unidad de área de limbs (tentáculos/aletas finos).
+    limbDrag: 0.20,     // Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente).
+    bodyDrag: 0.30,     // Arrastre por unidad de área de nodo ancho (cabeza/lóbulo).
+    bodyMass: 0.30,     // Masa metabólica por área de nodo ancho.
+    // Forma del nodo (gen tipShape, neutro en 0.5): silueta base↔punta, compromiso físico.
+    tipThrust: 0.4,     // Abrir la punta (aleta) → +empuje; afilar (púa) → −empuje.
+    tipDrag: 0.5,       // Abrir → +arrastre; afilar → −arrastre (streamlining).
+    tipReach: 0.35,     // Afilar → +longitud (alcance: tentáculo/púa); abrir → más corto.
+    // Modo de propulsión (gen gaitMode, neutro en 0 = ondular). Aletear = batir.
+    flapGain: 1.2,      // Empuje extra al aletear, ponderado a lo lateral (×se²).
+    flapDrag: 0.6,      // Arrastre extra al aletear (golpe de recuperación) → crucero vs ráfaga.
   },
 
   // ───── Visión emergente: 'sense' fija la inversión; 'e_fov' reparte alcance↔ángulo (conserva área) ─────
   vision: {
-    halfFovMin: 0.35,   // Semiángulo mínimo del cono (rad ≈ 20°): estrecho y frontal (cazador)
-    halfFovMax: 2.70,   // Semiángulo máximo (rad ≈ 155°): casi panorámico (presa)
-    fovRef: 3.05,       // FOV de referencia para conservar el área visual
-    rangeExp: 0.4,      // (UI) Exponente del reparto alcance↔ángulo
+    halfFovMin: 0.35,   // Semiángulo mínimo del cono (≈20°): estrecho y frontal (cazador).
+    halfFovMax: 2.70,   // Semiángulo máximo (≈155°): casi panorámico (presa).
+    fovRef: 3.05,       // FOV de referencia para conservar el área visual.
+    rangeExp: 0.4,      // (UI) Exponente del reparto alcance↔ángulo.
   },
 
   // ───── Dieta ─────
   diet: {
-    omniPenalty: 0.15, // (UI) Penalización por dieta intermedia. 0 = omnívoros arrasan (generalista gratis, sin
-                       //      divergencia morfológica); >0 fuerza a especializarse → emergen herbívoros anchos y
-                       //      cazadores con alcance (Capa 1/2). 0.15 = especialización marcada; además ESTABILIZA el
-                       //      forrajeo por talla (forageReach 3) → sin esto una semilla colapsaba. (Antes 0.05.)
-    scavPenalty: 0.30, // (UI) (Fase 2) Penalización al GENERALISTA del eje caza↔carroña (gen `scav`): un comecarne
-                       //      50/50 caza-carroña paga; 0 = sin coste (puede cazar Y carroñear igual de bien → no diverge
-                       //      el gusano); >0 fuerza a especializar en CAZADOR (presa viva) o CARROÑERO (cadáveres). Análogo
-                       //      a omniPenalty pero dentro de la carne. SUBIDO 0.20→0.30: mantiene una especie CAZADORA distinta en
-                       //      la pecera (si no, el comecarne deriva todo a carroñero) → clave para el trío trófico. Medido headless.
+    omniPenalty: 0.15, // (UI) Penalización por dieta intermedia: >0 fuerza a especializarse (herbívoro/carnívoro puro).
+    scavPenalty: 0.30, // (UI) Penalización al generalista caza↔carroña: >0 fuerza a especializar (cazador o carroñero).
   },
 
-  // ───── Refugio de presa (#7): COBERTURA graduada por la vegetación VIVA local (Huffaker), no flag binario.
-  //       Estabilizador Lotka-Volterra: en vegetación densa la presa escapa al combate (refugios DINÁMICOS). ─────
+  // ───── Refugio de presa: cobertura graduada por la vegetación viva local (estabilizador Lotka-Volterra) ─────
   refuge: {
-    enabled: true,      // (UI) Activar la cobertura/refugio de presa
-    strength: 0.3,      // (UI) Fuerza de la cobertura: prob. de escape = strength · vegetación_local (∈[0,1]).
-                        //      En vegetación máxima la presa escapa ~strength de los ataques; 0 = sin refugio. BAJADO de
-                        //      0.9 a 0.3 para que el escape dependa de la VELOCIDAD (combat.fleeSpeed), no solo de esconderse
-                        //      → la velocidad pasa a importar. Sigue siendo estabilizador L-V parcial. En vivo.
+    enabled: true,      // (UI) Activar la cobertura/refugio de presa.
+    strength: 0.3,      // (UI) Fuerza de la cobertura: prob. de escape = strength · vegetación_local. 0 = sin refugio.
   },
 
-
-  // ───── Edad / mortalidad ─────
-  // Edad / mortalidad. La madurez (inicio de senescencia + gate de cría) y el ritmo de vida son GENES (#12):
-  // ver expr.mature_age y el gen `senescence`. Aquí quedan solo las escalas BASE comunes.
+  // ───── Edad / mortalidad (la madurez y el ritmo de vida son GENES; aquí solo las escalas base) ─────
   age: {
-    mortality: 0.0005,  // (UI) Mortalidad base por senescencia (prob./tick tras madurar; el gen `senescence` la escala)
-    scale: 500,         // Escala temporal de la senescencia
-    senesSlow: 0.3,     // (#12) multiplicador de senescencia con `senescence`=0 (longevo: envejece despacio)
-    senesFast: 3.0,     // (#12) multiplicador con `senescence`=1 (vida rápida: envejece deprisa, muere joven)
+    mortality: 0.0005,  // (UI) Mortalidad base por senescencia (prob./tick tras madurar; el gen senescence la escala).
+    scale: 500,         // Escala temporal de la senescencia.
+    senesSlow: 0.3,     // Multiplicador de senescencia con senescence=0 (longevo).
+    senesFast: 3.0,     // Multiplicador con senescence=1 (vida rápida, muere joven).
   },
 
   // ───── Reproducción ─────
   repro: {
-    cooldown: 60,              // (UI) Enfriamiento entre crías (ticks)
-    sexual: true,              // (UI) Reproducción sexual (recombinación de dos padres)
-    asexual: true,              // (UI) Permitir clon mutado si no hay pareja compatible cerca. ON conserva la diversidad
-                               //      de talla; solo-sexual la APLANA (la mezcla grande×pequeño regresa a la media — medido headless).
-    speciesGenThreshold: 0.15, // (UI) Distancia genética máxima para cruzarse (= misma especie)
-    mateRadius: 70,            // (UI) Radio (u) de búsqueda de pareja al reproducirse
+    cooldown: 60,              // (UI) Enfriamiento entre crías (ticks).
+    sexual: true,              // (UI) Reproducción sexual (recombinación de dos padres).
+    asexual: true,             // (UI) Permitir clon mutado si no hay pareja compatible cerca.
+    speciesGenThreshold: 0.15, // (UI) Distancia genética máxima para cruzarse (= misma especie).
+    mateRadius: 70,            // (UI) Radio (u) de búsqueda de pareja al reproducirse.
   },
 
-  // ───── Mutación: UNA sola tasa por locus, CIEGA a la función del gen (auditoría #1) ─────
-  // (antes había 3 ritmos por categoría base/forma/decor → la mutación no debe conocer la "función" de un gen).
+  // ───── Mutación: una sola tasa por locus, ciega a la función del gen ─────
   mut: {
-    rate: 0.05,         // (UI) Prob. de mutación por gen (todos los genes por igual)
-    sigma: 0.08,        // (UI) Magnitud de la mutación
-    bigRate: 0.002,     // (UI) Prob. de macromutación (salto grande y raro)
-    bigSigmaMult: 5,    // Multiplicador de magnitud de la macromutación
-    recomb: 0.07,       // (UI) Recombinación sexual: prob. de cruce por locus (LIGAMIENTO). 0.5 = uniforme (sin
-                        //      ligamiento); →0 = tramos contiguos largos co-heredados. Vive en `mut` por conveniencia.
+    rate: 0.05,         // (UI) Prob. de mutación por gen.
+    sigma: 0.08,        // (UI) Magnitud de la mutación.
+    bigRate: 0.002,     // (UI) Prob. de macromutación (salto grande y raro).
+    bigSigmaMult: 5,    // Multiplicador de magnitud de la macromutación.
+    recomb: 0.07,       // (UI) Recombinación sexual: prob. de cruce por locus (bajo = ligamiento, tramos contiguos).
   },
 
-  // ───── Combate / depredación (física trófica, no conducta) ─────
-  // Importante: al FALLAR un ataque el atacante PIERDE energía (failDamage) y solo muere si llega a 0. Es el freno
-  // denso-dependiente que estabiliza la depredación (sin coste al fallar, los carnívoros sobre-disparan y colapsan
-  // todo). failDamage ≥ 1 ≈ muerte casi segura (comportamiento antiguo); bajarlo da resiliencia carnívora.
+  // ───── Combate / depredación (física trófica). Al fallar un ataque el atacante pierde failDamage·eMax (freno denso-dependiente). ─────
   combat: {
-    enabled: true,       // (UI) Activar depredación/combate
-    sizeAdvantage: 1.8, // (UI) Cuánto pesa el tamaño en quién gana el combate
-    failDamage: 0.1,    // (UI) Energía que pierde el atacante al fallar (× su eMax) · muere solo si llega a 0 · ≥1 ≈ muerte segura
-    fleeSpeed: 1.0,     // (UI) Escape por VELOCIDAD: la presa que nada más rápido que el cazador se zafa (prob =
-                        //      fleeSpeed·(vmax_presa/vmax_cazador − 1), tope `fleeCap`). Hace que huir/cazar sea un DUELO de
-                        //      velocidad → la vmax sube por MORFOLOGÍA propulsora (carrera armamentística, gradual). Requiere
-                        //      cobertura baja (refuge.strength) o el escondite lo enmascara. 0 = solo cobertura (modelo previo).
-                        //      (2026-06-14, tuning DIVERSIDAD) 1.0: caza algo más fácil → sostiene los cazadores en 6/6 siembras junto al resto del
-                        //      combo (matterBudget 60k, closedRegen 0.004, forageReach 5). (El viejo aviso "1.0 = boom-bust" era en el régimen anterior,
-                        //      no en este combo.) Afecta también al modelo abierto.
-                        //      >4 o cobertura nula → la presa escapa demasiado y los cazadores se quedan sin comer (medido).
-    fleeCap: 0.95,       // Tope de la probabilidad de escape por velocidad (la presa nunca se zafa con certeza absoluta). Ver fleeSpeed y sim.js.
-    handlingTime: 32,    // (UI) Enfriamiento tras una captura (digestión) — satura la tasa de caza, amortigua oscilaciones
-    dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa" (no un igual)
-    preyBandLo: 0.15,    // (UI) Ratio presa/depredador MÍNIMO cazable (más pequeño no compensa; alto → fuerza presa grande)
-    preyBandHi: 1.10,     // (UI) Ratio presa/depredador MÁXIMO atacable (1.0 = hasta su tamaño; >1 = presa mayor, más arriesgada)
-    lureGate: 0.12,      // Umbral del gen 'orn' a partir del cual el organismo expresa SEÑUELO bioluminiscente (gate del órgano; ver organism.js).
-    lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia)
-    lureAttract: 0.5,    // (UI) (P1, EMBOSCADA) ATRACCIÓN de presa por el señuelo: lo emiten como "comida aparente" → sesga el
-                         //      gradiente de comida de los vecinos que lo VEN hacia el portador (∝ prominencia · 1/dist²). Hace emerger
-                         //      al CAZADOR EMBOSCADA (anglerfish): invierte en señuelo, se mueve poco, la presa viene → caza barata y de
-                         //      BAJA varianza (vs persecución). La presa puede evolucionar a ignorarlo (carrera). FÍSICA, no conducta.
-                         //      (2026-06-14) 0.5 medido headless (6 seeds × 8000t): ESTABILIZA al cazador (fluctuación CV 0.47→0.28, presencia
-                         //      93→100%, supervivencia 5/6→6/6) sin inflar su abundancia → "fluctúa sin extinguirse". OJO: 1.0+ DESESTABILIZA
-                         //      (la presa va en masa al señuelo → sobre-caza local → boom-bust). 0 = off (el señuelo solo extiende alcance). Se lee en vivo.
-    morphReach: 0.4,     // (UI) (Capa 2) Alcance de captura extra por apéndices FRONTALES (∝ fwdReach·radio). Premia la
-                         //          morfología de agarre (garras/tentáculos al frente) en depredadores; cuesta nado (gait<0)
+    enabled: true,       // (UI) Activar depredación/combate.
+    sizeAdvantage: 1.8,  // (UI) Cuánto pesa el tamaño en quién gana el combate.
+    failDamage: 0.1,     // (UI) Energía que pierde el atacante al fallar (× su eMax); muere solo si llega a 0.
+    fleeSpeed: 1.0,      // (UI) Escape por velocidad: la presa más rápida que el cazador se zafa. 0 = solo cobertura.
+    fleeCap: 0.95,       // Tope de la prob. de escape por velocidad (nunca se zafa con certeza).
+    handlingTime: 32,    // (UI) Enfriamiento tras una captura (digestión): satura la tasa de caza.
+    dietMargin: 0.08,    // (UI) Diferencia de dieta mínima para considerar a otro "presa".
+    preyBandLo: 0.15,    // (UI) Ratio presa/depredador mínimo cazable.
+    preyBandHi: 1.10,    // (UI) Ratio presa/depredador máximo atacable (>1 = presa mayor, arriesgada).
+    lureGate: 0.12,      // Umbral del gen 'orn' para expresar señuelo bioluminiscente.
+    lureReach: 0.85,     // Alcance de captura extra que da el señuelo (∝ prominencia).
+    lureAttract: 0.5,    // (UI) Atracción de presa por el señuelo (emboscada anglerfish). 0 = solo extiende alcance.
+    morphReach: 0.4,     // (UI) Alcance de captura extra por apéndices frontales (∝ fwdReach·radio): forma de cazador.
   },
-
 
   // ───── Motor / tiempo ─────
   sim: {
-    targetTPS: 20,      // (UI) Ticks por segundo objetivo (0 = pausa)
-    frameBudgetMs: 40,  // Máx. ms simulando por frame en modo normal (si no llega, bajan fps, no se congela)
-    maxBudgetMs: 250,   // Máx. ms simulando por frame en modo "máx velocidad"
+    targetTPS: 20,      // (UI) Ticks por segundo objetivo (0 = pausa).
+    frameBudgetMs: 40,  // Máx. ms simulando por frame en modo normal.
+    maxBudgetMs: 250,   // Máx. ms simulando por frame en modo "máx velocidad".
   },
 
-  // ───── Render (solo visual; no afecta a la simulación) ─────
-  // OJO UNIDADES: a diferencia del MOTOR (que trabaja en u, unidades de mundo — ver cabecera), AQUÍ los "px" son
-  // PÍXELES REALES de dibujo (backing store / pantalla / DPR). Es el único bloque donde "px" = píxeles de verdad.
+  // ───── Render (solo visual; no afecta a la simulación). Aquí "px" = píxeles reales de dibujo. ─────
   render: {
-    glow: true,               // Resplandor (bloom). Solo config (sin control en vivo)
-    worldBounds: true,        // (UI) Pista SUTIL del límite del mundo: hairline tenue en los bordes [0,0]–[W,H] de CADA tile
-                              //      del toro → se ve dónde acaba un mundo y empieza su repetición (mosaico), sin barras vacías ni
-                              //      romper la inmersión. Honestidad/comprensión del toro. Solo render (no toca la sim). En vivo.
-    vegIntensity: 1.0,        // (UI) Realce de la VEGETACIÓN (brillo del teal del pasto en el sustrato): 0 = invisible · alto = más presente. En vivo (lab).
-    vegBoost: 0.75,           // (UI) Realce del pasto tenue (0→1): ALTO = hasta el pasto ralo se nota · BAJO = solo el denso brilla. Mapea a un exponente food→brillo (food∈[0,1]). En vivo (lab).
-    vegBlur: 1.8,             // (UI) Difuminado del sustrato (px de buffer ≈ ×4.7 en mundo): disuelve la rejilla de celda del recurso. 0 = nítido (rejilla visible). En vivo (lab).
-    nutrientEase: 0.1,        // (UI) Suavizado TEMPORAL (EMA por refresco) de las manchas de NUTRIENTE: bajo = respiran despacio (no titilan) · alto = siguen al instante el campo (titilan al ritmo de los ticks). Solo visual, en vivo.
-    // ── COLORES del sustrato (CONSTANTES; sin slider → cambiarlos requiere recargar). Antes hardcodeados en canvas.js. ──
-    vegColor: [10, 64, 70],          // Color de la VEGETACIÓN (pasto): incremento de brillo teal sumado donde hay pasto, escalado por vegIntensity (RGB 0-255). Ver canvas._refreshGrass.
-    nutrientColor: [124, 108, 214],  // Color de las manchas de NUTRIENTE libre (índigo-violeta, RGB 0-255). Ver el sprite de nutriente en canvas._refreshGrass.
-    planktonHues: [150, 165, 180, 196, 212], // Tonos HSL (0-360) de las chispas de PLANCTON/micro-flora (verde-algas → cian → azul-cian; la variedad da riqueza). Ver canvas._initTufts.
-    dprCap: 2,                // Tope de densidad de píxeles (DPR) en calidad ALTA
-    // (UI) CAP de RESOLUCIÓN INTERNA (borde largo, px del backing store): el render corre por DEBAJO de la pantalla y
-    // el CSS reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda
-    // ACOTADO e independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO
-    // (nunca sobre-renderiza). NO cambia el DETALLE (LOD por tamaño percibido), solo la NITIDEZ. Más bajo = más rápido y
-    // más borroso. Se aplica a TODAS las calidades (Máxima supersamplea sin pasar de aquí). Slider "Resolución" en el
-    // bloque Rendimiento del laboratorio (rango 640–3840; 3840 = sin tope = render nativo en 4K).
-    maxInternalPx: 960,
-    // (UI) Tope de FPS del RENDER (0 = sin límite). El motor (t/s) NO depende de esto. Con el dibujado BAJO DEMANDA
-    // (solo se redibuja si cambió el tick/cámara/selección) evita malgastar GPU+CPU en frames idénticos (pantallas a
-    // 120 Hz, o velocidad máxima donde los datos cambian ~4/s). 20 = ligero (≈ ritmo del tick); súbelo para paneo/zoom más fluido.
-    maxFPS: 20,
-    // ── CACHÉ DE SPRITES (opt-in, modo rendimiento). Cachea cada organismo por NODO en un atlas y lo ensambla con la
-    //    onda viva (conserva la ondulación). Rehornea solo al cambiar color o tamaño. Para móvil/equipos modestos. ──
-    spriteCache: true,        // (UI) activar el caché de sprites (modo rendimiento)
-    spriteBakeBudget: 120,    // máx. horneados por frame (limita el "hitch" tras un cambio de zoom)
-    spriteCacheCap: 2400,     // techo de entradas del caché (cota de memoria)
-    quality: 'high',          // (UI) 'low' | 'high' | 'ultra'. Baja = sin bloom/halos/nieve, LOD agresivo (móvil).
-                              //      Alta = el estándar bonito. MÁXIMA (ultra) = todo el esplendor (ver knobs ultra*).
-    // ── MÁXIMA (ultra): superconjunto de ALTA con extras de esplendor (supersampling, doble bloom, SIN LOD = TODO a
-    //    grafo completo, más nieve, sustrato más fino). Opt-in (no se autodetecta); pesado, para equipos capaces. ──
-    ultraDprCap: 3,           // Tope de DPR en máxima (supersampling: render por encima del DPR del dispositivo → nítido)
-    // ── LOD (nivel de DETALLE). Umbrales en unidades de TAMAÑO APARENTE (radio_mundo × zoom × LOD_REF, SIN resolución;
-    //    ver canvas.js). Dos métricas: (a) por CRIATURA (radio cabeza): tier punto<lodBody≤elipse<lodFull≤grafo, + halo
-    //    (lodHalo), ojos (lodEye), onda+contorno (lodWave), señuelo (lodLure); (b) por NODO: relleno plano si <lodFlat,
-    //    sin contorno si <lodOutline, textura si >lodTexture. TODOS se multiplican por lodLowMult en BAJA (×1 en alta;
-    //    MÁXIMA los ignora → dibuja todo). Solo render. ──
-    lodBody: 2,               // rPx mínimo para dibujar CUERPO (debajo = punto plano)
-    lodFull: 3,               // rPx mínimo para el GRAFO completo de nodos (entre lodBody y esto = cuerpo barato/elipse)
-    lodEye: 4,               // rPx mínimo para dibujar OJOS (dentro del grafo)
-    lodLure: 4,              // rPx mínimo para el SEÑUELO (béziers+gradientes, caro)
-    lodWave: 6,              // rPx mínimo para la ONDA viajera (MOVIMIENTO). El contorno ya NO depende de esto (va con el grafo). (18→16: se mueve un pelín antes.)
-    lodHalo: 6,               // rPx mínimo para el HALO por agente (los puntos diminutos no lo necesitan; el bloom global ya brilla)
-    lodLowMult: 2.0,          // Multiplicador de TODOS los umbrales LOD (criatura Y nodo) en calidad baja (más agresivo). Alta = ×1.
-    // Umbrales por NODO (tamaño del NODO, no de la criatura) → detalle fino dentro del grafo:
-    lodFlat: 4,               // nodo por debajo de este tamaño → cuerpo con relleno PLANO (sin gradiente de volumen; imperceptible)
-    lodOutline: 4,            // nodo por debajo de este tamaño → se OMITE su contorno (outline invisible)
-    lodTexture: 10,           // nodo por ENCIMA de este tamaño → bandas de TEXTURA (piel)
-    grassDensity: 6800,       // Nº de motas de plancton/micro-flora repartidas por el mundo (chispas abisales)
-    grassRefreshFrames: 3,    // Cada cuántos frames se recompone el sustrato (vegetación FLUIDA con el mundo). El ruido caro está cacheado aparte (capa estática) → el refresco del food es barato (~3ms). Antes 15 → la vegetación iba "a golpes"
+    glow: true,               // Resplandor (bloom).
+    worldBounds: true,        // (UI) Pista sutil del límite del mundo (hairline en los bordes de cada tile del toro).
+    vegIntensity: 1.0,        // (UI) Realce de la vegetación (brillo del teal del pasto). En vivo.
+    vegBoost: 0.75,           // (UI) Realce del pasto tenue (0→1): alto = hasta el pasto ralo se nota. En vivo.
+    vegBlur: 1.8,             // (UI) Difuminado del sustrato: disuelve la rejilla de celda. En vivo.
+    nutrientEase: 0.1,        // (UI) Suavizado temporal de las manchas de nutriente (bajo = no titilan). En vivo.
+    vegColor: [10, 64, 70],          // Color de la vegetación (incremento teal donde hay pasto, RGB 0-255).
+    nutrientColor: [124, 108, 214],  // Color de las manchas de nutriente libre (índigo-violeta, RGB 0-255).
+    planktonHues: [150, 165, 180, 196, 212], // Tonos HSL de las chispas de plancton/micro-flora.
+    dprCap: 2,                // Tope de densidad de píxeles (DPR) en calidad alta.
+    maxInternalPx: 960,       // (UI) Cap de resolución interna (borde largo, px): acota el coste por píxel. Solo nitidez, no detalle.
+    maxFPS: 20,               // (UI) Tope de FPS del render (0 = sin límite). El motor no depende de esto.
+    spriteCache: true,        // (UI) Caché de sprites por nodo (modo rendimiento): conserva la ondulación.
+    spriteBakeBudget: 120,    // Máx. horneados de sprite por frame (limita el "hitch" tras un zoom).
+    spriteCacheCap: 2400,     // Techo de entradas del caché de sprites.
+    quality: 'high',          // (UI) 'low' (móvil, sin bloom/halos) | 'high' (estándar) | 'ultra' (todo el esplendor).
+    ultraDprCap: 3,           // Tope de DPR en calidad máxima (supersampling).
+    // LOD (nivel de detalle): umbrales de TAMAÑO APARENTE (radio·zoom·WORLD_REF/world.size, sin resolución). ×lodLowMult en baja.
+    lodBody: 2,               // rPx mínimo para dibujar cuerpo (debajo = punto plano).
+    lodFull: 3,               // rPx mínimo para el grafo completo de nodos (entre lodBody y esto = elipse barata).
+    lodEye: 4,                // rPx mínimo para dibujar ojos.
+    lodLure: 4,               // rPx mínimo para el señuelo (caro).
+    lodWave: 6,               // rPx mínimo para la onda viajera (movimiento).
+    lodHalo: 6,               // rPx mínimo para el halo por agente.
+    lodLowMult: 2.0,          // Multiplicador de todos los umbrales LOD en calidad baja (alta = ×1).
+    lodFlat: 4,               // Nodo por debajo de este tamaño → relleno plano (sin gradiente).
+    lodOutline: 4,            // Nodo por debajo de este tamaño → se omite su contorno.
+    lodTexture: 10,           // Nodo por encima de este tamaño → bandas de textura (piel).
+    grassDensity: 6800,       // Nº de motas de plancton/micro-flora repartidas por el mundo.
+    grassRefreshFrames: 3,    // Cada cuántos frames se recompone el sustrato (vegetación fluida).
   },
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 4.0, max: 9 },    // gen size → radio en u. SÍ afecta a la energía: radio→sizeMass (alometría §3) → eMax/coste basal/cría.
-                                        //      `min` = SUELO de talla = TECHO de la tasa reproductiva máxima (reproRef ∝ sizeMass ∝ min^massExp). Palanca
-                                        //      MAESTRA del régimen (ver docs/ANALISIS_PARAMETROS.md, Bucle 2): bajo → cuerpos baratísimos → r-runaway →
-                                        //      satura el pool (maxAgents) → todos diminutos, pasto uniforme, CAZADOR extinto. Alto → cría lenta → la MATERIA
-                                        //      limita por debajo del pool → queda estructura de talla → el cazador vive.
-                                        //      4.0 elegido por BARRIDO 2D (size.min × closedRegen) + VALIDACIÓN 25k/6 seeds (2026-06-15, va con closedRegen 0.0055):
-                                        //      cazador robusto (4/6 seeds), pool con holgura (poolFrac 0.21, ESTABLE 15k→25k, 0/6 satura), patchiness alta (CV 0.38).
-                                        //      El viejo "3.4" resultó BORDE (2/6 cazadores, 1/6 satura, NO medido con cuidado); 4.5 da 6/6 pero comprime la
-                                        //      diversidad de talla. refRadius=(min+max)/2=6.5 → sizeMass≈1 al organismo medio (la alometría no se recalibra).
-    sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (u)
-    repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max)
-    invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max)
-    mature_age:{ min: 80,  max: 650 },  // (#12) gen mature_age → edad de madurez (ticks): gatea la cría e inicia la senescencia
+    size:      { min: 4.0, max: 9 },    // gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría).
+    sense:     { min: 10,  max: 80 },   // gen sense → alcance de visión base (u).
+    repro_thr: { min: 0.5, max: 0.95 }, // gen repro_thr → umbral de energía para criar (fracción de E_max).
+    invest:    { min: 0.2, max: 0.6 },  // gen invest → energía dada a la cría (fracción de E_max).
+    mature_age:{ min: 80,  max: 650 },  // gen mature_age → edad de madurez (ticks): gatea la cría e inicia la senescencia.
   },
 };

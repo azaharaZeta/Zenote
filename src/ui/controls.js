@@ -27,31 +27,26 @@ export function setupControls(app) {
     refreshSpeedState();
   });
 
-  // ---- Estado "desactivado" del slider de velocidad ----
-  // El slider de t/s NO aplica si está en PAUSA (no avanza nada) o en MÁX (va a tope ignorando el slider).
-  // En esos casos lo atenuamos + bloqueamos y lo explicamos en el caption, para que quede claro al usuario.
+  // ---- Estado "desactivado" del slider de velocidad (atenuado en pausa o máx velocidad) ----
   function refreshSpeedState() {
     const tEl = $('ticks'), valEl = $('ticksVal'), row = tEl && tEl.closest('.speed-row');
     if (!tEl) return;
     const off = !app.running || app.maxSpeed;
     // NO se deshabilita el slider: aunque esté en pausa/máx, pincharlo debe "despertarlo" (salir de
     // esos estados y adoptar la velocidad pulsada, ver applyTPS). Solo se atenúa visualmente.
-    if (row) row.classList.toggle('speed-off', off);
+    if (row) row.classList.toggle('speed-off', off); // no se deshabilita: pincharlo despierta la velocidad (applyTPS)
     if (!app.running)      valEl.textContent = 'en pausa';
     else if (app.maxSpeed) valEl.textContent = 'al máximo';
     else                   valEl.textContent = `${posToTps(+tEl.value)} t/s`;
   }
 
-  // ---- Velocidad en ticks/segundo (desacoplada de los fps). Mapeo LOGARÍTMICO sobre la
-  // posición del slider (1..1000) → 1..480 t/s, con MUCHA resolución en velocidades bajas
-  // (ajuste fino) y menos arriba. La PAUSA la cubre el botón; el slider mínimo es 1 t/s. ----
+  // ---- Velocidad en ticks/segundo (desacoplada de los fps): mapeo logarítmico del slider (1..1000) → 1..480 t/s. ----
   const TPS_MIN = 1, TPS_MAX = 480, POSN = 1000, LR = Math.log(TPS_MAX / TPS_MIN);
   const posToTps = (pos) => pos <= 0 ? 0 : Math.round(TPS_MIN * Math.exp(LR * (pos - 1) / (POSN - 1)));
   const tpsToPos = (tps) => tps <= 0 ? 0 : Math.round(1 + (POSN - 1) * Math.log(tps / TPS_MIN) / LR);
   const ticksEl = $('ticks'), ticksValEl = $('ticksVal');
   const applyTPS = () => {
-    // Pinchar/arrastrar el slider DESPIERTA la velocidad: si estaba en MÁX o en PAUSA, sale de esos
-    // estados y adopta la posición pulsada (el slider vuelve a estar activo vía refreshSpeedState).
+    // Arrastrar el slider despierta la velocidad: sale de máx/pausa y adopta la posición pulsada.
     if (app.maxSpeed) {
       app.maxSpeed = false;
       if (maxBtn) maxBtn.classList.remove('active');
@@ -73,20 +68,14 @@ export function setupControls(app) {
   applyTPS();
   refreshSpeedState(); // refleja pausa/máx en el slider desde el inicio
 
-  // ---- LABORATORIO: ventana con TODOS los parámetros ajustables, por categorías (data-driven). ----
-  // Cada control envía {type:'set', key, value} al worker (setPath en worker.js). Los parámetros de
-  // coste/morfología se cachean al NACER → se aplican a las crías nuevas (se propagan al renovarse la
-  // población); los que se leen cada tick, al instante. Los marcados ↻ requieren volver a Sembrar.
+  // ---- LABORATORIO: todos los parámetros ajustables por categorías (data-driven). Cada control envía {type:'set'} al worker. ----
   setupLab(app, send);
-
-  // ---- Render: glow vive en config.js (sin control en vivo); la calidad alta/baja, en su botón. ----
 
   // ---- Selector de gen para el histograma ----
   const sel = $('geneSel');
-  // Genes SOLO de apariencia (su histograma solo refleja deriva, no evolución útil): los DECOR (colores,
-  // piel, ojos, señuelo) más el color de linaje (`hue`). La forma ahora vive en los genes de NODO.
+  // Genes solo de apariencia (su histograma refleja deriva, no evolución útil): DECOR + color de linaje.
   const COSMETIC = new Set([...DECOR, G.hue]);
-  const HIDE_GROUPS = new Set(['Color y ornamento', 'Nodos (cuerpo)']); // grupos enteros fuera del histograma (los nodos del cuerpo no se histograman)
+  const HIDE_GROUPS = new Set(['Color y ornamento', 'Nodos (cuerpo)']); // grupos fuera del histograma
   GENE_GROUPS.forEach((grp) => {            // agrupado en <optgroup> → desplegable navegable, no infinito
     if (HIDE_GROUPS.has(grp.label)) return; // grupos no deseados en el filtro de histograma
     const og = document.createElement('optgroup');
@@ -172,11 +161,7 @@ export function setupControls(app) {
   $('reseed').addEventListener('click', app.reseed);
   if (reseedPendingEl) reseedPendingEl.addEventListener('click', () => app.reseed());   // pulsar el aviso reinicia (atajo)
 
-  // ---- Diversidad inicial del sembrado: MOVIDA al laboratorio (LAB_SPEC, "Población y sembrado") como slider ↻
-  //      (junto a "Sembrado inicial" y "Tamaño del mundo"). Ya no vive en #seedRow → no aparece en modo simple. ----
-
-  // ---- Calidad gráfica (Alta/Baja): BAJA = DPR 1, sin bloom, menos nieve, sustrato simple, LOD agresivo →
-  // mucho mejor rendimiento en móvil. Autodetecta táctil/pantalla pequeña; el botón permite forzarla. ----
+  // ---- Calidad gráfica (Baja/Alta/Máxima): baja = sin bloom/nieve, LOD agresivo (móvil). Autodetecta; el botón la fuerza. ----
   const qualityBtn = $('qualityBtn');
   if (qualityBtn) {
     const LS_Q = 'zenote.quality';
@@ -544,10 +529,8 @@ function setupLab(app, send) {
     else { send({ type: 'set', key: k, value: v }); setLocal(k, v); }                            // resto → en vivo (al instante / crías nuevas)
   };
 
-  // ── ANOTACIÓN "base → efectivo" para los parámetros que ESCALAN con el tamaño del mundo (Modelo A). El slider
-  // muestra el valor a mundo 1000 (base, = posición del thumb); este hint añade EN VIVO el valor EFECTIVO en el
-  // mundo PENDIENTE → mata la confusión "pongo 60k pero el mundo tiene 240k". Solo aparece si la escala ≠ 1 (a
-  // tamaño estándar 1000, sin ruido). Replica sim._aScale; usa los valores PENDIENTES (lo que se aplicará al Reiniciar).
+  // Anotación "base → efectivo" para los parámetros que escalan con el tamaño del mundo: el slider muestra el valor a
+  // mundo 1000 y el hint añade el efectivo en el mundo pendiente. Replica sim._aScale. Solo aparece si la escala ≠ 1.
   const scaledHints = [];                                                          // [{k, el}] de los sliders con `scales:true`
   const REF_SIZE = 1000, POOL_CEIL = cfg.pop.maxAgentsCeiling || 8000;
   const pendVal = (k) => (pending[k] != null ? pending[k] : get(k));

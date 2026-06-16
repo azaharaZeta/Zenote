@@ -1,10 +1,6 @@
-// Expresión génica: la FRONTERA entre "lo que define el programador" y "lo que evoluciona".
-// Aquí —y solo aquí— el genoma [0,1] se traduce a fenotipo físico. Como el genoma es
-// fijo durante la vida, calculamos el fenotipo UNA vez al nacer y lo cacheamos en SoA
-// (gran ahorro: el bucle caliente no vuelve a expresar genes).
-//
-// Ninguna línea decide si un gen es "bueno": solo traduce. El bien/mal lo dicta la
-// supervivencia (energética en sim.js), no este archivo.
+// Expresión génica: la FRONTERA entre lo que define el programador y lo que evoluciona.
+// Aquí —y solo aquí— el genoma [0,1] se traduce a fenotipo físico, una vez al nacer y cacheado en SoA.
+// Ninguna línea decide si un gen es "bueno": solo traduce; el bien/mal lo dicta la supervivencia (sim.js).
 
 import { G, NUM_GENES, lerp } from './genome.js';
 import { computeBodyPlan, reducePlan, plan } from './bodyplan.js';
@@ -13,7 +9,7 @@ export function computePhenotype(sim, i) {
   const g = sim.genes, b = i * NUM_GENES, cfg = sim.cfg, e = cfg.expr, en = cfg.energy;
 
   const size  = g[b + G.size];
-  const speed = g[b + G.speed];   // F-B: ya NO es velocidad, es ESFUERZO (acelerador 0..1)
+  const speed = g[b + G.speed];   // NO es velocidad, es ESFUERZO (throttle 0..1)
   const sense = g[b + G.sense];
   const metab = g[b + G.metab];
   const diet  = g[b + G.diet];
@@ -21,156 +17,105 @@ export function computePhenotype(sim, i) {
   const radius = lerp(e.size.min, e.size.max, size);
   sim.radius[i] = radius;
 
-  // ---- VISIÓN EMERGENTE Y DIRECCIONAL (F-D) ---------------------------------------
-  // `sense` = inversión visual → alcance base (y coste, abajo). `e_fov` reparte ese
-  // presupuesto entre alcance y ángulo CONSERVANDO el área del cono (r²·fov = cte): un cono
-  // estrecho ve más lejos; uno ancho, más cerca. La selección decide la forma del ojo.
+  // Visión: `sense` fija el alcance base; `e_fov` lo reparte entre alcance y ángulo conservando el área del cono.
   const vis = cfg.vision;
   const baseR = lerp(e.sense.min, e.sense.max, sense);
   const halfFov = lerp(vis.halfFovMin, vis.halfFovMax, g[b + G.e_fov]);
   sim.senseR[i] = baseR * Math.pow(vis.fovRef / (2 * halfFov), vis.rangeExp); // alcance efectivo
   sim.visCos[i] = Math.cos(halfFov);                              // umbral del cono (relativo al rumbo)
 
-  // ---- LOCOMOCIÓN EMERGENTE -------------------------------------------------------
-  // La velocidad y el giro NO son genes directos: emergen de la morfología (empuje vs
-  // arrastre). El programador define la física; la selección esculpe la forma. Aquí está
-  // la frontera. Mismos parámetros de forma que usa el render (cuerpos coherentes con su física).
+  // Locomoción: velocidad y giro EMERGEN de la morfología (empuje vs arrastre), no son genes directos.
   const lo = cfg.loco;
   const effort = lo.effortFloor + (1 - lo.effortFloor) * speed; // throttle global (gen speed)
 
-  // ---- PLAN CORPORAL POR NODOS (Pilar v2.0, B3) → FÍSICA ------------------------------
-  // La forma se expresa como un GRAFO DE NODOS. La física —masa, arrastre, EMPUJE DIRECCIONAL, giro,
-  // streamlining— EMERGE de sumar sobre esos nodos (ver bodyplan.js): cada nodo propulsa según su
-  // ORIENTACIÓN (cola atrás empuja adelante; nodo frontal frena) y su amplitud de oscilación propia
-  // (osc_amp). `plan.stream` (elongación) y `plan.elongN` (giro) también emergen de la geometría. El plan
-  // es transitorio (scratch reutilizable); se reduce aquí a los escalares cacheados. La amplitud de
-  // oscilación y el streamlining viven ahora en los genes de nodo (osc_amp + geometría axial/lateral).
+  // Plan corporal por nodos → física (masa, arrastre, empuje direccional, giro, streamlining). Ver bodyplan.js.
   const nNodes = computeBodyPlan(g, b, lo, effort);
   const R = reducePlan(nNodes, lo);
-  const massMul = R.massMul;                                   // masa de nodos → alimenta mass (eMax) y k_graze (abajo)
-  const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (un cuerpo "ilógico" → 0)
-  // `effort` (throttle) NO se multiplica aquí: ya está dentro de la amplitud de cada nodo (Psum). Si no, sería effort².
+  const massMul = R.massMul;                                   // masa de nodos → alimenta mass (eMax) y k_graze
+  const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (cuerpo "ilógico" → 0)
+  // `effort` ya está dentro de la amplitud de cada nodo (Psum) → no se vuelve a multiplicar aquí (sería effort²).
   let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul);
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
-  // Agilidad de giro: la asimetría del cuerpo (plan.turnAsym, emergente) mejora el giro; grandes/elongados/
-  // con más nodos-segmento giran peor.
+  // Giro: lo mejora la asimetría del cuerpo; lo empeoran tamaño, elongación y nº de segmentos.
   let turn = lo.turnBase + lo.turnAsym * plan.turnAsym - lo.turnSize * size - lo.turnElong * (plan.elongN - 1)
              - lo.segTurn * R.nSegNodes;
   sim.turnRate[i] = turn < lo.turnMin ? lo.turnMin : turn > 1 ? 1 : turn;
 
-  // ---- ALOMETRÍA (#3): la talla es una MASA física -------------------------------
-  // `sizeMass` ∝ radio^massExp, normalizado al radio MEDIO (size 0.5) → un organismo medio tiene sizeMass≈1.
-  // `mass` = sizeMass · massMul (los nodos suman masa real). La CAPACIDAD escala con la masa (almacén ∝ volumen):
-  // la masa añade RESERVA (buffer para hambrunas), y la complejidad de nodos sigue sumando depósito. El
-  // METABOLISMO escala con masa^kleiber (Kleiber: los grandes gastan menos por unidad de masa → economía de
-  // escala). La REPRODUCCIÓN usa SOLO sizeMass (sin massMul, ver abajo) → la complejidad no frena la cría (#4).
+  // Alometría: sizeMass ∝ radio^massExp (normalizado al radio medio → medio≈1). mass = sizeMass·massMul.
+  // eMax ∝ mass (almacén ∝ volumen); el metabolismo escala con mass^kleiber (Kleiber). La cría usa solo sizeMass.
   const refRadius = (e.size.min + e.size.max) * 0.5;         // radio del organismo medio (size 0.5)
-  const sizeMass = Math.pow(radius / refRadius, en.massExp); // masa de talla (límite blando: radio acotado por expr.size)
+  const sizeMass = Math.pow(radius / refRadius, en.massExp); // masa de talla
   const mass = sizeMass * massMul;                           // masa física total (talla × complejidad de nodos)
   const eMax = en.E_max_base * mass;
   sim.eMax[i] = eMax;
 
-  // SEÑUELO BIOLUMINISCENTE (anglerfish): órgano FUNCIONAL. Su prominencia = orn (gen de exhibición, gateado)
-  // × largo del tallo (o_len). CUESTA energía mantenerlo (luminoso) y, al cazar, EXTIENDE el alcance de captura
-  // (ver sim.js). El carnívoro lo recupera cazando → evoluciona señuelos largos; el herbívoro solo paga → los
-  // pierde. La correlación señuelo↔dieta EMERGE por selección (no está codificada). Render usa orn/o_len → coherente.
-  // Prominencia = largo (o_len) × tamaño del bulbo (o_bulb), gateada por orn (que haya señuelo). Clave: depende
-  // de o_len/o_bulb (DECORATIVOS, deriva LIBRE) y NO de orn (fijado por selección sexual) → la presión de caza
-  // los mueve limpiamente: carnívoros evolucionan señuelos largos y grandes; herbívoros, cortos y pequeños.
+  // Señuelo bioluminiscente: órgano funcional gateado por `orn`; prominencia = o_len × o_bulb. Cuesta energía
+  // (baseCost) y extiende el alcance de caza (sim.js). Depende de genes decorativos → la presión de caza lo mueve limpio.
   const lure = g[b + G.orn] > cfg.combat.lureGate ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
   sim.lure[i] = lure;
 
-  // ALCANCE DE CAPTURA MORFOLÓGICO (Capa 2): los apéndices que apuntan AL FRENTE (plan.fwdReach, en radios de
-  // cabeza) extienden el radio de caza (ver sim.js). FRONTERA: el programador define que "alcanzar al frente
-  // ayuda a capturar" y que esos nodos FRENAN el nado (gait<0, bodyplan); QUÉ cuerpo gana lo decide la selección.
-  // Solo el depredador rentabiliza el alcance → la morfología de agarre (garras/tentáculos frontales) emerge en
-  // los carnívoros y no en los herbívoros (que solo pagarían el coste de nado). No está cableado por dieta.
+  // Alcance de captura morfológico: los apéndices frontales (plan.fwdReach) extienden el radio de caza; frenan el
+  // nado (gait<0) → solo el depredador los rentabiliza. FRONTERA: define la física, no quién gana.
   sim.morphReach[i] = cfg.combat.morphReach * plan.fwdReach * radius;
 
-  // HISTORIA DE VIDA (#12): madurez (gatea cría + inicio de senescencia) y ritmo de vida (senescencia).
-  // `lifeFast` ∈[0,1]: 1 = vivir rápido (envejece deprisa, barato de mantener); 0 = longevo (envejece despacio,
-  // CARO de mantener — disposable soma). El acople longevidad↔coste es lo que hace honesto el eje r/K.
+  // Historia de vida: madurez (gatea cría + inicio de senescencia) y ritmo de vida. lifeFast 1=rápido/barato,
+  // 0=longevo/caro (disposable soma, ver k_lifespan) → hace honesto el eje r/K.
   const lifeFast = g[b + G.senescence];
   sim.matureAge[i] = lerp(e.mature_age.min, e.mature_age.max, g[b + G.mature_age]);
   sim.senesMult[i] = lerp(cfg.age.senesSlow, cfg.age.senesFast, lifeFast);
 
-  // Coste basal/tick (ALOMÉTRICO, #3): mantenimiento del cuerpo ∝ masa^kleiber (Kleiber: economía de escala —
-  // subsume el viejo coste lineal por tamaño y por masa de nodos), × metabolismo × longevidad × órganos
-  // (visión, señuelo). El coste de NADAR se cobra en el movimiento (sim.js). MISMO coste sea cual sea la dieta.
+  // Coste basal/tick: mantenimiento ∝ mass^kleiber × metabolismo × longevidad × órganos (visión, señuelo).
+  // El coste de NADAR se cobra aparte en el movimiento (sim.js). Mismo coste sea cual sea la dieta.
   sim.baseCost[i] =
     en.c_base * Math.pow(mass, en.kleiber) * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
     (1 + en.k_sense * sense + en.k_lure * lure);
 
-  // Alimentación: ritmo escala con metabolismo, con la MASA corporal (más superficie para pastar) y con la
-  // ANCHURA del cuerpo (Capa 2): un cuerpo ANCHO/aplanado (baja elongación) BARRE más campo de recurso que uno
-  // fino/aerodinámico → premia la morfología de pastador (aletas/hojas anchas). FRONTERA: defino que "ancho =
-  // más pasto"; la selección decide. Es el reverso del nicho cazador (afila+alarga para nadar/alcanzar): la MISMA
-  // elongación empuja a herbívoros (anchos) y carnívoros (aerodinámicos) a formas OPUESTAS → divergencia por dieta.
-  // Solo rinde al que de verdad pasta (effHerb); el carnívoro ancho gana ~nada (come carne) → no se ensancha por esto.
+  // Pastoreo: escala con metabolismo, masa (k_graze) y ANCHURA del cuerpo (k_grazeWide). Un cuerpo ancho barre más
+  // recurso → morfología de pastador; reverso del cazador aerodinámico. Solo rinde a quien pasta (effHerb).
   const breadth = 1 - Math.min(1, (plan.elongN - 1) / (lo.elongMax - 1)); // 1 = ancho/redondo · 0 = aerodinámico
   sim.absEff[i] = cfg.resource.absRate * (cfg.resource.absMetabBase + metab) *
     (1 + en.k_graze * (massMul - 1)) * (1 + en.k_grazeWide * breadth);
 
-  // COSTE del ALETEO (Capa 3): el golpe activo gasta energía → aletear MULTIPLICA el coste de NADO (sim.js).
-  // Ligado a la propulsión de aleteo (`plan.flapWork`, lateral) → coste↔beneficio: aletear da ráfaga pero CUESTA.
-  // Hace honesto el eje ONDULAR (crucero barato) ↔ ALETEAR (ráfaga cara): solo lo paga quien aletea, y solo
-  // compensa a quien necesita la ráfaga (cazador que lancea); el pastador tranquilo preferirá ondular. Emergente.
+  // Coste del aleteo: aletear (plan.flapWork) multiplica el coste de nado (sim.js) → ondular = crucero barato, aletear = ráfaga cara.
   sim.flapCost[i] = en.k_flap * plan.flapWork;
 
-  // COSTE DE TRANSPORTE (A): arrastrar masa cuesta al NADAR (sim.js lo multiplica al coste de movimiento). Mantener
-  // el cuerpo ya se paga en baseCost (mass^kleiber); esto es el sobrecoste ACTIVO de DESPLAZAR un cuerpo grande o con
-  // muchos/grandes apéndices. Referencia en masa = 1 (organismo medio): masa ≤ 1 sin recargo (max(0,·) → no regala
-  // descuento a los diminutos); cada unidad de masa por encima del medio encarece el desplazamiento. FRONTERA: defino
-  // que "más masa = más caro moverla"; QUÉ cuerpo gana lo decide la selección (el aerodinámico ahorra, el complejo paga).
+  // Coste de transporte (masa): arrastrar masa cuesta al nadar (sim.js); masa ≤ 1 (medio) sin recargo.
   sim.haulMul[i] = 1 + en.k_haul * Math.max(0, mass - 1);
 
-  // COSTE DE ARRASTRE (B): el arrastre `Dmul` (emergente de la FORMA — cuerpo/aletas anchos, apéndices — en
-  // bodyplan.reducePlan) hoy solo BAJA la velocidad (v = …·stream/Dmul); no costaba energía. Como el coste de nado va
-  // con dist²∝v², un cuerpo con mucho arrastre nadaba MÁS BARATO (lento → menos v² → menos gasto) → el arrastre se
-  // PREMIABA. Cacheamos el Dmul crudo (dato físico); sim.js cobra (1 + k_drag·max(0, Dmul−dragRef)) al nado → una forma
-  // con resistencia es lenta Y agotadora. Distingue la FORMA del mero bulto (A=k_haul es por MASA; aletas/garras tienen
-  // arrastre SIN masa). k_drag/dragRef se leen en vivo (no recachea). FRONTERA: defino "más arrastre = más gasto"; la forma la decide la selección.
+  // Arrastre de la forma (Dmul crudo): sim.js cobra (1 + k_drag·max(0, Dmul−dragRef)) al nado → una forma con
+  // resistencia es lenta Y agotadora (cierra el incentivo del "arrastre gratis"). Distinto de la masa (k_haul).
   sim.drag[i] = R.Dmul;
 
   // Eficiencia de dieta: el especialista (diet 0 ó 1) no paga; el omnívoro (0.5) sí.
   const omni = 1 - cfg.diet.omniPenalty * 4 * diet * (1 - diet);
   sim.effHerb[i] = (1 - diet) * omni;
-  // Eje CAZA↔CARROÑA (Fase 2): el gen `scav` reparte la capacidad carnívora (meat = diet·omni) entre cazar presa
-  // VIVA (effHunt) y CARROÑEAR cadáveres (effScav), con penalización al generalista (scavPenalty) → especializa.
-  // El carroñeo RINDE MÁS con cuerpo FINO/elongado (k_scavThin·thin): rastrear carroña dispersa premia el crucero
-  // barato → emerge la morfología de GUSANO. FRONTERA: defino "fino carroñea mejor" (reverso del pastador ANCHO
-  // `k_grazeWide` y del cazador con ALCANCE `morphReach`); QUÉ cuerpo gana lo decide la selección.
+  // Eje caza↔carroña: `scav` reparte la capacidad carnívora (meat) entre cazar (effHunt) y carroñear (effScav),
+  // con penalización al generalista (scavPenalty). El carroñeo rinde más con cuerpo fino (k_scavThin) → emerge el gusano.
   const scav = g[b + G.scav];
   const meat = diet * omni;
   const spec = 1 - cfg.diet.scavPenalty * 4 * scav * (1 - scav);
-  const thin = 1 - breadth;                                  // 0 = ancho/redondo · 1 = fino/elongado (breadth ya calculado arriba)
+  const thin = 1 - breadth;                                  // 0 = ancho/redondo · 1 = fino/elongado
   sim.effHunt[i] = meat * (1 - scav) * spec;
   sim.effScav[i] = meat * scav * spec * (1 + en.k_scavThin * thin);
 
-  // Reproducción: umbral de energía = max(repro_thr, invest) para no morir al parir.
+  // Reproducción: umbral de energía = max(repro_thr, invest); referencia ∝ sizeMass (no masa total → la complejidad
+  // de nodos no frena la cría). El pequeño llena antes su depósito y cría más (r); el grande es K-estratega.
   const reproFrac = lerp(e.repro_thr.min, e.repro_thr.max, g[b + G.repro_thr]);
   const investFrac = lerp(e.invest.min, e.invest.max, g[b + G.invest]);
-  // Referencia de reproducción ACOPLADA a la MASA DE TALLA (no a la masa total): reproRef = E_max_base·sizeMass.
-  // Criar cuesta una fracción de tu energía-por-talla → el pequeño (sizeMass bajo) llena su depósito antes y cría
-  // más rápido (ventaja r); el grande es K-estratega. El compromiso r/K EMERGE de la talla (auditoría #4). Usa
-  // sizeMass y NO la masa total: la complejidad de nodos da reserva (eMax) pero NO frena la cría.
   const reproRef = en.E_max_base * sizeMass;
   sim.investE[i] = investFrac * reproRef;
   sim.reproNeedE[i] = Math.max(reproFrac, investFrac) * reproRef;
 
-  // Conducta (moverse Y atacar) = cerebro neuronal (sim.js). No hay genes-atajo de conducta.
+  // Conducta (moverse y atacar) = cerebro neuronal (sim.js). No hay genes-atajo de conducta.
   sim.diet[i]     = diet;
   sim.hue[i]      = g[b + G.hue];
   sim.tempPref[i] = g[b + G.temp_pref]; // óptimo térmico (coste por desviarse, ver sim.js)
 }
 
-// CLASIFICACIÓN TRÓFICA — fuente ÚNICA del "oficio" de un organismo: la usan la curva de población (worker
-// sampleHistory) Y el color 'role' del render, que antes divergían (uno por umbrales de `diet`, otro por argmax de
-// eficiencias). Criterio por DIETA: herbívoro (<0.4), omnívoro (banda intermedia), o comecarne (>0.6) que se parte en
-// CAZADOR vs CARROÑERO según qué eficiencia de carne domina (eje scav). Es una LECTURA del fenotipo, NO afecta a la
-// simulación (el fitness sigue emergiendo de la energética). → 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro.
+// Clasificación trófica — fuente ÚNICA del "oficio" (la usan la curva de población y el color 'role'). Es una
+// LECTURA del fenotipo, no afecta a la simulación. → 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro.
 export function trophicRole(diet, effHunt, effScav) {
   if (diet > 0.6) return effScav > effHunt ? 1 : 2;   // comecarne: carroñero (1) ↔ cazador (2)
   if (diet < 0.4) return 0;                            // herbívoro

@@ -1,52 +1,34 @@
-// El mundo: campo de recurso escalar de baja resolución + spatial hash de vecindad.
-// Coordenadas siempre lógicas (config.world). El render no entra aquí.
+// El mundo: campos escalares en rejilla de baja resolución (recurso, carroña, nutriente, temperatura) + spatial
+// hash de vecindad. Coordenadas siempre lógicas (config.world). El render no entra aquí.
 
 export class World {
   constructor(cfg, rng, aScale = 1) {
     this.cfg = cfg;
     this.rng = rng;
-    // REJILLA ∝ size (√área): el CONTEO de celdas escala con el área del mundo, pero el TAMAÑO de celda se mantiene
-    // ~constante (granularidad del campo de comida fija a cualquier world.size). `aScale` lo pasa Sim (área, acotada
-    // al techo de pool) → la rejilla deja de crecer cuando lo hace el ecosistema. A aScale=1 (tamaño 1000) → gridCols base.
+    // Rejilla ∝ √área: el nº de celdas escala con el área, pero el tamaño de celda se mantiene constante.
     const r = cfg.resource, lScale = Math.sqrt(aScale);
     this.cols = Math.max(4, Math.round(r.gridCols * lScale));
     this.rows = Math.max(4, Math.round(r.gridRows * lScale));
     this.cellW = cfg.world.size / this.cols;
     this.cellH = cfg.world.size / this.rows;
 
-    // Campo de recurso (unidades normalizadas [0, R_max]).
-    this.resource = new Float32Array(this.cols * this.rows);
-    // Snapshot del recurso del tick anterior: lo usa regen() para leer vecinos sin orden-dependencia
-    // (rebrote emergente con difusión de semilla). Reutilizable, sin GC en el bucle.
-    this._resPrev = new Float32Array(this.cols * this.rows);
-    // Campo de CARROÑA (energía de cadáveres por celda, en unidades de ENERGÍA directa). Se deposita al MORIR
-    // (cantidad según la causa, ver sim._kill), DECAE cada tick (decayCarrion → devuelve una fracción al pasto =
-    // ciclo de nutrientes cadáver→descomposición→vegetación) y la CONSUMEN los carroñeros (effCarn, ver sim.js).
-    this.carrion = new Float32Array(this.cols * this.rows);
-    // CERRADO EN MATERIA (world.closedMatter): CAMPO ESPACIAL de nutriente libre disuelto POR CELDA (antes era un escalar
-    // global). Las plantas lo captan LOCALMENTE en regen → manchas fértiles donde muere/respira algo. Lo alimentan el
-    // metabolismo/nado/pérdidas (sim.js) y la mineralización de la carroña (decayCarrion), en la CELDA donde ocurre; se
-    // DIFUNDE despacio (diffuseNutrient); lo vacía el rebrote. Σ del campo = pool global (conservación). En ABIERTO queda
-    // a 0 e inerte. `sim.reset()` lo reparte del presupuesto. El nacimiento reúne nutriente de un VECINDARIO (nutrientAround).
+    this.resource = new Float32Array(this.cols * this.rows);   // campo de recurso/pasto [0, R_max]
+    this._resPrev = new Float32Array(this.cols * this.rows);   // snapshot del tick previo (regen orden-independiente)
+    this.carrion = new Float32Array(this.cols * this.rows);    // carroña por celda (energía); se deposita al morir, decae cada tick
+    // Pecera (closedMatter): campo espacial de nutriente libre. Las plantas lo captan localmente (regen); lo
+    // alimentan metabolismo/muerte; difunde despacio; Σ del campo = pool global (conserva). En abierto queda inerte.
     this.N = new Float32Array(this.cols * this.rows);
-    this._nPrev = new Float32Array(this.cols * this.rows); // scratch de la difusión del nutriente (snapshot, sin GC)
-    this._grow = new Float32Array(this.cols * this.rows); // scratch del rebrote cerrado (incrementos por celda; sin GC)
-    // Capacidad por celda: gradiente espacial FIJO que crea nichos (más rico = más R_max local).
-    this.capacity = new Float32Array(this.cols * this.rows);
+    this._nPrev = new Float32Array(this.cols * this.rows);     // scratch de difusión del nutriente
+    this._grow = new Float32Array(this.cols * this.rows);      // scratch del rebrote cerrado
+    this.capacity = new Float32Array(this.cols * this.rows);   // capacidad de carga por celda (gradiente fijo)
     this._buildGradient();
-    // Arranca lleno a su capacidad local.
-    this.resource.set(this.capacity);
+    this.resource.set(this.capacity);                          // arranca lleno
 
-    // REFUGIO (#7): NO hay máscara binaria. La cobertura es GRADUADA y sale de la vegetación VIVA local
-    // (ver sim.js combate): zona densa = más escondite, zona pastada = presa expuesta → refugios dinámicos.
-
-    // Campo de "color de la luz" del ambiente: pocas regiones grandes de tono fijo.
-    // Campo de "temperatura" [0,1] por celda (frío→cálido), segundo eje ambiental
-    // independiente de la luz. El gen temp_pref se adapta a él (coste por desviarse).
+    // Campo de temperatura [0,1] por celda (segundo eje ambiental; el gen temp_pref se adapta).
     this.temp = new Float32Array(this.cols * this.rows);
-    this._buildField(this.temp, cfg.resource.tempFreq); // zonas grandes → especializarse rinde
+    this._buildField(this.temp, cfg.resource.tempFreq);
 
-    // ---- Spatial hash uniforme: celda = mayor radio de visión posible ----
+    // Spatial hash uniforme (lista enlazada): celda = mayor radio de visión posible.
     this.hashCell = cfg.expr.sense.max; // 80px
     this.hCols = Math.ceil(cfg.world.size / this.hashCell);
     this.hRows = Math.ceil(cfg.world.size / this.hashCell);
@@ -58,8 +40,7 @@ export class World {
     this.cellNext = new Int32Array(maxAgents);
   }
 
-
-  // Gradiente de capacidad: 'perlin' (ruido fractal barato), 'center' o 'uniform'.
+  // Gradiente de capacidad de carga: 'perlin' (ruido fractal) | 'center' | 'uniform'.
   _buildGradient() {
     const { cols, rows } = this;
     const mode = this.cfg.resource.gradient;
@@ -78,15 +59,13 @@ export class World {
         }
       return;
     }
-    // 'perlin': suma de octavas de ruido de valor interpolado → manchas ricas/pobres (capacidad de
-    // carga FIJA, suelo 0.1·Rmax para que ninguna celda sea baldío permanente). La estructura de PARCHES
-    // ya no se esculpe aquí: EMERGE de la dinámica de rebrote (ver regen() y resource.patchiness).
+    // 'perlin': manchas ricas/pobres con suelo capFloor (ningún baldío permanente). Los parches dinámicos emergen del rebrote.
     const noise = this._valueNoiseField();
-    const N = cols * rows, capFloor = this.cfg.resource.capFloor; // suelo de capacidad (fracción de R_max): ninguna celda es baldío permanente
+    const N = cols * rows, capFloor = this.cfg.resource.capFloor;
     for (let i = 0; i < N; i++) this.capacity[i] = Rmax * (capFloor + (1 - capFloor) * noise[i]);
   }
 
-  // Ruido fractal (varias octavas) PERIÓDICO → la capacidad tesela sin costura en el toro.
+  // Ruido fractal (4 octavas) PERIÓDICO → tesela sin costura en el toro.
   _valueNoiseField() {
     const { cols, rows, rng } = this;
     const out = new Float32Array(cols * rows);
@@ -114,8 +93,7 @@ export class World {
     return out;
   }
 
-  // Rellena `out` [0,1] por celda con ruido de valor de baja frecuencia → bandas amplias.
-  // PERIÓDICO (los puntos de control envuelven con módulo `freq`) → sin costura en el toro.
+  // Rellena `out` [0,1] con ruido de valor de baja frecuencia (PERIÓDICO) → bandas amplias sin costura.
   _buildField(out, freq) {
     const { cols, rows, rng } = this;
     const grid = new Float32Array(freq * freq);
@@ -134,27 +112,21 @@ export class World {
     }
   }
 
-  // Regeneración por tick. `patchiness` (p) controla CÓMO rebrota el pasto, y de ahí EMERGEN los parches:
-  //  · p=0  → rebrote LINEAL: cada celda sube R_regen hasta su capacidad (comportamiento clásico, sin parches).
-  //  · p>0  → rebrote LOGÍSTICO + DIFUSIÓN DE SEMILLA: una celda crece según la vegetación que YA tiene
-  //           (res/cap) MÁS lo que le siembran los vecinos (media de los 4 vecinos / cap). Una calva total
-  //           rodeada de calva no rebrota; solo coloniza desde los BORDES de los parches. → las zonas
-  //           pastadas tardan en recuperarse y los parches se agotan, se reconquistan y MIGRAN solos
-  //           de la interacción pastoreo↔rebrote. Nadie pinta los parches: son un patrón emergente.
-  // O(celdas·4); lee del snapshot del tick anterior (_resPrev) para ser independiente del orden de barrido.
+  // Regeneración del pasto por tick. `patchiness` (p): 0 = rebrote lineal (sin parches); p>0 = logístico +
+  // difusión de semilla → los parches emergen y migran del pastoreo↔rebrote. Lee snapshot (orden-independiente).
   regen() {
-    if (this.cfg.world.closedMatter) { this._regenClosed(); return; } // pecera: el pasto crece consumiendo N (abajo)
-    const dr = this.cfg.resource.R_regen, seedFloor = this.cfg.resource.seedFloor; // seedFloor = banco de semillas (rebrote espontáneo mínimo)
+    if (this.cfg.world.closedMatter) { this._regenClosed(); return; } // pecera: el pasto crece consumiendo N
+    const dr = this.cfg.resource.R_regen, seedFloor = this.cfg.resource.seedFloor;
     const cap = this.capacity, res = this.resource;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
     if (p <= 0) {
-      for (let i = 0; i < res.length; i++) {                 // camino rápido: rebrote lineal clásico
+      for (let i = 0; i < res.length; i++) {                 // rebrote lineal clásico
         const v = res[i] + dr;
         res[i] = v > cap[i] ? cap[i] : v;
       }
     } else {
       const cols = this.cols, rows = this.rows, prev = this._resPrev;
-      prev.set(res);                                          // congela el estado del tick anterior
+      prev.set(res);
       for (let y = 0; y < rows; y++) {
         const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
         for (let x = 0; x < cols; x++) {
@@ -163,9 +135,7 @@ export class World {
           if (head <= 0) { res[i] = r > c ? c : r; continue; }
           const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
           const meanNb = (prev[row + xl] + prev[row + xr] + prev[up + x] + prev[dn + x]) * 0.25;
-          // Rebrote logístico (necesita biomasa local) + colonización desde vecinos (ambos ∝ cap) + un
-          // SUELO de semilla espontánea (resource.seedFloor) que da a una calva total aislada un rebrote lentísimo →
-          // evita el estado absorbente (vegetación global a cero del que nunca se sale). Banco de semillas.
+          // Logístico (biomasa local) + colonización desde vecinos + seedFloor (rebrote mínimo) → evita el estado absorbente.
           let logGrow = dr * (seedFloor + r / c + meanNb / c); if (logGrow > head) logGrow = head;
           let linGrow = dr < head ? dr : head;                // el clásico (para mezclar según p)
           res[i] = r + (1 - p) * linGrow + p * logGrow;
@@ -174,12 +144,10 @@ export class World {
     }
   }
 
-  // Rebrote CERRADO EN MATERIA (closedMatter): las plantas solo crecen CONSUMIENDO nutriente libre (`this.N`) → el sol
-  // ya no crea biomasa, solo permite convertir N→pasto. Dos pasadas O(celdas), sin GC: (A) calcula el incremento DESEADO
-  // por celda con la MISMA dinámica que regen() (lineal o logística+difusión) y suma la materia que pediría; (B) si N no
-  // llega para todo, ESCALA el crecimiento por igual (factor f, sin sesgo de orden de barrido) y resta de N lo captado.
+  // Rebrote en la pecera: las plantas crecen CONSUMIENDO nutriente libre N (el sol solo convierte N→pasto). Dos
+  // pasadas: (A) incremento deseado por celda (misma dinámica que regen); (B) si N no llega, escala esa celda. Conserva.
   _regenClosed() {
-    const wc = this.cfg.world;                              // tasa de fotosíntesis PROPIA del modo cerrado (no pisa resource.R_regen del abierto)
+    const wc = this.cfg.world;
     const dr = wc.closedRegen != null ? wc.closedRegen : this.cfg.resource.R_regen, epu = this.cfg.resource.energyPerUnit, seedFloor = this.cfg.resource.seedFloor;
     const cap = this.capacity, res = this.resource, grow = this._grow;
     let p = this.cfg.resource.patchiness || 0; if (p > 1) p = 1;
@@ -187,7 +155,7 @@ export class World {
     let need = 0;
     if (p <= 0) {                                            // incremento lineal por celda
       for (let i = 0; i < res.length; i++) { let inc = cap[i] - res[i]; if (inc > dr) inc = dr; if (inc < 0) inc = 0; grow[i] = inc; need += inc; }
-    } else {                                                 // logístico + difusión de semilla (lee snapshot → orden-independiente)
+    } else {                                                 // logístico + difusión de semilla
       const prev = this._resPrev; prev.set(res);
       for (let y = 0; y < rows; y++) {
         const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, row = y * cols;
@@ -204,8 +172,7 @@ export class World {
       }
     }
     if (need <= 0) return;
-    // Cada celda capta de su PROPIO nutriente local N[i] (campo espacial) → el pasto crece donde hay nutriente (manchas
-    // fértiles junto a la descomposición). Si el N local no llega, se escala SOLO esa celda. Conserva: N[i] → res[i]·epu.
+    // Cada celda capta de su nutriente local N[i] → el pasto crece donde hay nutriente. Conserva: N[i] → res[i]·epu.
     const N = this.N;
     for (let i = 0; i < res.length; i++) {
       let g = grow[i]; if (g <= 0) continue;
@@ -216,10 +183,8 @@ export class World {
     }
   }
 
-  // Decaimiento de la carroña (por tick). Lo que se descompone vuelve EN PARTE al pasto (`energy.corpseReturn`) =
-  // ciclo de nutrientes (cadáver→descomposición→vegetación); el resto se pierde. Independiente por celda (O(celdas)).
-  // CERRADO EN MATERIA (closedMatter): se MINERALIZA TODO lo decaído al pool de nutriente libre `N` (sin pérdida ni
-  // paso directo al pasto: las plantas lo recaptan vía regen) → cierra el ciclo carroña→detrito→nutriente→pasto.
+  // Decaimiento de la carroña por tick. En pecera: mineraliza íntegra a N local (cierra el ciclo). En abierto:
+  // una fracción (corpseReturn) vuelve al pasto, el resto se pierde.
   decayCarrion() {
     const cd = this.cfg.resource.carrionDecay || 0; if (cd <= 0) return;
     const carrion = this.carrion, res = this.resource, cap = this.capacity;
@@ -228,8 +193,8 @@ export class World {
     for (let i = 0; i < carrion.length; i++) {
       const cv = carrion[i]; if (cv <= 0) continue;
       const d = cv * cd; carrion[i] = cv - d;                        // energía que se descompone este tick
-      if (closed) { this.N[i] += d; }                                // mineralización íntegra → nutriente libre LOCAL de la celda (el cadáver fertiliza SU zona; conserva)
-      else if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // fracción→pasto (en unidades de recurso)
+      if (closed) { this.N[i] += d; }                                // pecera: mineraliza a nutriente local (conserva)
+      else if (ret > 0) { const nv = res[i] + (ret * d) / epu, c = cap[i]; res[i] = nv > c ? c : nv; } // abierto: fracción→pasto
     }
   }
 
@@ -254,10 +219,7 @@ export class World {
     this.cellHead[c] = i;
   }
 
-  // ── NUTRIENTE ESPACIAL (campo this.N) ──
-  // Difusión lenta del nutriente libre: cada tick reparte una fracción `nutrientDiffuse` hacia los 4 vecinos (toro) →
-  // las manchas fértiles se difuminan despacio en vez de teletransportarse global. CONSERVATIVA (Σ N constante en el
-  // toro: Σ media4 = Σ N); lee un snapshot (_nPrev) para ser independiente del orden de barrido.
+  // Difusión lenta del nutriente libre hacia los 4 vecinos (toro). Conservativa (Σ N constante); lee snapshot.
   diffuseNutrient() {
     const rate = this.cfg.world.nutrientDiffuse; if (!rate || rate <= 0) return;
     const N = this.N, prev = this._nPrev, cols = this.cols, rows = this.rows;
@@ -274,8 +236,7 @@ export class World {
 
   totalN() { let s = 0; const N = this.N; for (let i = 0; i < N.length; i++) s += N[i]; return s; } // pool global = Σ campo
 
-  // Nutriente del VECINDARIO (2R+1)² centrado en `cell` (toro). El nacimiento construye el cuerpo (bodyMatter) reuniendo
-  // nutriente de la ZONA del progenitor, no de una sola celda (que no tendría suficiente de golpe → bloquearía la cría).
+  // Σ del nutriente del vecindario (2R+1)² centrado en `cell` (toro). El nacimiento reúne materia de la zona del progenitor.
   nutrientAround(cell, R) {
     const cols = this.cols, rows = this.rows, cx = cell % cols, cy = (cell / cols) | 0; let s = 0;
     for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows;

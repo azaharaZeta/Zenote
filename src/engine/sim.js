@@ -17,11 +17,8 @@ export class Sim {
     const cfg = this.cfg;
     this.seed = seed;
     this.rng = makeRng(seed);
-    // ── ESCALA DEL ECOSISTEMA con el tamaño del mundo (Modelo A) ──────────────────────────────────────────────
-    // Lo EXTENSIVO (materia, pool, fundadores, rejilla) escala con el ÁREA (size² respecto a REF=1000 u) → un mundo
-    // grande = ecosistema proporcionalmente mayor, MISMA densidad/dinámica y conservación EXACTA. Acotado por un
-    // TECHO de pool (perf, `pop.maxAgentsCeiling`): por encima, el ecosistema deja de crecer y el mundo solo se hace
-    // más DISPERSO. Lo INTENSIVO (talla, sensores, velocidades, tasas, costes) NO escala (ver cabecera de config.js).
+    // Escala del ecosistema con el tamaño del mundo (Modelo A): lo extensivo (materia, pool, fundadores, rejilla)
+    // escala con el ÁREA → mundo grande = ecosistema mayor, misma densidad. Acotado por el techo de pool (perf).
     const REF = 1000, kw = cfg.world.size / REF, ceil = cfg.pop.maxAgentsCeiling || 8000;
     this._aScale = Math.min(kw * kw, ceil / cfg.pop.maxAgents);                 // factor de escala (ÁREA), acotado al techo de pool
     this.world = new World(cfg, this.rng, this._aScale);
@@ -39,13 +36,9 @@ export class Sim {
     this.age = new Float32Array(cap);
     this.cooldown = new Float32Array(cap);
     this.alive = new Uint8Array(cap);
-    // Linaje: id del fundador ancestral (heredado SIN mutación → ascendencia auditable).
-    // generation: profundidad genealógica (gen del padre + 1).
-    this.lineage = new Int32Array(cap);
-    this.generation = new Int32Array(cap);
-    // Tiempo de manejo: enfriamiento tras atacar (el depredador "digiere"; limita la
-    // tasa de depredación → evita que un cazador limpie una zona y permite coexistencia).
-    this.attackCD = new Float32Array(cap);
+    this.lineage = new Int32Array(cap);     // id del fundador ancestral (heredado sin mutación)
+    this.generation = new Int32Array(cap);  // profundidad genealógica (gen del padre + 1)
+    this.attackCD = new Float32Array(cap);  // enfriamiento tras atacar (digestión): limita la tasa de depredación
 
     // --- Genoma (SoA: cap * NUM_GENES) ---
     this.genes = new Float32Array(cap * NUM_GENES);
@@ -54,16 +47,13 @@ export class Sim {
     this._brIn = new Float32Array(BRAIN.I);
     this._brHid = new Float32Array(BRAIN.H);
     this._brOut = new Float32Array(BRAIN.O);
-    // MEMORIA del cerebro recurrente: estado oculto que PERSISTE entre ticks, por agente (id estable).
-    // Se pone a cero al nacer (el recién nacido arranca "sin recuerdos"). Cero al reset.
-    this.brainHid = new Float32Array(cap * BRAIN.H);
+    this.brainHid = new Float32Array(cap * BRAIN.H); // memoria del cerebro recurrente (persiste entre ticks; cero al nacer)
 
     // --- Fenotipo cacheado (expresión fija durante la vida) ---
     this.radius = new Float32Array(cap);
     this.vmax = new Float32Array(cap);     // velocidad-capacidad (emerge de la morfología · esfuerzo)
     this.turnRate = new Float32Array(cap); // agilidad de giro (emerge de asimetría/tamaño/elongación)
-    this.heading = new Float32Array(cap);  // rumbo PERSISTENTE (rad) para el render: se conserva cuando v≈0
-                                           //   (recién nacido/sembrado/tope) → evita el "salto al este" de atan2(0,0)
+    this.heading = new Float32Array(cap);  // rumbo persistente (rad) para el render: se conserva cuando v≈0
     this.effort = new Float32Array(cap);   // esfuerzo de nado (gen speed) → modula el coste de moverse
     this.flapCost = new Float32Array(cap); // Capa 3: coste de NADO extra por aletear (golpe activo); ver organism.js
     this.haulMul = new Float32Array(cap);  // (A) coste de TRANSPORTE ∝ masa: multiplica el coste de NADO; ver organism.js
@@ -73,8 +63,7 @@ export class Sim {
     this.gazeX = new Float32Array(cap);    // dirección de la mirada (a la presa/amenaza, si no al frente)
     this.gazeY = new Float32Array(cap);    // — solo para el render (pupila reactiva), no afecta a la sim
     this.eMax = new Float32Array(cap);
-    this.bodyMatter = new Float32Array(cap); // CERRADO EN MATERIA: materia estructural BLOQUEADA en el cuerpo (= carcassValue·eMax);
-                                             //   se retira del pool N al nacer y se devuelve (a carroña) al morir. Inerte en modelo abierto.
+    this.bodyMatter = new Float32Array(cap); // pecera: materia estructural bloqueada en el cuerpo (= carcassValue·eMax); del pool N al nacer, a carroña al morir
     this.baseCost = new Float32Array(cap);
     this.lure = new Float32Array(cap);     // prominencia del señuelo (anglerfish): coste + alcance de caza
     this.morphReach = new Float32Array(cap); // Capa 2: alcance de captura por apéndices frontales (px); ver organism.js
@@ -99,34 +88,28 @@ export class Sim {
     this.active = new Int32Array(cap);
     this.activeCount = 0;
     this.popCount = 0;
-    // Id ÚNICO por organismo a lo largo de toda la vida de la sim (≠ slot, que se reutiliza del pool). El render lo usa
-    // como clave estable de su caché de sprites: un slot reutilizado por un organismo nuevo recibe un serial distinto.
-    // (this._serial vive en el constructor → persiste entre re-siembras para no colisionar serials viejos↔nuevos.)
-    this.serialOf = new Int32Array(cap);
+    this.serialOf = new Int32Array(cap); // id único por organismo (≠ slot): clave estable del caché de sprites del render
 
     this.tick = 0;
     this.births = 0;
     this.deaths = 0;
     this.nextLineageId = 0;
     this.kills = 0; // presas abatidas por depredación (instrumentación)
-    // Demografía ACUMULADA de TODO el ecosistema (gráfica del laboratorio). Muertes por causa:
-    // 'eaten' = cazado, 'combat' = murió atacando (ataque fallido), 'starv' = hambre, 'age' = vejez.
+    // Demografía acumulada (gráficas): muertes por causa y nacimientos por tipo.
     this.deathCause = { starv: 0, combat: 0, age: 0, eaten: 0 };
-    // Nacimientos por tipo: 'sexual' = recombinación de dos padres · 'asexual' = clon mutado (sin pareja).
     this.birthCount = { sexual: 0, asexual: 0 };
 
     this._seedInitial();
     this._rebuildActive();
 
-    // CERRADO EN MATERIA: el nutriente libre inicial = presupuesto de materia − la ya BLOQUEADA (vegetación llena +
-    // E y cuerpo de los fundadores). A partir de aquí N + vegetación + (E+cuerpo)·vivos + carroña se CONSERVA.
+    // Pecera: el nutriente libre inicial = presupuesto − materia ya bloqueada (vegetación + E y cuerpo de los fundadores).
     if (cfg.world.closedMatter) {
       const epu = cfg.resource.energyPerUnit;
-      const budget = cfg.world.matterBudget * this._aScale;     // materia total ∝ ÁREA del mundo (Modelo A); a tamaño 1000, aScale=1 → presupuesto base
+      const budget = cfg.world.matterBudget * this._aScale;     // materia total ∝ área del mundo
       let res = 0; const R = this.world.resource; for (let k = 0; k < R.length; k++) res += R[k];
       let bio = 0; for (let a = 0; a < this.activeCount; a++) { const i = this.active[a]; bio += this.E[i] + this.bodyMatter[i]; }
-      let n0 = budget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante de materia → nutriente libre inicial
-      this.world.N.fill(n0 / this.world.N.length); // repartido UNIFORME por el campo (la dinámica lo concentra luego en manchas)
+      let n0 = budget - res * epu - bio; if (n0 < 0) n0 = 0; // sobrante → nutriente libre inicial
+      this.world.N.fill(n0 / this.world.N.length); // repartido uniforme (la dinámica lo concentra en manchas)
     }
   }
 
@@ -140,16 +123,12 @@ export class Sim {
   }
 
   _kill(i, cause) {
-    if (cause) this.deathCause[cause]++; // demografía: causa de muerte (todo el ecosistema)
-    // CARROÑA: toda muerte deja cuerpo en su celda. Muerte NATURAL (vejez/hambre/combate) = cuerpo entero =
-    // energía que quede + BIOMASA (carcassValue·eMax = tejido). CAZADO = solo SOBRAS (scrapReturn·biomasa): el
-    // depredador ya se llevó casi todo → "restos". (Fase 2: el carroñeo será un eje de dieta propio → gusano.)
+    if (cause) this.deathCause[cause]++; // demografía: causa de muerte
+    // Toda muerte deja carroña. Muerte natural = cuerpo entero; cazado = solo sobras (el depredador se llevó casi todo).
     const cfg = this.cfg;
     let carcass;
     if (cfg.world.closedMatter) {
-      // CERRADO: el cuerpo deposita su materia REAL (E que quede + cuerpo estructural `bodyMatter`), no una biomasa
-      // conjurada. La presa CAZADA ('eaten') ya la repartió el bloque de depredación (predador + restos + pool) →
-      // aquí NO se deposita nada (evita doble conteo). Conserva: nada de materia se crea ni se pierde al morir.
+      // Pecera: deposita la materia real (E + bodyMatter). La presa cazada ya la repartió la depredación → aquí nada (sin doble conteo).
       carcass = cause === 'eaten' ? 0 : (this.E[i] > 0 ? this.E[i] : 0) + this.bodyMatter[i];
     } else {
       const biomass = (cfg.energy.carcassValue || 0) * this.eMax[i];
@@ -164,13 +143,10 @@ export class Sim {
     this.deaths++;
   }
 
-  // Nº de FUNDADORES al sembrar: `pop.initial` es la cuenta al tamaño de mundo de REFERENCIA (1000 u); ESCALA con
-  // el ÁREA (size²) → densidad inicial ~constante sea cual sea `world.size` (un mundo grande no arranca casi vacío).
-  // Acotado al pool (maxAgents); en la pecera la MATERIA limita la pop SOSTENIDA → sembrar de más solo causa un
-  // reajuste inicial, no más población final. Lo usan _seedInitial y _seedSimple.
+  // Nº de fundadores al sembrar: pop.initial (a tamaño 1000) escalado ×área → densidad inicial ~constante. Acotado al pool.
   _initialCount() {
-    const n = Math.round(this.cfg.pop.initial * this._aScale);   // fundadores ∝ ÁREA, MISMO factor que materia/pool/rejilla → conserva
-    return Math.min(Math.max(1, n), this.cap);                   // (this._aScale y this.cap se fijan en reset, antes de sembrar)
+    const n = Math.round(this.cfg.pop.initial * this._aScale);
+    return Math.min(Math.max(1, n), this.cap);
   }
 
   _seedInitial() {
@@ -185,13 +161,11 @@ export class Sim {
       // Genoma inicial: cada gen uniforme [0,1] e independiente.
       const b = i * NUM_GENES;
       for (let k = 0; k < NUM_GENES; k++) this.genes[b + k] = rng.next();
-      // CONDICIÓN INICIAL (no estrategia codificada): solo fija el reparto de partida de
-      // genes; la conducta sigue emergiendo por selección sobre esos genes.
+      // Condición inicial (no estrategia codificada): solo fija el reparto de partida; la conducta emerge por selección.
       if (dietLow) {
-        this.genes[b + G.diet] = rng.next() * 0.15;          // Fase 1: arranque herbívoro suave
+        this.genes[b + G.diet] = rng.next() * 0.15;          // arranque herbívoro suave
       } else if (n < nCarn) {
-        // Cohorte proto-carnívora coordinada: siembra el nicho depredador para cruzar el
-        // "valle de fitness" entre herbívoro y cazador eficaz. Luego la selección decide.
+        // Cohorte proto-carnívora: siembra el nicho depredador para cruzar el valle de fitness. Luego decide la selección.
         this.genes[b + G.diet]   = 0.75 + rng.next() * 0.25;
         this.genes[b + G.speed]  = 0.5 + rng.next() * 0.4;   // esfuerzo alto: rema fuerte para cazar
         this.genes[b + G.size]   = 0.3 + rng.next() * 0.2;   // solo lo justo para superar a la presa
@@ -199,12 +173,10 @@ export class Sim {
         this.genes[b + G.repro_thr] = rng.next() * 0.25; // se reproduce a ~media energía
         this.genes[b + G.invest]    = 0.1 + rng.next() * 0.3;
         this.genes[b + G.e_fov]   = rng.next() * 0.35;       // ojos frontales de largo alcance (cazador)
-        // La FORMA nadadora cazadora y las GANAS de atacar EMERGEN (nodos + cerebro sembrado, abajo); aquí solo ecología.
       } else {
-        // Guild herbívoro: dieta baja (donde la selección los llevaría igualmente). El impulso de ataque
-        // emerge del cerebro (sembrado a ~0.5 → la selección lo baja en herbívoros, que no ganan cazando).
+        // Gremio herbívoro: dieta y talla bajas (presa pequeña al inicio → el cazador coge ventaja).
         this.genes[b + G.diet] = rng.next() * 0.2;
-        this.genes[b + G.size] = rng.next() * 0.3; // presa pequeña al inicio: el cazador coge ventaja
+        this.genes[b + G.size] = rng.next() * 0.3;
       }
       // Cerebro competente de partida; carnívoros fundadores con sesgo de ataque alto (cazan en contacto desde ya).
       seedBrain(this.genes, i, rng, (!dietLow && n < nCarn) ? 0.27 : 0);
@@ -232,23 +204,14 @@ export class Sim {
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
     const nInit = this._initialCount();                          // fundadores escalados al ÁREA del mundo (ver _initialCount)
     const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
-    // DIVERSIDAD DE SEMBRADO (UI, slider junto a "Sembrar"): 0 = monótono (fundadores casi idénticos a su línea
-    // base) · 1 = variado (el sembrado actual). Escala el jitter de los genes base Y la dispersión de los genes
-    // decorativos (vía blend), así un único knob va de super monótono a super variado.
+    // Diversidad de sembrado (UI): 0 = fundadores casi idénticos · 1 = variados. Escala el jitter y la dispersión decorativa.
     const div = cfg.pop.startDiversity != null ? cfg.pop.startDiversity : 1;
     const J = cfg.pop.startJitter * div;                  // jitter ∝ diversidad
-    // PALETA POR EJECUCIÓN: bases aleatorias compartidas por los fundadores → cada run tiene un colorido
-    // COHERENTE y distinto. Saturación y luminosidad sesgadas a BAJO (cuadrado) → la mayoría de runs son
-    // apagados/neutros; los vivos/luminosos son raros. La diversidad cromática emerge ENTRE runs, no dentro.
-    // El tono base del sembrado EVITA el verde (la franja 70-180° del render): se muestrea el arco no-verde
-    // [180°..70° por el lado largo] y se pasa a gen (÷360). En el mundo el render permite TODO color, así que el
-    // verde puede EMERGER por deriva; solo se evita al ARRANCAR (un mundo recién sembrado nunca nace verde).
+    // Paleta por ejecución: bases aleatorias compartidas → cada run tiene un colorido coherente y distinto.
+    // El tono base evita el verde (se reserva para la vegetación del render); el verde puede emerger luego por deriva.
     const baseHue = ((180 + rng.next() * 250) % 360) / 360;
     const baseOhue = rng.next();                          // tono base del bulbo del señuelo (acento por run)
-    // Bases per-run de los genes decorativos de DISPERSIÓN (segmentos, piel, glow, color). blend() interpola
-    // entre la base compartida (div=0 → todos iguales) y la muestra individual (div=1 → variado actual).
-    // c_lum (glow + luminosidad) y c_sat (color): sembrado MÁS ALTO (0.3/0.25 + cola) → organismos más
-    // luminosos, con glow visible y menos grises. Antes (rng·rng ≈ 0.25) salían oscuros/apagados.
+    // blend() interpola entre la base per-run (div=0 → todos iguales) y la muestra individual (div=1 → variado).
     const baseTex2 = rng.next();
     const baseOsc = rng.next();                           // fase de oscilación base por run (div=0 → marcha COORDINADA y uniforme)
     const baseLum = 0.4 + rng.next() * rng.next() * 0.5, baseSat = 0.32 + rng.next() * rng.next() * 0.55;
@@ -270,28 +233,17 @@ export class Sim {
       this.genes[b + G.hue] = jit(baseHue); this.genes[b + G.temp_pref] = jit(0.5);
       // Historia de vida (#12): arranque a rango medio (≈madurez 308 ticks, ritmo medio) → r/K emerge por deriva
       this.genes[b + G.mature_age] = jit(0.4); this.genes[b + G.senescence] = jit(0.5);
-      // La FORMA (cuerpo/apéndices) se siembra abajo vía el bloque de NODOS (B2/B3). Aquí solo color/ojos/ornamento.
-      this.genes[b + G.c_eye] = jit(0.5);   // #13: c_app/c_tip retirados
+      // Color/ojos/ornamento (la forma se siembra abajo en el bloque de NODOS).
+      this.genes[b + G.c_eye] = jit(0.5);
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
-      // Apariencia decorativa: arranque MODESTO (jit) → la variedad de glow/color/esbeltez/señuelo EMERGE por deriva.
-      // c_lum (LUMINOSIDAD/glow): sembrado POR INDIVIDUO con sesgo bajo pero COLA hasta arriba (rng·rng) → la
-      // mayoría con glow tenue y ALGUNOS linajes que brillan fuerte (emergente, deriva libre). Antes era un único
-      // valor per-run bajo (baseLum) → nadie brillaba y el glow del cuerpo no se veía.
-      // c_sat (VIVACIDAD de color) sembrado POR INDIVIDUO (rng·rng: sesgo bajo, cola hasta arriba) en vez de un
-      // único valor per-run → hay color desde el inicio y la deriva lo explora; antes toda la run se quedaba en el
-      // mismo gris. (Igual que c_lum/glow.) Tono ya va en banda estrecha → más vivacidad ≠ circo, son matices.
-      this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55); // glow/color (variedad escalada por diversidad)
-      this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y POCOS de partida
-      this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // escala/densidad de piel: variedad escalada por diversidad
-      // Cohorte proto-carnívora: SOLO sesga la ECOLOGÍA (dieta/caza), el cuerpo sigue sencillo → la morfología
-      // cazadora EMERGE. El impulso de ataque se siembra en el cerebro (seedBrain atkBias, arriba). Mantiene
-      // la coexistencia depredador-presa sin inyectar complejidad.
+      // c_lum/c_sat (glow/color) por individuo con sesgo bajo y cola alta (rng·rng) → la mayoría tenue, algunos brillan.
+      this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5); this.genes[b + G.c_sat] = blend(baseSat, 0.32 + rng.next() * rng.next() * 0.55);
+      this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y pocos de partida
+      this.genes[b + G.tex2] = blend(baseTex2, rng.next()); // piel
+      // Cohorte proto-carnívora: solo sesga la ecología (dieta/caza); la morfología cazadora emerge. Par = cazador
+      // (grande, rápido, visión frontal); impar = carroñero proto-gusano (cuerpo barato → vive de la carroña escasa).
       if (n < nCarn) {
         this.genes[b + G.diet] = jit(0.8);
-        // Cohorte comecarne dividida en las DOS proto-estrategias del eje caza↔carroña (cruza el valle de arranque,
-        // igual que la dieta; la morfología fina del gusano sigue EMERGIENDO por selección). CAZADOR (par): grande,
-        // rápido, visión frontal estrecha. CARROÑERO proto-gusano (impar): cuerpo BARATO (pequeño, lento, visión
-        // ancha, cría pronto) → puede vivir de la carroña ESCASA, donde un cuerpo caro de cazador moriría de hambre.
         if (n % 2) {
           this.genes[b + G.scav] = jit(0.85);
           this.genes[b + G.size] = jit(0.2);  this.genes[b + G.speed] = jit(0.3);
@@ -304,19 +256,14 @@ export class Sim {
           this.genes[b + G.repro_thr] = jit(0.35);
         }
       }
-      // --- NODOS (B2): cuerpo generativo. La RAÍZ (cabeza) siempre; los nodos 1..7 con presencia DECRECIENTE
-      //     (≈50% el 1º, ≈29% el 2º-3º, ≈9% el resto) → variedad inmediata (cabezas, cadenas y tentáculos)
-      //     pero la mayoría sencillos. La complejidad sigue evolucionando; esto solo da materia prima al arranque. ---
+      // NODOS: cuerpo generativo. Raíz (cabeza) siempre; nodos 1..7 con presencia decreciente → la mayoría sencillos.
       this.genes[b + G.n0_present] = 1;                        // raíz siempre presente
       this.genes[b + G.n0_size] = jit(0.5); this.genes[b + G.n0_aspect] = jit(0.35);
       this.genes[b + G.n0_parent] = 0; this.genes[b + G.n0_angle] = 0; this.genes[b + G.n0_attach] = 0;
       this.genes[b + G.n0_osc_amp] = jit(0.5); this.genes[b + G.n0_osc_phase] = blend(baseOsc, rng.next());
       this.genes[b + G.n0_tipShape] = jit(0.5);                // forma: elipse neutra al sembrar (la silueta diversifica por deriva)
       this.genes[b + G.n0_gaitMode] = jit(0);                  // modo: ondular puro al sembrar (el aleteo emerge por deriva)
-      // NODO 1 = COLA propulsora (renacuajo): con headThrust bajo la cabeza sola apenas avanza, así que se siembra
-      // una cola TRASERA que ondula (emit≈π → gait≈+1) → el fundador NADA bien desde el tick 1 (evita el colapso).
-      // A diversidad 0 todos los fundadores son renacuajos casi IDÉNTICOS (lo más básico); la morfología
-      // DIVERSIFICA por selección/mutación y, a más diversidad, por los nodos extra (abajo).
+      // Nodo 1 = cola propulsora (renacuajo): la cabeza sola apenas avanza → cola trasera que ondula → nada desde el tick 1.
       { const nb = b + G.n1_present;
         this.genes[nb + 0] = 1;                                // present (cola siempre al sembrar)
         this.genes[nb + 1] = 0;                                // parent = cabeza
@@ -329,10 +276,9 @@ export class Sim {
         this.genes[nb + 8] = jit(0.5);                         // tipShape: elipse neutra
         this.genes[nb + 9] = jit(0);                           // gaitMode: ondular puro
       }
-      // NODOS 2..7 (complejidad extra): su PRESENCIA escala con la diversidad → a div=0 NINGUNO (renacuajo puro),
-      // a div=1 ≈ el reparto previo (~29% nodo2-3, ~9% resto). Así "diversidad inicial 0" = lo más básico posible.
+      // Nodos 2..7 (complejidad extra): su presencia escala con la diversidad → a div=0 ninguno (renacuajo puro).
       for (let k = 2; k < NODE_COUNT; k++) {
-        const nb = b + G['n' + k + '_present'];                // 8 campos contiguos por nodo
+        const nb = b + G['n' + k + '_present'];
         const pPresent = k <= 3 ? 0.29 : 0.09;                 // prob. de presencia a diversidad máxima (≈ previo)
         const present = rng.next() < div * pPresent;           // ∝ diversidad → a div=0, ausente
         // present sembrado PLENO (≥0.6) o por debajo de la banda graduada (PRES_LO=0.4) → a div=0, renacuajo puro
@@ -347,10 +293,7 @@ export class Sim {
         this.genes[nb + 8] = jit(0.5);                         // tipShape: elipse neutra (la forma diversifica por deriva)
         this.genes[nb + 9] = jit(0);                           // gaitMode: ondular puro (el aleteo emerge por deriva)
       }
-      // PROTO-GUSANO (cohorte carroñera, impar): sustituye el cuerpo por una CADENA AXIAL de segmentos → arranca
-      // ELONGADO, cruzando el valle morfológico (como el kit cazador cruza el de la dieta; la forma sigue evolucionando
-      // y `k_scavThin` la mantiene). elongN pondera por ÁREA → segmentos AXIALES SUSTANCIALES (aspect medio, no hilos)
-      // y angle≈π (atrás, axial → estira el eje y PROPULSA). parentGene 0.9 → cada nodo cuelga del anterior (cadena).
+      // Proto-gusano (carroñero, impar): cadena axial de segmentos → arranca elongado, cruzando el valle morfológico.
       if (n < nCarn && (n % 2) === 1) {
         this.genes[b + G.n0_aspect] = jit(0.55);               // cabeza algo estrecha (cuerpo de gusano)
         for (let k = 1; k < NODE_COUNT; k++) {
@@ -368,14 +311,10 @@ export class Sim {
           this.genes[nb + 9] = jit(0);                         // gaitMode ondular
         }
       }
-      // PROTO-CAZADOR-GARRA (cohorte cazadora, PAR): mantiene la COLA propulsora (nodo 1, ya sembrada arriba) y añade un
-      // par de APÉNDICES FRONTALES (garras/púas que apuntan al FRENTE: emit≈0 → cos>0 → suman a plan.fwdReach → alcance de
-      // captura morphReach). Cruza el VALLE de la garra igual que el proto-gusano cruza el del cuerpo fino — medido: subir
-      // morphReach NO la induce desde cero (el intermedio FRENA el nado antes de que el alcance pague → valle); hay que
-      // SEMBRARLA. La cola propulsa; la garra frena (gait<0) pero morphReach la rentabiliza al cazar → la selección decide
-      // si persiste (bootstrapping legítimo, como el gusano/los proto-carnívoros; la forma sigue evolucionando).
+      // Proto-cazador-garra (cazador, par): cola propulsora (nodo 1) + par de apéndices frontales (garras → fwdReach →
+      // alcance de captura). Cruza el valle de la garra (subir morphReach no la induce desde cero); la selección decide si persiste.
       if (n < nCarn && (n % 2) === 0) {
-        for (let k = 2; k < NODE_COUNT; k++) {                 // nodo 2 = garra frontal bilateral; 3-7 ausentes (la propulsión es la cola, nodo 1)
+        for (let k = 2; k < NODE_COUNT; k++) {                 // nodo 2 = garra frontal bilateral; 3-7 ausentes
           const nb = b + G['n' + k + '_present'];
           const claw = k === 2;
           this.genes[nb + 0] = claw ? 1 : jit(0);              // present
@@ -411,12 +350,8 @@ export class Sim {
     this.activeCount = c;
   }
 
-  // Re-expresa el fenotipo (radio, eMax, vmax, costes, eficiencias, visión…) de TODOS los vivos desde su genoma con la
-  // config ACTUAL. Lo llama el worker cuando un slider (UI) que se EXPRESA en el fenotipo cambia EN VIVO, para que el
-  // cambio afecte a la población existente y no solo a las crías futuras (CLAUDE.md #4 / SPEC §6: los (UI) en tiempo
-  // real). NO toca E, edad, posición, memoria del cerebro ni bodyMatter (la materia ya bloqueada en el cuerpo se
-  // construyó con la config de su nacimiento → recalcularla rompería la conservación; el gen→fenotipo no mueve materia).
-  // Barre TODOS los slots vivos (no solo `active`, que se reconstruye por tick) → incluye crías del último tick.
+  // Re-expresa el fenotipo de todos los vivos con la config actual (lo llama el worker al mover un slider (UI) que se
+  // expresa en el fenotipo → afecta en vivo, no solo a las crías). No toca E/edad/posición/memoria/bodyMatter (conserva).
   recomputePhenotypes() {
     const alive = this.alive, cap = this.cap;
     for (let i = 0; i < cap; i++) if (alive[i]) computePhenotype(this, i);
@@ -441,8 +376,7 @@ export class Sim {
     const preyLo = cfg.combat.preyBandLo != null ? cfg.combat.preyBandLo : 0;
     const preyHi = cfg.combat.preyBandHi != null ? cfg.combat.preyBandHi : 1;
     const inPreyBand = (predR, preyR) => { const ratio = preyR / predR; return ratio >= preyLo && ratio <= preyHi; };
-    // Bandas precalculadas para el bucle caliente (evitan la closure y una división por vecino): presa = rj/myR
-    // ∈ [preyLo,preyHi]; amenaza = myR/rj ∈ [preyLo,preyHi] ⟺ rj/myR ∈ [1/preyHi, 1/preyLo].
+    // Banda de amenaza precalculada (vecino me come si rj/myR ∈ [1/preyHi, 1/preyLo]) → evita una división por vecino.
     const threatLo = 1 / preyHi, threatHi = 1 / preyLo, maxRadius = cfg.expr.size.max;
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
     const coverStrength = refugeOn ? (refuge.strength != null ? refuge.strength : 0) : 0; // #7: cobertura graduada por vegetación
@@ -470,11 +404,8 @@ export class Sim {
 
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
     const res = W.resource, cols = W.cols, rows = W.rows;
-    const carrion = W.carrion, carrionAbsRate = cfg.resource.carrionAbsRate || 0; // carroña + ritmo de carroñeo (Fase 1: vía effCarn)
-    // Marca de agua de serial al INICIO del tick: un slot cuyo ocupante tenga serial MAYOR nació ESTE tick (reutilizó,
-    // por la pila LIFO, un slot liberado por una muerte previa del mismo tick). No debe re-procesarse en su tick de
-    // nacimiento — el guard `!alive` no basta porque el slot "revive". serialOf se incrementa en cada _alloc y nunca se
-    // reinicia, así que `> maxSerial` identifica con exactitud a los nacidos en este tick.
+    const carrion = W.carrion, carrionAbsRate = cfg.resource.carrionAbsRate || 0;
+    // Marca de agua: un slot con serial > maxSerial nació ESTE tick (reutilizó un slot liberado) → no re-procesarlo.
     const maxSerial = this._serial;
 
     for (let a = 0; a < count; a++) {
@@ -482,37 +413,30 @@ export class Sim {
       if (!this.alive[i] || this.serialOf[i] > maxSerial) continue; // muerto este tick, o slot reutilizado por una cría de este tick
 
       // ---------- PERCEPCIÓN + DESEO ----------
-      // Término comida: ascenso por el gradiente del campo de recurso (físico, O(1)).
       const ci = W.cellIndexAt(x[i], y[i]);
       const cx = ci % cols, cy = (ci / cols) | 0;
       const xl = cx > 0 ? ci - 1 : ci, xr = cx < cols - 1 ? ci + 1 : ci;
       const yt = cy > 0 ? ci - cols : ci, yb = cy < rows - 1 ? ci + cols : ci;
-      // Gradiente DEPENDIENTE DE DIETA: cada organismo asciende hacia lo que PUEDE comer — vegetación
-      // (effHerb·∇recurso) y/o carroña (effScav·∇carroña, escalada a unidades de recurso) → el carroñero navega
-      // hacia los cadáveres con la MISMA conducta de búsqueda ya evolucionada (sin añadir entrada al cerebro).
+      // Gradiente de comida dependiente de DIETA: asciende hacia lo que puede comer (effHerb·∇recurso + effScav·∇carroña).
       const effHi = this.effHerb[i], cS = this.effScav[i] / epuScent;
       let dfx = effHi * (res[xr] - res[xl]) + cS * (carrion[xr] - carrion[xl]);
       let dfy = effHi * (res[yb] - res[yt]) + cS * (carrion[yb] - carrion[yt]);
-      // (P1) gradiente CRUDO (sin normalizar aún): el señuelo de vecinos le sumará una atracción (escaneo abajo) y se
-      // normaliza justo antes del cerebro. Sin señuelos cerca → idéntico al modelo previo (normalizado igual).
+      // (crudo aún; los señuelos vecinos le suman atracción abajo y se normaliza antes del cerebro)
 
       let dx = 0, dy = 0;   // el deseo de movimiento lo decide el cerebro (abajo), no una regla fija
 
-      // Mirada (solo render): por defecto al frente; si ve presa/amenaza, la sigue (se fija abajo).
-      let gzx = 0, gzy = 0, gazeSet = false;
-      // Direcciones unitarias a presa/amenaza (0 si ninguna) → entradas del cerebro neuronal.
-      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0, preySizeRel = 0, preyCover = 0; // preySizeRel/preyCover = talla y escapabilidad de la presa más cercana (entradas 8 y 9; 0 si no ve presa)
-      let lureAX = 0, lureAY = 0;   // (P1) atracción acumulada de SEÑUELOS vecinos → sesga el gradiente de comida (emboscada)
+      let gzx = 0, gzy = 0, gazeSet = false;   // mirada (solo render): al frente, o a la presa/amenaza si la ve
+      // Entradas del cerebro: direcciones a presa/amenaza (0 si ninguna) + talla/escapabilidad de la presa más cercana.
+      let preyDX = 0, preyDY = 0, threatDX = 0, threatDY = 0, preySizeRel = 0, preyCover = 0;
+      let lureAX = 0, lureAY = 0;   // atracción acumulada de señuelos vecinos (emboscada)
 
-      // Términos presa/amenaza: solo si el combate está activo (Fase 2). Alimentan las entradas del cerebro
-      // (dirección a presa/amenaza) y la detección de solape para el combate.
+      // Presa/amenaza: solo si el combate está activo. Alimenta las entradas del cerebro y la detección de contacto.
       if (combat) {
         const sr = this.senseR[i], sr2 = sr * sr;
         let bestPrey = -1, bestPreyD = sr2, bestThreat = -1, bestThreatD = sr2;
         let bestContact = -1, bestContactD = Infinity; // vecino solapado más cercano (combate)
         const myR = this.radius[i];
-        // Visión DIRECCIONAL: solo se percibe (a distancia) dentro del cono centrado en el rumbo.
-        // `visCos` = cos(semiángulo). Parado (sin rumbo fiable) → visión omnidireccional.
+        // Visión direccional: solo se percibe dentro del cono centrado en el rumbo (visCos = cos del semiángulo). Parado → omnidireccional.
         const vc = this.visCos[i];
         let headx = vx[i], heady = vy[i];
         const hmag = headx * headx + heady * heady;
@@ -520,19 +444,16 @@ export class Sim {
         if (!omni) { const im = 1 / Math.sqrt(hmag); headx *= im; heady *= im; }
         const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
         let hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
-        // Radio de escaneo ADAPTATIVO al alcance visual: un ojo estrecho ve más lejos que una celda (~80px).
-        // Cono ancho/corto → 3×3 (R=1, como antes); visión larga → 5×5 (R=2) → ya NO se trunca su percepción.
+        // Radio de escaneo adaptativo al alcance visual (cap 3): visión larga → más celdas, sin truncar la percepción.
         const scanR = Math.min(3, Math.max(1, Math.ceil(sr / hc)));
-        // Precálculo por agente (fuera del bucle de vecinos): la mayoría de vecinos del bloque de celdas caen
-        // MÁS LEJOS que la visión Y que el alcance de captura → se descartan con solo la distancia (sin calcular
-        // dieta/banda/contacto). `scanMax2` = cota superior (rj ≤ maxRadius) del radio que de verdad importa.
-        const myDiet = this.diet[i], reachExt = lureReach * this.lure[i] * myR + this.morphReach[i]; // señuelo + apéndices frontales (Capa 2)
+        // scanMax2 = cota del radio que importa (visión o captura) → descarta la mayoría de vecinos con solo la distancia.
+        const myDiet = this.diet[i], reachExt = lureReach * this.lure[i] * myR + this.morphReach[i]; // señuelo + apéndices frontales
         const reachMax = myR + maxRadius + reachExt;
         const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
         for (let oy = -scanR; oy <= scanR; oy++) {
           const rowBase = (((hy + oy) % hRows + hRows) % hRows) * hCols; // fila envuelta (toro) precalculada por oy → no recomputar el wrap+base de fila por celda
           for (let ox = -scanR; ox <= scanR; ox++) {
-            const gx = ((hx + ox) % hCols + hCols) % hCols;             // wrap toroidal de columna (correcto para |offset|>1; scanR 2-3 con visión larga)
+            const gx = ((hx + ox) % hCols + hCols) % hCols;             // wrap toroidal de columna
             let j = W.cellHead[rowBase + gx];
             while (j !== -1) {
               if (j !== i && this.alive[j]) {
@@ -542,15 +463,15 @@ export class Sim {
                   if (ddy > wh * 0.5) ddy -= wh; else if (ddy < -wh * 0.5) ddy += wh;
                 }
                 const d2 = ddx * ddx + ddy * ddy;
-                if (d2 < scanMax2) {   // EARLY-CULL: fuera de visión Y de captura → ni se evalúa (la mayoría)
-                  // Presa = en la BANDA DE TAMAÑO del depredador Y más abajo en dieta. Amenaza = lo contrario.
+                if (d2 < scanMax2) {   // early-cull: fuera de visión y de captura → ni se evalúa (la mayoría)
+                  // Presa = en la banda de talla y más abajo en dieta; amenaza = lo contrario.
                   const rj = this.radius[j], ratio = rj / myR, dDiff = myDiet - this.diet[j];
-                  const canEat = ratio >= preyLo && ratio <= preyHi && dDiff > dietMargin; // inline de inPreyBand(myR,rj)
-                  if (canEat) {   // CONTACTO (combate): solo presas válidas dentro del alcance (#7: cobertura se aplica en la resolución)
-                    const reach = myR + rj + reachExt;              // alcance de captura: señuelo + apéndices frontales
+                  const canEat = ratio >= preyLo && ratio <= preyHi && dDiff > dietMargin;
+                  if (canEat) {   // contacto (combate): presa válida dentro del alcance de captura
+                    const reach = myR + rj + reachExt;
                     if (d2 < reach * reach && d2 < bestContactD) { bestContactD = d2; bestContact = j; }
                   }
-                  if (d2 < sr2) {   // PERCEPCIÓN: dentro de la visión Y del cono (relativo al rumbo)
+                  if (d2 < sr2) {   // percepción: dentro de la visión y del cono
                     let seen = omni;
                     if (!seen) {
                       const dot = ddx * headx + ddy * heady; // = |d|·cos(θ)
@@ -562,10 +483,7 @@ export class Sim {
                       if (canEat) { if (d2 < bestPreyD) { bestPreyD = d2; bestPrey = j; } }
                       // Amenaza: j puede comerME (yo en su banda: rj/myR ∈ [threatLo,threatHi]; j más arriba en dieta).
                       else if (ratio >= threatLo && ratio <= threatHi && -dDiff > dietMargin && d2 < bestThreatD) { bestThreatD = d2; bestThreat = j; }
-                      // (P1, EMBOSCADA) el SEÑUELO de j (anglerfish) emite "comida aparente": suma atracción al gradiente de
-                      // comida de i, ∝ prominencia y ~1/dist² → la presa que VE un señuelo se acerca a él (la trampa). Es FÍSICA
-                      // (la luz parece comida); QUIÉN invierte en señuelo y QUIÉN se deja atraer lo decide la selección → emerge el
-                      // cazador-emboscada (barato, baja varianza) y la presa puede evolucionar a ignorarlo (carrera armamentística).
+                      // El señuelo de j emite "comida aparente": atrae a i (∝ prominencia · 1/dist²) → emerge el cazador-emboscada.
                       if (lureAttract > 0) { const lj = this.lure[j]; if (lj > 0.12) { const lw = lj / (d2 + 1); lureAX += ddx * lw; lureAY += ddy * lw; } }
                     }
                   }
@@ -575,40 +493,27 @@ export class Sim {
             }
           }
         }
-        // ---------- COMBATE (resolución exacta §3.1) ----------
-        // Al solaparse, el atacante ataca con probabilidad = su IMPULSO DE ATAQUE (3ª salida del cerebro,
-        // del tick previo). Cazar/agredir EMERGE del cerebro seleccionado, no de un gen-atajo `aggro`.
+        // ---------- COMBATE ----------
+        // En contacto, el atacante ataca con prob. = su impulso de ataque (3ª salida del cerebro). Cazar emerge del cerebro.
         const wantsAttack = bestContact !== -1 && this.alive[bestContact] && this.attackCD[i] <= 0 && rng.next() < this.atkOut[i];
-        // REFUGIO/COBERTURA (#7): la presa en vegetación densa se escabulle (Huffaker, GRADUADO). Cobertura =
-        // vegetación VIVA en su celda (res∈[0,R_max]) → zona lush ≈ casi siempre escapa, claro pastado = expuesta.
-        // Escape = NO hay combate (ni captura ni failDamage): no la alcanzó entre la maleza. Refugios DINÁMICOS;
-        // el predador SÍ sigue su tick (mueve/come/cría): solo se salta esta resolución de combate.
-        // ESCAPE: por COBERTURA (esconderse en vegetación, #7) O por VELOCIDAD (la presa que nada más rápido que el
-        // cazador se zafa — la persecución es un duelo de velocidad). fleeSpeed=0 → solo cobertura (modelo previo, inerte).
+        // La presa escapa (sin combate) por COBERTURA (vegetación densa de su celda) o por VELOCIDAD (más rápida que el cazador).
         let preyEscapes = false;
         if (wantsAttack) {
           if (coverStrength > 0 && rng.next() < coverStrength * res[W.cellIndexAt(x[bestContact], y[bestContact])]) preyEscapes = true;
           else if (fleeSpeed > 0) {
-            const myV = this.vmax[i], adv = myV > 1e-4 ? this.vmax[bestContact] / myV - 1 : 0; // ventaja de velocidad relativa de la presa (myV: renombrado para no ensombrecer el `vc`=visCos de arriba)
+            const myV = this.vmax[i], adv = myV > 1e-4 ? this.vmax[bestContact] / myV - 1 : 0; // ventaja de velocidad de la presa
             if (adv > 0) { let pe = fleeSpeed * adv; if (pe > fleeCap) pe = fleeCap; if (rng.next() < pe) preyEscapes = true; }
           }
         }
         if (wantsAttack && !preyEscapes) {
           const j = bestContact;
-          // Fuerza = (tamaño+0.1)^sizeAdvantage. Resolución estocástica: nadie gana "por regla", emerge del
-          // genoma (tamaño) + azar. Las "ganas" de atacar ya están en la tasa de decisión (impulso del cerebro).
+          // Fuerza = (tamaño+0.1)^sizeAdvantage. Resolución estocástica: el ganador emerge del tamaño + azar.
           const fi = Math.pow(this.genes[i * NG + G.size] + 0.1, sizeAdv);
           const fj = Math.pow(this.genes[j * NG + G.size] + 0.1, sizeAdv);
           if (rng.next() < fi / (fi + fj)) {
-            // Gana i: la presa muere SIN depositar cadáver; i come según su eficiencia carnívora.
-            // Ganancia = preyGain·(E_presa + carcassValue·eMax_presa): el cuerpo vale su BIOMASA (∝ eMax, tejido)
-            // ADEMÁS de su energía almacenada → comer un animal alimenta aunque viniera hambriento, sin depender de
-            // lo "gorda" que esté. Aditivo (no suelo): conserva el gradiente (presa gorda vale más → retiene el freno
-            // L-V parcial). El tope eMax del depredador (abajo) evita el descontrol. Ver config.energy.carcassValue.
+            // Gana i: la presa muere; i gana preyGain·(E_presa + carcassValue·eMax). El tope eMax evita el descontrol.
             if (closed) {
-              // CERRADO: la presa aporta su materia REAL (E almacenada + cuerpo `bodyMatter`), no biomasa conjurada.
-              // El depredador extrae preyGain·effHunt; lo NO extraído queda como RESTOS (carroña local) y lo que rebosa
-              // su tope va al pool → la materia de la presa se conserva exactamente (predador + restos + nutriente).
+              // Pecera: la presa aporta su materia real (E + bodyMatter); lo no extraído → restos; lo que rebosa → pool. Conserva.
               const Mj = (E[j] > 0 ? E[j] : 0) + this.bodyMatter[j];
               const g = en.preyGain * Mj * this.effHunt[i];
               const remainder = Mj - g;                                   // ineficiencia trófica + lo no comido → restos
@@ -617,23 +522,17 @@ export class Sim {
               E[i] += stored;
               if (remainder > 0) this._depositCarrion(x[j], y[j], remainder);
             } else {
-              // ABIERTO (modelo previo): ganancia = preyGain·(E_presa + carcassValue·eMax_presa). El término eMax es
-              // biomasa CONJURADA (no sale de ningún almacén) → ver auditoría de energía. El tope eMax evita descontrol.
+              // Abierto: el término carcassValue·eMax es biomasa conjurada (no sale de ningún almacén).
               const g = en.preyGain * (E[j] + carcassValue * this.eMax[j]) * this.effHunt[i];
               E[i] += g; if (E[i] > this.eMax[i]) E[i] = this.eMax[i];
             }
             this._kill(j, 'eaten'); this.kills++;
             this.attackCD[i] = handlingTime; // a digerir antes de volver a cazar
           } else {
-            // Gana el defensor j: el atacante i resulta HERIDO (pierde `failDamage`·eMax de energía) y solo MUERE
-            // si se queda a cero. Riesgo denso-dependiente GRADUADO en vez de muerte súbita: suaviza la extinción
-            // estocástica carnívora (una mala tirada ya no mata) SIN quitar el freno — en esperanza, atacar presa
-            // arriesgada sigue costando energía. `failDamage` ≥ 1 ≈ comportamiento antiguo (muerte casi segura).
-            // (Medido en su día: sin coste alguno al fallar → sobre-disparo → colapso presa-depredador. No anular.)
+            // Gana el defensor: el atacante i pierde failDamage·eMax y solo muere si llega a 0 (freno denso-dependiente graduado).
             const dmg = failDamage * this.eMax[i];
             if (closed) {
-              // CERRADO: i pierde como mucho lo que tiene (sin deuda negativa); j aprovecha su bocado; el resto de la
-              // herida (lo perdido por i que j no almacena) → nutriente. Materia conservada (i → j + pool).
+              // Pecera: i pierde como mucho lo que tiene; j aprovecha su bocado; el resto → nutriente. Conserva.
               let loss = dmg; const av = E[i] > 0 ? E[i] : 0; if (loss > av) loss = av;
               E[i] -= loss;
               const g = en.preyGain * loss * this.effHunt[j];
@@ -679,28 +578,24 @@ export class Sim {
         }
       }
 
-      // ---------- CEREBRO NEURONAL: la RNN decide el deseo de movimiento (y el impulso de ataque) ----------
-      // El deseo (dx,dy) sale de la red (pesos = genoma) a partir de las señales sensoriales; `_brain` también
-      // escribe el impulso de ataque (atkOut/atkDrive). Comportamiento 100% emergente, sin estrategias programadas.
-      // (P1) sumar la atracción de los señuelos vecinos al gradiente de comida y NORMALIZAR (la dirección que ve el
-      // cerebro ya incluye el señuelo). Sin señuelos cerca / combate off → lureAX,lureAY=0 → idéntico al gradiente puro.
+      // ---------- CEREBRO NEURONAL ----------
+      // La RNN (pesos = genoma) decide el deseo de movimiento y el impulso de ataque a partir de las señales sensoriales.
+      // Suma la atracción de los señuelos vecinos al gradiente de comida y normaliza (sin señuelos → idéntico al puro).
       dfx += lureAttract * lureAX; dfy += lureAttract * lureAY;
       { const _fm = Math.sqrt(dfx * dfx + dfy * dfy) || 1; dfx /= _fm; dfy /= _fm; }
       {
         const inp = this._brIn;
         inp[0] = dfx; inp[1] = dfy; inp[2] = preyDX; inp[3] = preyDY;
         inp[4] = threatDX; inp[5] = threatDY; inp[6] = E[i] / this.eMax[i] * 2 - 1;
-        inp[7] = (res[ci] / Rmax) * 2 - 1;   // (#3) COBERTURA local: vegetación viva de su celda ∈[−1,1] → uso TÁCTICO del refugio (huir a la maleza) EMERGE
-        inp[8] = preySizeRel;                 // (#3) TALLA relativa de la presa más cercana (0 si no ve presa) → evitar presa grande EMERGE
-        inp[9] = preyCover;                   // (P2) ESCAPABILIDAD de la presa (cobertura de su celda) → no atacar a la que escapará EMERGE
+        inp[7] = (res[ci] / Rmax) * 2 - 1;   // cobertura local (uso táctico del refugio)
+        inp[8] = preySizeRel;                 // talla relativa de la presa (evitar presa grande)
+        inp[9] = preyCover;                   // escapabilidad de la presa (no atacar a la que escapará)
         this._brain(i);
         dx = this._brOut[0]; dy = this._brOut[1];
       }
 
       // ---------- MOVIMIENTO ----------
-      // La velocidad-capacidad (vmax) y la agilidad de giro (turnRate) EMERGEN de la
-      // morfología (ver organism.js). El cuerpo no gira instantáneamente: rota su dirección
-      // hacia el deseo como mucho `turnRate` por tick → los cuerpos torpes sobrepasan a la presa.
+      // vmax y turnRate emergen de la morfología. El cuerpo no gira instantáneamente: rota hacia el deseo ≤ turnRate/tick.
       const vmaxI = this.vmax[i];
       const turn = this.turnRate[i];
       const dmag = Math.sqrt(dx * dx + dy * dy);
@@ -725,8 +620,7 @@ export class Sim {
         vx[i] = nvx / m * target; vy[i] = nvy / m * target;
       }
       const dist = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
-      // Rumbo PERSISTENTE para el render: solo se reorienta si hay avance real; si v≈0 conserva el último
-      // (evita el parpadeo "al este" de atan2(0,0) en parados/recién nacidos/topes no-toroidales).
+      // Rumbo persistente (render): solo se reorienta si hay avance real; si v≈0 conserva el último.
       if (dist > 1e-3) this.heading[i] = Math.atan2(vy[i], vx[i]);
       // Guardar la mirada (render): al objetivo si lo hay, si no en la dirección de avance.
       if (!gazeSet) { gzx = vx[i]; gzy = vy[i]; }
@@ -743,37 +637,29 @@ export class Sim {
       x[i] = nx; y[i] = ny;
 
       // ---------- ENERGÉTICA ----------
-      // Coste térmico: desviarse del óptimo (temp_pref) frente a la temperatura local
-      // multiplica el coste basal. Crea un segundo eje de nicho (regiones frías/cálidas).
+      // Coste térmico: desviarse del óptimo (temp_pref) multiplica el coste basal (segundo eje de nicho).
       const tcell = W.cellIndexAt(x[i], y[i]);
       let tmis = this.tempPref[i] - W.temp[tcell]; if (tmis < 0) tmis = -tmis;
-      // Coste de nado ∝ velocidad² · esfuerzo (arrastre hidrodinámico: ir rápido se dispara en
-      // coste). Así la velocidad la limita el presupuesto energético: la presa (renta de pasto
-      // escasa) no puede ir al máximo, pero el depredador (energía rica de la presa) sí → la
-      // depredación es viable. La velocidad se paga; solo compensa donde hace falta (cazar/huir).
-      const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // (B) el arrastre de la forma encarece el nado (0 = inerte)
-      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul; // nado: aletear (Capa 3) + transporte∝masa (A) + arrastre∝forma (B)
+      // Coste de nado ∝ v²·esfuerzo·aleteo·transporte(masa)·arrastre(forma) → la velocidad la limita el presupuesto energético.
+      const dragMul = kDrag > 0 ? 1 + kDrag * (this.drag[i] > dragRef ? this.drag[i] - dragRef : 0) : 1; // arrastre de la forma encarece el nado (0 = inerte)
+      const metabCost = this.baseCost[i] * (1 + kTemp * tmis) + moveCost * dist * dist * (1 + kEffort * this.effort[i]) * (1 + this.flapCost[i]) * this.haulMul[i] * dragMul;
       if (closed) {
-        // CERRADO: no se puede gastar más MATERIA de la que se tiene (sin sobregiro fantasma que destruiría materia al
-        // recuperarse comiendo). El coste efectivo se topa a la energía disponible → E baja a 0, nunca a negativo; esa
-        // materia respirada vuelve al pool de nutriente. (Si el coste supera a E, muere de hambre igual en el chequeo de abajo.)
+        // Pecera: el coste se topa a la energía disponible (E baja a 0, no a negativo); la materia respirada → nutriente local. Conserva.
         let ret = metabCost; const av = E[i] > 0 ? E[i] : 0; if (ret > av) ret = av;
-        W.N[tcell] += ret; E[i] -= ret; // materia respirada/nadada → nutriente de su celda actual
+        W.N[tcell] += ret; E[i] -= ret;
       } else {
         E[i] -= metabCost;
       }
 
-      // Alimentación herbívora: absorber del campo de recurso. forageReach>0 → un cuerpo GRANDE pasta de un
-      // ÁREA (forageR = forageReach·size celdas alrededor) → ventaja de forrajeo que la escasez local NO borra
-      // (cubre más terreno). FRONTERA: defino que "más grande barre más área"; la selección decide. 0 = inerte.
+      // Alimentación herbívora: absorbe del campo de recurso. forageReach>0 → un cuerpo grande pasta de un área (payoff de talla).
       const eMaxI = this.eMax[i], effH = this.effHerb[i];
       let eFalta = eMaxI - E[i];
       if (eFalta > 0 && effH > 1e-4) {
         const absE = this.absEff[i];
         const forageR = forageReach > 0 ? Math.round(forageReach * this.genes[i * NG + G.size]) : 0;
         if (forageR === 0) {
-          // — una sola celda (ruta base, idéntica al modelo previo) —
-          const cell = tcell;                                          // = celda tras moverse (ya calculada en ENERGÉTICA); la posición no cambió → evita recomputar cellIndexAt
+          // — una sola celda —
+          const cell = tcell;                                          // celda tras moverse (ya calculada)
           const grazable = res[cell] - grazeRefuge * W.capacity[cell]; // solo por encima del refugio de rebrote
           if (grazable > 0) {
             let units = grazable * absE;
@@ -801,17 +687,16 @@ export class Sim {
               const gain = units * epu * effH;
               E[i] += gain; eFalta -= gain;
               res[cell] -= units;
-              if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido NO asimilado → detrito/nutriente LOCAL (conserva)
+              if (closed) W.N[cell] += units * epu * (1 - effH); // pasto removido no asimilado → nutriente local (conserva)
             }
           }
         }
       }
 
-      // Carroñeo (Fase 2): se rige por effScav (eje caza↔carroña). El carroñero especializado (scav alto) y de
-      // cuerpo fino lo vacía rápido; el cazador puro (scav bajo) apenas aprovecha la carroña → nichos divergentes.
+      // Carroñeo: se rige por effScav. El carroñero fino vacía rápido el cadáver; el cazador puro apenas lo aprovecha.
       const effC = this.effScav[i];
       if (effC > 1e-4 && E[i] < eMaxI) {
-        const ccell = tcell;                                           // = celda tras moverse (ya calculada en ENERGÉTICA); la posición no cambió → evita recomputar cellIndexAt
+        const ccell = tcell;
         const avail = carrion[ccell];
         if (avail > 0) {
           let got = avail * carrionAbsRate * effC;
@@ -827,8 +712,7 @@ export class Sim {
         this._kill(i, 'starv'); continue;
       }
       this.age[i]++;
-      // Muerte por vejez (#12): la senescencia arranca en la EDAD DE MADUREZ del gen (`matureAge`) y su pendiente
-      // la escala el gen de ritmo de vida (`senesMult`). Antes de madurar no hay riesgo de vejez.
+      // Muerte por vejez: la senescencia arranca en la edad de madurez y su pendiente la escala senesMult.
       const over = this.age[i] - this.matureAge[i];
       if (over > 0) {
         const t = over / age.scale;
@@ -838,17 +722,13 @@ export class Sim {
         }
       }
 
-      // ---------- REPRODUCCIÓN (asexual) ----------
-      if (this.attackCD[i] > 0) this.attackCD[i]--; // enfriamiento de ataque (independiente)
-      if (this.cooldown[i] > 0) this.cooldown[i]--; // en cooldown no se reproduce (SPEC §4)
-      // Gate de MADUREZ (#12): no se cría antes de la edad de madurez (gen `mature_age`). Madurar pronto =
-      // criar antes (ventaja r); tarde = retrasa la cría pero pospone la senescencia (longevo, K).
+      // ---------- REPRODUCCIÓN ----------
+      if (this.attackCD[i] > 0) this.attackCD[i]--; // enfriamiento de ataque
+      if (this.cooldown[i] > 0) this.cooldown[i]--; // en cooldown no se reproduce
+      // Gate de madurez: no cría antes de la edad de madurez (madurar pronto = ventaja r; tarde = longevo, K).
       else if (this.age[i] >= this.matureAge[i] && E[i] >= this.reproNeedE[i]) {
-        // Repro SEXUAL: buscar pareja compatible cercana (distancia genética < umbral). Si no hay
-        // ninguna al alcance → fallback ASEXUAL (clon). El "padre" i pone la energía y queda en cooldown.
+        // Sexual: busca pareja compatible cercana; si no hay → fallback asexual (clon) si está permitido.
         const mate = sexual ? this._findMate(i) : -1;
-        // Si NO hay pareja y la reproducción asexual está PROHIBIDA → no hay cría (el padre conserva
-        // su energía y su cooldown). Así encontrar pareja se vuelve una presión selectiva real.
         const child = (mate >= 0 || allowAsexual) ? this._alloc() : -1;
         if (child >= 0) {
           const sexualBirth = mate >= 0;
@@ -856,13 +736,12 @@ export class Sim {
           else copyMutated(this.genes, i, child, this.cfg.mut, rng); // clon mutado (solo si allowAsexual)
           computePhenotype(this, child);
           const bm = (cfg.energy.carcassValue || 0) * this.eMax[child]; // materia estructural del cuerpo de la cría
-          if (closed && W.nutrientAround(tcell, birthGatherR) < bm) { // ¿hay bm de nutriente en la ZONA (5×5) del progenitor? (1 celda no basta de golpe)
-            // CERRADO: sin nutriente libre para construir el cuerpo → NO nace (TECHO de población ENDÓGENO por materia).
-            // Rollback del _alloc; el progenitor conserva E y cooldown (reintenta cuando haya nutriente). No cuenta nacimiento.
+          if (closed && W.nutrientAround(tcell, birthGatherR) < bm) {
+            // Pecera sin nutriente para construir el cuerpo → NO nace (techo de población endógeno). Rollback del _alloc.
             this.alive[child] = 0; this.free[this.freeTop++] = child; this.popCount--;
           } else {
             this.bodyMatter[child] = bm;
-            if (closed) W.takeNutrientAround(tcell, birthGatherR, bm);              // el cuerpo se CONSTRUYE con nutriente de la ZONA del progenitor (sale del campo N, conserva)
+            if (closed) W.takeNutrientAround(tcell, birthGatherR, bm);              // el cuerpo se construye con nutriente de la zona (conserva)
             if (sexualBirth) this.birthCount.sexual++; else this.birthCount.asexual++;
             E[i] -= this.investE[i];
             const childE = Math.min(this.investE[i], this.eMax[child]);
@@ -894,23 +773,17 @@ export class Sim {
     this.tick++;
   }
 
-  // Busca la pareja compatible más cercana (repro sexual): vecino vivo dentro de `mateRadius` con
-  // distancia genética < `speciesGenThreshold` (= misma especie). Devuelve su índice o -1.
+  // Busca la pareja compatible más cercana: vecino vivo dentro de mateRadius con distancia genética < umbral. Devuelve índice o -1.
   _findMate(i) {
     const W = this.world, x = this.x, y = this.y, cfg = this.cfg, world = cfg.world;
     const wrap = world.wrap, ww = world.size, wh = world.size;
     const mr = cfg.repro.mateRadius, mr2 = mr * mr, thr = cfg.repro.speciesGenThreshold;
     const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
     const hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
-    // SELECCIÓN SEXUAL: entre las parejas compatibles al alcance, elige la que mejor encaja con la
-    // PREFERENCIA del que elige (atractivo = 1 - |orn_pareja - pref_propia|). orn y pref se heredan
-    // juntos (crossover) → co-evolucionan → runaway de Fisher (ornamentos exagerados y divergentes).
+    // Selección sexual: elige la pareja que mejor encaja con la preferencia propia (atractivo = 1 − |orn − pref|) → runaway de Fisher.
     const prefI = this.genes[i * NUM_GENES + G.pref];
     let best = -1, bestScore = -1;
-    // Radio de escaneo ADAPTATIVO a mateRadius: el hash mide hashCell (= sense.max) por celda, así que un mateRadius
-    // MAYOR que la celda exige mirar más de 3×3 o se perderían parejas válidas (el slider llega a 150 u > 80 de celda).
-    // Cap a 3 como en la percepción. Con wrap toroidal correcto (|offset|>1 fallaba con el wrap de una sola celda).
-    const scanR = Math.min(3, Math.max(1, Math.ceil(mr / hc)));
+    const scanR = Math.min(3, Math.max(1, Math.ceil(mr / hc))); // adaptativo a mateRadius (cap 3, como la percepción)
     for (let oy = -scanR; oy <= scanR; oy++) {
       for (let ox = -scanR; ox <= scanR; ox++) {
         const gx = ((hx + ox) % hCols + hCols) % hCols, gy = ((hy + oy) % hRows + hRows) % hRows;
@@ -936,9 +809,8 @@ export class Sim {
     return best;
   }
 
-  // Paso forward del cerebro RECURRENTE del agente i (pesos = genes del bloque BRAIN). Lee `this._brIn`
-  // (entradas sensoriales) y el estado oculto PREVIO (memoria, en brainHid[i]); escribe el nuevo estado
-  // oculto y `this._brOut` = deseo de movimiento (dx,dy en [-1,1]). Sin asignaciones en el bucle.
+  // Forward del cerebro recurrente (pesos = genes BRAIN): lee _brIn + el estado oculto previo (brainHid[i]); escribe el nuevo
+  // estado oculto y _brOut = deseo de movimiento (dx,dy) + impulso de ataque. Sin asignaciones.
   _brain(i) {
     const g = this.genes, b = i * NUM_GENES + BRAIN0, sc = BRAIN.scale;
     const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._brIn, hid = this._brHid;

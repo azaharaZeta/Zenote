@@ -8,10 +8,8 @@ import { Charts } from './ui/charts.js';
 import { setupControls, updateInspector } from './ui/controls.js';
 
 // --- Proxy del Sim alimentado por el worker ---
-// `identity` (lista activa = índice; la foto ya viene compactada 0..n-1) debe cubrir el MÁXIMO de población que el
-// slider del lab permita: `pop.maxAgents` es ajustable en vivo (+ Reiniciar). Se SOBREDIMENSIONA a un tope generoso
-// (independiente de maxAgents) para no re-asignarlo al cambiar el tope → siempre activeCount ≤ identity.length.
-const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || config.pop.maxAgents);   // cubre el pool MÁXIMO tras escalar con world.size (ver sim.reset)
+// `identity` (lista activa = índice; la foto ya viene compactada 0..n-1). Sobredimensionado al pool máximo para no re-asignarlo.
+const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || config.pop.maxAgents);
 const identity = new Int32Array(IDENT_CAP);
 for (let i = 0; i < IDENT_CAP; i++) identity[i] = i;
 
@@ -59,9 +57,7 @@ worker.onmessage = (e) => {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
     w.capacity = m.capacity; w.temp = m.temp;
-    // Si cambió el TAMAÑO del mundo (world.size, p.ej. al subirlo y Reiniciar): RE-SEMBRAR las capas decorativas
-    // ancladas al mundo (plancton + nieve marina) sobre el NUEVO tamaño y recentrar la cámara. Si no, se quedan
-    // ATRAPADAS en el cuadrante del tamaño viejo (bug del resize). En un reseed del MISMO tamaño no se toca nada.
+    // Si cambió el tamaño del mundo: re-sembrar las capas decorativas (plancton/nieve) y recentrar la cámara.
     if (renderer._tuftSize !== config.world.size) {
       renderer._initTufts();                                   // re-posiciona + re-escala el plancton sobre el nuevo world.size
       renderer._snow = null;                                   // la nieve se re-siembra en el próximo draw sobre el nuevo tamaño
@@ -77,8 +73,7 @@ worker.onmessage = (e) => {
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;
     simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount; simProxy.serial = m.serial;
-    // Histórico de las gráficas: lo acumula el WORKER (muestreo por ticks reales → correcto a cualquier
-    // velocidad). El hilo principal solo lo pinta; ya no reconstruye la serie a partir de fotos por frame.
+    // Histórico de las gráficas: lo acumula el worker (muestreo por ticks); aquí solo se asigna para pintar.
     charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histVegFill = m.histVegFill; charts.histT = m.histTick;
     charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
     charts.bSex = m.histBS; charts.bAsex = m.histBA;
@@ -98,10 +93,7 @@ window.addEventListener('resize', () => {
 
 // --- Bucle de RENDER (solo dibuja; el worker simula) ---
 let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
-// DIBUJADO BAJO DEMANDA (A) + CAP DE FPS (B). Entre ticks, posiciones y animación NO avanzan (la animación usa
-// _animT, que solo crece con el delta de ticks) → un frame redibujado sin tick nuevo es IDÉNTICO: redibujarlo es
-// desperdicio (pantallas a 120 Hz, o velocidad máxima donde los datos cambian ~4/s). Redibujamos solo si cambió el
-// tick, la cámara (pan/zoom/seguir) o la selección, y nunca más de `render.maxFPS` veces/s. El motor (t/s) es ajeno.
+// Dibujado BAJO DEMANDA + cap de FPS: solo redibuja si cambió el tick, la cámara o la selección, y ≤ render.maxFPS veces/s.
 let lastDrawTick = -1, lastCamX = NaN, lastCamY = NaN, lastZoom = NaN, lastSelKey = '', lastDrawT = 0;
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
