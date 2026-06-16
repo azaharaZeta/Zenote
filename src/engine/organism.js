@@ -51,9 +51,12 @@ export function computePhenotype(sim, i) {
   const eMax = en.E_max_base * mass;
   sim.eMax[i] = eMax;
 
-  // Señuelo bioluminiscente: órgano funcional gateado por `orn`; prominencia = o_len × o_bulb. Cuesta energía
-  // (baseCost) y extiende el alcance de caza (sim.js). Depende de genes decorativos → la presión de caza lo mueve limpio.
-  const lure = g[b + G.orn] > cfg.combat.lureGate ? (0.2 + g[b + G.o_len]) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.7
+  // Señuelo bioluminiscente: ÓRGANO de emboscada con genética PROPIA (`o_len` = tamaño del órgano · `o_bulb` = bulbo),
+  // desacoplado de la selección sexual (`orn`). Gate SUAVE sobre o_len → no viene de serie: la selección tiene que
+  // CONSTRUIRLO. Cuesta energía siempre (baseCost) y solo lo rentabiliza quien caza (alcance + atrae presa, sim.js).
+  // FRONTERA: define física/coste, no quién lo usa → el nicho de emboscada emerge.
+  const lg = cfg.combat.lureGate, oLen = g[b + G.o_len];
+  const lure = oLen > lg ? ((oLen - lg) / (1 - lg)) * (0.4 + g[b + G.o_bulb]) : 0; // 0 .. ~1.4
   sim.lure[i] = lure;
 
   // Alcance de captura morfológico: los apéndices frontales (plan.fwdReach) extienden el radio de caza; frenan el

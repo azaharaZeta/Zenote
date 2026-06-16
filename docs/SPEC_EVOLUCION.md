@@ -96,13 +96,14 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | `mature_age` | **historia de vida (#12)**: edad de madurez `Tm = lerp(expr.mature_age)`. Gatea la reproducción (no se cría antes de `Tm`) **e** inicia la senescencia (no hay muerte por vejez antes de `Tm`). Madurar pronto = criar antes (r) pero envejecer antes; tarde = retrasar la cría pero vivir más (K). |
 | `senescence` | **historia de vida (#12)**: ritmo de vida `lifeFast ∈ [0,1]`. Escala la pendiente de la mortalidad por vejez (`senesMult`, ver §3) y, por **disposable soma**, el coste basal: ser longevo (`lifeFast` bajo) cuesta más mantenerse. Crea el eje r/K vivir-rápido↔longevo sin degenerar. |
 
-**Genes de identidad / display:** luminosidad/glow (`c_lum`) y estilo del señuelo
-(`o_len`, `o_bulb`, `o_hue`, `o_num`) son **NEUTRALES** (solo render, derivan por linaje → identidad
-visual de especie; **excluidos de la distancia genética**). Dos excepciones **funcionales** en este bloque:
+**Genes de identidad / display:** luminosidad/glow (`c_lum`) y color/nº del señuelo
+(`o_hue`, `o_num`) son **NEUTRALES** (solo render, derivan por linaje → identidad visual de especie).
+**Excluidos de la distancia genética** (`o_len`/`o_bulb` también, aunque son funcionales — ver abajo). Funcionales en este bloque:
 - `e_fov` = **campo de visión** (reparte el presupuesto de `sense` entre alcance y ángulo, §2ter).
-- `orn`/`pref` = **selección sexual** (`orn` = cuánto exhibe el señuelo; `pref` = ornamento
-  preferido en la pareja). Dirigen la elección de pareja → runaway de Fisher (§4). `orn` además
-  **gatea el señuelo bioluminiscente**, que es funcional en la caza (§3).
+- `orn`/`pref` = **selección sexual** PURA (`orn` = cuánto exhibe el ornamento; `pref` = ornamento
+  preferido en la pareja). Dirigen la elección de pareja → runaway de Fisher (§4). Ya **no** tocan el señuelo.
+- `o_len`/`o_bulb` = **señuelo de emboscada** (órgano de caza con genética propia, §3): tamaño y bulbo del señuelo.
+  Excluidos de la distancia (solo lo expresan los pocos cazadores con `o_len > lureGate`; contarlos metería ruido en la mayoría).
 
 > **Color adaptativo, no neutral.** El `hue` está enganchado a la física del mundo (sintonía
 > con la luz local) para que el color *emerja* de la selección (pigmentos, cripsis), no que
@@ -274,13 +275,16 @@ Por tick, cada organismo:
     pero el coste de cría (`reproRef ∝ sizeMass`) sí → todo deriva al mínimo (medido headless: con `forageReach`=0
     la talla converge al mínimo; con su valor por defecto y `omniPenalty` activo → DOS grupos de talla, pequeño y grande, + carnívoros). `forageReach`=0 = solo su celda (modelo previo).
     FRONTERA: defino "más grande barre más área"; QUÉ talla gana lo decide la selección.
-- **Señuelo bioluminiscente** (`lure`): órgano FUNCIONAL gateado por `orn` (`orn > 0.12`),
-  prominencia `(0.2 + o_len)·(0.4 + o_bulb)`. Cuesta energía (`k_lure`), **extiende el alcance de
-  captura** al cazar (`combat.lureReach`) y **ATRAE a la presa** (P1, emboscada): emite "comida aparente" que sesga el
-  gradiente de comida de quien lo ve hacia el portador (`combat.lureAttract` · prominencia · 1/dist²) → emerge el **cazador
-  EMBOSCADA** (anglerfish: invierte en señuelo, se mueve poco, la presa viene → caza de BAJA varianza que estabiliza al
-  gremio cazador, medido). El carnívoro lo recupera cazando → evoluciona señuelos largos; el herbívoro solo paga → los
-  pierde (y puede evolucionar a ignorar el señuelo-trampa). La correlación señuelo↔dieta **emerge**.
+- **Señuelo bioluminiscente** (`lure`): órgano de emboscada con **genética PROPIA** (`o_len`, `o_bulb`), **desacoplado
+  de la selección sexual** (`orn`). Gate SUAVE sobre `o_len`: `lure = (o_len − lureGate)/(1 − lureGate) · (0.4 + o_bulb)`
+  si `o_len > lureGate`, si no 0 → no viene de serie, la selección tiene que CONSTRUIRLO. Cuesta energía SIEMPRE
+  (`k_lure`, en `baseCost`), **extiende el alcance de captura** al cazar (`combat.lureReach`) y **ATRAE a la presa**
+  (emboscada): emite "comida aparente" que sesga el gradiente de comida de quien lo ve hacia el portador
+  (`combat.lureAttract` · prominencia · 1/dist²) → emerge el **cazador EMBOSCADA** (anglerfish). El carnívoro lo
+  recupera cazando → lo conserva; el herbívoro solo paga el coste sin beneficio → lo PIERDE. Resultado medido (8 seeds ×
+  25k): lo expresa **~el 23% = la fracción cazadora** (antes el 100%, acoplado a `orn`); el alcance base del cazador
+  activo lo da ahora `morphReach` (apéndices). La correlación señuelo↔caza **emerge**; es un nicho, no un buff universal.
+  Se siembra en los proto-cazadores (`o_len` alto) para cruzar el valle de fitness; su valor lo decide la selección.
 - **Reproducción:** §4. **Muerte por hambre:** `E ≤ 0`.
 - **Muerte por vejez** (senescencia estocástica, #12): cada tick muere con prob.
   `age.mortality · senesMult · (max(0, edad − Tm) / age.scale)²`, donde `Tm` = edad de madurez (gen `mature_age`)
@@ -461,7 +465,7 @@ más allá del umbral, dejan de poder cruzarse → aislamiento reproductivo → 
 contador de especies + modo de render "colorear por especie".
 
 ### Selección sexual — runaway de Fisher
-`orn` (cuánto exhibe el señuelo) y `pref` (ornamento preferido). Al **elegir pareja**, entre las
+`orn` (cuánto exhibe el ornamento) y `pref` (ornamento preferido). Al **elegir pareja**, entre las
 compatibles al alcance se queda con la **más atractiva** (mejor encaje con `pref`). Como `orn`/`pref`
 son adyacentes y se heredan ligados, se **correlacionan** → cada linaje "se dispara" (Fisherian
 runaway) → ornamentos divergentes por especie. Solo afecta a la elección y al render.

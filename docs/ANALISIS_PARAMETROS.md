@@ -139,7 +139,8 @@ botín = preyGain·(E_presa + carcassValue·eMax_presa)·effHunt
 - **Ciclo de vida** (`expr.mature_age · gen senescence · age.{mortality,scale,senesSlow,senesFast} · k_lifespan`): muerte por vejez `P = mortality·senesMult·((edad−Tm)/scale)²`. Eje vivir-rápido↔longevo; `k_lifespan` = coste de longevidad (disposable soma) que impide el "inmortal".
 - **Reproducción/especiación** (`expr.repro_thr/invest · cooldown · sexual/asexual · mateRadius · speciesGenThreshold · mut.recomb`): sexual = pareja compatible (`dist<speciesGenThreshold`) en `mateRadius`, si no → asexual. Especies = clústeres por distancia genética sobre genes FUNCIONALES (excluye cerebro/decorativos). `recomb` = ligamiento.
 - **Mutación** (`rate·sigma·bigRate·bigSigmaMult`): velocidad de exploración evolutiva. Crítica para la especiación (junto a `speciesGenThreshold`).
-- **Selección sexual / señuelo** (`gen orn/pref · lureGate · k_lure`): runaway de Fisher (orn/pref); `orn` gatea el señuelo bioluminiscente (funcional en caza). `k_lure` = coste.
+- **Selección sexual** (`gen orn/pref`): runaway de Fisher; elección de pareja por ornamento. Desacoplada del señuelo.
+- **Señuelo de emboscada** (`gen o_len/o_bulb · lureGate · lureReach · lureAttract · k_lure`): órgano de caza con genética PROPIA (gate suave sobre `o_len`); cuesta siempre (`k_lure`), atrae+alcanza presa al cazar. Nicho EMERGENTE: lo expresa ~la fracción cazadora (no universal). El alcance base del cazador activo lo da `morphReach` (apéndices).
 
 ## 8. Escala y población (estructural)
 - **`world.size`** — dial de DENSIDAD (Modelo A: escala materia/fundadores/rejilla con el ÁREA; el pool NO escala). Grande = disperso → menos depredación, más especies.

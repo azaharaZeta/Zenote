@@ -56,7 +56,7 @@ export const config = {
     k_sense: 0.3,       // UI «Coste por visión» (Metabolismo y cuerpo) · Coste de la visión (alcance).
     k_metab: 0.6,       // UI «Coste por metabolismo» (Metabolismo y cuerpo) · Coste del metabolismo.
     k_lifespan: 0.35,   // UI «Coste de longevidad» (Edad y longevidad) · Coste basal extra de la longevidad (disposable soma): evita la senescencia "inmortal".
-    k_lure: 0.13,       // no-ui · Coste de mantener el señuelo bioluminiscente (∝ prominencia).
+    k_lure: 0.07,       // no-ui · Coste de mantener el señuelo bioluminiscente (∝ prominencia). Bajo para que el órgano de emboscada SE SOSTENGA en quien caza (el no-cazador igual lo paga sin beneficio → lo pierde).
     k_graze: 0.50,      // UI «Pasto extra por masa» (Comida y vegetación) · Pasto extra ∝ masa de nodos (ata la complejidad al nicho herbívoro).
     k_grazeWide: 0.5,   // UI «Pasto extra por anchura» (Comida y vegetación) · Pasto extra ∝ anchura del cuerpo: premia la forma de pastador.
     k_scavThin: 1.0,    // UI «Carroñeo por cuerpo fino» (Carroña) · Carroñeo extra ∝ lo fino/elongado del cuerpo: emerge el gusano carroñero.
@@ -167,10 +167,10 @@ export const config = {
     dietMargin: 0.08,    // UI «Margen de dieta (presa)» (Combate y dieta) · Diferencia de dieta mínima para considerar a otro "presa".
     preyBandLo: 0.15,    // UI «Suelo de banda de caza» (Combate y dieta) · Ratio presa/depredador mínimo cazable.
     preyBandHi: 1.10,    // UI «Techo de banda de caza» (Combate y dieta) · Ratio presa/depredador máximo atacable (>1 = presa mayor, arriesgada).
-    lureGate: 0.12,      // no-ui · Umbral del gen 'orn' para expresar señuelo bioluminiscente.
+    lureGate: 0.5,       // no-ui · Umbral del gen 'o_len' para EMPEZAR a expresar el señuelo (más alto = órgano más raro: hay que SELECCIONARLO, no viene de serie). Desacoplado de la selección sexual.
     lureReach: 0.85,     // no-ui · Alcance de captura extra que da el señuelo (∝ prominencia).
-    lureAttract: 0.5,    // UI «Atracción del señuelo (emboscada)» (Combate y dieta) · Atracción de presa por el señuelo (emboscada anglerfish). 0 = solo extiende alcance.
-    morphReach: 0.4,     // UI «Alcance de caza (apéndices)» (Combate y dieta) · Alcance de captura extra por apéndices frontales (∝ fwdReach·radio): forma de cazador.
+    lureAttract: 0.9,    // UI «Atracción del señuelo (emboscada)» (Combate y dieta) · Atracción de presa por el señuelo (emboscada anglerfish). 0 = solo extiende alcance. Alto = el señuelo RINDE → el nicho de emboscada se sostiene.
+    morphReach: 1.2,     // UI «Alcance de caza (apéndices)» (Combate y dieta) · Alcance de captura extra por apéndices frontales (∝ fwdReach·radio): forma de cazador. Es ahora el alcance PRINCIPAL del cazador activo (antes lo dominaba el señuelo universal; el señuelo pasó a ser nicho de emboscada).
   },
 
   // ───── Motor / tiempo ─────

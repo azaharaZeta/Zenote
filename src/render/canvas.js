@@ -574,9 +574,8 @@ export class Renderer {
           break;
         }
         // Visión real: el gen `hue` da el tono (el verde se evita en el sembrado, para no fundirse con la fosforescencia teal del sustrato).
-        // COLORES COMO EN LA NATURALEZA: saturación base BAJA (tonos terrosos/apagados → cripsis); la
-        // VIBRANCIA la dispara el ornamento (`orn`, gen de selección sexual): la mayoría va apagada y solo
-        // los muy ornamentados lucen colores vivos (exhibición). La absorción usa el gen crudo (sim.js).
+        // COLORES COMO EN LA NATURALEZA: saturación constante moderada (tonos terrosos/apagados → cripsis; el gen
+        // c_sat de vivacidad se retiró). El brillo lo modulan la energía y la luminosidad (c_lum). La absorción usa el gen crudo (sim.js).
         default: {
           const cSat = 0.5;                              // VIVACIDAD (constante; gen c_sat retirado)
           const cLumC = deco ? deco[i * 5 + 0] : 0.35;   // LUMINOSIDAD (deriva libre)
@@ -675,14 +674,14 @@ export class Renderer {
     }
     // 1b) medir la celda DECO (ojos + señuelo), con el MISMO gate que el render vivo. Frame head-local (origen=cabeza).
     const showEyes = full || rPx > (Rc.lodEye || 0) * lm, doLure = full || rPx > (Rc.lodLure || 0) * lm;
-    const orn = tint ? tint[to] : 0, hr = pr[0], elong = pl[0] / pr[0];
+    const lureP = tint ? tint[to] : 0, hr = pr[0], elong = pl[0] / pr[0];
     let dminX = 0, dmaxX = 0, dminY = 0, dmaxY = 0, hasDeco = false;
     if (showEyes && eye) {                                              // región de ojos (cíclope/par/racimo), generosa
       hasDeco = true; const er0 = Math.max(0.8, hr * (0.16 + 0.34 * eye[eo]));
       const ex = hr * elong * 0.9 + er0 * 1.5, ey = hr + er0 * 1.2;
       if (ex > dmaxX) dmaxX = ex; if (-er0 * 1.5 < dminX) dminX = -er0 * 1.5; if (ey > dmaxY) dmaxY = ey; if (-ey < dminY) dminY = -ey;
     }
-    if (orn > 0.12 && deco && doLure) {                                // señuelo: tallo + bulbo + halo, al frente (+x)
+    if (lureP > 0 && deco && doLure) {                                // señuelo: tallo + bulbo + halo, al frente (+x)
       hasDeco = true; const plen = r * (0.5 + deco[dco + 1] * 5.5), bulbR = Math.max(0.6, r * (0.06 + deco[dco + 2] * 0.34)), br = bulbR * 1.5, ax0 = hr * elong * 0.85; // 1.5 cubre el br máx (0.9+0.4·orn)·pulso ≈ 1.48 → no recorta el halo
       const fwd = ax0 + plen + br * 4, side = plen * 0.55 + br * 4;
       if (fwd > dmaxX) dmaxX = fwd; if (side > dmaxY) dmaxY = side; if (-side < dminY) dminY = -side;
@@ -830,8 +829,9 @@ export class Renderer {
 
   // Señuelo + ojos del morro (frame head-local: origen = cabeza, +x = rumbo). `t` anima el pulso; el horneado los pasa neutros (estático).
   _drawDeco(ctx, r, pr0, pl0, h, deco, dco, tint, to, t, heading, face, fo, eye, eo, showEyes, doLure, ds) {
-    const orn = tint ? tint[to] : 0;
-    if (orn > 0.12 && deco && doLure) {
+    const lureP = tint ? tint[to] : 0;
+    if (lureP > 0 && deco && doLure) {
+      const lw = lureP < 1 ? lureP : 1;   // factor de animación del señuelo, acotado a [0,1] (la caja del sprite reserva ese máximo)
       const oLen = deco[dco + 1], oBulb = deco[dco + 2], oHue = deco[dco + 3], oNum = deco[dco + 4];
       const fmin = (px) => px / ds;
       const hr = pr0, elong = pl0 / pr0;
@@ -844,7 +844,7 @@ export class Renderer {
       const ax0 = hr * elong * 0.85, ay0 = 0;
       for (let p = 0; p < np; p++) {
         const spread = np > 1 ? (p / (np - 1) - 0.5) : 0;
-        const ang = spread * 1.1 + Math.sin(t * 1.4 + p) * 0.1 * orn;
+        const ang = spread * 1.1 + Math.sin(t * 1.4 + p) * 0.1 * lw;
         const dx = Math.cos(ang), dy = Math.sin(ang);
         const bx = ax0, by = ay0, tx = ax0 + dx * plen, ty = ay0 + dy * plen;
         const mx0 = (bx + tx) / 2, my0 = (by + ty) / 2;
@@ -868,8 +868,8 @@ export class Renderer {
         for (let i = 1; i <= N; i++) ctx.lineTo(sgLx[i], sgLy[i]);
         for (let i = N; i >= 0; i--) ctx.lineTo(sgRx[i], sgRy[i]);
         ctx.closePath(); ctx.fill();
-        const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * orn;
-        const br = bulbR * (0.9 + 0.4 * orn) * pulse, h2 = bulbHue;
+        const pulse = 1 + 0.14 * Math.sin(t * 1.6 + p * 1.3) * lw;
+        const br = bulbR * (0.9 + 0.4 * lw) * pulse, h2 = bulbHue;
         const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, br * 4);
         hg.addColorStop(0, `hsla(${h2},96%,76%,0.5)`); hg.addColorStop(0.3, `hsla(${h2},95%,68%,0.22)`);
         hg.addColorStop(0.78, `hsla(${h2},95%,64%,0.07)`); hg.addColorStop(1, `hsla(${h2},95%,64%,0)`);
@@ -1014,7 +1014,8 @@ export class Renderer {
     bg.addColorStop(0, '#10182a'); bg.addColorStop(1, '#05070c');
     pctx.fillStyle = bg; pctx.fillRect(0, 0, cw, ch);
     const tint = this._pTint || (this._pTint = new Float32Array(1));
-    tint[0] = genes[G.orn];   // #13: tint = solo ornamento (gatea el señuelo)
+    const _lg = this.cfg.combat.lureGate, _ol = genes[G.o_len];   // prominencia del señuelo (misma fórmula que organism.js)
+    tint[0] = _ol > _lg ? ((_ol - _lg) / (1 - _lg)) * (0.4 + genes[G.o_bulb]) : 0;
     const pdeco = this._pDeco || (this._pDeco = new Float32Array(5)); // [c_lum, o_len, o_bulb, o_hue, o_num]
     pdeco[0] = genes[G.c_lum];
     pdeco[1] = genes[G.o_len]; pdeco[2] = genes[G.o_bulb]; pdeco[3] = genes[G.o_hue]; pdeco[4] = genes[G.o_num];

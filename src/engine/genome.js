@@ -71,8 +71,11 @@ GENE_GROUPS.push({ label: 'Nodos (cuerpo)', genes: BASE_GENES.slice(NODE0, NODE0
 export const G = {};
 GENES.forEach((name, i) => { G[name] = i; });
 
-// Genes DECORATIVOS (solo render): no afectan a la física y NO cuentan en la distancia genética → morfos de
-// color intra-especie por deriva neutral. La forma (nodos) sí es funcional.
+// Genes excluidos de la DISTANCIA genética (no definen especie). `c_lum` (glow), `o_hue`/`o_num` (estilo del
+// señuelo) son puramente decorativos. `o_len`/`o_bulb` SÍ afectan a la física (tamaño del señuelo de emboscada,
+// ver organism.js) pero se excluyen igualmente: solo lo expresan los pocos cazadores de emboscada (o_len > lureGate),
+// así que contarlos solo metería ruido de deriva neutral en la mayoría sin señuelo → especiación espuria. La dieta
+// ya separa al cazador. La forma (nodos) sí es funcional y cuenta.
 const DECOR_NAMES = ['c_lum', 'o_len', 'o_bulb', 'o_hue', 'o_num'];
 export const DECOR = new Set(DECOR_NAMES.map((n) => G[n]));
 // osc_phase por nodo afecta a la física pero se deja NEUTRAL para la especie (solo importa la dispersión de

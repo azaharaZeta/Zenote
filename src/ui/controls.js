@@ -698,7 +698,7 @@ function setupLab(app, send) {
     for (let k = 3; k < NODE_COUNT; k++) g('n' + k + '_present', 0.1);
     g('e_fov', R(0.32, 0.4));   // #13: c_eye/c_app/c_tip retirados
     g('orn', R(0.54, 0.66)); g('c_lum', R(0.66, 0.78));
-    g('o_len', R(0.48, 0.58)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22));
+    g('o_len', R(0.7, 0.82)); g('o_bulb', R(0.48, 0.58)); g('o_hue', R(0.45, 0.55)); g('o_num', R(0.13, 0.22)); // o_len > lureGate → la mascota luce su señuelo
     const ictx = introCanvas.getContext('2d');
     let raf = 0, on = true;
     const loop = () => { if (!on) return; try { app.renderer.drawPortrait(ictx, mascot, performance.now() * 0.001, 0.85, -Math.PI / 2, 0.5, 0.2); } catch (e) {} raf = requestAnimationFrame(loop); };

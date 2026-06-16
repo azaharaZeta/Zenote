@@ -224,7 +224,7 @@ export class Sim {
       this.genes[b + G.e_fov] = jit(0.45); this.genes[b + G.orn] = jit(0.15); this.genes[b + G.pref] = jit(0.5);
       // c_lum (glow) por individuo con sesgo bajo y cola alta (rng·rng) → la mayoría tenue, algunos brillan.
       this.genes[b + G.c_lum] = blend(baseLum, 0.4 + rng.next() * rng.next() * 0.5);
-      this.genes[b + G.o_len] = jit(0.5); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // señuelos largos y pocos de partida
+      this.genes[b + G.o_len] = jit(0.2); this.genes[b + G.o_bulb] = jit(0.3); this.genes[b + G.o_hue] = jit(baseOhue); this.genes[b + G.o_num] = jit(0.25); // o_len BAJO (< lureGate) → sin señuelo de partida: el órgano de emboscada se SIEMBRA solo en proto-cazadores y emerge por selección
       // Cohorte proto-carnívora: solo sesga la ecología (dieta/caza); la morfología cazadora emerge. Par = cazador
       // (grande, rápido, visión frontal); impar = carroñero proto-gusano (cuerpo barato → vive de la carroña escasa).
       if (n < nCarn) {
@@ -239,6 +239,7 @@ export class Sim {
           this.genes[b + G.size] = jit(0.45); this.genes[b + G.speed] = jit(0.65);
           this.genes[b + G.sense] = jit(0.5); this.genes[b + G.e_fov] = jit(0.2);
           this.genes[b + G.repro_thr] = jit(0.35);
+          this.genes[b + G.o_len] = jit(0.85); this.genes[b + G.o_bulb] = jit(0.55); // siembra del señuelo de emboscada en proto-cazadores (bien > lureGate, sobre el valle de fitness) → da pie al nicho; su valor lo decide la selección
         }
       }
       // NODOS: cuerpo generativo. Raíz (cabeza) siempre; nodos 1..7 con presencia decreciente → la mayoría sencillos.
