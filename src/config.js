@@ -225,7 +225,7 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 2.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría).
+    size:      { min: 2.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) ↻ · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría). Es el RANGO de talla posible: aplica a las crías al re-sembrar, NO redimensiona a los organismos vivos (por eso es ↻).
     sense:     { min: 10,  max: 80 },   // no-ui · gen sense → alcance de visión base (u).
     repro_thr: { min: 0.5, max: 0.95 }, // no-ui · gen repro_thr → umbral de energía para criar (fracción de E_max).
     invest:    { min: 0.2, max: 0.6 },  // no-ui · gen invest → energía dada a la cría (fracción de E_max).
