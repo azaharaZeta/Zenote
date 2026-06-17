@@ -37,7 +37,8 @@ check(sim.tick === N, `tick avanzó a ${N} (real: ${sim.tick})`);
 check(pop1 > 0, `población viva tras ${N} ticks (inicio ${pop0} → fin ${pop1})`);
 check(Number.isFinite(M1), 'materia finita (no NaN/Inf)');
 
-// 3) Conservación de materia (pecera cerrada; ±0.05% es ruido de acumulación Float32, ver SPEC §3ter).
+// 3) Conservación de materia (pecera cerrada). Hay una fuga f32 sistemática diminuta al acreditar la comida en la
+//    alimentación (sesgo a la baja ∝ actividad de pastoreo), acotada → el umbral 0.1% la cubre con holgura. Ver SPEC §3ter.
 const drift = (M1 - M0) / M0 * 100;
 check(Math.abs(drift) < 0.1, `materia conservada: deriva ${drift.toFixed(4)}% (< 0.1%)`);
 

@@ -437,8 +437,11 @@ El mundo es **cerrado en MATERIA** (abierto en energía sol→calor, cerrado en 
   → la conservación no salta. Cualquier otro parámetro (costes, eficiencias, talla, combate) ya conserva
   solo (solo cambia el equilibrio). `matterBudget`/`maxAgentsCeiling` requieren **Reiniciar** para aplicarse.
 
-Validado headless: la materia se conserva con una deriva de **±0.05 %** (ruido de acumulación en `Float32`, no error
-sistemático); el motor enruta toda pérdida a un pool sea cual sea el valor de los coeficientes, por eso conserva ante
+Validado headless: la materia se conserva salvo una **fuga sistemática diminuta** por redondeo `Float32` al acreditar
+la comida en la **alimentación herbívora** (la energía `E` y el nutriente `N` son almacenes de mayor magnitud que el
+recurso `res` → rejilla f32 más gruesa al guardarles el crédito). Es un **sesgo a la baja** (NO ruido simétrico),
+proporcional a la actividad de pastoreo, pero **acotado y despreciable** (no provoca runaway). El diseño sigue siendo
+robusto: el motor enruta toda pérdida a un pool sea cual sea el valor de los coeficientes, por eso conserva ante
 cambios de parámetros en vivo.
 
 ## 4. Reproducción y herencia
