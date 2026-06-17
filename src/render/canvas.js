@@ -1061,8 +1061,11 @@ export class Renderer {
     }
     const pspd = (spdArg != null) ? spdArg : 0.5;        // velocidad de ondulación; si se da, la del mundo
     this._forceFull = true;                              // retrato = vista de DETALLE: sin recortes LOD (señuelo/"antenas", 2ª pasada de contorno, textura), pase el canvas el tamaño que pase
-    this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
-    this._forceFull = false;
+    try {
+      this._drawBodyGraph(pctx, px, py, r, h, s, l, genes, G.n0_present, heading, pspd, t, eye, 0, face, 0, true, tint, 0, pdeco, 0);
+    } finally {
+      this._forceFull = false;                           // restaurar SIEMPRE: si el dibujo lanza, no dejar el flag activo (forzaría el detalle completo a TODO el mundo → caída de FPS silenciosa)
+    }
   }
 
   // Resalta el organismo seleccionado (anillo). Recibe el objeto `sel` del worker

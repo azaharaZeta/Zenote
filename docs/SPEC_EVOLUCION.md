@@ -69,7 +69,7 @@ vida, heredado con mutación).
 - `lineageId` (id del fundador ancestral, **heredado sin mutación** → ascendencia auditable) y
   `generation`. No afectan a la física; son trazadores de linaje, independientes del color.
 
-### Genoma — **201 genes** float en `[0,1]` (SoA: `Float32Array`)
+### Genoma — vector de floats en `[0,1]` (SoA: `Float32Array`; nº total = `NUM_GENES` en `genome.js`)
 
 El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
