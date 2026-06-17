@@ -146,6 +146,7 @@ function snapshot() {
   const deco = new Float32Array(n * 5);                           // [c_lum, o_len, o_bulb, o_hue, o_num]/agente
   const nodes = new Float32Array(n * NODEB);                      // genes de nodo/agente (cuerpo, para el render por grafo)
   const hT = config.combat.handlingTime || 1;
+  const vMaxG = config.loco.vMax || 3;   // velocidad-tope GLOBAL: el aleteo (spd) va ABSOLUTO (÷ vMaxG) → la onda acompaña a la traslación real (lento = ondea suave, rápido = bate fuerte), acorde con la calibración del render (canvas.js)
   const hist = new Float32Array(HIST_BINS);
   const species = new Float32Array(n);                            // especie (id) por agente
   const role = new Uint8Array(n);                                 // oficio: 0 herbívoro · 1 carroñero · 2 cazador · 3 omnívoro
@@ -163,7 +164,7 @@ function snapshot() {
     role[k] = trophicRole(s.diet[i], s.effHunt[i], s.effScav[i]); // oficio (color 'role'), misma función que la curva de población
     serial[k] = s.serialOf[i];
     heading[k] = s.heading[i]; // rumbo persistente
-    const v = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 3);  // velocidad RELATIVA a su propia capacidad (≈esfuerzo) → el pequeño bate rápido EN SU ESCALA aunque avance poco por el mundo
+    const v = Math.hypot(s.vx[i], s.vy[i]) / vMaxG;            // velocidad ABSOLUTA (÷ vMax global) → el aleteo acompaña a la traslación REAL por el mundo (lento avanza = ondea suave)
     spd[k] = v > 1 ? 1 : v;
     const ndb = i * NG + NODE0, nkb = k * NODEB;                   // bloque de nodos (la forma)
     for (let q = 0; q < NODEB; q++) nodes[nkb + q] = s.genes[ndb + q];
@@ -190,7 +191,7 @@ function snapshot() {
     const i = selectedId, g = new Float32Array(NG);
     for (let q = 0; q < NG; q++) g[q] = s.genes[i * NG + q];
     const sIds = speciesReps.map(r => r.id).sort((a, b) => a - b); // posición de la especie (navegación)
-    const vsp = Math.hypot(s.vx[i], s.vy[i]) / (s.vmax[i] || 3);  // ídem: relativa a su capacidad (animación del retrato del inspector)
+    const vsp = Math.hypot(s.vx[i], s.vy[i]) / vMaxG;            // ídem: ABSOLUTA (animación del retrato del inspector, acorde con el mundo)
     sel = {
       x: s.x[i], y: s.y[i], radius: s.radius[i], hue: s.hue[i], genes: g,
       E: s.E[i], eMax: s.eMax[i], age: s.age[i], lineage: s.lineage[i], generation: s.generation[i],
