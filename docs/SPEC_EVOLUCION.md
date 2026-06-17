@@ -40,9 +40,10 @@ las estrategias o las formas "buenas". Esas deben emerger.
 
 - Rejilla continua (coordenadas float), **siempre un toro** (bordes envueltos) para
   evitar artefactos de borde. El mundo es **CUADRADO**: un solo valor `world.size` (lado en u). El **ecosistema ESCALA**
-  con `world.size` (**Modelo A**): lo EXTENSIVO (`matterBudget`, fundadores, rejilla `gridCols/Rows`)
-  crece con el ÁREA a densidad y dinámica constantes; lo INTENSIVO (talla, sensores, velocidades, tasas, costes) no escala.
-  El pool de agentes es un **tope duro fijo** (`pop.maxAgentsCeiling`, por rendimiento) que NO escala con el mundo.
+  con `world.size` (**Modelo A**): lo EXTENSIVO (`matterBudget`, rejilla `gridCols/Rows`) crece con el ÁREA a densidad y
+  dinámica constantes; lo INTENSIVO (talla, sensores, velocidades, tasas, costes) no escala. El pool de agentes es un **tope
+  duro fijo** (`pop.maxAgentsCeiling`, por rendimiento) que NO escala con el mundo. El **sembrado inicial** (`pop.initial`)
+  tampoco escala: nº FIJO de fundadores en un **círculo CENTRAL de densidad fija** (`pop.seedDensity`) → colonizan hacia fuera.
 - **Recurso difuso** ("energía solar/química") en un campo escalar de baja resolución
   (`resource.gridCols`×`gridRows`). Capacidad por celda según `resource.gradient`
   (`perlin` | `center` | `uniform`). Se acumula hasta `R_max` por celda.

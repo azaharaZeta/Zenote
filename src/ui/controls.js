@@ -418,7 +418,7 @@ const LAB_SPEC = [
   { cat: '🌍 Mundo y población', items: [
     { k: 'world.size', label: 'Tamaño del mundo', reseed: true, min: 400, max: 3000, step: 100, dec: 0, d: 'Lado del mundo cuadrado (u). GRANDE = disperso → menos depredación, MÁS especies (aislamiento); pequeño = denso → más depredadores, menos especies. No cambia el alimento total (rejilla y materia fijos), solo la densidad. Requiere Reiniciar.' },
     { k: 'world.matterBudget', label: 'Materia total (presupuesto)', reseed: true, scales: true, min: 10000, max: 80000, step: 2500, dec: 0, d: 'Materia total del mundo (pecera): más alta = más biomasa. ESCALA con el área del mundo. Requiere Reiniciar.' },
-    { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, scales: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores (a tamaño de mundo 1000; ESCALA con el área → densidad inicial ~constante a cualquier tamaño). De muy bajo (casi vacío) a muy alto (denso). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
+    { k: 'pop.initial', label: 'Sembrado inicial', reseed: true, min: 20, max: 1000, step: 20, dec: 0, d: 'Nº de organismos fundadores. FIJO: NO escala con el tamaño del mundo. Se siembran en un círculo CENTRAL a densidad fija (colonizan hacia fuera). En la pecera la materia limita la población sostenida → sembrar de más solo provoca un reajuste inicial. Requiere Reiniciar.' },
     { k: 'pop.startDiversity', label: 'Diversidad inicial', reseed: true, min: 0, max: 1, step: 0.05, dec: 2, d: 'Variedad genética de los fundadores: 0 = casi clónicos (renacuajos simples idénticos) … 1 = variados (formas y colores dispares). La diversidad real emerge luego por mutación. Requiere Reiniciar.' },
     { k: 'pop.maxAgentsCeiling', label: 'Tope de población', reseed: true, min: 500, max: 8000, step: 250, dec: 0, d: 'Tope duro de población (memoria/rendimiento); NO escala con el tamaño del mundo. El punto real lo pone la comida/materia, por debajo. Requiere Reiniciar.' },
     { k: 'pop.carnivoreSeedFrac', label: 'Siembra de carnívoros', reseed: true, min: 0, max: 0.5, step: 0.02, dec: 2, d: 'Fracción de fundadores sembrados como proto-carnívoros (para arrancar el nicho). Requiere Reiniciar.' },
@@ -539,8 +539,7 @@ function setupLab(app, send) {
   const worldAScale = () => { const kk = pendVal('world.size') / REF_SIZE; return kk * kk; };   // escala ÁREA (Modelo A); el pool ya NO la acota
   const effectiveOf = (k) => { const a = worldAScale();
     if (k === 'world.matterBudget') return pendVal(k) * a;
-    if (k === 'pop.initial') return Math.min(Math.round(pendVal(k) * a), pendVal('pop.maxAgentsCeiling'));
-    return pendVal(k); };
+    return pendVal(k); };   // pop.initial ya NO escala con el mundo (se siembra fijo en un círculo central)
   const fmtK = (v) => v >= 1000 ? (+(v / 1000).toFixed(v >= 10000 ? 0 : 1)) + 'k' : String(Math.round(v));
   app.refreshScaledHints = () => {                                                 // recomputa los hints (al mover Tamaño del mundo / pool / el propio param)
     const scaled = Math.abs(worldAScale() - 1) > 1e-6;                             // a mundo 1000 la escala es 1 → sin anotación

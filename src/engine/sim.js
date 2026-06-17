@@ -20,7 +20,7 @@ export class Sim {
     // Escala del ecosistema con el tamaño del mundo (Modelo A): lo extensivo (materia, pool, fundadores, rejilla)
     // escala con el ÁREA → mundo grande = ecosistema mayor, misma densidad. Acotado por el techo de pool (perf).
     const REF = 1000, kw = cfg.world.size / REF;
-    this._aScale = kw * kw;                                                     // factor de escala (ÁREA): lo extensivo (materia, fundadores, rejilla) crece con el área del mundo
+    this._aScale = kw * kw;                                                     // factor de escala (ÁREA): lo extensivo (materia, rejilla) crece con el área del mundo (los fundadores NO: círculo central fijo)
     this.world = new World(cfg, this.rng, this._aScale);
 
     const cap = cfg.pop.maxAgentsCeiling || 8000;                              // pool = tope duro de población (UI); NO escala con el mundo
@@ -134,17 +134,28 @@ export class Sim {
     this.deaths++;
   }
 
-  // Nº de fundadores al sembrar: pop.initial (a tamaño 1000) escalado ×área → densidad inicial ~constante. Acotado al pool.
+  // Nº de fundadores al sembrar: pop.initial FIJO (NO escala con el tamaño del mundo). Acotado al pool.
   _initialCount() {
-    const n = Math.round(this.cfg.pop.initial * this._aScale);
+    const n = Math.round(this.cfg.pop.initial);
     return Math.min(Math.max(1, n), this.cap);
+  }
+
+  // Sembrado en un CÍRCULO CENTRAL de DENSIDAD FIJA (pop.seedDensity, fundadores/u²): el área del disco = nº fundadores /
+  // densidad → no escala con el mundo (mundo grande = misma nube central, colonizan hacia fuera). Devuelve el RADIO del
+  // disco central; acotado a medio mundo (mundo pequeño → el disco llena el mundo).
+  _seedZoneRadius() {
+    const dens = this.cfg.pop.seedDensity > 0 ? this.cfg.pop.seedDensity : 0.0016;
+    const r = Math.sqrt(this._initialCount() / dens / Math.PI);   // área π·r² = nº/densidad
+    const wHalf = this.cfg.world.size / 2;
+    return r > wHalf ? wHalf : r;
   }
 
   _seedInitial() {
     if (this.cfg.pop.simpleStart) { this._seedSimple(); return; }
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
     const dietLow = cfg.pop.seedDietLow;
-    const nInit = this._initialCount();                          // fundadores escalados al ÁREA del mundo (ver _initialCount)
+    const nInit = this._initialCount();                          // fundadores FIJOS (no escalan con el mundo, ver _initialCount)
+    const seedR = this._seedZoneRadius(), seedC = W.size / 2;    // círculo central de densidad fija (ver _seedZoneRadius)
     const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
     for (let n = 0; n < nInit; n++) {
       const i = this._alloc();
@@ -173,8 +184,8 @@ export class Sim {
       seedBrain(this.genes, i, rng, (!dietLow && n < nCarn) ? 0.27 : 0);
       computePhenotype(this, i);
       this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
-      this.x[i] = rng.next() * W.size;
-      this.y[i] = rng.next() * W.size;
+      { const _a = rng.next() * 6.283185307, _r = seedR * Math.sqrt(rng.next()); // disco central (uniforme en área: r·√u)
+        this.x[i] = seedC + Math.cos(_a) * _r; this.y[i] = seedC + Math.sin(_a) * _r; }
       this.vx[i] = 0; this.vy[i] = 0;
       this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)
@@ -193,7 +204,8 @@ export class Sim {
   // nube inicial distinta) diverge por un camino diferente. NO codifica conducta: solo la condición inicial.
   _seedSimple() {
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
-    const nInit = this._initialCount();                          // fundadores escalados al ÁREA del mundo (ver _initialCount)
+    const nInit = this._initialCount();                          // fundadores FIJOS (no escalan con el mundo, ver _initialCount)
+    const seedR = this._seedZoneRadius(), seedC = W.size / 2;    // círculo central de densidad fija (ver _seedZoneRadius)
     const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
     // Diversidad de sembrado (UI): 0 = fundadores casi idénticos · 1 = variados. Escala el jitter y la dispersión decorativa.
     const div = cfg.pop.startDiversity != null ? cfg.pop.startDiversity : 1;
@@ -320,7 +332,7 @@ export class Sim {
       }
       computePhenotype(this, i);
       this.bodyMatter[i] = (cfg.energy.carcassValue || 0) * this.eMax[i]; // materia del cuerpo (cerrado: bloqueada del pool)
-      this.x[i] = rng.next() * W.size; this.y[i] = rng.next() * W.size;
+      { const _a = rng.next() * 6.283185307, _r = seedR * Math.sqrt(rng.next()); this.x[i] = seedC + Math.cos(_a) * _r; this.y[i] = seedC + Math.sin(_a) * _r; } // disco central (uniforme en área)
       this.vx[i] = 0; this.vy[i] = 0;
       this.atkOut[i] = 0; this.atkDrive[i] = 0; // impulso de ataque inicial (slot del pool limpio)
       this.heading[i] = rng.next() * 6.283185307; // rumbo inicial aleatorio (sin él, mirarían todos al este el 1er frame)

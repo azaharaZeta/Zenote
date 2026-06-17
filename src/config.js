@@ -36,7 +36,8 @@ export const config = {
 
   // ───── Población ─────
   pop: {
-    initial: 400,            // UI «Sembrado inicial» (Mundo y población) ↻ · Nº de fundadores (a tamaño 1000); escala ×área → densidad inicial constante.
+    initial: 150,            // UI «Sembrado inicial» (Mundo y población) ↻ · Nº de fundadores. FIJO: NO escala con el tamaño del mundo (se siembran en un círculo central, ver seedDensity).
+    seedDensity: 0.0016,     // no-ui · Densidad del sembrado (fundadores/u²): se colocan en un CÍRCULO CENTRAL de área = initial/seedDensity (independiente del mundo). 0.0016 ≈ 150 fundadores en un círculo central de radio ~173 u.
     maxAgentsCeiling: 3000,  // UI «Tope de población» (Mundo y población) ↻ · Tope duro del pool (memoria/rendimiento). NO escala con el mundo. El punto real de población lo pone la comida/materia, por debajo.
     seed: 123,               // no-ui · Semilla por defecto (vacía el campo Semilla → mundo aleatorio).
     seedDietLow: false,      // no-ui · Sembrar todos herbívoros (true) vs dieta diversa con proto-carnívoros (false).
