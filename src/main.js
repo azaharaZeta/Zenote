@@ -8,10 +8,11 @@ import { Charts } from './ui/charts.js';
 import { setupControls, updateInspector } from './ui/controls.js';
 
 // --- Proxy del Sim alimentado por el worker ---
-// `identity` (lista activa = índice; la foto ya viene compactada 0..n-1). Sobredimensionado al pool máximo para no re-asignarlo.
-const IDENT_CAP = Math.max(3000, config.pop.maxAgentsCeiling || 8000);
-const identity = new Int32Array(IDENT_CAP);
-for (let i = 0; i < IDENT_CAP; i++) identity[i] = i;
+// `identity` (lista activa = índice; la foto ya viene compactada 0..n-1). Parte del tope inicial y CRECE bajo demanda
+// hasta el tope REAL del pool del worker (sim.cap), solo al reiniciar (el slider «Tope de población» es ↻, nunca cambia
+// en caliente): así no indexa fuera de rango si se sube el tope. No se encoge al bajarlo (inocuo: solo índices i→i).
+let identity = new Int32Array(config.pop.maxAgentsCeiling || 3000);
+for (let i = 0; i < identity.length; i++) identity[i] = i;
 
 const empty = new Float32Array(0);
 const simProxy = {
@@ -57,6 +58,13 @@ worker.onmessage = (e) => {
     const w = simProxy.world;
     w.cols = m.cols; w.rows = m.rows; w.cellW = m.cellW; w.cellH = m.cellH;
     w.capacity = m.capacity;
+    // Reinicio: si el tope de población (slider ↻) creció, agranda la lista activa para no indexar fuera de rango
+    // (la foto trae hasta `cap` agentes). Solo en el reinicio → nunca en caliente.
+    if (m.cap > identity.length) {
+      identity = new Int32Array(m.cap);
+      for (let i = 0; i < m.cap; i++) identity[i] = i;
+      simProxy.active = identity;   // el render lee sim.active cada frame → apuntar al array vigente
+    }
     // Si cambió el tamaño del mundo: re-sembrar las capas decorativas (plancton/nieve) y recentrar la cámara.
     if (renderer._tuftSize !== config.world.size) {
       renderer._initTufts();                                   // re-posiciona + re-escala el plancton sobre el nuevo world.size

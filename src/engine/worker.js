@@ -128,6 +128,7 @@ function postWorld() {
   const W = sim.world;
   postMessage({
     type: 'world', cols: W.cols, rows: W.rows, cellW: W.cellW, cellH: W.cellH,
+    cap: sim.cap,                          // tope REAL del pool (el slider ↻ pudo cambiarlo en el reinicio) → el render dimensiona su lista activa
     capacity: W.capacity.slice(),
   });
 }
