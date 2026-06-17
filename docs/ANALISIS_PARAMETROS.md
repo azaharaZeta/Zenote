@@ -13,7 +13,7 @@
 
 Dos clases de número, no confundir:
 - **Física del mundo** (`config.*`): la fija el programador, son leyes inmutables. Es lo que se analiza aquí.
-- **El genoma** (201 genes ∈[0,1]): evoluciona. La física **traduce** genes→fenotipo en `organism.js` (la "frontera"), una sola vez al nacer.
+- **El genoma** (genes ∈[0,1]; nº = `NUM_GENES` en `genome.js`): evoluciona. La física **traduce** genes→fenotipo en `organism.js` (la "frontera"), una sola vez al nacer.
 
 ### La ecuación maestra (por organismo, por tick)
 ```
@@ -42,7 +42,7 @@ La materia no se crea ni se destruye: circula `N → vegetación → organismo �
 ## 1. Economía de materia → capacidad de carga
 `matterBudget · closedRegen · energyPerUnit · R_max · capFloor · gradient · patchiness · seedFloor · grazeRefuge · nutrientDiffuse · gridCols/Rows · birthGatherR`
 
-Rebrote cerrado (`_regenClosed`): cada celda convierte su `N` local en pasto a ritmo `closedRegen`, topado a `capacity[i]`; la conversión cuesta materia (`Δres·epu` sale de `N`).
+Rebrote cerrado (`World.regen()` en `world.js`): cada celda convierte su `N` local en pasto a ritmo `closedRegen`, topado a `capacity[i]`; la conversión cuesta materia (`Δres·epu` sale de `N`).
 
 - **`matterBudget`** — tamaño total del bote de materia (constante de conservación, cota dura de toda la biomasa). Sube → más de todo a misma dinámica relativa (cambia la escala, no la dinámica).
 - **`closedRegen`** — productividad primaria (N→pasto). **Regulador #1 de la comida.** Sube → más flujo hacia arriba en la pirámide → más población y cadenas más largas; baja → mundo magro/plácido.

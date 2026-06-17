@@ -8,7 +8,7 @@
 export const config = {
   // ───── Mundo ─────
   world: {
-    size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD; no cambia el alimento total.
+    size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD: la materia/alimento TOTAL escala con el área (Modelo A, ver sim._aScale) → misma densidad a cualquier tamaño.
     matterBudget: 60000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
     closedRegen: 0.0055, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
     nutrientDiffuse: 0.15, // no-ui · Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
@@ -75,7 +75,7 @@ export const config = {
   // Frontera auditable: todo aquí es FÍSICA (geometría→fuerza). Cada empuje va emparejado con su arrastre (trade-off).
   loco: {
     forceModel: true,   // no-ui ↻ · Locomoción por FUERZA: el cerebro decide el ESFUERZO (módulo de su salida) y la dirección; la velocidad EMERGE de empuje−arrastre con inercia (∝masa). false = modelo viejo (velocidad fijada a vmax).
-    dragLin: 1.0,        // UI «Arrastre del agua» (Locomoción y visión) · Coef. de arrastre lineal del modelo de fuerza: fija la velocidad terminal (↑ = más frenada) y, vía masa, la INERCIA (cuánto tarda en acelerar/parar).
+    dragLin: 1.0,        // UI «Arrastre del agua» (Locomoción y visión) · Coef. de arrastre lineal del modelo de fuerza: fija la INERCIA / respuesta de velocidad (velResp en organism.js, ∝ dragLin·Dmul/masa) — cuánto tarda en acelerar/parar. NO fija la velocidad terminal (esa la dan kThrust/vMax).
     wander: 0.08,        // no-ui · Deriva térmica de fondo (física, no estrategia): pequeño jitter de velocidad → explora aunque el cerebro calle (evita que un fundador se congele en un baldío).
     kThrust: 7.1,       // UI «Empuje base» (Locomoción y visión) · Calibra la velocidad-capacidad típica de la morfología.
     headThrust: 0.06,   // UI «Empuje de la cabeza» (Locomoción y visión) · Empuje de la cabeza (motor base débil): bajo → nadar bien exige cola/aletas.

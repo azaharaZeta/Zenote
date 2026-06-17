@@ -1,4 +1,4 @@
-// El mundo: campos escalares en rejilla de baja resolución (recurso, carroña, nutriente, temperatura) + spatial
+// El mundo: campos escalares en rejilla de baja resolución (recurso, carroña, nutriente) + spatial
 // hash de vecindad. Coordenadas siempre lógicas (config.world). El render no entra aquí.
 
 export class World {
@@ -24,8 +24,8 @@ export class World {
     this._buildGradient();
     this.resource.set(this.capacity);                          // arranca lleno
 
-    // Spatial hash uniforme (lista enlazada): celda = mayor radio de visión posible.
-    this.hashCell = cfg.expr.sense.max; // 80px
+    // Spatial hash uniforme (lista enlazada): celda = mayor ALCANCE BASE de visión (el efectivo puede superarlo con FOV estrecho → escaneo adaptativo).
+    this.hashCell = cfg.expr.sense.max; // = sense.max (u): alcance base máx. de visión
     this.hCols = Math.ceil(cfg.world.size / this.hashCell);
     this.hRows = Math.ceil(cfg.world.size / this.hashCell);
     this.cellHead = new Int32Array(this.hCols * this.hRows).fill(-1);

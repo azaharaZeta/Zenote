@@ -13,7 +13,7 @@ modo de nado EMERGEN de la geometría; el render dibuja desde los nodos.
 
 ## Modelo actual (resumen — detalle en [SPEC_EVOLUCION.md](SPEC_EVOLUCION.md))
 
-Genoma de **201 genes/agente** (SoA, typed arrays):
+Genoma por agente (SoA, typed arrays; nº de genes = `NUM_GENES`, definido en `genome.js`):
 
 | Bloque | Genes | Codifica |
 |---|---|---|

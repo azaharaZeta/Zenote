@@ -16,7 +16,7 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   viajera de los nodos, que avanza con los ticks) y del giro suave, NO de interpolar
   posiciones entre frames: el render dibuja la posición del tick actual (decisión deliberada
   — visualmente queda fluido y evita el latigazo del toro sin necesidad de interpolar).
-  Estela/halo suave opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía
+  Halo suave opcional. Tamaño del círculo = gen de tamaño. Brillo/opacidad ∝ energía
   (los hambrientos se atenúan: la muerte se *ve* venir).
 - **El suelo = sustrato abisal (Cenote).** Único escenario. El fondo es una **nebulosa casi negra**
   sobre-muestreada: tinte sutil por **ruido de baja frecuencia** (frío = azul casi negro; cálido =
@@ -54,8 +54,6 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   el glow y el estilo del señuelo, de los genes decorativos (`c_lum`, `o_*`).
 - Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo
   más grande y translúcido (más rápido que blur real). Medir FPS antes de abusar.
-- Estelas: dibujar el fondo con una capa negra a baja opacidad cada frame en vez de
-  borrarlo del todo → rastros suaves. Hacerlo opcional (puede reducir claridad).
 - Transiciones suaves al nacer (fade-in + pequeño "pop" de escala) y al morir
   (fade-out). Esto da el carácter de "vida".
 
@@ -81,7 +79,7 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
   ni se cambia `world.size` para "rellenar". El toro se sigue viendo entero.
 - **DevicePixelRatio con tope + CAP de resolución interna.** Resolución del canvas =
   `min(cssPx · min(devicePixelRatio, render.dprCap), render.maxInternalPx)`. Sobre el tope de DPR hay un **cap del borde
-  largo del backing store** (`render.maxInternalPx`, **escalar, def. 1280**; se aplica a **TODAS las calidades** —Máxima
+  largo del backing store** (`render.maxInternalPx`, **escalar; default en `config.js`**; se aplica a **TODAS las calidades** —Máxima
   supersamplea pero sin pasar del tope—; control **"Resolución" junto al botón de Calidad, solo en modo laboratorio**): se renderiza por DEBAJO de la pantalla y el CSS
   reescala (el blur abisal disimula el upscaling) → el coste por píxel (bloom, sustrato, halos, fills) queda ACOTADO e
   independiente del tamaño/DPR de pantalla. Es un TECHO: en pantallas más pequeñas se renderiza NATIVO (nunca
@@ -92,7 +90,7 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
   buscar el organismo. Mismo código para ratón y dedo (`pointerdown`).
 - **LOD por TAMAÑO APARENTE = CALIDAD × ZOOM (3 niveles), NUNCA resolución.** El nivel de detalle NO usa la resolución
   (ni la nativa ni `maxInternalPx`): `rPx = radio_mundo × zoom × LOD_REF` (referencia FIJA, canvas.js). Depende SOLO de
-  la CALIDAD (baja: umbrales ×2.6 → más puntos · alta: ×1 · **máxima: SIN LOD, todo a grafo completo**) y del ZOOM. Bajar `maxInternalPx` cambia
+  la CALIDAD (baja: umbrales ×`lodLowMult` → más puntos · alta: ×1 · **máxima: SIN LOD, todo a grafo completo**) y del ZOOM. Bajar `maxInternalPx` cambia
   la NITIDEZ del pegote final, jamás el detalle. Tiers: **punto plano** (`rPx < lodBody`) → **cuerpo barato** (elipse de volumen
   orientada, 1 gradiente; `lodBody ≤ rPx < lodFull`) → **grafo de nodos + CONTORNO** (`rPx ≥ lodFull`; el outline va
   SIEMPRE con el grafo, ya NO atado a la onda), y dentro del grafo los detalles entran por umbral propio (ojos `lodEye`,
@@ -103,14 +101,14 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
   se reescala aditivamente (mismo halo de baja frecuencia, ~1/16 del coste de blurear a pantalla completa). Umbrales en `config.render`.
 - **Calidad: baja / alta / máxima** (el botón cicla las tres). **Baja** (móvil/equipos lentos): sin bloom (blur),
   **sin halos por agente**, sin nieve marina, menos chispas de plancton, y todos los umbrales LOD ×`lodLowMult`
-  (≈×2.6 → muchos más puntos). **Alta**: el estándar (worst-case ~2 ms/frame con 4000 agentes a la vista; baja ≈ la
+  (más alto → muchos más puntos; valor en `config.render.lodLowMult`). **Alta**: el estándar (worst-case ~2 ms/frame con 4000 agentes a la vista; baja ≈ la
   mitad). **Máxima** (`ultra`, opt-in, pesada): todo el esplendor — **SIN LOD** (TODAS las criaturas a grafo completo "a
   pelo", por grandes o pequeñas que se vean; `ultraFull` en canvas.js salta los tiers y los gates internos),
   **supersampling** (DPR ↑ `ultraDprCap`), **doble pasada de bloom** en vegetación y organismos, **más nieve** (1280),
   **sustrato 4×**. No se autodetecta; para equipos capaces (con 2000 agentes es lo más caro que hay). No es para móvil.
 - **Dibujado BAJO DEMANDA + cap de FPS.** `frame()` (main.js) solo redibuja si cambió el **tick**, la **cámara** o la
   **selección**: entre ticks el frame es IDÉNTICO (posiciones y `_animT` solo avanzan con el delta de ticks) → redibujar
-  sería desperdicio. Y nunca más de `render.maxFPS` veces/s (def. 60; 0 = sin límite; slider "FPS máx" en el lab). El
+  sería desperdicio. Y nunca más de `render.maxFPS` veces/s (default en `config.js`; 0 = sin límite; slider "FPS máx" en el lab). El
   **FPS del readout = dibujos reales/s** (a velocidad normal ≈ t/s; a máx, ~snapshots/s — no es un bajón, es no malgastar).
   El motor (t/s, en el worker) es INDEPENDIENTE del render. (Medido: a máx velocidad los dibujos caen de ~40/s a ~3/s.)
 - **Caché de sprites (opt-in, modo rendimiento).** `render.spriteCache` (toggle en el lab, default OFF): cachea cada

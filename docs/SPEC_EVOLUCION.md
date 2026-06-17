@@ -114,14 +114,14 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 La decisión la toma una **red neuronal recurrente diminuta (Elman)** cuyos **pesos SON genes**.
 Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*`, backlog #9):
 
-- Topología `BRAIN = {I:10, H:5, O:3}`, **98 pesos** (`BRAIN_W` = I·H + H·H + H + H·O + O):
+- Topología `BRAIN = {I, H, O}` y nº de pesos `BRAIN_W` = I·H + H·H + H + H·O + O (valores en `genome.js`):
   entrada→oculta, **oculta→oculta (memoria)**, sesgos ocultos, oculta→salida, sesgos salida.
   El estado oculto **persiste entre ticks** (memoria → búsqueda/persistencia emergente).
 - **Entradas (11):** gradiente de comida (x,y), dirección a la presa (x,y), dirección a la amenaza (x,y),
   energía, **cobertura local** (vegetación de su celda → uso táctico del refugio), **talla relativa de la presa**
   (evitar presa grande), **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
   escapará) y **velocidad propia** (#10, propiocepción → cierra el lazo del control de velocidad, §2bis). Las entradas
-  7-10 se siembran a peso ~0 → su uso EMERGE, no cableado. Salida: módulo = esfuerzo, dirección = rumbo, +impulso de ataque.
+  no cableadas en `seedBrain` (energía, cobertura, talla/escapabilidad de presa, velocidad propia) arrancan a peso ~0 → su uso EMERGE, no cableado. Salida: módulo = esfuerzo, dirección = rumbo, +impulso de ataque.
   **Salidas (3):** deseo de movimiento (dx,dy) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]`.
   Pesos = `(gen−0.5)·scale`.
 - Nada de estrategia programada: pastar/cazar/huir **y atacar/agredir** emergen **100% de los pesos
@@ -257,7 +257,7 @@ Por tick, cada organismo:
   vivir lento cuesta mantener el cuerpo → contrapeso que impide que la senescencia colapse a "inmortal". El coste es el
   **mismo sea cual sea la dieta** (sin descuentos por categoría; las muletas `carnUpkeep`/`k_sizeHerb`
   se retiraron, auditoría #6). Los nodos finos (tentáculos) son hidrodinámicos pero **no cuestan masa**.
-- **Movimiento (nado):** coste extra `moveCost · dist² · (1 + k_effort·effort) · (1 + flapCost) · (1 + k_haul·max(0,mass−1)) · (1 + k_drag·max(0,Dmul−dragRef))`,
+- **Movimiento (nado):** coste extra `moveCost · dist² · (factor de esfuerzo) · (1 + flapCost) · (1 + k_haul·max(0,mass−1)) · (1 + k_drag·max(0,Dmul−dragRef))` (fórmula exacta en `sim.js`; en el modelo de fuerza vigente el factor de esfuerzo lo da el throttle del cerebro — el modelo viejo usaba `1 + k_effort·effort`),
   **cuadrático en la velocidad** (arrastre). El basal cobra por *tener* cuerpo; el nado cobra por *usarlo* yendo rápido.
   **`flapCost`** (Capa 3) = `k_flap · flapWork` (trabajo de aleteo, lateral): **aletear ENCARECE el nado** (el golpe
   activo gasta). Hace honesto el eje **ondular (crucero barato) ↔ aletear (ráfaga cara)**: el aleteo da +empuje
@@ -495,7 +495,7 @@ runaway) → ornamentos divergentes por especie. Solo afecta a la elección y al
 Métrica única (compatibilidad sexual + clústeres de especie): **euclídea normalizada sobre los genes
 FUNCIONALES** → `dist = sqrt( Σ_func (g1ᵢ − g2ᵢ)² / n_func ) ∈ [0,1]`.
 - **FUNCIONALES** = ecología + `e_fov` + `orn`/`pref` + **forma de nodos** (incl. `osc_amp`).
-- **EXCLUIDOS:** el **cerebro** (98 pesos; su deriva dominaría) y los genes **decorativos/neutrales**
+- **EXCLUIDOS:** el **cerebro** (todos sus pesos `BRAIN_W`; su deriva dominaría) y los genes **decorativos/neutrales**
   (color `hue`, glow `c_lum`, estilo de señuelo `o_*`). **`osc_phase`** también se excluye
   aunque afecta a la física: solo importa su **dispersión dentro de un cuerpo**, no el valor absoluto (dos
   bichos igual de coordinados con fase global distinta nadan idéntico) → contarlo daría especiación espuria.
