@@ -146,7 +146,7 @@ export function setupControls(app) {
     else if (m === 'species') legendEl.innerHTML = '<em>un color por ESPECIE (clúster genético; se cruzan entre sí)</em>';
     else legendEl.innerHTML = '<em>tono = pigmento adaptado a la luz local · brillo = energía</em>';
   };
-  if (colorSel) colorSel.addEventListener('change', () => { renderer.colorMode = colorSel.value; updateLegend(); });
+  if (colorSel) colorSel.addEventListener('change', () => { renderer.colorMode = colorSel.value; updateLegend(); if (app.requestDraw) app.requestDraw(); });
   updateLegend();
   app.refreshLegend = updateLegend;   // main.js la llama cada frame en modo 'role' → la banda ponderada por totales vive
 
@@ -182,8 +182,9 @@ export function setupControls(app) {
     const applyQuality = (val) => {
       cfg.render.quality = val;
       qualityBtn.textContent = 'Calidad: ' + (QLABEL[val] || 'Alta');
-      renderer.resize();                      // recalcula DPR (baja/alta/máxima) y fuerza refresco del fondo
+      renderer.resize();                      // recalcula DPR (baja/alta/máxima) y fuerza refresco del fondo (borra el buffer)
       try { charts.resize(); } catch (e) {}
+      if (app.requestDraw) app.requestDraw();  // repintar tras el resize (en pausa, si no, quedaría en negro)
     };
     applyQuality(q);
     qualityBtn.addEventListener('click', () => {
@@ -206,7 +207,8 @@ export function setupControls(app) {
       cfg.render.maxInternalPx = v;                              // config del hilo principal (lo lee el render)
       send({ type: 'set', key: 'render.maxInternalPx', value: v }); // espejo en el worker (consistencia)
       syncRes();
-      renderer.resize();                                         // aplica el nuevo tope en vivo
+      renderer.resize();                                         // aplica el nuevo tope en vivo (redimensiona el buffer → lo BORRA)
+      if (app.requestDraw) app.requestDraw();                    // repintar tras el resize (en pausa, si no, quedaría en negro)
     });
   }
 
@@ -226,7 +228,7 @@ export function setupControls(app) {
   const spriteCacheChk = $('spriteCacheChk');
   if (spriteCacheChk) {
     spriteCacheChk.checked = !!cfg.render.spriteCache;
-    spriteCacheChk.addEventListener('change', () => { cfg.render.spriteCache = spriteCacheChk.checked; });
+    spriteCacheChk.addEventListener('change', () => { cfg.render.spriteCache = spriteCacheChk.checked; if (app.requestDraw) app.requestDraw(); });
   }
 
   // ---- Modo contemplación (oculta toda la UI) ----
@@ -536,6 +538,7 @@ function setupLab(app, send) {
   const commit = (k, v, needsReseed) => {
     if (needsReseed) { pending[k] = v; if (app.markReseedPending) app.markReseedPending(); }   // ↻ → pendiente hasta Reiniciar (no toca la sim viva)
     else { send({ type: 'set', key: k, value: v }); setLocal(k, v); }                            // resto → en vivo (al instante / crías nuevas)
+    if (app.requestDraw) app.requestDraw();   // repintar YA (clave en PAUSA: los cambios de solo-render no pasan por el worker → no llega snapshot)
   };
 
   // Anotación "base → efectivo" para los parámetros que escalan con el tamaño del mundo: el slider muestra el valor a

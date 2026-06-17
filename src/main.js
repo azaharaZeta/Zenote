@@ -51,6 +51,12 @@ const app = { sim: simProxy, worker, renderer, charts, cfg: config, running: tru
 setupControls(app);
 window.app = app; // sonda de depuración
 
+// Dibujado BAJO DEMANDA: `pendingDraw` se enciende cuando llega un snapshot del worker (AUNQUE el tick no cambie —en
+// PAUSA, al recomputar fenotipos por un slider o tras un reset—) y cuando cambia algo de SOLO-RENDER que no pasa por el
+// worker (estética/resolución/calidad/modo de color → app.requestDraw). Sin esto, en pausa esos cambios no se repintaban.
+let pendingDraw = true;
+app.requestDraw = () => { pendingDraw = true; }; // lo invocan los controles de solo-render (ver controls.js)
+
 let tps = 0;
 worker.onmessage = (e) => {
   const m = e.data;
@@ -72,6 +78,7 @@ worker.onmessage = (e) => {
       renderer.camX = renderer.camY = config.world.size / 2;   // recentra la vista en el nuevo mundo
     }
     renderer._gz = NaN;           // forzar re-render del sustrato
+    pendingDraw = true;           // el mundo cambió (reset/tamaño) → repintar aunque la sim esté en pausa
   } else if (m.type === 'frame') {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
     simProxy.hue = m.hue; simProxy.diet = m.diet; simProxy.eFrac = m.eFrac;
@@ -89,6 +96,7 @@ worker.onmessage = (e) => {
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
     simProxy.world.nutrient = m.nutrient;
+    pendingDraw = true;           // snapshot nuevo (incluso con el MISMO tick: pausa + slider) → repintar
   }
 };
 
@@ -101,8 +109,9 @@ window.addEventListener('resize', () => {
 
 // --- Bucle de RENDER (solo dibuja; el worker simula) ---
 let lastFpsT = performance.now(), frames = 0, fps = 0, lastTickCount = 0;
-// Dibujado BAJO DEMANDA + cap de FPS: solo redibuja si cambió el tick, la cámara o la selección, y ≤ render.maxFPS veces/s.
-let lastDrawTick = -1, lastCamX = NaN, lastCamY = NaN, lastZoom = NaN, lastSelKey = '', lastDrawT = 0;
+// Dibujado BAJO DEMANDA + cap de FPS: redibuja si hay un frame/cambio pendiente (pendingDraw), o se movió la cámara o la
+// selección, y ≤ render.maxFPS veces/s. (Antes se comparaba el tick → en pausa los cambios de solo-render no repintaban.)
+let lastCamX = NaN, lastCamY = NaN, lastZoom = NaN, lastSelKey = '', lastDrawT = 0;
 const fpsEl = document.getElementById('fps');
 const statEl = document.getElementById('stat');
 const speedRealEl = document.getElementById('speedReal');
@@ -117,13 +126,13 @@ function frame(now) {
     else if (app.followSel && app._selSeen && !simProxy.sel) { app.followSel = false; app._selSeen = false; }
     // (A) ¿cambió algo desde el último dibujo? tick nuevo, cámara movida o selección distinta. Si no, NO se redibuja.
     const selKey = simProxy.sel ? (simProxy.sel.lineage + '/' + simProxy.sel.generation) : '';
-    if (simProxy.tick !== lastDrawTick || renderer.camX !== lastCamX || renderer.camY !== lastCamY || renderer.zoom !== lastZoom || selKey !== lastSelKey) {
+    if (pendingDraw || renderer.camX !== lastCamX || renderer.camY !== lastCamY || renderer.zoom !== lastZoom || selKey !== lastSelKey) {
       renderer.draw();
       if (simProxy.sel) renderer.highlight(simProxy.sel);
       charts.draw();   // el histórico ya lo acumula el worker (muestreo por ticks); aquí solo se pinta
       updateInspector(app);
       if (renderer.colorMode === 'role' && app.refreshLegend) app.refreshLegend(); // banda del rol ponderada por totales (viva)
-      lastDrawTick = simProxy.tick; lastCamX = renderer.camX; lastCamY = renderer.camY; lastZoom = renderer.zoom; lastSelKey = selKey;
+      pendingDraw = false; lastCamX = renderer.camX; lastCamY = renderer.camY; lastZoom = renderer.zoom; lastSelKey = selKey;
       lastDrawT = now; frames++;
     }
   }
