@@ -59,6 +59,8 @@ app.requestDraw = () => { pendingDraw = true; }; // lo invocan los controles de 
 // Ping-pong del buffer `nodes` (el campo más grande de cada foto): tras consumir la foto, su buffer se DEVUELVE al worker
 // para reutilizarlo → evita reasignar ~320 KB por frame. `prevNodesBuf` = buffer de la foto que ahora mismo tiene el render.
 let prevNodesBuf = null;
+// Auto-pausa en EXTINCIÓN: `lastPop` rastrea la población de la foto anterior para detectar la TRANSICIÓN a 0.
+let lastPop = 0;
 
 let tps = 0;
 worker.onmessage = (e) => {
@@ -92,6 +94,10 @@ worker.onmessage = (e) => {
     if (prevNodesBuf && prevNodesBuf.byteLength) worker.postMessage({ type: 'returnNodes', buf: prevNodesBuf }, [prevNodesBuf]);
     simProxy.nodes = m.nodes; prevNodesBuf = m.nodes.buffer;
     simProxy.activeCount = m.n; simProxy.popCount = m.pop;
+    // Auto-pausa al EXTINGUIRSE: solo en la transición de pop>0 a 0 → no sigue corriendo un mundo vacío. Por ser
+    // solo la transición, si el usuario reanuda un mundo ya extinto no se re-pausa (puede mirarlo vacío si quiere).
+    if (m.pop === 0 && lastPop > 0 && app.running && app.pause) app.pause();
+    lastPop = m.pop;
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;
     simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount; simProxy.serial = m.serial;

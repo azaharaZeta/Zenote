@@ -11,13 +11,17 @@ export function setupControls(app) {
 
   // ---- Play / pausa ----
   const playBtn = $('play');
-  playBtn.addEventListener('click', () => {
-    app.running = !app.running;
-    playBtn.textContent = app.running ? '❚❚' : '▶';
-    playBtn.title = app.running ? 'Pausar (Espacio)' : 'Reanudar (Espacio)';
-    send({ type: 'running', value: app.running });
+  // Centraliza el cambio de estado (botón + worker + atenuado del slider de velocidad): lo usan el botón y la
+  // auto-pausa por extinción (app.pause, invocada desde main.js al caer la población a 0).
+  const setRunning = (run) => {
+    app.running = run;
+    playBtn.textContent = run ? '❚❚' : '▶';
+    playBtn.title = run ? 'Pausar (Espacio)' : 'Reanudar (Espacio)';
+    send({ type: 'running', value: run });
     refreshSpeedState();
-  });
+  };
+  playBtn.addEventListener('click', () => setRunning(!app.running));
+  app.pause = () => { if (app.running) setRunning(false); };   // auto-pausa (extinción): solo actúa si está corriendo
 
   // ---- Botón "Máx velocidad" (ignora el slider; simula tanto como quepa por frame) ----
   const maxBtn = $('maxBtn');
