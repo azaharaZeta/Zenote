@@ -9,7 +9,7 @@ export const config = {
   // ───── Mundo ─────
   world: {
     size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD: la materia/alimento TOTAL escala con el área (Modelo A, ver sim._aScale) → misma densidad a cualquier tamaño.
-    matterBudget: 40000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
+    matterBudget: 65000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
     closedRegen: 0.0055, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
     nutrientDiffuse: 0.15, // no-ui · Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
     birthGatherR: 2,     // no-ui · Radio en celdas del vecindario del que la cría reúne materia al nacer.
@@ -28,7 +28,7 @@ export const config = {
     absMetabBase: 0.5,  // no-ui · Suelo del factor metabólico en la absorción: a metab 0 aún se pasta algo.
     energyPerUnit: 10,  // UI «Energía por unidad» (Comida y vegetación) · Energía obtenida por unidad de recurso comida.
     grazeRefuge: 0.20,  // UI «Reserva de rebrote» (Comida y vegetación) · Reserva de rebrote intocable por celda (fracción): evita el sobrepastoreo letal.
-    forageReach: 2,     // UI «Alcance de forrajeo (talla)» (Comida y vegetación) · Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
+    forageReach: 5,     // UI «Alcance de forrajeo (talla)» (Comida y vegetación) · Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
     carrionDecay: 0.010, // UI «Descomposición de cadáveres» (Carroña) · Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
     carrionAbsRate: 0.10, // UI «Ritmo de carroñeo» (Carroña) · Ritmo de carroñeo: fracción de la carroña de la celda que absorbe quien procesa carne.
     carrionScent: 3,    // no-ui · Escala del "olfato" de carroña en el gradiente de búsqueda (más alto = la carroña tira menos).
@@ -44,7 +44,7 @@ export const config = {
     carnivoreSeedFrac: 0.20, // UI «Siembra de carnívoros» (Mundo y población) ↻ · Fracción de fundadores sembrados como proto-carnívoros (condición inicial, no estrategia).
     simpleStart: true,       // no-ui · Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios.
     startJitter: 0.06,       // no-ui · Magnitud del jitter gaussiano del sembrado simple.
-    startDiversity: 0.1,     // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores TODOS IGUALES (renacuajos herbívoros idénticos y básicos, sin proto-carnívoros) · 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variados. Escala jitter, nodos extra y el cohorte carnívoro.
+    startDiversity: 0.3,     // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores TODOS IGUALES (renacuajos herbívoros idénticos y básicos, sin proto-carnívoros) · 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variados. Escala jitter, nodos extra y el cohorte carnívoro.
   },
 
   // ───── Energética y costes (qué cuesta vivir, moverse, criar) ─────
@@ -70,7 +70,7 @@ export const config = {
     dragRef: 1.1,       // no-ui · Arrastre de referencia del coste k_drag: solo paga el Dmul por encima de esto.
     E_max_base: 70,     // UI «Energía máxima base» (Metabolismo y cuerpo) · Energía máxima base · eMax = E_max_base · masa.
     preyGain: 0.90,     // UI «Energía de la presa» (Combate y dieta) · Fracción de energía de la presa aprovechada al cazarla.
-    carcassValue: 0.14, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa estructural del cuerpo (∝ eMax): se bloquea del pool N al nacer y vuelve como carroña al morir. Palanca DOMINANTE herbivoría↔carnivoría: bajada para el modelo de fuerza (la caza se volvió más eficaz → menos recompensa por carne recupera la base herbívora).
+    carcassValue: 0.07, // UI «Valor del cadáver (biomasa)» (Combate y dieta) · Biomasa estructural del cuerpo (∝ eMax): se bloquea del pool N al nacer y vuelve como carroña al morir. Palanca DOMINANTE herbivoría↔carnivoría: bajada para el modelo de fuerza (la caza se volvió más eficaz → menos recompensa por carne recupera la base herbívora).
   },
 
   // ───── Locomoción emergente: la FORMA produce el movimiento (el gen 'speed' = esfuerzo) ─────
@@ -136,7 +136,7 @@ export const config = {
   // ───── Refugio de presa: cobertura graduada por la vegetación viva local (estabilizador Lotka-Volterra) ─────
   refuge: {
     enabled: true,      // UI «Refugio de presa» (Refugio de presa) · Activar la cobertura/refugio de presa.
-    strength: 0.45,     // UI «Cobertura del refugio» (Refugio de presa) · Fuerza de la cobertura: prob. de escape = strength · vegetación_local. 0 = sin refugio. Subida para el modelo de fuerza: más presa escapa por cobertura → protege la base herbívora y reduce los colapsos al ápice-carnívoro.
+    strength: 0.65,     // UI «Cobertura del refugio» (Refugio de presa) · Fuerza de la cobertura: prob. de escape = strength · vegetación_local. 0 = sin refugio. Subida para el modelo de fuerza: más presa escapa por cobertura → protege la base herbívora y reduce los colapsos al ápice-carnívoro.
   },
 
   // ───── Edad / mortalidad (la madurez y el ritmo de vida son GENES; aquí solo las escalas base) ─────
@@ -172,7 +172,7 @@ export const config = {
     failDamage: 0.1,     // UI «Daño al fallar ataque» (Combate y dieta) · Energía que pierde el atacante al fallar (× su eMax); muere solo si llega a 0.
     fleeSpeed: 1.0,      // UI «Escape por velocidad» (Combate y dieta) · Escape por velocidad: la presa más rápida que el cazador se zafa. 0 = solo cobertura.
     fleeCap: 0.95,       // no-ui · Tope de la prob. de escape por velocidad (nunca se zafa con certeza).
-    handlingTime: 48,    // UI «Tiempo de manejo (digestión)» (Combate y dieta) · Enfriamiento tras una captura (digestión): satura la tasa de caza. Subido para el modelo de fuerza (la caza por ráfaga se volvió más eficaz → limita la tasa de depredación para que herbívoros/carroñeros aguanten).
+    handlingTime: 60,    // UI «Tiempo de manejo (digestión)» (Combate y dieta) · Enfriamiento tras una captura (digestión): satura la tasa de caza. Subido para el modelo de fuerza (la caza por ráfaga se volvió más eficaz → limita la tasa de depredación para que herbívoros/carroñeros aguanten).
     dietMargin: 0.08,    // UI «Margen de dieta (presa)» (Combate y dieta) · Diferencia de dieta mínima para considerar a otro "presa".
     preyBandLo: 0.15,    // UI «Suelo de banda de caza» (Combate y dieta) · Ratio presa/depredador mínimo cazable.
     preyBandHi: 1.10,    // UI «Techo de banda de caza» (Combate y dieta) · Ratio presa/depredador máximo atacable (>1 = presa mayor, arriesgada).
@@ -225,7 +225,7 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 2.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) ↻ · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría). Es el RANGO de talla posible: aplica a las crías al re-sembrar, NO redimensiona a los organismos vivos (por eso es ↻).
+    size:      { min: 4.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) ↻ · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría). Es el RANGO de talla posible: aplica a las crías al re-sembrar, NO redimensiona a los organismos vivos (por eso es ↻).
     sense:     { min: 10,  max: 80 },   // no-ui · gen sense → alcance de visión base (u).
     repro_thr: { min: 0.5, max: 0.95 }, // no-ui · gen repro_thr → umbral de energía para criar (fracción de E_max).
     invest:    { min: 0.2, max: 0.6 },  // no-ui · gen invest → energía dada a la cría (fracción de E_max).
