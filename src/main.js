@@ -21,7 +21,6 @@ const simProxy = {
     cellW: config.world.size / config.resource.gridCols,
     cellH: config.world.size / config.resource.gridRows,
     capacity: new Float32Array(config.resource.gridCols * config.resource.gridRows),
-    temp: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     resource: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     carrion: new Float32Array(config.resource.gridCols * config.resource.gridRows),
     nutrient: new Float32Array(config.resource.gridCols * config.resource.gridRows),
@@ -88,11 +87,14 @@ worker.onmessage = (e) => {
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;
     simProxy.species = m.species; simProxy.role = m.role; simProxy.speciesCount = m.speciesCount; simProxy.serial = m.serial;
-    // Histórico de las gráficas: lo acumula el worker (muestreo por ticks); aquí solo se asigna para pintar.
-    charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histVegFill = m.histVegFill; charts.histT = m.histTick;
-    charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
-    charts.bSex = m.histBS; charts.bAsex = m.histBA;
-    charts.histN = m.histN; charts.histVegMass = m.histVegMass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
+    // Histórico de las gráficas: lo acumula el worker (muestreo por ticks) y solo lo ADJUNTA cuando hay muestra nueva
+    // (cada ~HIST_K ticks); entre medias `m.histPop` viene undefined y conservamos la referencia anterior (evita reclonar).
+    if (m.histPop) {
+      charts.history = m.histPop; charts.histC = m.histCarn; charts.histScav = m.histScav; charts.histH = m.histHerb; charts.histO = m.histOmni; charts.histVegFill = m.histVegFill; charts.histT = m.histTick;
+      charts.dCombat = m.histDC; charts.dStarv = m.histDS; charts.dAge = m.histDA; charts.dEaten = m.histDE;
+      charts.bSex = m.histBS; charts.bAsex = m.histBA;
+      charts.histN = m.histN; charts.histVegMass = m.histVegMass; charts.histBio = m.histBio; charts.histCarrion = m.histCarrion;   // pools de materia → curva de biomasa
+    }
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
     simProxy.world.nutrient = m.nutrient;

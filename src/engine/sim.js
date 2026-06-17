@@ -374,10 +374,9 @@ export class Sim {
     const handlingTime = cfg.combat.handlingTime;
     const failDamage = cfg.combat.failDamage != null ? cfg.combat.failDamage : 1; // energía perdida al fallar (×eMax); ≥1 ≈ muerte segura
     const dietMargin = cfg.combat.dietMargin; // mínima diferencia de dieta para considerar presa
-    // Banda de tamaño de presa (depredación selectiva → nichos de talla). inPreyBand(depredador, presa).
+    // Banda de tamaño de presa (depredación selectiva → nichos de talla): el escaneo aplica el ratio presa/depredador inline.
     const preyLo = cfg.combat.preyBandLo != null ? cfg.combat.preyBandLo : 0;
     const preyHi = cfg.combat.preyBandHi != null ? cfg.combat.preyBandHi : 1;
-    const inPreyBand = (predR, preyR) => { const ratio = preyR / predR; return ratio >= preyLo && ratio <= preyHi; };
     // Banda de amenaza precalculada (vecino me come si rj/myR ∈ [1/preyHi, 1/preyLo]) → evita una división por vecino.
     const threatLo = 1 / preyHi, threatHi = 1 / preyLo, maxRadius = cfg.expr.size.max;
     const refuge = cfg.refuge, refugeOn = !!(refuge && refuge.enabled);     // refugio de presa (estabilizador L-V)
@@ -445,12 +444,14 @@ export class Sim {
         if (!omni) { const im = 1 / Math.sqrt(hmag); headx *= im; heady *= im; }
         const hc = W.hashCell, hCols = W.hCols, hRows = W.hRows;
         let hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
-        // Radio de escaneo adaptativo al alcance visual (cap 3): visión larga → más celdas, sin truncar la percepción.
-        const scanR = Math.min(3, Math.max(1, Math.ceil(sr / hc)));
-        // scanMax2 = cota del radio que importa (visión o captura) → descarta la mayoría de vecinos con solo la distancia.
         const myDiet = this.diet[i], reachExt = lureReach * this.lure[i] * myR + this.morphReach[i]; // señuelo + apéndices frontales
         const reachMax = myR + maxRadius + reachExt;
-        const scanMax2 = sr2 > reachMax * reachMax ? sr2 : reachMax * reachMax;
+        // Radio de escaneo adaptativo (cap 3): cubre lo que importa = max(VISIÓN, ALCANCE DE CAPTURA). Basarlo solo en la
+        // visión truncaría el CONTACTO de un cazador de poca vista pero alcance largo (morphReach/señuelo > senseR) → no
+        // vería presa que tiene a tiro. scanMax2 = misma cota al cuadrado → descarta la mayoría de vecinos solo con la distancia.
+        const scanReach = sr > reachMax ? sr : reachMax;
+        const scanR = Math.min(3, Math.max(1, Math.ceil(scanReach / hc)));
+        const scanMax2 = scanReach * scanReach;
         for (let oy = -scanR; oy <= scanR; oy++) {
           const rowBase = (((hy + oy) % hRows + hRows) % hRows) * hCols; // fila envuelta (toro) precalculada por oy → no recomputar el wrap+base de fila por celda
           for (let ox = -scanR; ox <= scanR; ox++) {

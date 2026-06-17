@@ -45,6 +45,9 @@ const histN = [], histVegMass = [], histBio = [], histCarrion = [];   // pecera:
 const histHerb = [], histOmni = [];   // desglose por dieta
 const histDC = [], histDS = [], histDA = [], histDE = [], histBS = [], histBA = [];   // demografía por ventana (muertes/nacimientos)
 let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
+// El histórico solo cambia cada HIST_K ticks (sampleHistory) → se adjunta a la foto SOLO cuando hay muestra nueva
+// (en vez de clonar ~17 arrays en cada foto). Entre muestras el hilo principal conserva la referencia anterior.
+let histDirty = true;
 function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
   for (let k = 0; k < n; k++) { const i = act[k];
@@ -70,10 +73,12 @@ function sampleHistory() {
     histN.shift(); histVegMass.shift(); histBio.shift(); histCarrion.shift();
     histDC.shift(); histDS.shift(); histDA.shift(); histDE.shift(); histBS.shift(); histBA.shift();
   }
+  histDirty = true;   // hay muestra nueva → la próxima foto adjuntará las series
 }
 function clearHistory() {
   for (const a of [histPop, histCarn, histScav, histHerb, histOmni, histVegFill, histTick, histN, histVegMass, histBio, histCarrion, histDC, histDS, histDA, histDE, histBS, histBA]) a.length = 0;
   lastHistTick = -1e9; histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, sexual: 0, asexual: 0 };
+  histDirty = true;   // tras vaciar, adjuntar las series vacías a la próxima foto (refleja el reset)
 }
 function classifySpecies() {
   const s = sim, act = s.active, n = s.activeCount, NG = NUM_GENES;
@@ -212,14 +217,21 @@ function snapshot() {
   const transfer = [x.buffer, y.buffer, radius.buffer, hue.buffer, diet.buffer, eFrac.buffer, lineage.buffer,
     geneSel.buffer, heading.buffer, spd.buffer, tint.buffer, eye.buffer, face.buffer, deco.buffer, nodes.buffer,
     hist.buffer, species.buffer, role.buffer, serial.buffer, resource.buffer, carrion.buffer, nutrient.buffer];
-  postMessage({
+  const msg = {
     type: 'frame', n, tick: s.tick, pop: s.popCount, births: s.births, deaths: s.deaths, carn, N: s.world.totalN(),
     x, y, radius, hue, diet, eFrac, lineage, geneSel, heading, spd, tint, eye, face, deco, nodes, hist, sel,
     species, speciesCount, role, serial,
-    // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos).
-    histPop, histCarn, histScav, histHerb, histOmni, histVegFill, histTick, histN, histVegMass, histBio, histCarrion, histDC, histDS, histDA, histDE, histBS, histBA,
     resource, carrion, nutrient,
-  }, transfer);
+  };
+  // Histórico para las gráficas (muestreado por ticks; ver sampleHistory). Arrays pequeños (~120 puntos) clonados por
+  // structured-clone → se adjuntan SOLO cuando hay muestra nueva (histDirty); entre muestras el hilo principal conserva la suya.
+  if (histDirty) {
+    msg.histPop = histPop; msg.histCarn = histCarn; msg.histScav = histScav; msg.histHerb = histHerb; msg.histOmni = histOmni;
+    msg.histVegFill = histVegFill; msg.histTick = histTick; msg.histN = histN; msg.histVegMass = histVegMass; msg.histBio = histBio;
+    msg.histCarrion = histCarrion; msg.histDC = histDC; msg.histDS = histDS; msg.histDA = histDA; msg.histDE = histDE; msg.histBS = histBS; msg.histBA = histBA;
+    histDirty = false;
+  }
+  postMessage(msg, transfer);
 }
 
 

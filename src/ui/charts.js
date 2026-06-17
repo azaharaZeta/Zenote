@@ -25,7 +25,6 @@ export class Charts {
     this.bSex = []; this.bAsex = []; this.dEaten = []; this.dCombat = []; this.dStarv = []; this.dAge = [];  // demografía (nacimientos/muertes)
     // Suavizado: media móvil centrada de ±N muestras (cada muestra ≈ 40 ticks). Muestra la TENDENCIA, no picos. Subir = más liso.
     this.deathSmooth = 5;
-    this.maxHistory = 600;
     this.windowTicks = 4800; // ventana visible del eje X en ticks (= HIST_WINDOW del worker)
     this.bins = new Float32Array(24);
     this._fitDPR(popCanvas, this.popCtx);
