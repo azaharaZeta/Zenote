@@ -76,6 +76,12 @@ export function setupControls(app) {
   // Genes solo de apariencia (su histograma refleja deriva, no evolución útil): DECOR + color de linaje.
   const COSMETIC = new Set([...DECOR, G.hue]);
   const HIDE_GROUPS = new Set(['Color y ornamento', 'Nodos (cuerpo)']); // grupos fuera del histograma
+  // Cantidad derivada (no un gen): VELOCIDAD realizada del organismo (|v|/vMax ∈[0,1]). Índice negativo (centinela) → el worker la binea.
+  const HIST_VEL = -2;
+  { const og = document.createElement('optgroup'); og.label = 'Movimiento';
+    const o = document.createElement('option'); o.value = HIST_VEL; o.textContent = 'Velocidad';
+    if (charts.histGene === HIST_VEL) o.selected = true;
+    og.appendChild(o); sel.appendChild(og); }
   GENE_GROUPS.forEach((grp) => {            // agrupado en <optgroup> → desplegable navegable, no infinito
     if (HIDE_GROUPS.has(grp.label)) return; // grupos no deseados en el filtro de histograma
     const og = document.createElement('optgroup');
@@ -133,7 +139,7 @@ export function setupControls(app) {
       const labels = segs.map((s) => `<span style="color:${s.c}">${s.label} ${s.n}</span>`).join(' · ');
       legendEl.innerHTML = bar(grad) + `<em>${labels}</em>`;
     }
-    else if (m === 'gene') legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 80, 52)) + `<span>${GENE_LABELS[GENES[renderer.geneIndex]]}: bajo</span><span>alto</span>`; // h=(1-gen)*120 → verde(bajo)→rojo(alto)
+    else if (m === 'gene') { const gl = renderer.geneIndex < 0 ? 'Velocidad' : (GENE_LABELS[GENES[renderer.geneIndex]] || GENES[renderer.geneIndex]); legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 80, 52)) + `<span>${gl}: bajo</span><span>alto</span>`; } // h=(1-gen)*120 → verde(bajo)→rojo(alto)
     else if (m === 'energy') legendEl.innerHTML = bar(ramp(u => u * 130, 85, 50)) + '<span>hambriento</span><span>lleno</span>';                 // h=ef*130
     else if (m === 'lineage') legendEl.innerHTML = '<em>un color por linaje fundador (familias / proto-especies)</em>';
     else if (m === 'species') legendEl.innerHTML = '<em>un color por ESPECIE (clúster genético; se cruzan entre sí)</em>';

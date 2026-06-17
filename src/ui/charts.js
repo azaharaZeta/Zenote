@@ -230,7 +230,7 @@ export class Charts {
       ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);
     }
     ctx.font = '10px system-ui, sans-serif';
-    const lbl = GENE_LABELS[GENES[gi]] || GENES[gi];
+    const lbl = gi < 0 ? 'Velocidad' : (GENE_LABELS[GENES[gi]] || GENES[gi]);
     const lw = ctx.measureText(lbl).width;
     ctx.fillStyle = 'rgba(8,10,14,0.7)';
     ctx.fillRect(1, 1, lw + 8, 14);

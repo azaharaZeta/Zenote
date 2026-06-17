@@ -157,7 +157,11 @@ function snapshot() {
     x[k] = s.x[i]; y[k] = s.y[i]; radius[k] = s.radius[i];
     hue[k] = s.hue[i]; diet[k] = s.diet[i]; lineage[k] = s.lineage[i]; species[k] = speciesOf[i];
     let ef = s.E[i] / s.eMax[i]; eFrac[k] = ef < 0 ? 0 : ef > 1 ? 1 : ef;
-    const gv = s.genes[i * NG + geneIdx]; geneSel[k] = gv;
+    // Histograma / modo color 'gene': valor por-agente ∈[0,1]. geneIdx ≥ 0 → un gen; geneIdx < 0 → VELOCIDAD absoluta (|v|/vMax).
+    let gv;
+    if (geneIdx >= 0) gv = s.genes[i * NG + geneIdx];
+    else { const vv = Math.hypot(s.vx[i], s.vy[i]) / vMaxG; gv = vv > 1 ? 1 : vv; }
+    geneSel[k] = gv;
     let b = (gv * HIST_BINS) | 0; if (b >= HIST_BINS) b = HIST_BINS - 1; else if (b < 0) b = 0;
     hist[b]++;
     if (s.diet[i] > 0.5) carn++;
