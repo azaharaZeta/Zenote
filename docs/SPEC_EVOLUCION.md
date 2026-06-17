@@ -458,8 +458,10 @@ cambios de parámetros en vivo.
 ### Siembra inicial
 `pop.initial` fundadores. Con `pop.simpleStart=true`, cuerpos **simples** (cabeza + pocos nodos) y
 genes con jitter pequeño (`startJitter`) → la complejidad y la apariencia EMERGEN; con `false`, genes
-uniformes en `[0,1]`. `startDiversity` regula la variedad inicial. Una fracción `carnivoreSeedFrac`
-puede sembrarse como proto-carnívoros (cruza el "valle de fitness" del arranque). Energía inicial
+uniformes en `[0,1]`. `startDiversity` (def **0.5**) regula la variedad inicial: **0 = fundadores TODOS IGUALES** (renacuajos
+herbívoros idénticos y básicos, sin proto-carnívoros), 0.5 = moderada, 1 = variado. Una fracción `carnivoreSeedFrac` se
+siembra como proto-carnívoros (cruza el "valle de fitness" del arranque), **escalada por la diversidad** (`min(1, div·2)`:
+nula a div=0, plena a div≥0.5). Los fundadores se colocan en un **círculo central de densidad fija** (`pop.seedDensity`). Energía inicial
 `E = 0.5·E_max`. Si `pop.seed` es un número, el RNG es **reproducible** (mismo seed → misma corrida).
 
 ### Referencia de reproducción y compromiso r/K (auditoría #4)

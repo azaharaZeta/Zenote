@@ -206,9 +206,11 @@ export class Sim {
     const cfg = this.cfg, rng = this.rng, W = cfg.world;
     const nInit = this._initialCount();                          // fundadores FIJOS (no escalan con el mundo, ver _initialCount)
     const seedR = this._seedZoneRadius(), seedC = W.size / 2;    // círculo central de densidad fija (ver _seedZoneRadius)
-    const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac) | 0 : 0;
-    // Diversidad de sembrado (UI): 0 = fundadores casi idénticos · 1 = variados. Escala el jitter y la dispersión decorativa.
-    const div = cfg.pop.startDiversity != null ? cfg.pop.startDiversity : 1;
+    // Diversidad de sembrado (UI): 0 = fundadores TODOS IGUALES y básicos (renacuajos idénticos, SIN proto-carnívoros) ·
+    // 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variado. Escala el jitter, los nodos extra y el cohorte.
+    const div = cfg.pop.startDiversity != null ? cfg.pop.startDiversity : 0.5;
+    const carnFrac = Math.min(1, div * 2);                // el cohorte proto-carnívoro entra con la diversidad: 0 a div=0 (todos herbívoros), pleno a div≥0.5
+    const nCarn = cfg.combat.enabled ? (nInit * cfg.pop.carnivoreSeedFrac * carnFrac) | 0 : 0;
     const J = cfg.pop.startJitter * div;                  // jitter ∝ diversidad
     // Paleta por ejecución: bases aleatorias compartidas → cada run tiene un colorido coherente y distinto.
     // El tono base evita el verde (se reserva para la vegetación del render); el verde puede emerger luego por deriva.

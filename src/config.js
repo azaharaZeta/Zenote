@@ -44,7 +44,7 @@ export const config = {
     carnivoreSeedFrac: 0.20, // UI «Siembra de carnívoros» (Mundo y población) ↻ · Fracción de fundadores sembrados como proto-carnívoros (condición inicial, no estrategia).
     simpleStart: true,       // no-ui · Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios.
     startJitter: 0.06,       // no-ui · Magnitud del jitter gaussiano del sembrado simple.
-    startDiversity: 0,       // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores casi clonales … 1 = variados.
+    startDiversity: 0.5,     // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores TODOS IGUALES (renacuajos herbívoros idénticos y básicos, sin proto-carnívoros) · 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variados. Escala jitter, nodos extra y el cohorte carnívoro.
   },
 
   // ───── Energética y costes (qué cuesta vivir, moverse, criar) ─────
