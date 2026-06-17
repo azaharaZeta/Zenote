@@ -2,6 +2,7 @@
 // reseed, modo contemplación. Pensado para ratón y táctil (pointer events).
 
 import { GENES, GENE_LABELS, G, NUM_GENES, GENE_GROUPS, DECOR, NODE_COUNT } from '../engine/genome.js';
+import { turboCss } from '../util/color.js';
 
 export function setupControls(app) {
   const { sim, renderer, charts, cfg, worker } = app;
@@ -139,7 +140,7 @@ export function setupControls(app) {
       const labels = segs.map((s) => `<span style="color:${s.c}">${s.label} ${s.n}</span>`).join(' · ');
       legendEl.innerHTML = bar(grad) + `<em>${labels}</em>`;
     }
-    else if (m === 'gene') { const gl = renderer.geneIndex < 0 ? 'Velocidad' : (GENE_LABELS[GENES[renderer.geneIndex]] || GENES[renderer.geneIndex]); legendEl.innerHTML = bar(ramp(u => (1 - u) * 120, 80, 52)) + `<span>${gl}: bajo</span><span>alto</span>`; } // h=(1-gen)*120 → verde(bajo)→rojo(alto)
+    else if (m === 'gene') { const gl = renderer.geneIndex < 0 ? 'Velocidad' : (GENE_LABELS[GENES[renderer.geneIndex]] || GENES[renderer.geneIndex]); const tg = Array.from({ length: 9 }, (_, i) => turboCss(i / 8)).join(','); legendEl.innerHTML = bar(tg) + `<span>${gl}: bajo</span><span>alto</span>`; } // rampa TURBO (bajo→alto), igual que el histograma
     else if (m === 'energy') legendEl.innerHTML = bar(ramp(u => u * 130, 85, 50)) + '<span>hambriento</span><span>lleno</span>';                 // h=ef*130
     else if (m === 'lineage') legendEl.innerHTML = '<em>un color por linaje fundador (familias / proto-especies)</em>';
     else if (m === 'species') legendEl.innerHTML = '<em>un color por ESPECIE (clúster genético; se cruzan entre sí)</em>';

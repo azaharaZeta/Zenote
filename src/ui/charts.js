@@ -2,6 +2,7 @@
 // Ver el histograma deslizarse es la prueba visual de la selección (criterio §7.1).
 
 import { G, GENES, GENE_LABELS } from '../engine/genome.js';
+import { turboCss } from '../util/color.js';
 
 export class Charts {
   constructor(popCanvas, histCanvas, sim, deathCanvas, birthCanvas, bioCanvas) {
@@ -224,9 +225,9 @@ export class Charts {
     const bw = w / nb;
     for (let i = 0; i < nb; i++) {
       const bh = (bins[i] / max) * (h - 14);
-      // Color del bin = valor del gen, mismo mapeo que los organismos en modo 'gene' y la leyenda: verde(0)→rojo(1).
+      // Color del bin = valor (posición X), rampa TURBO (mismo mapeo que el modo color 'gene' y la leyenda): bajo→alto muy discriminable.
       const gv = (i + 0.5) / nb;
-      ctx.fillStyle = `hsl(${(1 - gv) * 120},80%,52%)`;
+      ctx.fillStyle = turboCss(gv);
       ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);
     }
     ctx.font = '10px system-ui, sans-serif';

@@ -155,8 +155,8 @@ tamaño *aparente* (`aparente = radio · viewport/world · zoom` → la resoluci
 - Click/tap en un organismo (sin arrastrar): muestra su genoma (barras), linaje y generación.
 - **Modos de coloreado** (solo render, no tocan la simulación) para *analizar* la evolución:
   *Visión real* (pigmento adaptado a la luz), *Dieta* (verde herbívoro → rojo carnívoro),
-  *Linaje* (un color por familia fundadora), *Gen del histograma* (gradiente del rasgo
-  elegido) y *Energía*. En los modos analíticos el fondo pasa a gris para que destaquen.
+  *Linaje* (un color por familia fundadora), *Gen del histograma* (rampa **Turbo** del rasgo
+  elegido —o de la VELOCIDAD—, bajo→alto, muy discriminable) y *Energía*. En los modos analíticos el fondo pasa a gris para que destaquen.
   Una leyenda explica el código de color activo.
 - Botón "sembrar de nuevo" (reiniciar con población aleatoria y semilla opcional
   para reproducibilidad).

@@ -4,6 +4,7 @@
 import { G, NODE_COUNT, NODE_STRIDE } from '../engine/genome.js';
 import { EPS_AXIS, presWeight } from '../engine/bodyplan.js';
 import { makeRng } from '../util/rng.js';
+import { turboHsl } from '../util/color.js';
 
 // Hue pseudoaleatorio estable a partir de un id de linaje (buena dispersión en [0,360)).
 function lineageHue(id) { return (Math.imul(id + 1, 2654435761) >>> 0) % 360; }
@@ -563,7 +564,7 @@ export class Renderer {
         case 'diet':    h = (1 - sim.diet[i]) * 120; s = 85; l = 52; break;        // verde→rojo
         case 'lineage': h = lineageHue(sim.lineage[i]); s = 70; l = 55; break;      // 1 color por linaje
         case 'species': h = lineageHue(sim.species[i] | 0); s = 78; l = 55; break;  // 1 color por ESPECIE
-        case 'gene':    h = (1 - sim.geneSel[i]) * 120; s = 80; l = 52; break;      // VERDE(bajo)→amarillo→ROJO(alto) · mismo mapeo que histograma (charts.js) y leyenda (controls.js)
+        case 'gene': { const c = turboHsl(sim.geneSel[i]); h = c[0]; s = c[1]; l = c[2]; break; } // rampa TURBO (bajo→alto) · mismo mapeo que histograma (charts.js) y leyenda (controls.js)
         case 'energy':  h = ef * 130; s = 85; l = 50; break;                         // rojo(hambre)→verde
         case 'role': {  // OFICIO trófico (worker: trophicRole, MISMO criterio que la curva): herbívoro/omnívoro/carroñero/cazador
           const ro = sim.role ? sim.role[i] : 0;
