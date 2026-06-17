@@ -11,7 +11,7 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 ## Ideas abiertas
 
 ### Locomoción / modelo de fuerza
-- **Giro físico** — que girar use los segmentos (par + inercia). → [giro-fisico.md](giro-fisico.md)
+- **Giro físico — nivel A** (opcional/arriesgado) — giro 100% emergente: el cerebro decide empuje izq/der. C (señal visual) y B (inercia angular) ya hechos. → [giro-fisico.md](giro-fisico.md)
 - **Afinar balance del modelo de fuerza** — recuperar carroñeros finos tras bajar `carcassValue`. → [afinar-balance-modelo-fuerza.md](afinar-balance-modelo-fuerza.md)
 
 ### Ecología / balance

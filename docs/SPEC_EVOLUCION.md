@@ -200,8 +200,11 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   a lo diminuto → ↑ diversidad de talla y ↓ dominancia carnívora. (Render: la ondulación va relativa al `vmax` PROPIO → el
   pequeño bate igual de vivo aunque avance menos.)
 - **Giro:** `turn = turnBase + turnAsym·asym − turnSize·size − turnElong·(elongN−1) − segTurn·nSeg`,
-  acotado a `[turnMin, 1]`. La **asimetría del grafo** (`straight < 1`) desvía empuje a giro: cuerpos
+  acotado a `[turnMin, 1]` = **techo de agilidad**. La **asimetría del grafo** (`straight < 1`) desvía empuje a giro: cuerpos
   asimétricos viran mejor pero avanzan menos recto. Grandes/elongados/con muchos segmentos giran peor.
+  **INERCIA ANGULAR** (`loco.angInertia`): el rumbo gira con MOMENTO — una vel. angular `omega` se acerca al objetivo
+  (`turn·error_angular`, capado a ±`turn`) con lag `angResp = 1/(1+angInertia·max(0,masa−1))` → los grandes tardan en girar
+  y sobregiran/contragiran; los ligeros giran casi al instante. `angInertia=0` → giro instantáneo (modelo previo).
 - **CONTROL POR FUERZA (`loco.forceModel`, por defecto).** El organismo **no elige velocidad: elige ESFUERZO.** El cerebro
   emite un vector de deseo cuyo **módulo = esfuerzo** (throttle 0..1, decidido tick a tick) y cuya dirección = rumbo de empuje
   (gira ≤ `turnRate`). La velocidad **no se fija**: se acerca a `vmax·esfuerzo·dir` con lag exponencial = **INERCIA**

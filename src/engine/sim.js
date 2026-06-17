@@ -32,6 +32,7 @@ export class Sim {
     this.y = new Float32Array(cap);
     this.vx = new Float32Array(cap);
     this.vy = new Float32Array(cap);
+    this.omega = new Float32Array(cap);    // velocidad angular (rad/tick): estado del giro físico con inercia
     this.E = new Float32Array(cap);
     this.age = new Float32Array(cap);
     this.cooldown = new Float32Array(cap);
@@ -53,6 +54,7 @@ export class Sim {
     this.radius = new Float32Array(cap);
     this.vmax = new Float32Array(cap);     // velocidad-capacidad = velocidad terminal a esfuerzo MÁXIMO (emerge de la morfología)
     this.velResp = new Float32Array(cap);  // respuesta de velocidad (modelo de fuerza): 1=ágil, →0=mucha inercia (∝1/masa)
+    this.angResp = new Float32Array(cap);  // respuesta de giro (inercia angular): 1=gira al instante, →0=mucho momento (∝1/masa)
     this.turnRate = new Float32Array(cap); // agilidad de giro (emerge de asimetría/tamaño/elongación)
     this.heading = new Float32Array(cap);  // rumbo persistente (rad): en el modelo de fuerza = dirección de EMPUJE (la velocidad la arrastra detrás)
     this.effort = new Float32Array(cap);   // capacidad muscular (modelo viejo: gen speed; fuerza: 1) → coste/amplitud
@@ -571,14 +573,21 @@ export class Sim {
         // MODELO DE FUERZA: el MÓDULO del deseo del cerebro = ESFUERZO (0..1); su dirección = rumbo de EMPUJE (giro limitado).
         // La velocidad se ACERCA a (vmax·esfuerzo·dir) con lag exponencial = INERCIA (velResp ∝ 1/masa). La velocidad nunca se fija.
         throttle = dmag > 1 ? 1 : dmag;
-        let dirx = Math.cos(this.heading[i]), diry = Math.sin(this.heading[i]); // rumbo (dir de empuje) previo
+        // GIRO FÍSICO: el rumbo gira con INERCIA ANGULAR. Objetivo de giro = error_angular·turnRate (capado a ±turnRate, el
+        // techo de agilidad emergente de la forma); omega (vel. angular) TARDA en alcanzarlo (angResp ∝ 1/masa) → los grandes
+        // sobregiran/contragiran. Sin deseo → objetivo 0 → omega decae y el giro se "deja ir". angInertia=0 → angResp=1 → casi instantáneo.
+        let omT = 0;
         if (dmag > 1e-4) {
-          const ddx = dx / dmag, ddy = dy / dmag;
-          let ndx = dirx + (ddx - dirx) * turn, ndy = diry + (ddy - diry) * turn; // gira el EMPUJE hacia el deseo ≤ turnRate
-          const nm = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
-          dirx = ndx / nm; diry = ndy / nm;
-          this.heading[i] = Math.atan2(diry, dirx);      // el rumbo sigue al empuje; la velocidad lo arrastra detrás (banqueo)
-        } else throttle = 0;                              // sin deseo → no empuja → frena por arrastre (puede pararse: descanso/emboscada)
+          let aerr = Math.atan2(dy, dx) - this.heading[i];   // error angular hacia el deseo del cerebro
+          if (aerr > Math.PI) aerr -= 6.283185307; else if (aerr < -Math.PI) aerr += 6.283185307;
+          omT = turn * aerr; if (omT > turn) omT = turn; else if (omT < -turn) omT = -turn; // capado a la agilidad
+        } else throttle = 0;                              // sin deseo → no empuja → frena por arrastre (descanso/emboscada)
+        let omega = this.omega[i] + (omT - this.omega[i]) * this.angResp[i]; // inercia angular: omega tarda en cambiar (lag ∝ masa)
+        this.omega[i] = omega;
+        let hd = this.heading[i] + omega;                 // el rumbo integra la velocidad angular
+        if (hd > Math.PI) hd -= 6.283185307; else if (hd < -Math.PI) hd += 6.283185307;
+        this.heading[i] = hd;
+        const dirx = Math.cos(hd), diry = Math.sin(hd);   // dir de empuje; la velocidad lo arrastra detrás (banqueo)
         const resp = this.velResp[i];
         const vtx = dirx * vmaxI * throttle, vty = diry * vmaxI * throttle; // velocidad objetivo (terminal a ESTE esfuerzo)
         vx[i] += (vtx - vx[i]) * resp; vy[i] += (vty - vy[i]) * resp;        // integración con inercia (estable a cualquier masa)
@@ -727,7 +736,7 @@ export class Sim {
             if (ox < 0) ox += ww; else if (ox >= ww) ox -= ww; // toro: los bordes envuelven
             if (oy < 0) oy += wh; else if (oy >= wh) oy -= wh;
             this.x[child] = ox; this.y[child] = oy;
-            this.vx[child] = 0; this.vy[child] = 0;
+            this.vx[child] = 0; this.vy[child] = 0; this.omega[child] = 0; // slot reutilizado: limpiar la velocidad angular heredada
             this.heading[child] = this.heading[i]; // hereda el rumbo del progenitor (sin él, miraría al este al nacer)
             this.E[child] = childE;
             this.age[child] = 0;

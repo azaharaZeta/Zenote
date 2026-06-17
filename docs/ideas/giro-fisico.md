@@ -1,7 +1,7 @@
 # Giro físico — que girar use los segmentos del cuerpo
 
-> Ficha de idea · **estado: EN CURSO** (C hecho; B/A pendientes) · estudio 2026-06-11.
-> Índice: [indice-ideas.md](indice-ideas.md).
+> Ficha de idea · **estado: C+B HECHOS** (2026-06-17); A queda como opción futura (arriesgada) · estudio 2026-06-11.
+> Índice: [indice-ideas.md](indice-ideas.md) · Mecánica de B: `SPEC_EVOLUCION.md` §2bis (`loco.angInertia`).
 
 ## Idea
 Hoy el giro es **cinemático**: el rumbo rota hacia el deseo del cerebro un máx. `turnRate`/tick (emerge de la forma,
@@ -15,11 +15,13 @@ estática — un cuerpo torcido giraría en círculos siempre).
   Recto → simétrico. NO toca la física. Verificado en preview (izq/der espejo). *Matiz:* usa mirada−rumbo
   (intención) → un bicho que HUYE mirando a la amenaza también se inclina (maniobra, dirección aproximada). Si se
   quiere fiel al giro real, cambiar a delta de rumbo entre frames. Ganancia 0.5 tuneable.
-- **B — AUTORIDAD de giro desde la palanca de los propulsores (PENDIENTE, recomendado).** Sin tocar el cerebro: el
-  giro pasa a ser un **par físico** cuya fuerza máxima emerge de la palanca de las aletas laterales (área lateral ×
-  brazo de momento, calculable de la geometría de nodos) + **inercia angular** (∝ masa·talla² → los grandes no giran
-  de golpe, sobrepasan, contra-giran). Sustituye `turnRate` por algo emergente-de-la-forma con momento realista.
-  Riesgo BAJO (cerebro intacto). Esfuerzo medio.
+- **B — INERCIA ANGULAR. ✅ HECHO (2026-06-17).** Sin tocar el cerebro: el giro pasa a tener **momento** — una vel.
+  angular `omega` (estado nuevo en `sim.js`) se acerca al objetivo (`turnRate·error`, capado a ±`turnRate`) con lag
+  `angResp = 1/(1+angInertia·max(0,masa−1))` (en `organism.js`) → los grandes/complejos tardan en girar y sobregiran/
+  contragiran; los ligeros giran casi al instante. `turnRate` se conserva como TECHO de agilidad (la palanca de las
+  aletas no se modeló aparte: la agilidad ya emergía de la forma vía turnAsym/size/elong/segTurn). Nuevo `loco.angInertia`
+  (UI «Inercia de giro», def 0.5; =0 → modelo previo). **Medido:** faithful (=0 ≈ baseline), estable (|omega|≤turnRate),
+  ecológicamente seguro (6/6 seeds, diversidad comparable). Cerebro intacto, esfuerzo medio. ✓
 - **A — GIRO 100% emergente: el cerebro controla izq/der (PENDIENTE, arriesgado).** Cambiar las salidas motoras a
   "empuje izquierdo/derecho"; avance y giro emergen del batir asimétrico. Lo más real, pero **el cambio más
   arriesgado** (rehacer la semántica motora del cerebro + re-sembrar competente + re-verificar TODA la conducta;

@@ -94,6 +94,7 @@ export const config = {
     vMax: 3.0,          // UI «Velocidad máxima» (Locomoción y visión) · Techo de velocidad-capacidad (u/tick).
     speedSizeExp: 0.5,  // UI «Velocidad por talla (zancada)» (Locomoción y visión) · vmax_mundo ∝ (radio/medio)^este exp: el grande da ZANCADAS mayores (avanza más por el mundo); el pequeño es rápido EN SU ESCALA pero se desplaza poco. 0 = velocidad-mundo independiente de la talla (modelo previo).
     turnBase: 0.18,     // UI «Agilidad de giro» (Locomoción y visión) · Agilidad de giro base.
+    angInertia: 0.5,    // UI «Inercia de giro» (Locomoción y visión) · Momento angular del giro ∝ masa (sobre el medio): alto = los grandes tardan en girar y sobregiran/contragiran; 0 = giro casi instantáneo (modelo previo). El techo de agilidad lo da «Agilidad de giro».
     turnAsym: 0.35,     // no-ui · La asimetría del grafo de nodos mejora el giro.
     turnSize: 0.15,     // no-ui · Los cuerpos grandes giran peor.
     turnElong: 0.08,    // no-ui · Los cuerpos elongados giran peor.

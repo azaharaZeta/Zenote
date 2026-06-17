@@ -62,6 +62,10 @@ export function computePhenotype(sim, i) {
   // INERCIA (modelo de fuerza): la velocidad se acerca a su objetivo con un lag exponencial (integrador estable).
   // velResp = 1−e^(−arrastre·forma/masa) ∈ (0,1]: masa grande / poco arrastre → respuesta baja = PLANEA; pequeña → ágil.
   sim.velResp[i] = lo.forceModel ? Math.max(0.05, 1 - Math.exp(-(lo.dragLin * R.Dmul) / Math.max(0.05, mass))) : 1;
+  // INERCIA ANGULAR (giro físico): el rumbo gira con momento → omega (vel. angular) tarda en cambiar (∝ masa) → los grandes/
+  // complejos tardan en girar y sobregiran/contragiran. angResp ∈ (0,1]: 1 = gira al instante (cuerpo ligero/medio ≈ modelo
+  // previo), →0 = mucho momento. Solo la masa POR ENCIMA del medio penaliza; angInertia=0 → angResp=1 (sin momento). El TECHO de agilidad lo sigue dando turnRate.
+  sim.angResp[i] = lo.forceModel ? 1 / (1 + (lo.angInertia || 0) * (mass > 1 ? mass - 1 : 0)) : 1;
   const eMax = en.E_max_base * mass;
   sim.eMax[i] = eMax;
 
