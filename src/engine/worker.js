@@ -2,7 +2,7 @@
 // recibe comandos (pausa, velocidad, reset, sliders, selección). Así la sim no compite con el render.
 
 import { config } from '../config.js';
-import { Sim } from './sim.js';
+import { Sim, DEATH_STRIDE } from './sim.js';
 import { NUM_GENES, G, FUNCTIONAL, NODE0, NODE_COUNT, NODE_STRIDE } from './genome.js';
 import { trophicRole } from './organism.js';
 const NF = FUNCTIONAL.length;   // nº de genes que definen una especie
@@ -237,6 +237,14 @@ function snapshot() {
     msg.histVegFill = histVegFill; msg.histTick = histTick; msg.histN = histN; msg.histVegMass = histVegMass; msg.histBio = histBio;
     msg.histCarrion = histCarrion; msg.histDC = histDC; msg.histDS = histDS; msg.histDA = histDA; msg.histDE = histDE; msg.histBS = histBS; msg.histBA = histBA;
     histDirty = false;
+  }
+  // Cadáveres con forma (render): drena el registro de muertes NATURALES del frame (cuerpo + pose) y lo adjunta solo si hay.
+  const dN = sim.deathLogN;
+  if (dN > 0) {
+    const deaths = new Float32Array(dN * DEATH_STRIDE);
+    deaths.set(sim.deathLog.subarray(0, dN * DEATH_STRIDE));
+    sim.deathLogN = 0;
+    msg.deaths = deaths; msg.deathsN = dN; transfer.push(deaths.buffer);
   }
   postMessage(msg, transfer);
 }

@@ -83,6 +83,7 @@ worker.onmessage = (e) => {
       renderer.camX = renderer.camY = config.world.size / 2;   // recentra la vista en el nuevo mundo
     }
     renderer._gz = NaN;           // forzar re-render del sustrato
+    renderer.clearCorpses();      // mundo nuevo (reset) → descartar los cadáveres del mundo anterior
     pendingDraw = true;           // el mundo cambió (reset/tamaño) → repintar aunque la sim esté en pausa
   } else if (m.type === 'frame') {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
@@ -112,6 +113,7 @@ worker.onmessage = (e) => {
     simProxy.world.resource = m.resource;
     simProxy.world.carrion = m.carrion;
     simProxy.world.nutrient = m.nutrient;
+    if (m.deaths) renderer.ingestDeaths(m.deaths, m.deathsN);   // cadáveres con forma: marcadores efímeros del cuerpo muerto
     pendingDraw = true;           // snapshot nuevo (incluso con el MISMO tick: pausa + slider) → repintar
   }
 };

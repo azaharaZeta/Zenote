@@ -3,8 +3,14 @@
 
 import { World } from './world.js';
 import { makeRng } from '../util/rng.js';
-import { NUM_GENES, G, copyMutated, crossover, geneticDistance, BRAIN0, BRAIN, seedBrain, NODE_COUNT } from './genome.js';
+import { NUM_GENES, G, copyMutated, crossover, geneticDistance, BRAIN0, BRAIN, seedBrain, NODE_COUNT, NODE0, NODE_STRIDE } from './genome.js';
 import { computePhenotype } from './organism.js';
+
+// Registro de muertes para el render («cadáveres con forma»): por muerte NATURAL (no comida) se guarda el cuerpo
+// (pos + rumbo + tono + bloque de nodos) para que el render lo dibuje desvaneciéndose. Es SOLO datos: no toca la dinámica.
+const NODEB = NODE_COUNT * NODE_STRIDE;       // bloque de genes de nodo (la forma)
+export const DEATH_STRIDE = 5 + NODEB;        // x, y, radius, heading, hue + nodos
+const DEATH_CAP = 256;                        // máx. muertes por drenaje (el worker lo vacía cada foto); overflow se descarta (cosmético)
 
 export class Sim {
   constructor(cfg) {
@@ -100,6 +106,9 @@ export class Sim {
     // Demografía acumulada (gráficas): muertes por causa y nacimientos por tipo.
     this.deathCause = { starv: 0, combat: 0, age: 0, eaten: 0 };
     this.birthCount = { sexual: 0, asexual: 0 };
+    // Render: registro de muertes del frame (cuerpo del muerto, ver _kill); lo drena el worker en cada foto. NO afecta a la sim.
+    this.deathLog = new Float32Array(DEATH_CAP * DEATH_STRIDE);
+    this.deathLogN = 0;
 
     this._seedInitial();
     this._rebuildActive();
@@ -128,6 +137,14 @@ export class Sim {
     // Pecera: deposita la materia real (E + bodyMatter). La presa cazada ya la repartió la depredación → aquí nada (sin doble conteo).
     const carcass = cause === 'eaten' ? 0 : (this.E[i] > 0 ? this.E[i] : 0) + this.bodyMatter[i];
     if (carcass > 0) this._depositCarrion(this.x[i], this.y[i], carcass);
+    // Render («cadáveres con forma»): la muerte NATURAL deja cuerpo entero → se registra para dibujarlo desvaneciéndose.
+    // La presa CAZADA ('eaten') no deja cuerpo (el depredador se lo llevó) → no se marca. Solo datos; no toca la dinámica.
+    if (cause !== 'eaten' && this.deathLogN < DEATH_CAP) {
+      const o = this.deathLogN * DEATH_STRIDE, gb = i * NUM_GENES + NODE0, dl = this.deathLog;
+      dl[o] = this.x[i]; dl[o + 1] = this.y[i]; dl[o + 2] = this.radius[i]; dl[o + 3] = this.heading[i]; dl[o + 4] = this.hue[i];
+      for (let q = 0; q < NODEB; q++) dl[o + 5 + q] = this.genes[gb + q];
+      this.deathLogN++;
+    }
     this.alive[i] = 0;
     this.free[this.freeTop++] = i;
     this.popCount--;

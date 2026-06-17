@@ -19,6 +19,24 @@ const LOD_REF = 1;
 // (factor 1). Mundos mayores obtienen un LOD proporcionalmente más grueso (puntos/elipses al alejar) en vez de dibujar
 // grafos completos para organismos de ~1px (detalle invisible, carísimo a miles de agentes). NO toca la simulación.
 const WORLD_REF = 1000;
+// «Cadáveres con forma»: marcadores de render efímeros (el cuerpo del muerto, desvaneciéndose). Datos del worker (sim DEATH_STRIDE).
+const CORPSE_NODEB = NODE_COUNT * NODE_STRIDE;     // bloque de genes de nodo (la forma)
+const CORPSE_STRIDE = 5 + CORPSE_NODEB;            // x, y, radius, heading, hue + nodos (== DEATH_STRIDE en sim.js)
+const CORPSE_FADE = 70;                            // ticks que tarda un cadáver en desvanecerse del todo
+
+// LOD declarativo — registro ÚNICO de los elementos visuales por-organismo y su umbral de tamaño aparente (clave en
+// config.render). El gate `_lodVisible(name, rPx)` (full/ultra → siempre; si no, rPx > umbral·lodMul) lo consultan POR IGUAL
+// el dibujo en vivo (_drawAgents/_drawBodyGraph) y el horneado del sprite (_bakeSkeleton) → no pueden desincronizarse (antes
+// cada gate `rPx > lodX·lm` se replicaba a mano en cada sitio → causó una costura vivo↔sprite en el señuelo). Añadir un
+// elemento = una entrada aquí + su llamada al gate. (Aparte, con fuente ÚNICA y por eso sin riesgo de desincronía: los TIERS
+// punto/elipse/grafo = lodBody/lodFull en _drawAgents; y los gates POR NODO lodOutline/lodFlat/lodTexture en _drawNode.)
+const LOD_ELEMENTS = [
+  { name: 'eye',  key: 'lodEye'  },   // ojos del morro
+  { name: 'lure', key: 'lodLure' },   // señuelo bioluminiscente
+  { name: 'wave', key: 'lodWave' },   // onda viajera (animación de nado)
+  { name: 'halo', key: 'lodHalo' },   // halo/glow por agente
+];
+const LOD_KEY = {}; for (const e of LOD_ELEMENTS) LOD_KEY[e.name] = e.key;
 
 export class Renderer {
   constructor(canvas, sim, cfg) {
@@ -494,11 +512,18 @@ export class Renderer {
       ctx.globalCompositeOperation = 'source-over';
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
+    // Cadáveres con forma (bajo los vivos): purga los desvanecidos y fija la escala LOD una vez (la comparte _drawAgents).
+    this._purgeCorpses();
+    this._drawScale = LOD_REF * this.zoom * (WORLD_REF / (W || WORLD_REF));
+    this._lodMul = lowQ ? (cfg.render.lodLowMult || 2.6) : 1;
+    this._bufScale = this._scale();
     for (let ty = tyMin; ty <= tyMax; ty++) {
       for (let tx = txMin; tx <= txMax; tx++) {
         fctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
         // Ventana de MUNDO visible en este mosaico → culling de organismos fuera de vista (ver _drawAgents).
-        this._drawAgents(this.camX - vwHalf - tx * W, this.camX + vwHalf - tx * W, this.camY - vhHalf - ty * H, this.camY + vhHalf - ty * H);
+        const cullX0 = this.camX - vwHalf - tx * W, cullX1 = this.camX + vwHalf - tx * W, cullY0 = this.camY - vhHalf - ty * H, cullY1 = this.camY + vhHalf - ty * H;
+        this._drawCorpses(cullX0, cullX1, cullY0, cullY1);   // muertos recientes desvaneciéndose, DEBAJO de los vivos
+        this._drawAgents(cullX0, cullX1, cullY0, cullY1);
       }
     }
     if (this._sprCache && this._sprCache.size) this._evictSprites(); // soltar sprites de organismos muertos/fuera de vista
@@ -527,6 +552,12 @@ export class Renderer {
     }
   }
 
+  // Gate LOD ÚNICO (ver LOD_ELEMENTS): ¿se dibuja el elemento `name` a tamaño aparente `rPx`? full/ultra → siempre; si no,
+  // rPx > umbral(config.render)·lodMul. Lo consultan el dibujo en vivo y el horneado del sprite por igual → no desincronizan.
+  _lodVisible(name, rPx) {
+    return this._forceFull === true || this.cfg.render.quality === 'ultra' || rPx > this.cfg.render[LOD_KEY[name]] * (this._lodMul || 1);
+  }
+
   _drawAgents(cullX0, cullX1, cullY0, cullY1) {
     const ctx = this.fxCtx, sim = this.sim, glow = this.cfg.render.glow;
     const active = sim.active, n = sim.activeCount;
@@ -543,10 +574,9 @@ export class Renderer {
     const R = this.cfg.render, lowQ = R.quality === 'low', ultraFull = R.quality === 'ultra';
     const lodMul = lowQ ? (R.lodLowMult || 2.6) : 1; // baja: umbrales más altos (más puntos baratos)
     this._lodMul = lodMul;                           // los gates internos de _drawBodyGraph aplican el mismo multiplicador
-    const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo
-    const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo
-    const eThr = R.lodEye * lodMul;             // ojos (dentro del grafo)
-    const haloThr = R.lodHalo * lodMul;         // halo por agente (los puntos no lo necesitan)
+    const dThr = R.lodBody * lodMul;            // punto ↔ cuerpo (tier, fuente única)
+    const fullThr = R.lodFull * lodMul;         // cuerpo BARATO (elipse) ↔ grafo completo (tier, fuente única)
+    // ojos/halo: gate vía _lodVisible (mismo gate que el sprite horneado, ver LOD_ELEMENTS)
     // Caché de esqueleto (opt-in): se usa en todos los tier-2 y todas las calidades; conserva la ondulación (ver _skelEntry).
     const useSpr = R.spriteCache;
     const serial = sim.serial;
@@ -590,7 +620,7 @@ export class Renderer {
       const hasNodes = nodes && nodes.length;
       const tier = !hasNodes ? 0 : ultraFull ? 2 : rPx < dThr ? 0 : rPx < fullThr ? 1 : 2; // 0 punto · 1 elipse · 2 grafo completo
       // Halo por agente (solo calidad alta y bichos no diminutos; los puntos ya brillan con el bloom global).
-      if (glow && !lowQ && (ultraFull || rPx > haloThr)) {
+      if (glow && !lowQ && this._lodVisible('halo', rPx)) {
         // Halo pre-renderizado por cubo de tono (drawImage barato); radio e intensidad varían por agente.
         const cLumG = deco ? deco[i * 5 + 0] : 0.35;
         const gr = r * (1.65 + cLumG * cLumG * 3.0); // halo algo mayor
@@ -604,7 +634,7 @@ export class Renderer {
         // Grafo completo (nodos, ojos, señuelo, onda). Con caché, `skel` = atlas pre-horneado (la onda sigue viva); si no, reconstrucción vectorial.
         const skel = useSpr ? this._skelEntry(serial ? serial[i] : i, rPx, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), deco, i * 5, eye, i * 3, tint, i) : null;
         this._drawBodyGraph(ctx, x, y, r, h, s, l, nodes, i * (NODE_COUNT * NODE_STRIDE), heading[i], spd[i], t,
-                            eye, i * 3, face, i * 3, ultraFull || rPx > eThr, tint, i, deco, i * 5, skel);
+                            eye, i * 3, face, i * 3, this._lodVisible('eye', rPx), tint, i, deco, i * 5, skel);
       } else if (tier === 1) {
         this._drawBodyCheap(ctx, x, y, r, h, s, l, heading[i]); // elipse orientada (sin nodos/ojos/señuelo)
       } else {
@@ -674,7 +704,7 @@ export class Renderer {
       if (cw > maxCW) maxCW = cw; totH += ch;
     }
     // 1b) medir la celda DECO (ojos + señuelo), con el MISMO gate que el render vivo. Frame head-local (origen=cabeza).
-    const showEyes = full || rPx > (Rc.lodEye || 0) * lm, doLure = full || rPx > (Rc.lodLure || 0) * lm;
+    const showEyes = this._lodVisible('eye', rPx), doLure = this._lodVisible('lure', rPx); // mismo gate que el dibujo en vivo
     const lureP = tint ? tint[to] : 0, hr = pr[0], elong = pl[0] / pr[0];
     let dminX = 0, dmaxX = 0, dminY = 0, dmaxY = 0, hasDeco = false;
     if (showEyes && eye) {                                              // región de ojos (cíclope/par/racimo), generosa
@@ -923,8 +953,8 @@ export class Renderer {
     // LOD interno (rPxG = radio en pantalla): los detalles caros (onda, señuelo) solo a tamaño suficiente. lm = multiplicador de calidad.
     const Rc = this.cfg.render, rPxG = r * (this._drawScale || 1), lm = this._lodMul || 1;
     const full = this._forceFull === true || Rc.quality === 'ultra'; // retrato o calidad máxima → sin recortes LOD internos
-    const doWave = full || rPxG > (Rc.lodWave || 0) * lm;    // onda = solo el movimiento (flexión); el contorno se dibuja siempre
-    const doLure = full || rPxG > (Rc.lodLure || 0) * lm;
+    const doWave = this._lodVisible('wave', rPxG);          // onda = solo el movimiento (flexión); el contorno se dibuja siempre
+    const doLure = this._lodVisible('lure', rPxG);          // gate compartido con el sprite horneado (ver LOD_ELEMENTS)
     this._nodePositions(nodes, no, r);                            // posiciones en reposo; la onda se aplica al dibujar
     const px = this._ngx, py = this._ngy, pr = this._ngr, pl = this._ngl, pa = this._nga, pts = this._ngts, pres = this._ngp, par = this._ngpar, dep = this._ngdep;
     ctx.save(); ctx.translate(x, y); ctx.rotate(heading);
@@ -1067,6 +1097,58 @@ export class Renderer {
     } finally {
       this._forceFull = false;                           // restaurar SIEMPRE: si el dibujo lanza, no dejar el flag activo (forzaría el detalle completo a TODO el mundo → caída de FPS silenciosa)
     }
+  }
+
+  // ---- Cadáveres con forma: marcadores efímeros del cuerpo del muerto (datos del worker), bajo los vivos, grises y
+  // desvaneciéndose. NO tocan la simulación; la carroña como CAMPO sigue siendo la mecánica. ----
+  // Incorpora las muertes NATURALES de la última foto (registro plano del worker) a la lista de cadáveres.
+  ingestDeaths(deaths, n) {
+    if (!n) return;
+    const list = this._corpses || (this._corpses = []);
+    const tick = this.sim.tick, ft = this._animT * 0.006;          // pose congelada en el instante de la muerte
+    for (let k = 0; k < n; k++) {
+      const o = k * CORPSE_STRIDE, nodes = new Float32Array(CORPSE_NODEB);
+      for (let z = 0; z < CORPSE_NODEB; z++) nodes[z] = deaths[o + 5 + z];
+      list.push({ x: deaths[o], y: deaths[o + 1], r: deaths[o + 2], heading: deaths[o + 3], hue: deaths[o + 4], nodes, tBorn: tick, frozenT: ft });
+    }
+    if (list.length > 240) list.splice(0, list.length - 240);      // techo de marcadores (memoria acotada)
+  }
+
+  clearCorpses() { if (this._corpses) this._corpses.length = 0; }   // mundo nuevo → descartar los del anterior
+
+  // Suelta los cadáveres ya desvanecidos (compacta in-place; una vez por frame, no por mosaico).
+  _purgeCorpses() {
+    const list = this._corpses; if (!list || !list.length) return;
+    const tick = this.sim.tick; let w = 0;
+    for (let q = 0; q < list.length; q++) { const c = list[q]; const age = tick - c.tBorn; if (age >= 0 && age < CORPSE_FADE) list[w++] = c; }
+    list.length = w;
+  }
+
+  // Dibuja los cadáveres visibles de este mosaico: cuerpo real (grafo de nodos) si se ven grandes, elipse gris si pequeños.
+  // Pose CONGELADA (sin onda), sin ojos/señuelo, desaturados y con alpha que decae con la edad. Usa la escala LOD fijada en draw().
+  _drawCorpses(cx0, cx1, cy0, cy1) {
+    const list = this._corpses; if (!list || !list.length) return;
+    const ctx = this.fxCtx, lodSc = this._drawScale || 1, lodMul = this._lodMul || 1;
+    const tick = this.sim.tick, fullThr = (this.cfg.render.lodFull || 3) * lodMul;
+    for (let q = 0; q < list.length; q++) {
+      const c = list[q];
+      let age = tick - c.tBorn; if (age < 0) age = 0;              // (pausa/reseed pueden mover el tick; acota)
+      if (age >= CORPSE_FADE) continue;
+      const x = c.x, y = c.y, r = c.r, cm = r * 11;
+      if (x + cm < cx0 || x - cm > cx1 || y + cm < cy0 || y - cm > cy1) continue;   // culling de viewport (por mosaico)
+      const fade = 1 - age / CORPSE_FADE;                          // 1 (recién muerto) → 0 (desaparece)
+      const h = c.hue * 360, sat = 9, lig = 20 + 10 * fade;        // gris desaturado que se va apagando
+      ctx.globalAlpha = 0.5 * fade * fade;                         // se desvanece (cuadrático → visible un rato, salida suave)
+      if (r * lodSc > fullThr) {                                   // grande → cuerpo real, pose congelada (spd 0, t fijo)
+        this._drawBodyGraph(ctx, x, y, r, h, sat, lig, c.nodes, 0, c.heading, 0, c.frozenT, null, 0, null, 0, false, null, 0, null, 0, null);
+      } else {                                                     // pequeño → elipse gris barata
+        ctx.save(); ctx.translate(x, y); ctx.rotate(c.heading);
+        ctx.fillStyle = `hsl(${h},${sat}%,${lig}%)`;
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 1.05, r * 0.72, 0, 0, 6.2832); ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Resalta el organismo seleccionado (anillo). Recibe el objeto `sel` del worker

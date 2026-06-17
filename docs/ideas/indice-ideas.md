@@ -20,9 +20,7 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 ### Render (no tocan la simulación)
 - **Vegetación: organismos tras el dosel (Fase 2)** — velo translúcido sobre los agentes. → [vegetacion-dosel-fase2.md](vegetacion-dosel-fase2.md)
 - **Vegetación poco visible / sin valor** — realzar el contraste del teal sin romper la penumbra.
-- **Cadáveres con FORMA** — marcadores efímeros del cuerpo muerto. → [cadaveres-con-forma.md](cadaveres-con-forma.md)
 - **Apiñamiento de hermanos** — reparto angular sutil entre nodos con igual `parent`/`emit`.
-- **LOD declarativo** — tabla de elementos visuales (arquitectura/mantenibilidad). → [lod-declarativo.md](lod-declarativo.md)
 - **Visor de especie en móvil** — añadir la dieta al panel; recordar qué `<details>` quedaron abiertos.
 
 ## Bandeja de entrada
