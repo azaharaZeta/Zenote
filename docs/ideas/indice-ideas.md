@@ -16,10 +16,8 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 
 ### Ecología / balance
 - **Diversidad de talla bajo reproducción sexual** — la sexual aplana la talla. → [diversidad-talla-sexual.md](diversidad-talla-sexual.md)
-- **Señuelo: visibilidad** — exhibir señuelo ↑ tu detección por otros (trade-off repro vs depredación). [coste por `o_num` ❌ descartado] → [senuelo-coste-onum-visibilidad.md](senuelo-coste-onum-visibilidad.md)
 
 ### Render (no tocan la simulación)
-- **Por qué la resolución no cambia los FPS** — investigación. → [resolucion-no-mueve-fps.md](resolucion-no-mueve-fps.md)
 - **Vegetación: organismos tras el dosel (Fase 2)** — velo translúcido sobre los agentes. → [vegetacion-dosel-fase2.md](vegetacion-dosel-fase2.md)
 - **Vegetación poco visible / sin valor** — realzar el contraste del teal sin romper la penumbra.
 - **Cadáveres con FORMA** — marcadores efímeros del cuerpo muerto. → [cadaveres-con-forma.md](cadaveres-con-forma.md)
