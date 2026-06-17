@@ -21,7 +21,7 @@ Dos clases de número, no confundir:
 
 COSTE = baseCost                                                                  ← mantenimiento
       + moveCost·v²·(0.3 + 0.7·esfuerzo)·(1+flapCost)·haulMul·dragMul              ← nado por POTENCIA (modelo de fuerza)
-        # esfuerzo = módulo de la salida del cerebro (0..1, decidido tick a tick); parado v≈0 → gratis; esprintar = caro.
+        # esfuerzo = salida DEDICADA del cerebro (throttle 0..1, independiente de la dirección, decidido tick a tick); parado v≈0 → gratis; esprintar = caro.
         # la velocidad EMERGE de empuje−arrastre con inercia (∝masa); no se fija. (Modelo viejo: ·(1+k_effort·effort_gen), v fijada a vmax.)
 
 INGRESO (según dieta):

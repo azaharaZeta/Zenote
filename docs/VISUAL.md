@@ -52,10 +52,13 @@ del movimiento orgánico y de los patrones que emergen, no de adornos pesados.
   toca la física del giro). Es la **misma geometría que usa la física** (`bodyplan.js`) → lo que ves coincide con cómo nada.
   Detalle por LOD (los bichos lejanos/diminutos se simplifican). El color sale de `hue` (linaje);
   el glow y el estilo del señuelo, de los genes decorativos (`c_lum`, `o_*`).
-- Canvas 2D. Glow barato vía `shadowBlur` moderado o dibujando un segundo círculo
-  más grande y translúcido (más rápido que blur real). Medir FPS antes de abusar.
-- Transiciones suaves al nacer (fade-in + pequeño "pop" de escala) y al morir
-  (fade-out). Esto da el carácter de "vida".
+- Canvas 2D. El glow es **bloom _downsampled_** (se difumina una miniatura a ¼ del backing y se reescala
+  aditivamente) + un **halo por agente** (sprite pre-renderizado por cubo de tono). No se usa `shadowBlur`.
+  Detalle y umbrales LOD más abajo.
+- **Muerte visible — cadáveres con forma.** Al morir de causa natural, el cuerpo queda en su sitio, gris
+  desaturado y **desvaneciéndose con su carroña** (su opacidad sigue al nutriente que va quedando en la celda:
+  decae y se consume; ver SPEC §3bis), bajo los vivos. La presa **cazada** no deja cuerpo (se la llevó el
+  depredador). El carácter "vivo" lo da la **ondulación** del cuerpo (arriba), no una animación de nacer/morir.
 
 > **Gráficas sin dependencias.** Los histogramas y curvas se dibujan a mano en un
 > Canvas 2D aparte (barras y polilíneas básicas). No se añade ninguna librería de

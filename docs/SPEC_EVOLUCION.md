@@ -106,11 +106,6 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 - `o_len`/`o_bulb` = **señuelo de emboscada** (órgano de caza con genética propia, §3): tamaño y bulbo del señuelo.
   Excluidos de la distancia (solo lo expresan los pocos cazadores con `o_len > lureGate`; contarlos metería ruido en la mayoría).
 
-> **Color adaptativo, no neutral.** El `hue` está enganchado a la física del mundo (sintonía
-> con la luz local) para que el color *emerja* de la selección (pigmentos, cripsis), no que
-> solo derive. La ascendencia se ve por `lineageId` (heredado sin mutar), no por color: el color
-> dice *a qué ambiente se adapta* un organismo; el linaje, *de quién desciende*.
-
 ### Cerebro (decisión) — RNN neuronal por defecto
 La decisión la toma una **red neuronal recurrente diminuta (Elman)** cuyos **pesos SON genes**.
 Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*`, backlog #9):
@@ -122,7 +117,7 @@ Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*
   energía, **cobertura local** (vegetación de su celda → uso táctico del refugio), **talla relativa de la presa**
   (evitar presa grande), **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
   escapará) y **velocidad propia** (#10, propiocepción → cierra el lazo del control de velocidad, §2bis). Las entradas
-  no cableadas en `seedBrain` (energía, cobertura, talla/escapabilidad de presa, velocidad propia) arrancan a peso ~0 → su uso EMERGE, no cableado. Salida: módulo = esfuerzo, dirección = rumbo, +impulso de ataque.
+  no cableadas en `seedBrain` (energía, cobertura, talla/escapabilidad de presa, velocidad propia) arrancan a peso ~0 → su uso EMERGE, no cableado.
   **Salidas (4):** DIRECCIÓN de empuje (dx,dy, se normaliza → rumbo) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]` +
   **ESFUERZO** `throttle = (tanh(out₃)+1)/2 ∈ [0,1]`, **independiente de la dirección** → el cerebro decide cuánta fuerza poner
   (frenar/parar, ir despacio o esprintar), no acoplado a "hacia dónde". Sembrado a ~0.7 (competente); la modulación EMERGE.
@@ -386,7 +381,7 @@ Toda muerte deposita un **cuerpo** en el campo `carrion` de su celda (en unidade
 La carroña **decae** cada tick (`resource.carrionDecay`) y **mineraliza** íntegra al nutriente `N` de su celda
 → **ciclo de materia** (cadáver→descomposición→nutriente→pasto). La **consume** quien puede procesar carne
 (`effCarn`, ritmo `resource.carrionAbsRate`) → puente carroñero que da colchón a los carnívoros en la escasez
-(medido a `closedRegen` bajo: el carroñeo multiplica los carnívoros). Render: mancha gris en la celda, opacidad ∝ carroña.
+(medido a `closedRegen` bajo: el carroñeo multiplica los carnívoros). Render: el cuerpo del muerto se dibuja en su sitio, gris y desvaneciéndose con su carroña (ver VISUAL).
 
 **Eje CAZA ↔ CARROÑA (Fase 2, gen `scav`):** la capacidad carnívora (`meat = diet·omni`) se reparte entre cazar
 presa VIVA (`effHunt = meat·(1−scav)·spec`) y CARROÑEAR cadáveres (`effScav = meat·scav·spec·(1+k_scavThin·thin)`),
@@ -458,7 +453,7 @@ cambios de parámetros en vivo.
 ### Siembra inicial
 `pop.initial` fundadores. Con `pop.simpleStart=true`, cuerpos **simples** (cabeza + pocos nodos) y
 genes con jitter pequeño (`startJitter`) → la complejidad y la apariencia EMERGEN; con `false`, genes
-uniformes en `[0,1]`. `startDiversity` (def **0.5**) regula la variedad inicial: **0 = fundadores TODOS IGUALES** (renacuajos
+uniformes en `[0,1]`. `startDiversity` (`pop.startDiversity`, valor en `config.js`) regula la variedad inicial: **0 = fundadores TODOS IGUALES** (renacuajos
 herbívoros idénticos y básicos, sin proto-carnívoros), 0.5 = moderada, 1 = variado. Una fracción `carnivoreSeedFrac` se
 siembra como proto-carnívoros (cruza el "valle de fitness" del arranque), **escalada por la diversidad** (`min(1, div·2)`:
 nula a div=0, plena a div≥0.5). Los fundadores se colocan en un **círculo central de densidad fija** (`pop.seedDensity`). Energía inicial
