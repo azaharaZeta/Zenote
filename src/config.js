@@ -89,6 +89,7 @@ export const config = {
     effortFloor: 0.2,   // no-ui · Esfuerzo mínimo de nado.
     vMin: 0.15,         // no-ui · Suelo de velocidad-capacidad.
     vMax: 3.0,          // UI «Velocidad máxima» (Locomoción y visión) · Techo de velocidad-capacidad (u/tick).
+    speedSizeExp: 0.5,  // UI «Velocidad por talla (zancada)» (Locomoción y visión) · vmax_mundo ∝ (radio/medio)^este exp: el grande da ZANCADAS mayores (avanza más por el mundo); el pequeño es rápido EN SU ESCALA pero se desplaza poco. 0 = velocidad-mundo independiente de la talla (modelo previo).
     turnBase: 0.18,     // UI «Agilidad de giro» (Locomoción y visión) · Agilidad de giro base.
     turnAsym: 0.35,     // no-ui · La asimetría del grafo de nodos mejora el giro.
     turnSize: 0.15,     // no-ui · Los cuerpos grandes giran peor.

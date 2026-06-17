@@ -36,7 +36,12 @@ export function computePhenotype(sim, i) {
   const massMul = R.massMul;                                   // masa de nodos → alimenta mass (eMax) y k_graze
   const PsumEff = R.Psum > 0 ? R.Psum : 0;                     // empuje útil hacia delante (cuerpo "ilógico" → 0)
   // `effort` ya está dentro de la amplitud de cada nodo (Psum) → no se vuelve a multiplicar aquí (sería effort²).
-  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul);
+  // ZANCADA por talla: la física de nodos es en unidades de radio (r se cancela) → la velocidad-mundo NO escalaba con
+  // el tamaño. Aquí la escalamos: vmax_mundo ∝ (radio/medio)^speedSizeExp → el grande avanza más por golpe (zancada
+  // mayor), el pequeño es rápido en su escala pero se desplaza poco. La masa (inercia/coste/giro) ya penaliza aparte.
+  const refR = (e.size.min + e.size.max) * 0.5;
+  const sizeStride = lo.speedSizeExp ? Math.pow(radius / refR, lo.speedSizeExp) : 1;
+  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul) * sizeStride;
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
@@ -47,8 +52,7 @@ export function computePhenotype(sim, i) {
 
   // Alometría: sizeMass ∝ radio^massExp (normalizado al radio medio → medio≈1). mass = sizeMass·massMul.
   // eMax ∝ mass (almacén ∝ volumen); el metabolismo escala con mass^kleiber (Kleiber). La cría usa solo sizeMass.
-  const refRadius = (e.size.min + e.size.max) * 0.5;         // radio del organismo medio (size 0.5)
-  const sizeMass = Math.pow(radius / refRadius, en.massExp); // masa de talla
+  const sizeMass = Math.pow(radius / refR, en.massExp);      // masa de talla (refR = radio medio, computado arriba)
   const mass = sizeMass * massMul;                           // masa física total (talla × complejidad de nodos)
   // INERCIA (modelo de fuerza): la velocidad se acerca a su objetivo con un lag exponencial (integrador estable).
   // velResp = 1−e^(−arrastre·forma/masa) ∈ (0,1]: masa grande / poco arrastre → respuesta baja = PLANEA; pequeña → ágil.

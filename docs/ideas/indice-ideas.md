@@ -31,6 +31,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Gráfica de biomasa (reparto de materia, pecera) | ✅ hecha | `charts._drawBiomass` (organismos/vegetación/carroña/nutriente + total) |
 | Leyenda "Rol" ponderada por totales | ✅ hecha | banda ∝ nº por oficio + 4º oficio (omnívoro) vía `trophicRole`, viva por frame |
 | **Control de velocidad por ESFUERZO (decidir cuándo moverse/parar/correr)** | ✅ hecha (2026-06-17) | modelo de FUERZA: el cerebro decide esfuerzo, la velocidad emerge de empuje−arrastre con inercia ∝masa · SPEC §2bis · mem. `locomocion-modelo-fuerza` |
+| **Velocidad relativa a la TALLA (zancada)** | ✅ hecha (2026-06-17) | `vmax ∝ (radio/medio)^speedSizeExp` (0.5) + ondulación relativa al vmax propio · WIN ecológico (↑diversidad de talla, ↓dominancia carnívora) · SPEC §2bis · mem. `locomocion-modelo-fuerza` |
 | **Rediseño del señuelo (nicho de emboscada real)** | ✅ hecha (2026-06-16) | desacoplado de `orn` → gen propio `o_len`/`o_bulb`; lo expresa ~la fracción cazadora, no universal · SPEC §3 · mem. `simplificacion-ablacion-2026-06` |
 | **Simplificación / poda** | ✅ hecha (2026-06) | modo abierto, `wrap`, nicho térmico, genes decorativos (c_eye/c_sat/tex2), `maxAgents` escalable — eliminados · mem. `open-mode-removed-closed-only`, `simplificacion-ablacion-2026-06` |
 
@@ -44,8 +45,7 @@ observaciones/lecciones de ecología → memoria del proyecto.
 | Idea | Estado | Nota |
 |---|---|---|
 | Giro físico (que use los segmentos) | 🔄 en curso | [giro-fisico.md](giro-fisico.md) — C hecho; B (par+inercia) y A (cerebro izq/der) pendientes |
-| Velocidad relativa a la TALLA (zancadas) | ⬜ pendiente | el modelo de fuerza dio inercia ∝masa, pero NO escala de velocidad con la talla — análisis abajo |
-| Afinar balance del modelo de fuerza | ⬜ pendiente | cola de colapso (~2/6 seeds) + carroñeros finos tras bajar `carcassValue` — análisis abajo |
+| Afinar balance del modelo de fuerza | ⬜ pendiente | carroñeros finos tras bajar `carcassValue` (la zancada redujo la cola de colapso) — análisis abajo |
 | Repurposar gen `speed` → capacidad muscular | ⬜ pendiente | hoy `speed` quedó INACTIVO en el modelo de fuerza — análisis abajo |
 | Por qué la resolución no cambia los FPS | ⬜ investigación | el slider de resolución no parece mover los fps — análisis abajo |
 | Señuelo: coste por `o_num` + visibilidad | ⬜ pendiente (flecos) | el rediseño hizo el nicho; faltan estos dos matices — análisis abajo |
@@ -59,28 +59,16 @@ observaciones/lecciones de ecología → memoria del proyecto.
 
 ---
 
-## Velocidad relativa a la TALLA (zancadas)
-*(pendiente · de la bandeja, 2026-06-17)*
-
-El **modelo de fuerza** (recién hecho) dio inercia ∝ masa, pero **no** que la velocidad escale con la talla. Observación
-del usuario: hoy los pequeños se desplazan rápido en el mundo y los grandes lento. Lo realista sería al revés en
-"longitudes de cuerpo": el pequeño se mueve rápido **en su escala** pero apenas avanza en el mundo; el grande, lento por
-su masa pero con **zancadas grandes** → avance macroscópico mayor. **Vía a explorar:** que el empuje/`vmax` escale con el
-radio (no solo con la masa), o medir el desplazamiento en longitudes-de-cuerpo. Medir el efecto en la ecología (cambia
-quién alcanza a quién). Liga con el modelo de fuerza y con la depredación por velocidad relativa.
-
----
-
 ## Afinar balance del modelo de fuerza
 *(pendiente · flecos del modelo de fuerza, 2026-06-17)*
 
 El modelo de fuerza quedó consolidado y re-balanceado (`carcassValue 0.14` + `refuge 0.45` + `moveCost 0.02` +
-`handlingTime 48`), con la diversidad y la base herbívora restauradas. Quedan dos flecos medidos:
-- **Cola de colapso:** ~2/6 seeds aún caen al ápice-carnívoro (bimodalidad inherente, algo más probable con el modelo nuevo).
-- **Carroñeros finos** (0.13 vs 0.36 base): al bajar `carcassValue` perdieron recompensa de carroña.
+`handlingTime 48`); la **zancada por talla** (speedSizeExp 0.5) subió la diversidad y **redujo** la cola de colapso al
+ápice-carnívoro. Fleco que queda:
+- **Carroñeros finos** (~0.13-0.23 vs 0.36 base): al bajar `carcassValue` perdieron recompensa de carroña.
 
-**Levers a probar (sin re-subir `carcassValue`):** `scavPenalty`↓ / `carrionAbsRate`↑ (revivir carroñeros), `fleeSpeed`↑ /
-`refuge`↑ (cortar la cola de colapso), o un **barrido sistemático** multi-parámetro. Detalle en mem. `locomocion-modelo-fuerza`.
+**Levers a probar (sin re-subir `carcassValue`):** `scavPenalty`↓ / `carrionAbsRate`↑ (revivir carroñeros), o un
+**barrido sistemático** multi-parámetro. Detalle en mem. `locomocion-modelo-fuerza`.
 
 ---
 

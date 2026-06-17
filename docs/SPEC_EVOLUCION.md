@@ -191,8 +191,14 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   menos arrastre). Sustituye al viejo gen `m_elong`.
 - **Arrastre total** `Dmul`: base 1 + arrastre de segmentos (`segDrag`), módulos (`modDrag`),
   tentáculos (`limbDrag`) y cuerpo ancho (`bodyDrag`).
-- **Velocidad TERMINAL a esfuerzo máximo:** `vmax = kThrust · PsumEff · straight · (stream / Dmul)`, acotada a `[vMin, vMax]`.
+- **Velocidad TERMINAL a esfuerzo máximo:** `vmax = kThrust · PsumEff · straight · (stream / Dmul) · zancada`, acotada a `[vMin, vMax]`.
   Es la **cota física** de la morfología, NO la velocidad de cada tick.
+- **ZANCADA por talla:** la física de nodos es en unidades de radio (r se cancela) → `vmax` NO escalaba con el tamaño.
+  Se reintroduce `zancada = (radio / radio_medio)^speedSizeExp` (`speedSizeExp` ≈ 0.5, *UI*; 0 = como antes): el grande
+  **avanza más por golpe** (zancada mayor), el pequeño es rápido EN SU ESCALA pero se desplaza poco. La masa ya penaliza
+  aparte (inercia/coste/giro). Medido: además de cumplir la intuición, es un **payoff de talla** que contrarresta la deriva
+  a lo diminuto → ↑ diversidad de talla y ↓ dominancia carnívora. (Render: la ondulación va relativa al `vmax` PROPIO → el
+  pequeño bate igual de vivo aunque avance menos.)
 - **Giro:** `turn = turnBase + turnAsym·asym − turnSize·size − turnElong·(elongN−1) − segTurn·nSeg`,
   acotado a `[turnMin, 1]`. La **asimetría del grafo** (`straight < 1`) desvía empuje a giro: cuerpos
   asimétricos viran mejor pero avanzan menos recto. Grandes/elongados/con muchos segmentos giran peor.
