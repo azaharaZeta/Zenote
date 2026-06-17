@@ -56,6 +56,10 @@ window.app = app; // sonda de depuración
 let pendingDraw = true;
 app.requestDraw = () => { pendingDraw = true; }; // lo invocan los controles de solo-render (ver controls.js)
 
+// Ping-pong del buffer `nodes` (el campo más grande de cada foto): tras consumir la foto, su buffer se DEVUELVE al worker
+// para reutilizarlo → evita reasignar ~320 KB por frame. `prevNodesBuf` = buffer de la foto que ahora mismo tiene el render.
+let prevNodesBuf = null;
+
 let tps = 0;
 worker.onmessage = (e) => {
   const m = e.data;
@@ -82,7 +86,11 @@ worker.onmessage = (e) => {
     simProxy.x = m.x; simProxy.y = m.y; simProxy.radius = m.radius;
     simProxy.hue = m.hue; simProxy.diet = m.diet; simProxy.eFrac = m.eFrac;
     simProxy.lineage = m.lineage; simProxy.geneSel = m.geneSel;
-    simProxy.heading = m.heading; simProxy.spd = m.spd; simProxy.tint = m.tint; simProxy.eye = m.eye; simProxy.face = m.face; simProxy.deco = m.deco; simProxy.nodes = m.nodes;
+    simProxy.heading = m.heading; simProxy.spd = m.spd; simProxy.tint = m.tint; simProxy.eye = m.eye; simProxy.face = m.face; simProxy.deco = m.deco;
+    // Devuelve al worker el buffer `nodes` de la foto ANTERIOR para reutilizarlo (ping-pong). Lo detacha, pero simProxy.nodes
+    // se reasigna a la foto nueva acto seguido (mismo turno, sin lectura del render en medio → seguro).
+    if (prevNodesBuf && prevNodesBuf.byteLength) worker.postMessage({ type: 'returnNodes', buf: prevNodesBuf }, [prevNodesBuf]);
+    simProxy.nodes = m.nodes; prevNodesBuf = m.nodes.buffer;
     simProxy.activeCount = m.n; simProxy.popCount = m.pop;
     simProxy.tick = m.tick; simProxy.births = m.births; simProxy.deaths = m.deaths;
     simProxy.carn = m.carn; simProxy.histBins = m.hist; simProxy.sel = m.sel; simProxy.N = m.N;

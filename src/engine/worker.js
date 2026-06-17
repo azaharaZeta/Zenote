@@ -48,6 +48,10 @@ let lastHistTick = -1e9, histLastCD = { starv: 0, combat: 0, age: 0, eaten: 0, s
 // El histórico solo cambia cada HIST_K ticks (sampleHistory) → se adjunta a la foto SOLO cuando hay muestra nueva
 // (en vez de clonar ~17 arrays en cada foto). Entre muestras el hilo principal conserva la referencia anterior.
 let histDirty = true;
+// Ping-pong del buffer `nodes` (el campo más grande de la foto, ~73% de la asignación por frame): el hilo principal
+// DEVUELVE el buffer de la foto anterior (msg 'returnNodes') y aquí se reutiliza → cero asignación en régimen permanente.
+// Pool acotado; fallback seguro = asignar fresco si no hay buffer libre o no encaja con el cap (p.ej. tras un reset).
+let nodePool = [];
 function sampleHistory() {
   const s = sim, act = s.active, n = s.activeCount; let carn = 0, scav = 0, herb = 0, omni = 0;
   for (let k = 0; k < n; k++) { const i = act[k];
@@ -149,7 +153,10 @@ function snapshot() {
   const eye = new Float32Array(n * 3);                            // ojos: [sense, e_fov, atkDrive]/agente
   const face = new Float32Array(n * 3);                           // [gazeX, gazeY, atkNorm]/agente (pupila + boca)
   const deco = new Float32Array(n * 5);                           // [c_lum, o_len, o_bulb, o_hue, o_num]/agente
-  const nodes = new Float32Array(n * NODEB);                      // genes de nodo/agente (cuerpo, para el render por grafo)
+  // nodes (cuerpo, para el render por grafo): se REUTILIZA un buffer devuelto por el hilo principal (ping-pong). Dimensionado
+  // al CAP (no a n) para que cualquier devuelto encaje; el render solo lee [0..n). Si no hay/encaja → fresco (fallback seguro).
+  const nodesLen = s.cap * NODEB, nodesBuf = nodePool.pop();
+  const nodes = (nodesBuf && nodesBuf.byteLength === nodesLen * 4) ? new Float32Array(nodesBuf) : new Float32Array(nodesLen);
   const hT = config.combat.handlingTime || 1;
   const vMaxG = config.loco.vMax || 3;   // velocidad-tope GLOBAL: el aleteo (spd) va ABSOLUTO (÷ vMaxG) → la onda acompaña a la traslación real (lento = ondea suave, rápido = bate fuerte), acorde con la calibración del render (canvas.js)
   const hist = new Float32Array(HIST_BINS);
@@ -304,9 +311,11 @@ onmessage = (e) => {
     case 'pick': setSelected(pick(m.wx, m.wy)); needSnap = true; break;
     case 'deselect': setSelected(-1); needSnap = true; break;       // cerrar la vista de especie (botón ✕ del inspector)
     case 'pickSpecies': pickSpecies(m.dir); needSnap = true; break; // navegar por especies (◀ ▶ en el inspector)
+    case 'returnNodes': if (m.buf && nodePool.length < 4) nodePool.push(m.buf); break; // ping-pong: el buffer `nodes` vuelve para reutilizarse
     case 'reset': config.pop.seed = m.seed; sim.reset(m.seed); selectedId = -1; selSpeciesId = selSerial = -1;
       if (speciesOf.length !== sim.cap) speciesOf = new Float32Array(sim.cap); // el tope de población pudo cambiar (slider lab) → reajustar el array de especies al nuevo pool
       speciesReps = []; nextSpeciesId = 1; lastClassify = -1e9; speciesCount = 0;
+      nodePool = []; // el cap pudo cambiar → los buffers devueltos ya no encajan; descártalos (se reasignan al vuelo)
       clearHistory(); postWorld(); needSnap = true; break;
   }
 };

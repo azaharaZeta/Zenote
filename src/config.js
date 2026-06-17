@@ -9,7 +9,7 @@ export const config = {
   // ───── Mundo ─────
   world: {
     size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD: la materia/alimento TOTAL escala con el área (Modelo A, ver sim._aScale) → misma densidad a cualquier tamaño.
-    matterBudget: 60000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
+    matterBudget: 40000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
     closedRegen: 0.0055, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
     nutrientDiffuse: 0.15, // no-ui · Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
     birthGatherR: 2,     // no-ui · Radio en celdas del vecindario del que la cría reúne materia al nacer.
@@ -24,13 +24,13 @@ export const config = {
     capFloor: 0.1,      // no-ui · Suelo de la capacidad de carga (fracción de R_max): ningún baldío permanente.
     patchiness: 0.75,   // UI «Comida en parches» (Comida y vegetación) · Dinámica de rebrote: 0 = lineal · 1 = logístico + difusión → parches que migran.
     seedFloor: 0.04,    // no-ui · Rebrote espontáneo mínimo (banco de semillas): evita el estado absorbente (todo a cero).
-    absRate: 0.20,      // UI «Ritmo de absorción» (Comida y vegetación) · Ritmo de pastado por tick (alto = pelan zonas → escasez local).
+    absRate: 0.15,      // UI «Ritmo de absorción» (Comida y vegetación) · Ritmo de pastado por tick (alto = pelan zonas → escasez local).
     absMetabBase: 0.5,  // no-ui · Suelo del factor metabólico en la absorción: a metab 0 aún se pasta algo.
     energyPerUnit: 10,  // UI «Energía por unidad» (Comida y vegetación) · Energía obtenida por unidad de recurso comida.
     grazeRefuge: 0.20,  // UI «Reserva de rebrote» (Comida y vegetación) · Reserva de rebrote intocable por celda (fracción): evita el sobrepastoreo letal.
-    forageReach: 5,     // UI «Alcance de forrajeo (talla)» (Comida y vegetación) · Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
-    carrionDecay: 0.005, // UI «Descomposición de cadáveres» (Carroña) · Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
-    carrionAbsRate: 0.15, // UI «Ritmo de carroñeo» (Carroña) · Ritmo de carroñeo: fracción de la carroña de la celda que absorbe quien procesa carne.
+    forageReach: 2,     // UI «Alcance de forrajeo (talla)» (Comida y vegetación) · Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
+    carrionDecay: 0.010, // UI «Descomposición de cadáveres» (Carroña) · Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
+    carrionAbsRate: 0.10, // UI «Ritmo de carroñeo» (Carroña) · Ritmo de carroñeo: fracción de la carroña de la celda que absorbe quien procesa carne.
     carrionScent: 3,    // no-ui · Escala del "olfato" de carroña en el gradiente de búsqueda (más alto = la carroña tira menos).
   },
 
@@ -44,7 +44,7 @@ export const config = {
     carnivoreSeedFrac: 0.20, // UI «Siembra de carnívoros» (Mundo y población) ↻ · Fracción de fundadores sembrados como proto-carnívoros (condición inicial, no estrategia).
     simpleStart: true,       // no-ui · Fundadores SIMPLES (complejidad y apariencia EMERGEN) · false = genes aleatorios.
     startJitter: 0.06,       // no-ui · Magnitud del jitter gaussiano del sembrado simple.
-    startDiversity: 0.5,     // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores TODOS IGUALES (renacuajos herbívoros idénticos y básicos, sin proto-carnívoros) · 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variados. Escala jitter, nodos extra y el cohorte carnívoro.
+    startDiversity: 0.1,     // UI «Diversidad inicial» (Mundo y población) ↻ · Diversidad inicial: 0 = fundadores TODOS IGUALES (renacuajos herbívoros idénticos y básicos, sin proto-carnívoros) · 0.5 (def) = moderada (jitter + cohorte carnívoro pleno) · 1 = variados. Escala jitter, nodos extra y el cohorte carnívoro.
   },
 
   // ───── Energética y costes (qué cuesta vivir, moverse, criar) ─────
@@ -104,7 +104,7 @@ export const config = {
     modThrust: 0.3,     // no-ui · Empuje de los apéndices de los módulos.
     segDrag: 0.22,      // no-ui · Arrastre extra por segmento.
     modDrag: 0.6,       // no-ui · Arrastre extra por módulo.
-    segTurn: 0.03,      // no-ui · Cada segmento extra empeora el giro.
+    segTurn: 0.00,      // no-ui · Cada segmento extra empeora el giro.
     bodyThrust: 1.0,    // no-ui · Escala del empuje del cuerpo (cabeza+segmentos que ondulan): propulsor principal.
     limbThrust: 0.12,   // no-ui · Empuje por unidad de área de limbs (tentáculos/aletas finos).
     limbDrag: 0.20,     // no-ui · Arrastre por unidad de área de limbs (> limbThrust → propulsor ineficiente).
@@ -151,7 +151,7 @@ export const config = {
   repro: {
     cooldown: 60,              // UI «Enfriamiento de cría» (Reproducción) · Enfriamiento entre crías (ticks).
     sexual: true,              // UI «Reproducción sexual» (Reproducción) · Reproducción sexual (recombinación de dos padres).
-    asexual: true,             // UI «Permitir reproducción asexual» (Reproducción) · Permitir clon mutado si no hay pareja compatible cerca.
+    asexual: false,             // UI «Permitir reproducción asexual» (Reproducción) · Permitir clon mutado si no hay pareja compatible cerca.
     speciesGenThreshold: 0.15, // UI «Umbral de especie» (Reproducción) · Distancia genética máxima para cruzarse (= misma especie).
     mateRadius: 70,            // UI «Radio de pareja» (Reproducción) · Radio (u) de búsqueda de pareja al reproducirse.
   },
@@ -225,7 +225,7 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 4.0, max: 9 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría).
+    size:      { min: 2.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría).
     sense:     { min: 10,  max: 80 },   // no-ui · gen sense → alcance de visión base (u).
     repro_thr: { min: 0.5, max: 0.95 }, // no-ui · gen repro_thr → umbral de energía para criar (fracción de E_max).
     invest:    { min: 0.2, max: 0.6 },  // no-ui · gen invest → energía dada a la cría (fracción de E_max).
