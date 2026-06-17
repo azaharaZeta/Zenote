@@ -25,5 +25,4 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 
 ## Bandeja de entrada
 *Ideas crudas sin procesar; convertir en idea (con su ficha) al abordarlas.*
-- Bug: Los organismos quietos parecen seuir aleteando. Sugiere un bug mayor: que el aleteo no esté reflejando el esfuerzo real. revisar.
 - limitar por presión selectiva la cantidad de bulbos. Ahora parece que son gratis.

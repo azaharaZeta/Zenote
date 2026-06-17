@@ -977,7 +977,7 @@ export class Renderer {
     const wpx = this._ngwx || (this._ngwx = new Float32Array(NS));
     const wpy = this._ngwy || (this._ngwy = new Float32Array(NS));
     const acc = this._ngac || (this._ngac = new Float32Array(NS));  // flexión acumulada hasta el nodo
-    const waveT = t * (1 + spd * 6), jointAmp = 0.18 * (0.45 + spd * 1.6);   // freq/amp ∝ velocidad ABSOLUTA (spd ya va ÷ vMax) → lento = ondear suave, rápido = batir vigoroso. Recalibrado (antes 2.5 / 0.4+0.8 con spd relativo a la capacidad propia).
+    const waveT = t * (0.4 + spd * 6.6), jointAmp = 0.18 * (0.1 + spd * 1.9);   // freq/amp ∝ velocidad ABSOLUTA (spd ÷ vMax): a tope ≈ igual que antes; QUIETO (spd≈0) → casi inmóvil (bob lento y mínimo = "vivo en reposo", distinto del cadáver congelado). Antes el suelo (1·t / 0.45) hacía ondear visiblemente a los parados ("aleteo en reposo"). spd ya sigue al esfuerzo (v régimen ≈ vmax·throttle).
     const oscFloor = this.cfg.loco.oscFloor;                      // mismo suelo de amplitud que la física
     wpx[0] = 0; wpy[0] = 0; acc[0] = 0;
     for (let k = 1; k < NS; k++) {
