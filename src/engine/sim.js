@@ -570,18 +570,19 @@ export class Sim {
       const dmag = Math.sqrt(dx * dx + dy * dy);
       let throttle;
       if (forceModel) {
-        // MODELO DE FUERZA: el MÓDULO del deseo del cerebro = ESFUERZO (0..1); su dirección = rumbo de EMPUJE (giro limitado).
+        // MODELO DE FUERZA: el cerebro decide el ESFUERZO en una salida DEDICADA (throttle 0..1, INDEPENDIENTE de la dirección)
+        // → puede frenar/parar, ir despacio o esprintar. La DIRECCIÓN (dx,dy) solo fija el rumbo de empuje (giro limitado).
         // La velocidad se ACERCA a (vmax·esfuerzo·dir) con lag exponencial = INERCIA (velResp ∝ 1/masa). La velocidad nunca se fija.
-        throttle = dmag > 1 ? 1 : dmag;
-        // GIRO FÍSICO: el rumbo gira con INERCIA ANGULAR. Objetivo de giro = error_angular·turnRate (capado a ±turnRate, el
-        // techo de agilidad emergente de la forma); omega (vel. angular) TARDA en alcanzarlo (angResp ∝ 1/masa) → los grandes
-        // sobregiran/contragiran. Sin deseo → objetivo 0 → omega decae y el giro se "deja ir". angInertia=0 → angResp=1 → casi instantáneo.
+        throttle = this._brOut[2];                        // ESFUERZO decidido por el cerebro (salida dedicada, ya NO el módulo del deseo)
+        // GIRO FÍSICO: el rumbo gira con INERCIA ANGULAR. Objetivo = error_angular·turnRate (capado a ±turnRate, techo de
+        // agilidad emergente); omega TARDA en alcanzarlo (angResp ∝ 1/masa) → los grandes sobregiran/contragiran. Sin dirección
+        // clara → no gira (mantiene rumbo); el esfuerzo es independiente. angInertia=0 → angResp=1 → casi instantáneo.
         let omT = 0;
         if (dmag > 1e-4) {
-          let aerr = Math.atan2(dy, dx) - this.heading[i];   // error angular hacia el deseo del cerebro
+          let aerr = Math.atan2(dy, dx) - this.heading[i];   // error angular hacia la dirección deseada del cerebro
           if (aerr > Math.PI) aerr -= 6.283185307; else if (aerr < -Math.PI) aerr += 6.283185307;
           omT = turn * aerr; if (omT > turn) omT = turn; else if (omT < -turn) omT = -turn; // capado a la agilidad
-        } else throttle = 0;                              // sin deseo → no empuja → frena por arrastre (descanso/emboscada)
+        }
         let omega = this.omega[i] + (omT - this.omega[i]) * this.angResp[i]; // inercia angular: omega tarda en cambiar (lag ∝ masa)
         this.omega[i] = omega;
         let hd = this.heading[i] + omega;                 // el rumbo integra la velocidad angular
@@ -805,14 +806,17 @@ export class Sim {
       hid[h] = Math.tanh(s);
     }
     for (let h = 0; h < H; h++) prev[hb + h] = hid[h];  // guardar nuevo estado oculto (memoria para t+1)
-    let ox = (g[bO] - 0.5) * sc, oy = (g[bO + 1] - 0.5) * sc, oa = (g[bO + 2] - 0.5) * sc; // 3ª salida = ataque
+    // Salidas: 0,1 = DIRECCIÓN de empuje · 2 = ataque · 3 = ESFUERZO (throttle, independiente de la dirección).
+    let ox = (g[bO] - 0.5) * sc, oy = (g[bO + 1] - 0.5) * sc, oa = (g[bO + 2] - 0.5) * sc, oe = (g[bO + 3] - 0.5) * sc;
     for (let h = 0; h < H; h++) {
       const hv = hid[h];
       ox += hv * (g[wHo + h * O] - 0.5) * sc;
       oy += hv * (g[wHo + h * O + 1] - 0.5) * sc;
       oa += hv * (g[wHo + h * O + 2] - 0.5) * sc;
+      oe += hv * (g[wHo + h * O + 3] - 0.5) * sc;
     }
-    this._brOut[0] = Math.tanh(ox); this._brOut[1] = Math.tanh(oy);
+    this._brOut[0] = Math.tanh(ox); this._brOut[1] = Math.tanh(oy);  // dirección (se normaliza en el movimiento)
+    this._brOut[2] = (Math.tanh(oe) + 1) * 0.5;                       // ESFUERZO ∈[0,1]: el cerebro decide cuánta fuerza poner (parar/despacio/correr)
     const a = (Math.tanh(oa) + 1) * 0.5;                // impulso de ataque ∈[0,1] (prob. de atacar en contacto)
     this.atkOut[i] = a;
     this.atkDrive[i] = this.atkDrive[i] * 0.92 + a * 0.08; // EMA suave → "ceño" estable del render (emergente)

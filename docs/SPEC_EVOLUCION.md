@@ -78,7 +78,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | **Ecología / fisiología** | 11 | `size`, `speed`(musculatura), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `mature_age`, `senescence` |
 | **Identidad / display** | 8 | `e_fov`, `orn`, `pref`, `c_lum`, `o_len`, `o_bulb`, `o_hue`, `o_num` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
-| **Cerebro neuronal** | 103 | pesos de la RNN (ver §cerebro; 11 entradas) |
+| **Cerebro neuronal** | 109 | pesos de la RNN (ver §cerebro; 11 entradas, 4 salidas) |
 
 **Genes de ecología/fisiología:**
 
@@ -122,7 +122,9 @@ Es el **único** modo de conducta (se retiró la regla reactiva y sus genes `w_*
   (evitar presa grande), **escapabilidad de la presa** (cobertura de la celda DE la presa → no atacar a la que
   escapará) y **velocidad propia** (#10, propiocepción → cierra el lazo del control de velocidad, §2bis). Las entradas
   no cableadas en `seedBrain` (energía, cobertura, talla/escapabilidad de presa, velocidad propia) arrancan a peso ~0 → su uso EMERGE, no cableado. Salida: módulo = esfuerzo, dirección = rumbo, +impulso de ataque.
-  **Salidas (3):** deseo de movimiento (dx,dy) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]`.
+  **Salidas (4):** DIRECCIÓN de empuje (dx,dy, se normaliza → rumbo) + **impulso de ataque** `a = (tanh(out₂)+1)/2 ∈ [0,1]` +
+  **ESFUERZO** `throttle = (tanh(out₃)+1)/2 ∈ [0,1]`, **independiente de la dirección** → el cerebro decide cuánta fuerza poner
+  (frenar/parar, ir despacio o esprintar), no acoplado a "hacia dónde". Sembrado a ~0.7 (competente); la modulación EMERGE.
   Pesos = `(gen−0.5)·scale`.
 - Nada de estrategia programada: pastar/cazar/huir **y atacar/agredir** emergen **100% de los pesos
   seleccionados** (el ataque ya no es el gen `aggro`, retirado en #10 → ver §3.1). El "ceño" feroz del render
@@ -206,8 +208,9 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   (`turn·error_angular`, capado a ±`turn`) con lag `angResp = 1/(1+angInertia·max(0,masa−1))` → los grandes tardan en girar
   y sobregiran/contragiran; los ligeros giran casi al instante. `angInertia=0` → giro instantáneo (modelo previo).
 - **CONTROL POR FUERZA (`loco.forceModel`, por defecto).** El organismo **no elige velocidad: elige ESFUERZO.** El cerebro
-  emite un vector de deseo cuyo **módulo = esfuerzo** (throttle 0..1, decidido tick a tick) y cuya dirección = rumbo de empuje
-  (gira ≤ `turnRate`). La velocidad **no se fija**: se acerca a `vmax·esfuerzo·dir` con lag exponencial = **INERCIA**
+  emite la **dirección** de empuje (salidas 0,1, se normaliza; gira ≤ `turnRate`) y, en una **salida DEDICADA e independiente**,
+  el **esfuerzo** (throttle 0..1, salida 3) → decide a la vez *a dónde* y *con cuánta fuerza* (parar/despacio/esprintar). La
+  velocidad **no se fija**: se acerca a `vmax·esfuerzo·dir` con lag exponencial = **INERCIA**
   (`velResp = 1−e^(−dragLin·Dmul/masa)`; masa grande / poco arrastre → planea; pequeña → ágil). Así decide **cuándo moverse,
   cuándo parar** (esfuerzo→0 → frena por arrastre: descanso/emboscada), **cuándo esprintar y a dónde** — todo del MISMO output
   neuronal, sin if/else. Una entrada de **propiocepción** (velocidad propia, entrada #10) cierra el lazo de control. Medido:

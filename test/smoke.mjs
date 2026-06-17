@@ -10,8 +10,8 @@ import { trophicRole } from '../src/engine/organism.js';
 let failures = 0;
 const check = (cond, msg) => { console.log((cond ? '  ok  ' : 'FAIL  ') + msg); if (!cond) failures++; };
 
-// 1) Genoma: el conteo debe casar (19 base + 8×10 nodos + 103 cerebro = 202).
-check(NUM_GENES === 202, `NUM_GENES === 202 (real: ${NUM_GENES})`);
+// 1) Genoma: el conteo debe casar (19 base + 8×10 nodos + 109 cerebro = 208).
+check(NUM_GENES === 208, `NUM_GENES === 208 (real: ${NUM_GENES})`);
 
 // Materia total (pecera cerrada) = N libre + pasto·epu + Σ(E+cuerpo) de los vivos + carroña. Debe conservarse.
 const matter = (sim) => {

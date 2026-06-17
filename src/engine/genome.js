@@ -26,11 +26,12 @@ for (let k = 0; k < NODE_COUNT; k++) for (const f of NODE_FIELDS) BASE_GENES.pus
 // CEREBRO NEURONAL: MLP recurrente (Elman) cuyos PESOS son genes; único motor de conducta. No cuenta en la
 // distancia genética (su deriva dominaría). Entradas (11): 0,1 ∇comida · 2,3 dir-presa · 4,5 dir-amenaza ·
 // 6 energía · 7 cobertura local · 8 talla relativa de la presa · 9 escapabilidad de la presa · 10 VELOCIDAD PROPIA
-// (propiocepción: cierra el lazo de control de velocidad). Salidas (3): 0,1 = empuje deseado (módulo = ESFUERZO,
-// dirección = rumbo) · 2 = impulso de ataque. Pesos = (gen-0.5)*scale.
-export const BRAIN = { I: 11, H: 5, O: 3, scale: 6 };
+// (propiocepción: cierra el lazo de control de velocidad). Salidas (4): 0,1 = DIRECCIÓN de empuje (rumbo, se normaliza) ·
+// 2 = impulso de ataque · 3 = ESFUERZO/throttle (independiente de la dirección → el bicho decide cuánta fuerza poner:
+// frenar/parar, ir despacio o esprintar). Pesos = (gen-0.5)*scale.
+export const BRAIN = { I: 11, H: 5, O: 4, scale: 6 };
 // Pesos: entrada→oculta (I·H) + oculta→oculta/memoria (H·H) + sesgos ocultos (H) + oculta→salida (H·O) + sesgos salida (O).
-export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 103
+export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O; // 109
 export const BRAIN0 = BASE_GENES.length;                                          // índice del 1er peso
 export const GENES = BASE_GENES.concat(Array.from({ length: BRAIN_W }, (_, i) => 'br' + i));
 export const NUM_GENES = GENES.length;
@@ -125,6 +126,7 @@ export function seedBrain(genes, idx, rng, atkBias = 0) {
   // salida_x ← oculta0 ; salida_y ← oculta1 ; sesgo de la salida de ataque (índice 2)
   genes[b + wHo + 0 * O + 0] = clamp01(gp + j()); genes[b + wHo + 1 * O + 1] = clamp01(gp + j());
   genes[b + wHo + H * O + 2] = clamp01(0.5 + atkBias);  // bO+2 = sesgo del impulso de ataque
+  genes[b + wHo + H * O + 3] = clamp01(0.56);           // bO+3 = sesgo del ESFUERZO → throttle base ≈0.7 (fundador competente que SE MUEVE; la MODULACIÓN —parar/correr según contexto— emerge, no se siembra)
 }
 
 // Reproducción SEXUAL: el hijo recombina dos padres con LIGAMIENTO (tramos contiguos) + mutación. Solo se
