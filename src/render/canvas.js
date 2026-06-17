@@ -22,7 +22,7 @@ const WORLD_REF = 1000;
 // «Cadáveres con forma»: marcadores de render efímeros (el cuerpo del muerto, desvaneciéndose). Datos del worker (sim DEATH_STRIDE).
 const CORPSE_NODEB = NODE_COUNT * NODE_STRIDE;     // bloque de genes de nodo (la forma)
 const CORPSE_STRIDE = 5 + CORPSE_NODEB;            // x, y, radius, heading, hue + nodos (== DEATH_STRIDE en sim.js)
-const CORPSE_FADE = 70;                            // ticks que tarda un cadáver en desvanecerse del todo
+const CORPSE_MAXAGE = 800;                         // tope de seguridad (ticks): el cadáver se desvanece con SU carroña, pero se retira igualmente pasada esta edad (por si carrionDecay≈0 y nadie lo come)
 
 // LOD declarativo — registro ÚNICO de los elementos visuales por-organismo y su umbral de tamaño aparente (clave en
 // config.render). El gate `_lodVisible(name, rPx)` (full/ultra → siempre; si no, rPx > umbral·lodMul) lo consultan POR IGUAL
@@ -310,33 +310,8 @@ export class Renderer {
           ctx.globalAlpha = 1;
         }
       }
-      // Carroña: manchas grises por celda; opacidad ∝ carroña restante → se desvanecen al decaer o ser consumidas.
-      const carrion = Wld.carrion;
-      if (carrion) {
-        if (!this._carrionSprite) {                        // sprite gris suave pre-renderizado (lazy, drawImage barato por celda)
-          const S = 48, sp = document.createElement('canvas'); sp.width = sp.height = S;
-          const sx = sp.getContext('2d'), g = sx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-          g.addColorStop(0, 'rgba(150,153,165,1)'); g.addColorStop(1, 'rgba(150,153,165,0)');
-          sx.fillStyle = g; sx.fillRect(0, 0, S, S); this._carrionSprite = sp;
-        }
-        const sprite = this._carrionSprite, ref = 35, sz = cellW * 1.7; // energía de referencia para la opacidad (cadáver natural ≈ E + carcassValue·eMax)
-        for (let ty = tyMin; ty <= tyMax; ty++) for (let tx = txMin; tx <= txMax; tx++) {
-          ctx.setTransform(s, 0, 0, s, offX + tx * W * s, offY + ty * H * s);
-          // Culling a las celdas visibles de este mosaico (a zoom alto, unas pocas; a zoom 1, ~todas).
-          let cx0 = ((this.camX - vwHalf - tx * W) / cellW | 0) - 1; if (cx0 < 0) cx0 = 0;
-          let cx1 = ((this.camX + vwHalf - tx * W) / cellW | 0) + 1; if (cx1 > cols - 1) cx1 = cols - 1;
-          let cy0 = ((this.camY - vhHalf - ty * H) / cellH | 0) - 1; if (cy0 < 0) cy0 = 0;
-          let cy1 = ((this.camY + vhHalf - ty * H) / cellH | 0) + 1; if (cy1 > rows - 1) cy1 = rows - 1;
-          for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-            const cval = carrion[cy * cols + cx];
-            if (cval < 0.5) continue;                        // celda sin carroña apreciable → salta (la mayoría)
-            let a = cval / ref; if (a > 0.5) a = 0.5;
-            ctx.globalAlpha = a;
-            ctx.drawImage(sprite, (cx + 0.5) * cellW - sz / 2, (cy + 0.5) * cellH - sz / 2, sz, sz);
-          }
-        }
-        ctx.globalAlpha = 1;
-      }
+      // Carroña: ya NO se pinta como mancha gris por celda — la dibujan los CADÁVERES CON FORMA (capa fx, ver _drawCorpses),
+      // cuyo desvanecido sigue al nutriente de su celda (decae + se come). El campo `carrion` sigue siendo la mecánica.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }
@@ -1099,9 +1074,20 @@ export class Renderer {
     }
   }
 
-  // ---- Cadáveres con forma: marcadores efímeros del cuerpo del muerto (datos del worker), bajo los vivos, grises y
-  // desvaneciéndose. NO tocan la simulación; la carroña como CAMPO sigue siendo la mecánica. ----
-  // Incorpora las muertes NATURALES de la última foto (registro plano del worker) a la lista de cadáveres.
+  // ---- Cadáveres con forma: el cuerpo del muerto (datos del worker), bajo los vivos, gris y desvaneciéndose CON SU CARROÑA.
+  // Sustituye la antigua mancha gris por celda: el cuerpo se degrada según el nutriente que queda en su celda (decae +
+  // se come) → cuerpo y carroña co-terminan. NO toca la simulación; la carroña como CAMPO sigue siendo la mecánica. ----
+  // Carroña (energía) en la celda del mundo que contiene (x,y). 0 si no hay campo.
+  _carrionAt(x, y) {
+    const W = this.sim.world, car = W && W.carrion; if (!car) return 0;
+    const cols = W.cols, rows = W.rows;
+    let cx = (x / W.cellW) | 0; if (cx < 0) cx = 0; else if (cx >= cols) cx = cols - 1;
+    let cy = (y / W.cellH) | 0; if (cy < 0) cy = 0; else if (cy >= rows) cy = rows - 1;
+    return car[cy * cols + cx];
+  }
+
+  // Incorpora las muertes NATURALES de la última foto (registro plano del worker) a la lista de cadáveres. Cada cuerpo
+  // guarda la carroña de su celda al morir (`carrion0`) como referencia → su desvanecido sigue al nutriente restante.
   ingestDeaths(deaths, n) {
     if (!n) return;
     const list = this._corpses || (this._corpses = []);
@@ -1109,36 +1095,45 @@ export class Renderer {
     for (let k = 0; k < n; k++) {
       const o = k * CORPSE_STRIDE, nodes = new Float32Array(CORPSE_NODEB);
       for (let z = 0; z < CORPSE_NODEB; z++) nodes[z] = deaths[o + 5 + z];
-      list.push({ x: deaths[o], y: deaths[o + 1], r: deaths[o + 2], heading: deaths[o + 3], hue: deaths[o + 4], nodes, tBorn: tick, frozenT: ft });
+      const x = deaths[o], y = deaths[o + 1];
+      const carrion0 = Math.max(0.5, this._carrionAt(x, y));       // nutriente de referencia (incluye el cuerpo recién depositado); suelo para no dividir por ~0
+      list.push({ x, y, r: deaths[o + 2], heading: deaths[o + 3], hue: deaths[o + 4], nodes, tBorn: tick, frozenT: ft, carrion0, fade: 1 });
     }
     if (list.length > 240) list.splice(0, list.length - 240);      // techo de marcadores (memoria acotada)
   }
 
   clearCorpses() { if (this._corpses) this._corpses.length = 0; }   // mundo nuevo → descartar los del anterior
 
-  // Suelta los cadáveres ya desvanecidos (compacta in-place; una vez por frame, no por mosaico).
+  // Actualiza el desvanecido de cada cadáver según el nutriente RESTANTE en su celda (monótono: solo decrece, así NO "revive"
+  // si cae otro muerto en la misma celda) y suelta los agotados. Una vez por frame (no por mosaico).
   _purgeCorpses() {
     const list = this._corpses; if (!list || !list.length) return;
     const tick = this.sim.tick; let w = 0;
-    for (let q = 0; q < list.length; q++) { const c = list[q]; const age = tick - c.tBorn; if (age >= 0 && age < CORPSE_FADE) list[w++] = c; }
+    for (let q = 0; q < list.length; q++) {
+      const c = list[q];
+      const age = tick - c.tBorn;
+      if (age < 0) { list[w++] = c; continue; }                    // tick retrocedió (reseed/pausa) → conserva
+      const frac = this._carrionAt(c.x, c.y) / c.carrion0;         // nutriente restante (decae + se come) rel. al del depósito
+      if (frac < c.fade) c.fade = frac;                            // monótono no creciente
+      if (c.fade > 0.04 && age < CORPSE_MAXAGE) list[w++] = c;     // se mantiene mientras quede carroña (y bajo el tope de edad)
+    }
     list.length = w;
   }
 
   // Dibuja los cadáveres visibles de este mosaico: cuerpo real (grafo de nodos) si se ven grandes, elipse gris si pequeños.
-  // Pose CONGELADA (sin onda), sin ojos/señuelo, desaturados y con alpha que decae con la edad. Usa la escala LOD fijada en draw().
+  // Pose CONGELADA (sin onda), sin ojos/señuelo, desaturados; el alpha decae con `fade` (= carroña restante, ver _purgeCorpses).
   _drawCorpses(cx0, cx1, cy0, cy1) {
     const list = this._corpses; if (!list || !list.length) return;
     const ctx = this.fxCtx, lodSc = this._drawScale || 1, lodMul = this._lodMul || 1;
-    const tick = this.sim.tick, fullThr = (this.cfg.render.lodFull || 3) * lodMul;
+    const fullThr = (this.cfg.render.lodFull || 3) * lodMul;
     for (let q = 0; q < list.length; q++) {
       const c = list[q];
-      let age = tick - c.tBorn; if (age < 0) age = 0;              // (pausa/reseed pueden mover el tick; acota)
-      if (age >= CORPSE_FADE) continue;
+      const fade = c.fade;
+      if (fade <= 0.04) continue;                                  // agotado (lo retira _purgeCorpses)
       const x = c.x, y = c.y, r = c.r, cm = r * 11;
       if (x + cm < cx0 || x - cm > cx1 || y + cm < cy0 || y - cm > cy1) continue;   // culling de viewport (por mosaico)
-      const fade = 1 - age / CORPSE_FADE;                          // 1 (recién muerto) → 0 (desaparece)
-      const h = c.hue * 360, sat = 9, lig = 20 + 10 * fade;        // gris desaturado que se va apagando
-      ctx.globalAlpha = 0.5 * fade * fade;                         // se desvanece (cuadrático → visible un rato, salida suave)
+      const h = c.hue * 360, sat = 8, lig = 44 + 22 * fade;        // gris CLARO/blanquecino (resalta sobre el fondo abisal) que se apaga con la carroña
+      ctx.globalAlpha = 0.5 * fade;                                // opacidad ∝ carroña restante (como la antigua mancha, máx ~0.5)
       if (r * lodSc > fullThr) {                                   // grande → cuerpo real, pose congelada (spd 0, t fijo)
         this._drawBodyGraph(ctx, x, y, r, h, sat, lig, c.nodes, 0, c.heading, 0, c.frozenT, null, 0, null, 0, false, null, 0, null, 0, null);
       } else {                                                     // pequeño → elipse gris barata

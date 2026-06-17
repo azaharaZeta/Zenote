@@ -24,6 +24,16 @@ Marcadores de render EFÍMEROS, alimentados por el motor pero sin tocar la diná
 Muertes naturales → marcadores creados (nodos=80, sin error de dibujo); se ven cuerpos grises eyeless desvaneciéndose bajo
 los vivos; smoke OK (conservación −0.0001%); consola sin errores.
 
+## Ampliación (2026-06-17): el cadáver SUSTITUYE a la mancha de carroña, ligado al nutriente
+La antigua viz de carroña (`_carrionSprite`: mancha gris radial por celda, opacidad ∝ `carrion[celda]`) se ha RETIRADO: el
+cuerpo con forma la sustituye. Su desvanecido ya no usa el temporizador fijo (70 ticks) sino el NUTRIENTE restante en su
+celda: `fade = carrion[celda]/carrion0` (referencia `carrion0` capturada al morir), MONÓTONO no creciente (`_purgeCorpses`,
+para que no "reviva" si cae otro muerto en la misma celda), con tope de edad de seguridad (`CORPSE_MAXAGE` 800 por si
+`carrionDecay≈0`). Así cuerpo y carroña co-terminan (antes el cuerpo desaparecía a los 70 ticks pero la carroña duraba
+~600). Verificado: el fade queda atado EXACTAMENTE al nutriente (maxFadeAboveFrac=0). Hueco asumido: la carroña SIN cuerpo
+(restos de depredación, minoría) ya no se pinta como mancha. Solo render. (CHANGELOG 2026-06-17.)
+
 ## Posibles mejoras futuras (no hechas)
-- Deriva/hundimiento lento del cuerpo al deshacerse; ligar el desvanecimiento al `carrionDecay` real de su celda.
+- Cubrir los restos de DEPREDACIÓN con cuerpos tenues (emitir marcador también para `'eaten'`, alpha ∝ su carroña pequeña).
+- Deriva/hundimiento lento del cuerpo al deshacerse.
 - Distinguir la causa (desgarro si murió en combate).
