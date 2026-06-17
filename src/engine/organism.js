@@ -9,7 +9,7 @@ export function computePhenotype(sim, i) {
   const g = sim.genes, b = i * NUM_GENES, cfg = sim.cfg, e = cfg.expr, en = cfg.energy;
 
   const size  = g[b + G.size];
-  const speed = g[b + G.speed];   // NO es velocidad, es ESFUERZO (throttle 0..1)
+  const speed = g[b + G.speed];   // gen MUSCULATURA: inversión en capacidad de empuje (modelo de fuerza); en el viejo era ESFUERZO
   const sense = g[b + G.sense];
   const metab = g[b + G.metab];
   const diet  = g[b + G.diet];
@@ -29,6 +29,11 @@ export function computePhenotype(sim, i) {
   // Modelo de FUERZA: el ESFUERZO lo decide el cerebro vivo (throttle, sim.js) → la capacidad de empuje se computa a tope
   // (effort=1) y la velocidad terminal sale de empuje/arrastre. Modelo viejo: effort = gen `speed` (fijo de por vida).
   const effort = lo.forceModel ? 1 : lo.effortFloor + (1 - lo.effortFloor) * speed;
+  // MUSCULATURA (gen `speed`, reinterpretado): en el modelo de fuerza el esfuerzo lo decide el cerebro, así que `speed`
+  // pasa a ser INVERSIÓN MUSCULAR → escala la capacidad de empuje (vmax, abajo) y cuesta basal mantenerla (∝ exceso sobre
+  // el neutro). El cerebro decide cuánto de esa capacidad USA (throttle, sim.js) → músculo potente sin usar = caro (r/K).
+  // FRONTERA: define física (capacidad + coste), no quién la usa. Modelo viejo: `speed`=esfuerzo → muscle=1 (sin cambio).
+  const muscle = lo.forceModel ? (lo.muscleMin + (lo.muscleMax - lo.muscleMin) * speed) : 1;
 
   // Plan corporal por nodos → física (masa, arrastre, empuje direccional, giro, streamlining). Ver bodyplan.js.
   const nNodes = computeBodyPlan(g, b, lo, effort);
@@ -41,7 +46,7 @@ export function computePhenotype(sim, i) {
   // mayor), el pequeño es rápido en su escala pero se desplaza poco. La masa (inercia/coste/giro) ya penaliza aparte.
   const refR = (e.size.min + e.size.max) * 0.5;
   const sizeStride = lo.speedSizeExp ? Math.pow(radius / refR, lo.speedSizeExp) : 1;
-  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul) * sizeStride;
+  let v = lo.kThrust * PsumEff * plan.straight * (plan.stream / R.Dmul) * sizeStride * muscle; // ×músculo: el gen speed invierte en empuje
   if (v < lo.vMin) v = lo.vMin; else if (v > lo.vMax) v = lo.vMax;
   sim.vmax[i] = v;
   sim.effort[i] = effort;                                      // para el coste de movimiento
@@ -82,7 +87,7 @@ export function computePhenotype(sim, i) {
   // El coste de NADAR se cobra aparte en el movimiento (sim.js). Mismo coste sea cual sea la dieta.
   sim.baseCost[i] =
     en.c_base * Math.pow(mass, en.kleiber) * (1 + en.k_metab * metab) * (1 + en.k_lifespan * (1 - lifeFast)) *
-    (1 + en.k_sense * sense + en.k_lure * lure);
+    (1 + en.k_sense * sense + en.k_lure * lure) * (1 + en.k_muscle * (muscle - 1)); // ×músculo: mantener el empuje cuesta basal (∝ exceso sobre el neutro)
 
   // Pastoreo: escala con metabolismo, masa (k_graze) y ANCHURA del cuerpo (k_grazeWide). Un cuerpo ancho barre más
   // recurso → morfología de pastador; reverso del cazador aerodinámico. Solo rinde a quien pasta (effHerb).

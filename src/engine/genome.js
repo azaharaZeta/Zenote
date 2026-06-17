@@ -38,7 +38,7 @@ export const NUM_GENES = GENES.length;
 // Nombres descriptivos para la UI (mismo orden que GENES).
 export const GENE_LABELS = {
   size: 'Tamaño',
-  speed: 'Velocidad',
+  speed: 'Musculatura',
   sense: 'Visión',
   metab: 'Metabolismo',
   diet: 'Dieta',

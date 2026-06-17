@@ -75,7 +75,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 
 | Bloque | Nº | Genes |
 |--------|----|-------|
-| **Ecología / fisiología** | 11 | `size`, `speed`(esfuerzo), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `mature_age`, `senescence` |
+| **Ecología / fisiología** | 11 | `size`, `speed`(musculatura), `sense`, `metab`, `diet`, `scav`(caza↔carroña), `repro_thr`, `invest`, `hue`, `mature_age`, `senescence` |
 | **Identidad / display** | 8 | `e_fov`, `orn`, `pref`, `c_lum`, `o_len`, `o_bulb`, `o_hue`, `o_num` |
 | **Cuerpo por NODOS** | 80 | 8 nodos × 10 campos (ver §2bis) |
 | **Cerebro neuronal** | 103 | pesos de la RNN (ver §cerebro; 11 entradas) |
@@ -85,7 +85,7 @@ El genoma se divide en cuatro bloques contiguos (orden en `genome.js`):
 | Gen | Expresión / efecto |
 |-----|--------------------|
 | `size` | radio = `lerp(expr.size)` px → **masa alométrica** (§3): mayor tamaño → más `E_max` (almacén ∝ masa) y ventaja en combate, pero más coste metabólico absoluto (∝ masa^¾) y peor giro. **No afecta a la velocidad** (ver §2bis). |
-| `speed` | (modelo de fuerza, por defecto: **inactivo** — el esfuerzo lo decide el cerebro tick a tick, §2bis; candidato a repurposar a capacidad muscular). Modelo viejo: ESFUERZO de nado fijo (acelerador 0..1) que modula amplitud y coste. |
+| `speed` | (modelo de fuerza, por defecto) **MUSCULATURA**: inversión en capacidad de empuje → escala `vmax` (`loco.muscleMin/Max`) y cuesta basal mantenerla (`energy.k_muscle`); el cerebro decide cuánto USA → músculo sin usar = caro (r/K), §2bis. Modelo viejo: ESFUERZO de nado fijo (acelerador 0..1) que modula amplitud y coste. |
 | `sense` | inversión visual → alcance base de visión + coste (`k_sense`). El reparto alcance↔ángulo lo hace `e_fov` (§2ter). |
 | `metab` | escala a la vez el ritmo de alimentación y el coste basal (`k_metab`). Alto = come y rinde más pero quema más. Trade-off, sin "mejor". |
 | `diet` | 0 = herbívoro puro (come del campo), 1 = carnívoro puro (caza). Intermedio = omnívoro penalizado (`omniPenalty`). |
@@ -209,7 +209,9 @@ Una sola primitiva: el **nodo**. `NODE_COUNT = 8`. Campos por nodo:
   cuándo parar** (esfuerzo→0 → frena por arrastre: descanso/emboscada), **cuándo esprintar y a dónde** — todo del MISMO output
   neuronal, sin if/else. Una entrada de **propiocepción** (velocidad propia, entrada #10) cierra el lazo de control. Medido:
   la dispersión de esfuerzo es ~7× la del modelo viejo (que iba en piloto automático a `vmax`). En este modelo `effort = 1`
-  (la capacidad se computa a tope; el esfuerzo vivo lo pone el cerebro), así que el gen `speed` queda inactivo (candidato a repurposar).
+  (la capacidad se computa a tope; el esfuerzo vivo lo pone el cerebro). El gen `speed` se reinterpreta como **MUSCULATURA**:
+  escala la capacidad de empuje (`vmax`, `loco.muscleMin/Max`) y cuesta basal mantenerla (`energy.k_muscle`) → el cerebro decide
+  cuánto USA (músculo sin usar = caro, r/K). Medido: diverge por nicho (carroñeros sedentarios ~bajo · herbívoros/cazadores ~alto).
 - **Coste por POTENCIA:** `moveCost·v²·(0.3 + 0.7·esfuerzo)·(1+flapCost)·haulMul·dragMul`. Parado (v≈0) es casi gratis
   (descanso/emboscada); planear a velocidad cuesta algo; esprintar es caro. El presupuesto enseña al cerebro a **dosificar**
   → crucero al forrajear, ráfaga al cazar, escape al huir: las velocidades por nicho EMERGEN. (Modelo viejo `forceModel=false`:

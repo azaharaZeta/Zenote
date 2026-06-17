@@ -63,6 +63,7 @@ export const config = {
     k_flap: 0.7,        // no-ui · Coste de nado extra por aletear (∝ flapWork): aletear es ráfaga cara.
     k_effort: 1.6,      // UI «Coste por esfuerzo» (Locomoción y visión) · Coste extra de moverse ∝ esfuerzo (gen speed).
     moveCost: 0.02,     // UI «Coste de nado (v²)» (Locomoción y visión) · Coef. del coste de nado ∝ velocidad² (frena la carrera de velocidad). Subido un poco para el modelo de fuerza (el movimiento se abarató al hacerse por esfuerzo).
+    k_muscle: 0.6,      // UI «Coste de musculatura» (Locomoción y visión) · Coste basal de mantener musculatura (gen speed → vmax): ∝ exceso sobre el neutro. Músculo potente sin usar = caro → trade-off r/K (la velocidad-capacidad tiene precio).
     k_haul: 0.2,        // UI «Coste de transporte (masa)» (Locomoción y visión) · Coste de transporte ∝ masa: arrastrar un cuerpo grande cuesta al moverse.
     k_drag: 0.4,        // UI «Coste de arrastre (forma)» (Locomoción y visión) · Coste de nado ∝ arrastre de la forma (Dmul); complementa k_haul (masa). 0 = inerte.
     dragRef: 1.1,       // no-ui · Arrastre de referencia del coste k_drag: solo paga el Dmul por encima de esto.
@@ -87,6 +88,8 @@ export const config = {
     streamBase: 1.0,    // no-ui · Arrastre base del cuerpo.
     streamGain: 0.5,    // no-ui · Cuánto reduce el arrastre la elongación (hidrodinámica).
     effortFloor: 0.2,   // no-ui · Esfuerzo mínimo de nado.
+    muscleMin: 0.6,     // no-ui · Multiplicador de empuje (vmax) con gen speed=0 (poco músculo: lento pero barato de mantener).
+    muscleMax: 1.4,     // no-ui · Multiplicador de empuje (vmax) con gen speed=1 (mucho músculo: rápido pero caro). min+max=2 → neutro (×1) al sembrado speed≈0.5.
     vMin: 0.15,         // no-ui · Suelo de velocidad-capacidad.
     vMax: 3.0,          // UI «Velocidad máxima» (Locomoción y visión) · Techo de velocidad-capacidad (u/tick).
     speedSizeExp: 0.5,  // UI «Velocidad por talla (zancada)» (Locomoción y visión) · vmax_mundo ∝ (radio/medio)^este exp: el grande da ZANCADAS mayores (avanza más por el mundo); el pequeño es rápido EN SU ESCALA pero se desplaza poco. 0 = velocidad-mundo independiente de la talla (modelo previo).

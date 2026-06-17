@@ -461,6 +461,7 @@ const LAB_SPEC = [
     // Costes de NADO (antes en "Energía"): viven con la locomoción que encarecen.
     { k: 'energy.k_effort', label: 'Coste por esfuerzo', min: 0, max: 3, step: 0.05, dec: 2, d: 'Coste extra de nadar a tope: limita la velocidad por presupuesto energético.' },
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coste de moverse ∝ velocidad²: frena la carrera de velocidad.' },
+    { k: 'energy.k_muscle', label: 'Coste de musculatura', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto cuesta MANTENER músculo (el gen «Musculatura» escala la velocidad-capacidad): más coste = invertir en velocidad que no se usa pena más → trade-off r/K. 0 = el músculo es gratis de mantener.' },
     { k: 'energy.k_haul', label: 'Coste de transporte (masa)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar arrastrar masa: alto = un cuerpo grande gasta más al desplazarse, no solo al mantenerse.' },
     { k: 'energy.k_drag', label: 'Coste de arrastre (forma)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto encarece nadar el ARRASTRE de la forma (cuerpo/aletas anchos, apéndices): complementa el coste por masa — distingue la forma hidrodinámica del bulto. 0 = el arrastre solo frena, no cuesta.' },
     { k: 'vision.rangeExp', label: 'Reparto alcance/ángulo', min: 0, max: 1, step: 0.05, dec: 2, d: 'Reparte el presupuesto visual: bajo = cono frontal largo (cazador); alto = panorámica corta (presa).' },

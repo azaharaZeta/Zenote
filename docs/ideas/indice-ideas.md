@@ -13,7 +13,6 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 ### Locomoción / modelo de fuerza
 - **Giro físico** — que girar use los segmentos (par + inercia). → [giro-fisico.md](giro-fisico.md)
 - **Afinar balance del modelo de fuerza** — recuperar carroñeros finos tras bajar `carcassValue`. → [afinar-balance-modelo-fuerza.md](afinar-balance-modelo-fuerza.md)
-- **Repurposar el gen `speed` → capacidad muscular** — hoy quedó inactivo. → [gen-speed-musculo.md](gen-speed-musculo.md)
 
 ### Ecología / balance
 - **Diversidad de talla bajo reproducción sexual** — la sexual aplana la talla. → [diversidad-talla-sexual.md](diversidad-talla-sexual.md)
