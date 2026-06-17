@@ -456,6 +456,8 @@ const LAB_SPEC = [
     { k: 'loco.vMax', label: 'Velocidad máxima', min: 1, max: 6, step: 0.1, dec: 1, d: 'Techo de seguridad de la velocidad de cualquier cuerpo.' },
     { k: 'loco.turnBase', label: 'Agilidad de giro', min: 0.02, max: 0.5, step: 0.01, dec: 2, d: 'Agilidad de giro base: más alto = giran más rápido hacia donde quieren ir.' },
     { k: 'loco.phaseGain', label: 'Coordinación de marcha', min: 0, max: 1, step: 0.05, dec: 2, d: 'Cuánto penaliza nadar descoordinado: alto = presiona a una natación coordinada (onda limpia).' },
+    { k: 'loco.dragLin', label: 'Arrastre del agua', min: 0.2, max: 3, step: 0.1, dec: 1, d: 'Densidad/viscosidad del agua: fija la INERCIA. Alto = el agua frena enseguida → arranques y paradas secos. Bajo = planean (tardan en acelerar y en frenar, se deslizan). Vía masa: los cuerpos grandes tienen más inercia.' },
+    { k: 'loco.speedSizeExp', label: 'Velocidad por talla (zancada)', min: 0, max: 1.5, step: 0.05, dec: 2, d: 'Cuánto AVANZA más por el mundo el cuerpo grande (zancada mayor): el grande recorre más por golpe; el pequeño es rápido en su escala pero se desplaza poco. 0 = la velocidad-mundo no depende de la talla (modelo previo).' },
     // Costes de NADO (antes en "Energía"): viven con la locomoción que encarecen.
     { k: 'energy.k_effort', label: 'Coste por esfuerzo', min: 0, max: 3, step: 0.05, dec: 2, d: 'Coste extra de nadar a tope: limita la velocidad por presupuesto energético.' },
     { k: 'energy.moveCost', label: 'Coste de nado (v²)', min: 0, max: 0.05, step: 0.001, dec: 3, d: 'Coste de moverse ∝ velocidad²: frena la carrera de velocidad.' },
