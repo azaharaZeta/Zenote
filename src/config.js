@@ -9,8 +9,8 @@ export const config = {
   // ───── Mundo ─────
   world: {
     size: 1000,    // UI «Tamaño del mundo» (Mundo y población) ↻ · Lado del mundo cuadrado (toro) en u. Dial de DENSIDAD: la materia/alimento TOTAL escala con el área (Modelo A, ver sim._aScale) → misma densidad a cualquier tamaño.
-    matterBudget: 65000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
-    closedRegen: 0.0055, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
+    matterBudget: 50000, // UI «Materia total (presupuesto)» (Mundo y población) ↻ · Materia total del mundo (pecera); escala ×área. Regulador del total de biomasa.
+    closedRegen: 0.0023, // UI «Fotosíntesis (pecera)» (Comida y vegetación) · Ritmo de fotosíntesis (N→pasto) en la pecera: regulador principal de la comida.
     nutrientDiffuse: 0.15, // no-ui · Difusión del campo de nutriente libre por tick (bajo = manchas fértiles locales).
     birthGatherR: 2,     // no-ui · Radio en celdas del vecindario del que la cría reúne materia al nacer.
   },
@@ -29,7 +29,7 @@ export const config = {
     energyPerUnit: 10,  // UI «Energía por unidad» (Comida y vegetación) · Energía obtenida por unidad de recurso comida.
     grazeRefuge: 0.20,  // UI «Reserva de rebrote» (Comida y vegetación) · Reserva de rebrote intocable por celda (fracción): evita el sobrepastoreo letal.
     forageReach: 5,     // UI «Alcance de forrajeo (talla)» (Comida y vegetación) · Alcance de forrajeo por talla (celdas): el grande pasta de un área → payoff de talla. 0 = solo su celda.
-    carrionDecay: 0.010, // UI «Descomposición de cadáveres» (Carroña) · Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
+    carrionDecay: 0.008, // UI «Descomposición de cadáveres» (Carroña) · Ritmo de descomposición de la carroña por tick (bajo = los cadáveres duran más).
     carrionAbsRate: 0.10, // UI «Ritmo de carroñeo» (Carroña) · Ritmo de carroñeo: fracción de la carroña de la celda que absorbe quien procesa carne.
     carrionScent: 3,    // no-ui · Escala del "olfato" de carroña en el gradiente de búsqueda (más alto = la carroña tira menos).
   },
@@ -83,7 +83,7 @@ export const config = {
     headThrust: 0.06,   // UI «Empuje de la cabeza» (Locomoción y visión) · Empuje de la cabeza (motor base débil): bajo → nadar bien exige cola/aletas.
     paddleEff: 0.6,     // no-ui · Peso del remo lateral en el gait (aleta lateral propulsa, menos que la cola trasera).
     oscFloor: 0.15,     // no-ui · Suelo de amplitud de oscilación por nodo.
-    phaseGain: 0.1,     // UI «Coordinación de marcha» (Locomoción y visión) · Cuánto penaliza la marcha descoordinada → nadar coordinado emerge.
+    phaseGain: 0.01,     // UI «Coordinación de marcha» (Locomoción y visión) · Cuánto penaliza la marcha descoordinada → nadar coordinado emerge.
     elongMax: 3.0,      // no-ui · Techo de la elongación derivada de la geometría de nodos (streamlining).
     symBase: 0.4,       // no-ui · Empuje útil hacia delante mínimo (la asimetría desvía empuje a girar).
     streamBase: 1.0,    // no-ui · Arrastre base del cuerpo.
@@ -174,7 +174,7 @@ export const config = {
     fleeCap: 0.95,       // no-ui · Tope de la prob. de escape por velocidad (nunca se zafa con certeza).
     handlingTime: 60,    // UI «Tiempo de manejo (digestión)» (Combate y dieta) · Enfriamiento tras una captura (digestión): satura la tasa de caza. Subido para el modelo de fuerza (la caza por ráfaga se volvió más eficaz → limita la tasa de depredación para que herbívoros/carroñeros aguanten).
     dietMargin: 0.08,    // UI «Margen de dieta (presa)» (Combate y dieta) · Diferencia de dieta mínima para considerar a otro "presa".
-    preyBandLo: 0.15,    // UI «Suelo de banda de caza» (Combate y dieta) · Ratio presa/depredador mínimo cazable.
+    preyBandLo: 0.10,    // UI «Suelo de banda de caza» (Combate y dieta) · Ratio presa/depredador mínimo cazable.
     preyBandHi: 1.10,    // UI «Techo de banda de caza» (Combate y dieta) · Ratio presa/depredador máximo atacable (>1 = presa mayor, arriesgada).
     lureGate: 0.5,       // no-ui · Umbral del gen 'o_len' para EMPEZAR a expresar el señuelo (más alto = órgano más raro: hay que SELECCIONARLO, no viene de serie). Desacoplado de la selección sexual.
     lureReach: 0.85,     // no-ui · Alcance de captura extra que da el señuelo (∝ prominencia).
@@ -225,7 +225,7 @@ export const config = {
 
   // ───── Expresión de genes: rangos lerp desde [0,1]. Frontera "programador ↔ evolución" ─────
   expr: {
-    size:      { min: 4.0, max: 12 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) ↻ · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría). Es el RANGO de talla posible: aplica a las crías al re-sembrar, NO redimensiona a los organismos vivos (por eso es ↻).
+    size:      { min: 1.0, max: 6 },    // UI «Talla mínima (px)» / «Talla máxima (px)» (Metabolismo y cuerpo) ↻ · gen size → radio (u). `min` = suelo de talla: palanca maestra del régimen (afecta a eMax/coste/cría). Es el RANGO de talla posible: aplica a las crías al re-sembrar, NO redimensiona a los organismos vivos (por eso es ↻).
     sense:     { min: 10,  max: 80 },   // no-ui · gen sense → alcance de visión base (u).
     repro_thr: { min: 0.5, max: 0.95 }, // no-ui · gen repro_thr → umbral de energía para criar (fracción de E_max).
     invest:    { min: 0.2, max: 0.6 },  // no-ui · gen invest → energía dada a la cría (fracción de E_max).
