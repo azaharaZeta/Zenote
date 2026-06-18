@@ -14,7 +14,7 @@ Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs
 - [x] **Andamio de plataforma** (SoA + pool, spatial hash toroidal, bucle de tick). **SIN biología** (los agentes
   hacen marcha aleatoria + escaneo de vecindad que ejercita el hash). Solo prueba que la plataforma escala.
   - `src/engine/state.js` · `src/engine/hash.js` · `src/engine/sim.js` · `src/engine/config.js` · `src/util/rng.js`
-- [x] **Perfil + determinismo** (`test/perf.mjs`): `node test/perf.mjs`.
+- [x] **Perfil + determinismo** (andamio; `perf.mjs`/`state.js`/scaffold `sim.js` retirados al llegar el motor real M4-M5):
   - Medido (motor solo, sin render): 1k ag ≈ 0.18 ms/tick · 3k ≈ 0.9 ms · 5k ≈ 2.0 ms · 10k ≈ 7.4 ms.
   - Presupuesto a 20 t/s = 50 ms/tick → **holgura amplia hasta 10k agentes** (go-criterion de perf de M0 ✓).
   - Determinismo (mismo seed → checksum idéntico) ✓.
@@ -72,6 +72,18 @@ Validación: `node zenote2/test/m4-invariants.mjs` (agentes-sonda codificados a 
 - La sonda no está tuneada para prosperar (declina a la capacidad de carga limitada por energía — correcto; la
   ecología viva es M5/M6). Es scaffolding: M5 reemplaza la sonda por el organismo real (genoma/desarrollo).
 
+## M5 — Cuerpo, desarrollo, forma=función (sobre M4) · en curso ([plan](M5-PLAN.md))
+
+Keepers: `src/engine/genome.js` (genoma de reglas + `develop` + mutación) · `src/engine/phenotype.js` (forma=función) ·
+`src/engine/sim.js` (sim integrado, reemplaza la sonda M4).
+
+- [x] **M5.1** desarrollo (`test/m5-develop.mjs`): **0 inválidos en 120k desarrollos** (validez por construcción); cadenas/pares/4 tejidos emergen sin sembrar.
+- [x] **M5.2** forma=función (`test/m5-formfunction.mjs`): 10/10 asserts; eje autótrofo↔heterótrofo + trade-off del generalista (mediocre) emergen **sin `omniPenalty`**.
+- [x] **M5.3** sim integrado (`test/m5-invariants.mjs`): **los 4 invariantes de 2.1 §8 SIGUEN pasando** con el organismo real; mundo VIVO (pop ~1160 estable, energía-limitada); 6300 t/s. Repro asexual + mutación → la morfología puede evolucionar.
+- [x] **M5.4** evolución morfológica (`test/m5-evolution.mjs`): sin sembrar, photoCap 35→44, diversidad 0→±23, partes 3→4.3, heterótrofos 0→7% (3 seeds). La FORMA evoluciona (divergencia trófica plena = M6).
+- [x] **M5.5** render (R6) — `index.html` + `src/main.js` (Canvas 2D, cenote oscuro, organismos por grafo de partes coloreados por tejido). Servidor: launch.json `zenote2` (puerto 8732). Legible y calmado; pulido (glow/ondulación) = pasada posterior.
+- [ ] **M5.6** Web Worker (motor en hilo aparte) — *aplazable; el render va fluido en síncrono*.
+
 ## Próximos hitos
-**M5** cuerpo+desarrollo (2.2, sobre M4) + render → **M6** fisiología+conducta → **M7** bucle evolutivo →
+Terminar M5 (5.4 evolución → 5.5 render → 5.6 worker) → **M6** fisiología+conducta → **M7** bucle evolutivo →
 **M8** cruce vs baseline.

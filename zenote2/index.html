@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Zenote 2 — primer render (M5.5)</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05080d; overflow: hidden; }
+    #world { display: block; width: 100vw; height: 100vh; }
+    #hud { position: fixed; left: 10px; top: 8px; font: 12px/1.5 ui-monospace, monospace; color: #7d8aa0; pointer-events: none; text-shadow: 0 1px 2px #000; }
+    #legend { position: fixed; right: 10px; top: 8px; font: 11px/1.6 ui-monospace, monospace; color: #8a94a6; text-align: right; text-shadow: 0 1px 2px #000; }
+    .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <canvas id="world"></canvas>
+  <div id="hud">Zenote 2 · M5.5</div>
+  <div id="legend">
+    fotosíntesis<span class="sw" style="background:#3fb98f"></span><br>
+    músculo<span class="sw" style="background:#e0664d"></span><br>
+    boca<span class="sw" style="background:#e0a84a"></span><br>
+    estructura<span class="sw" style="background:#5a6b7a"></span>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

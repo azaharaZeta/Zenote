@@ -1,0 +1,122 @@
+// M5.1 — GENOMA DE REGLAS + DESARROLLO (2.2). Código KEEPER: el mapa genotipo→fenotipo del modelo nuevo.
+// El genoma NO son rasgos, son REGLAS DE DESARROLLO (un programa que se ejecuta para crecer el cuerpo). `develop()`
+// recorre un grafo generativo de MÓDULOS (con recursión/simetría/modulación por contexto) y produce un CUERPO =
+// lista de PARTES con geometría. Validez POR CONSTRUCCIÓN (recursión acotada → siempre un cuerpo legal). La forma
+// que produce alimenta la física (M5.2 forma=función) y el render (M5.5). Validado conceptualmente en el spike M3.
+
+// Tejido de una parte → de aquí EMERGE el eje autótrofo↔heterótrofo (M5.2): PHOTO capta luz · MUSCLE propulsa ·
+// MOUTH ingiere · STRUCTURE solo da cuerpo. La frontera (qué hace cada tejido) es física; la selección decide cuál.
+export const TISSUE = { STRUCTURE: 0, PHOTO: 1, MUSCLE: 2, MOUTH: 3 };
+export const TISSUE_N = 4;
+
+export const GENOME_P = {
+  partBudget: 32,      // tope de partes del cuerpo (acota recursión → coste y validez)
+  recCap: 8,           // tope del límite de recursión por módulo
+  modCap: 12,          // tope de módulos en el genoma
+  radMin: 1.0, radMax: 6.0,   // gen size → radio de parte (u)
+};
+
+const TWO_PI = 6.283185307;
+const clamp01 = (x) => x < 0 ? 0 : x > 1 ? 1 : x;
+const clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;
+const radOf = (size) => GENOME_P.radMin + (GENOME_P.radMax - GENOME_P.radMin) * size;
+const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,1] → categoría
+
+let HOM = 1;   // contador global de marcas de homología (para recombinación en M7)
+
+function mkModule(rng) {
+  return {
+    angle: rng.next() * Math.PI,   // emisión rel. al eje (0 frente .. π atrás)
+    size: 0.3 + rng.next() * 0.4, aspect: rng.next(), tissue: rng.next(),
+    oscAmp: rng.next() * 0.6, phase: rng.next(),
+    recursive: rng.next() < 0.3, recLimit: 1 + (rng.next() * GENOME_P.recCap) | 0,
+    symmetric: rng.next() < 0.4, taper: 0.6 + rng.next() * 0.4,
+    hom: HOM++,
+  };
+}
+
+// Fundador SIMPLE (la complejidad EMERGE): cabeza + un módulo fotosintético pequeño (plántula viable, no estéril).
+// tissue 0.35 → bin PHOTO (tissueOf: t·4|0 = 1). [PHOTO = [0.25,0.5); ojo: valores <0.25 caen en STRUCTURE.]
+export function makeFounder(rng) {
+  return {
+    root: { size: 0.45, aspect: 0.3, tissue: 0.35 /*PHOTO*/, oscAmp: 0.15, phase: rng.next() },
+    modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: rng.next(),
+                recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],
+  };
+}
+
+export function cloneGenome(g) {
+  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })) };
+}
+
+// DESARROLLO: genoma de reglas → cuerpo (lista de partes con geometría). Determinista, acotado, SIEMPRE válido.
+// Parte: { x,y (rel. al origen del cuerpo), r (radio), aspect, dir (dirección de emisión = eje de gait), tissue,
+//          oscAmp, phase, parent (índice, para el render del esqueleto) }.
+export function develop(g) {
+  const B = GENOME_P, parts = [];
+  const root = g.root;
+  parts.push({ x: 0, y: 0, r: radOf(root.size), aspect: root.aspect, dir: 0, tissue: tissueOf(root.tissue),
+               oscAmp: root.oscAmp, phase: root.phase * TWO_PI, parent: -1 });
+  for (const m of g.modules) {
+    if (parts.length >= B.partBudget) break;
+    const signs = m.symmetric ? [1, -1] : [1];           // simetría bilateral: par espejado (1 bit)
+    for (const s of signs) {
+      if (parts.length >= B.partBudget) break;
+      const dir = clamp(m.angle, 0, Math.PI) * s;         // dirección de emisión (espejada por s)
+      const cd = Math.cos(dir), sd = Math.sin(dir);
+      let parentIdx = 0, r = radOf(m.size);
+      const L = m.recursive ? clamp(m.recLimit | 0, 1, B.recCap) : 1;   // recursión → cadena (acotada)
+      for (let d = 0; d < L && parts.length < B.partBudget; d++) {
+        const p = parts[parentIdx], dist = p.r + r;
+        parts.push({ x: p.x + cd * dist, y: p.y + sd * dist, r, aspect: m.aspect, dir,
+                     tissue: tissueOf(m.tissue), oscAmp: m.oscAmp, phase: m.phase * TWO_PI, parent: parentIdx });
+        parentIdx = parts.length - 1;                     // cadena: la siguiente se ancla a esta
+        r *= clamp(m.taper, 0.4, 1);                      // modulación por contexto: afilamiento a lo largo de la cadena
+      }
+    }
+  }
+  return parts;
+}
+
+// MUTACIÓN (operadores de 2.2 §7): paramétrica (frecuente, suave) + estructurales (raras, gran efecto = cruza-valles).
+export function mutate(g, rng) {
+  const B = GENOME_P, n = cloneGenome(g);
+  // paramétricas sobre la raíz
+  const r = n.root;
+  if (rng.next() < 0.2) r.size = clamp01(r.size + rng.gaussian() * 0.1);
+  if (rng.next() < 0.2) r.aspect = clamp01(r.aspect + rng.gaussian() * 0.1);
+  if (rng.next() < 0.1) r.tissue = clamp01(r.tissue + rng.gaussian() * 0.15);
+  if (rng.next() < 0.2) r.oscAmp = clamp01(r.oscAmp + rng.gaussian() * 0.1);
+  if (rng.next() < 0.2) r.phase = (r.phase + rng.gaussian() * 0.1 + 1) % 1;
+  // estructurales sobre el conjunto de módulos
+  if (rng.next() < 0.10 && n.modules.length < B.modCap) n.modules.push(mkModule(rng));                 // AÑADIR
+  if (rng.next() < 0.08 && n.modules.length && n.modules.length < B.modCap) {                          // DUPLICAR (copia coherente)
+    const src = n.modules[(rng.next() * n.modules.length) | 0]; n.modules.push({ ...src, hom: HOM++ });
+  }
+  if (rng.next() < 0.05 && n.modules.length > 0) n.modules.splice((rng.next() * n.modules.length) | 0, 1); // BORRAR
+  for (const m of n.modules) {
+    if (rng.next() < 0.06) m.recursive = !m.recursive;                                                 // toggle recursión
+    if (rng.next() < 0.10) m.recLimit = clamp((m.recLimit + (rng.next() < 0.5 ? 1 : -1)) | 0, 1, B.recCap); // límite
+    if (rng.next() < 0.06) m.symmetric = !m.symmetric;                                                 // toggle simetría (1 bit → par)
+    if (rng.next() < 0.08) m.tissue = clamp01(m.tissue + rng.gaussian() * 0.2);                        // tejido (puede cambiar de categoría)
+    if (rng.next() < 0.15) m.angle = clamp(m.angle + rng.gaussian() * 0.4, 0, Math.PI);
+    if (rng.next() < 0.15) m.size = clamp01(m.size + rng.gaussian() * 0.12);
+    if (rng.next() < 0.15) m.aspect = clamp01(m.aspect + rng.gaussian() * 0.12);
+    if (rng.next() < 0.12) m.oscAmp = clamp01(m.oscAmp + rng.gaussian() * 0.12);
+    if (rng.next() < 0.10) m.taper = clamp(m.taper + rng.gaussian() * 0.1, 0.4, 1);                    // regulatoria
+    if (rng.next() < 0.12) m.phase = (m.phase + rng.gaussian() * 0.12 + 1) % 1;
+    if (rng.next() < 0.01) m.hom = HOM++;                                                              // homología (rarísima)
+  }
+  return n;
+}
+
+// Estadística estructural del cuerpo (para tests/inspección).
+export function bodyStats(parts) {
+  let chain = new Array(parts.length).fill(1), maxChain = 1;
+  const tissues = [0, 0, 0, 0];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]; tissues[p.tissue]++;
+    if (p.parent >= 0) { chain[i] = chain[p.parent] + 1; if (chain[i] > maxChain) maxChain = chain[i]; }
+  }
+  return { nParts: parts.length, maxChain, tissues };
+}
