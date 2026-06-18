@@ -7,7 +7,7 @@ a la actual) es una decisión futura y separada.
 Convenciones heredadas de la app actual: vanilla JS (ES modules), SoA + typed arrays, spatial hash O(n), Web Worker
 (cuando entre el render), motor ejecutable headless en Node. RNG mulberry32 determinista.
 
-## Estado: M0 — Andamio + baseline (en curso)
+## Estado: M0 — Andamio + baseline ✅ CERRADO
 
 Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs/refactor/02-Redesign/2.6-reconstruction-roadmap.md)).
 
@@ -18,12 +18,25 @@ Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs
   - Medido (motor solo, sin render): 1k ag ≈ 0.18 ms/tick · 3k ≈ 0.9 ms · 5k ≈ 2.0 ms · 10k ≈ 7.4 ms.
   - Presupuesto a 20 t/s = 50 ms/tick → **holgura amplia hasta 10k agentes** (go-criterion de perf de M0 ✓).
   - Determinismo (mismo seed → checksum idéntico) ✓.
-- [ ] **Baseline scorecard sobre la app actual** (`../src/`): correr el emergence scorecard de 2.6 §4 headless para
-  fijar los números a batir. *(pendiente — siguiente sub-paso de M0)*
+- [x] **Baseline scorecard sobre la app actual** (`test/baseline-current.mjs`) → [`baseline-scorecard.md`](baseline-scorecard.md).
+  - Hallazgo: la coexistencia trófica del baseline es **FRÁGIL** (cadena plena ~3/8 seeds; **cazador ápice
+    extinción-propenso**). App actual = **165 params (136 sim + 29 render)**, 441–823 t/s headless.
+  - → el **listón a batir en M2 es modesto**: igualar esa coexistencia con ~0 diales de balance ya valida la tesis.
 
 > Nota de honestidad: M0 solo retira **parte** de R2 (el sustrato base no es el cuello). Los mecanismos caros
 > (plasticidad por tick, recombinación, productores-agente) se estresan en el **spike M1**, no aquí.
 
-## Próximos hitos (de-risk antes de construir)
-- **M1** spike de coste (R2) · **M2** spike de coexistencia emergente (R1, la puerta) · **M3** spike de convergencia
-  del genoma (R3) → luego M4 leyes → M5 cuerpo+render → M6 fisiología+conducta → M7 bucle → M8 cruce vs baseline.
+## M2 — Spike de coexistencia emergente (la puerta R1) ✅ **GO**
+
+`spikes/m2-coexistence/` → [`RESULT.md`](spikes/m2-coexistence/RESULT.md). Reproducir:
+`node zenote2/spikes/m2-coexistence/run.mjs 8000 1,2,3 1000,1500,2000,2500`
+
+- La coexistencia depredador-presa **EMERGE** de **refugio espacial (tamaño de mundo, Huffaker)** + **tripa/saciedad
+  (respuesta funcional)**, **sin** los 5 diales cableados (`handlingTime`/`failDamage`/`fleeCap`/`refuge`/`preyBand`).
+- gut+cover: **3/3 seeds a 20k ticks** (size≥2000) → **iguala/supera el baseline (~3/8) con CERO diales de balance**.
+- Caveats: oscilatoria (CV 0.5-0.8), necesita mundo ≥1500-2000, conducta aún codificada a mano (evolucionada = M6).
+- **R1 retirado (GO); el kill-criterion mayor no se dispara.**
+
+## Próximos hitos
+- **M1** spike de coste (R2) · **M3** spike de convergencia del genoma (R3) → luego M4 leyes → M5 cuerpo+render →
+  M6 fisiología+conducta → M7 bucle → M8 cruce vs baseline.
