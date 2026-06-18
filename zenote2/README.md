@@ -56,7 +56,22 @@ Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs
   formas que la app actual debe SEMBRAR (D1). **0 cuerpos inválidos en 160k desarrollos** (validez por construcción).
 - **R3 retirado (GO).**
 
-## De-risking COMPLETO → construir la pila
-Los tres riesgos retirados: **M2 (R1)·M1 (R2)·M3 (R3) = GO**. Ningún kill-criterion se dispara. Siguiente:
-**M4** leyes del mundo (2.1, con invariantes §8) → **M5** cuerpo+desarrollo+render → **M6** fisiología+conducta →
-**M7** bucle evolutivo → **M8** cruce vs baseline.
+## De-risking COMPLETO
+Los tres riesgos retirados: **M2 (R1)·M1 (R2)·M3 (R3) = GO**. Ningún kill-criterion se dispara.
+
+## M4 — Leyes del mundo (Capa A, 2.1) ✅ KEEPER
+
+Primer código que se queda: `src/engine/world.js` (la base física del motor). Dos monedas independientes —**materia
+cerrada** (nutriente↔organismo↔detrito) + **energía abierta** (luz→reservas→calor)— campos en rejilla (luz
+heterogénea + día/noche + sombra, nutriente, detrito, ocupación), difusión y descomposición conservativas.
+Validación: `node zenote2/test/m4-invariants.mjs` (agentes-sonda codificados a mano ejercitan todas las transacciones).
+
+- **Invariantes de 2.1 §8 — TODOS pasan:** (1) materia conservada (deriva ~1e-4% = ruido f32) · (2) balance de
+  energía por tick (Δalmacenada = capturada − calor) · (3) calor monótono · (4) **NO móvil perpetuo** (luz=0 →
+  energía→0, todos mueren, materia sigue conservada — el test decisivo que distingue del modelo viejo).
+- La sonda no está tuneada para prosperar (declina a la capacidad de carga limitada por energía — correcto; la
+  ecología viva es M5/M6). Es scaffolding: M5 reemplaza la sonda por el organismo real (genoma/desarrollo).
+
+## Próximos hitos
+**M5** cuerpo+desarrollo (2.2, sobre M4) + render → **M6** fisiología+conducta → **M7** bucle evolutivo →
+**M8** cruce vs baseline.
