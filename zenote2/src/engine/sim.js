@@ -9,7 +9,7 @@
 // y energía-en-biomasa (presa magra) son de M6 → en M5.3 el heterótrofo vive de las RESERVAS de la presa (puede ser
 // flojo; lo arregla M6). El foco de M5.3 es: organismo real + invariantes + morfología evoluciona.
 
-import { develop, mutate, makeFounder } from './genome.js';
+import { develop, mutate, makeFounder, BRAIN, BRAIN_W } from './genome.js';
 import { computePhenotype } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
@@ -19,6 +19,13 @@ export const SIM_P = {
   baseCost: 0.015, massCost: 0.004,  // metabolismo: basal + ∝ masa
   moveCost: 0.004,                   // coste de nado ∝ drag·v² (energía → calor)
   reproE: 16, investE: 7, cooldown: 50,   // reproducción: umbral, energía a la cría, enfriamiento
+  eDensity: 0,                       // M6.1 (2.3 energía-en-biomasa): MEDIDO y dejado OFF. Probado eD=4 (el cuerpo guarda energía,
+                                     // pagada al nacer y liberada al ser comido): conserva (invariantes ✓) PERO net-negativo aquí —
+                                     // su coste embebido al nacer penaliza los cuerpos grandes (depredadores) y NO compensa porque la
+                                     // presa NO es magra (los autótrofos llevan reservas). El "problema de la presa magra" no se
+                                     // manifiesta en este modelo. Código parametrizado (eDensity>0) por si hace falta en cadenas
+                                     // profundas; por defecto 0 = separación limpia materia/energía de M5. El limitante real de la
+                                     // heterotrofía es la CONDUCTA (M6.3), no la energía.
   birthR: 1,                         // radio (celdas) del vecindario del que la cría reúne MATERIA al nacer
   eatReach: 4,                       // alcance extra de captura (u)
   preyMassMax: 1.6,                  // factor: presa manejable si su masa ≤ maxMouthR·este (boca→tamaño de presa)
@@ -27,8 +34,9 @@ export const SIM_P = {
 };
 
 export class Sim {
-  constructor(world, { seed = 1, cap = 8000 } = {}) {
-    this.world = world; this.cap = cap; this.rng = makeRng(seed); this.tick = 0;
+  constructor(world, { seed = 1, cap = 8000, eDensity = SIM_P.eDensity, randomBehavior = false } = {}) {
+    this.world = world; this.cap = cap; this.rng = makeRng(seed); this.tick = 0; this.eD = eDensity;
+    this.randomBehavior = randomBehavior;   // control: salidas aleatorias (ignora el cerebro) → mide si la conducta neuronal es ADAPTATIVA
     this.x = new Float32Array(cap); this.y = new Float32Array(cap);
     this.vx = new Float32Array(cap); this.vy = new Float32Array(cap);
     this.E = new Float32Array(cap); this.age = new Float32Array(cap); this.cd = new Float32Array(cap);
@@ -40,7 +48,10 @@ export class Sim {
     this.drag = new Float32Array(cap); this.mouthCap = new Float32Array(cap); this.maxMouthR = new Float32Array(cap);
     this.free = new Int32Array(cap); for (let i = 0; i < cap; i++) this.free[i] = cap - 1 - i; this.freeTop = cap;
     this.active = new Int32Array(cap); this.nA = 0;
-    this.hash = new SpatialHash(world.size, 60); this.hash.setCapacity(cap);
+    this.hash = new SpatialHash(world.size, 60); this.hash.setCapacity(cap); this.kills = 0;   // depredación (instrumentación)
+    // M6.3 — cerebro: COPIA DE TRABAJO de pesos por agente (aprendida en vida; NO heredable) + estado oculto recurrente.
+    this.wbrain = new Float32Array(cap * BRAIN_W); this.hidden = new Float32Array(cap * BRAIN.H);
+    this._in = new Float32Array(BRAIN.I); this._hid = new Float32Array(BRAIN.H); this._out = new Float32Array(BRAIN.O);
   }
 
   _expr(i) { const parts = develop(this.genome[i]); this.body[i] = parts; const ph = computePhenotype(parts);
@@ -51,7 +62,11 @@ export class Sim {
     if (this.freeTop === 0) return -1; const i = this.free[--this.freeTop];
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.age[i] = 0;
-    this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0; this._expr(i); return i;
+    this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0; this._expr(i);
+    // cerebro de trabajo = cerebro de NACIMIENTO (genoma); memoria a cero (la plasticidad parte de aquí; Baldwin)
+    const b = genome.brain, wb = i * BRAIN_W; for (let k = 0; k < BRAIN_W; k++) this.wbrain[wb + k] = b ? b[k] : 0;
+    const hb = i * BRAIN.H; for (let k = 0; k < BRAIN.H; k++) this.hidden[hb + k] = 0;
+    return i;
   }
 
   seed(n) { const W = this.world, rng = this.rng;
@@ -75,48 +90,80 @@ export class Sim {
     for (let a = 0; a < na; a++) {
       const i = this.active[a]; if (!this.alive[i] || this.serial[i] > maxSer) continue;
       const cell = W.cellAt(x[i], y[i]);
+      const E0 = E[i];   // M6.3: reservas al inicio del tick → recompensa de plasticidad = ΔE
 
       // FOTOSÍNTESIS: capta una porción de la luz de la celda ∝ photoCap (compite por sombra/ocupación). Energía ENTRA.
       if (this.photoCap[i] > 0) { const dE = P.photoEff * W.lightAt(cell) * (this.photoCap[i] / (this.photoCap[i] + P.photoHalf)) / Math.max(1, W.occ[cell]);
         if (dE > 0) { E[i] += dE; W.lightCaptured += dE; } }
 
-      // CONDUCTA placeholder GENÉRICA: si tiene boca (heterótrofo) persigue presa; si no, deriva lento (autótrofo).
-      let tvx = 0, tvy = 0;
-      if (this.mouthCap[i] > 0) {
-        let bj = -1, bd = 60 * 60, bdx = 0, bdy = 0; const hc = this.hash.cell, hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
+      // ---- SENSADO: ∇luz + presa/amenaza más cercanas (un barrido del hash) ----
+      const cols = W.cols, rows = W.rows, cx = cell % cols, cy = (cell / cols) | 0;
+      const xl = cx > 0 ? cell - 1 : cell, xr = cx < cols - 1 ? cell + 1 : cell, yt = cy > 0 ? cell - cols : cell, yb = cy < rows - 1 ? cell + cols : cell;
+      const lgx = (W.light0[xr] - W.light0[xl]) * 8, lgy = (W.light0[yb] - W.light0[yt]) * 8;
+      let preyJ = -1, preyD = 1e9, preyDX = 0, preyDY = 0, thD = 1e9, thDX = 0, thDY = 0;
+      const myMass = this.mass[i], myMouth = this.mouthCap[i], myReach = this.maxMouthR[i] * P.preyMassMax;
+      { const hc = this.hash.cell, hx = (x[i] / hc) | 0, hy = (y[i] / hc) | 0;
         for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const gx = ((hx + ox) % this.hash.cols + this.hash.cols) % this.hash.cols, gy = ((hy + oy) % this.hash.rows + this.hash.rows) % this.hash.rows;
           let j = this.hash.head[gy * this.hash.cols + gx];
-          while (j !== -1) { if (j !== i && this.alive[j] && this.mass[j] <= this.maxMouthR[i] * P.preyMassMax && this.mass[j] < this.mass[i]) {
+          while (j !== -1) { if (j !== i && this.alive[j]) {
             let dx = x[j] - x[i], dy = y[j] - y[i]; if (dx > size * 0.5) dx -= size; else if (dx < -size * 0.5) dx += size; if (dy > size * 0.5) dy -= size; else if (dy < -size * 0.5) dy += size;
-            const d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; bj = j; bdx = dx; bdy = dy; } } j = this.hash.next[j]; }
-        }
-        if (bj !== -1) { const m = Math.sqrt(bd) || 1; tvx = bdx / m; tvy = bdy / m;
-          // INGESTA: en contacto, gana las RESERVAS de la presa (η); resto → detrito; la MASA de la presa → detrito (CONSERVA).
-          const reach = (this.maxMouthR[i] + P.eatReach); if (bd < reach * reach) { const pc = W.cellAt(x[bj], y[bj]);
-            const ge = P.ηene * E[bj]; E[i] += ge; W.detritusE[pc] += E[bj] - ge; W.detritusM[pc] += this.mass[bj];
-            this.alive[bj] = 0; this.free[this.freeTop++] = bj; this.genome[bj] = null; }
-        } else { tvx = (rng.next() - 0.5); tvy = (rng.next() - 0.5); }
-      } else { tvx = (rng.next() - 0.5) * 0.3; tvy = (rng.next() - 0.5) * 0.3; } // autótrofo: casi sésil
+            const d2 = dx * dx + dy * dy;
+            if (myMouth > 0 && this.mass[j] < myMass && this.mass[j] <= myReach && d2 < preyD) { preyD = d2; preyJ = j; preyDX = dx; preyDY = dy; }       // presa (puedo comerla)
+            if (this.mouthCap[j] > 0 && myMass < this.mass[j] && myMass <= this.maxMouthR[j] * P.preyMassMax && d2 < thD) { thD = d2; thDX = dx; thDY = dy; } // amenaza (puede comerme)
+          } j = this.hash.next[j]; } }
+      }
+      if (preyJ >= 0) { const m = Math.sqrt(preyD) || 1; preyDX /= m; preyDY /= m; }
+      if (thD < 1e9) { const m = Math.sqrt(thD) || 1; thDX /= m; thDY /= m; }
 
-      // MOVIMIENTO (velocidad emergente vmax) + coste ∝ drag·v² (energía → calor)
-      const sp = this.vmax[i], tm = Math.sqrt(tvx * tvx + tvy * tvy) || 1;
-      vx[i] = tvx / tm * sp; vy[i] = tvy / tm * sp;
+      // ---- CEREBRO (forward Elman; pesos = copia de trabajo aprendida). Único motor de conducta: cero estrategia cableada. ----
+      const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._in, hid = this._hid, out = this._out, wb = i * BRAIN_W, hb = i * H, Wt = this.wbrain, PH = this.hidden;
+      const wHh = I * H, bH = I * H + H * H, wHo = bH + H, bO = wHo + H * O;
+      inp[0] = lgx < -1 ? -1 : lgx > 1 ? 1 : lgx; inp[1] = lgy < -1 ? -1 : lgy > 1 ? 1 : lgy; inp[2] = preyDX; inp[3] = preyDY; inp[4] = thDX; inp[5] = thDY;
+      inp[6] = (E[i] / P.reproE) * 2 - 1; const spd0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]); inp[7] = this.vmax[i] > 1e-4 ? (spd0 / this.vmax[i]) * 2 - 1 : -1;
+      for (let h = 0; h < H; h++) { let s = Wt[wb + bH + h]; for (let k = 0; k < I; k++) s += inp[k] * Wt[wb + k * H + h]; for (let p = 0; p < H; p++) s += PH[hb + p] * Wt[wb + wHh + p * H + h]; hid[h] = Math.tanh(s); }
+      for (let o = 0; o < O; o++) { let s = Wt[wb + bO + o]; for (let h = 0; h < H; h++) s += hid[h] * Wt[wb + wHo + h * O + o]; out[o] = Math.tanh(s); }
+      if (this.randomBehavior) { out[0] = rng.next() * 2 - 1; out[1] = rng.next() * 2 - 1; out[2] = rng.next() * 2 - 1; out[3] = rng.next() * 2 - 1; }   // control: ignora el cerebro
+
+      // ---- MOVIMIENTO desde las salidas (0,1 dirección · 2 throttle); coste ∝ drag·v² ----
+      const dxo = out[0], dyo = out[1], dm = Math.sqrt(dxo * dxo + dyo * dyo), throttle = (out[2] + 1) * 0.5;
+      if (dm > 1e-3) { const sp = this.vmax[i] * throttle; vx[i] = dxo / dm * sp; vy[i] = dyo / dm * sp; } else { vx[i] *= 0.5; vy[i] *= 0.5; }
       let nx = x[i] + vx[i], ny = y[i] + vy[i]; if (nx < 0) nx += size; else if (nx >= size) nx -= size; if (ny < 0) ny += size; else if (ny >= size) ny -= size; x[i] = nx; y[i] = ny;
       const v2 = vx[i] * vx[i] + vy[i] * vy[i];
+
+      // ---- INGESTA: el cerebro DECIDE atacar (out[3]); en contacto con la presa, la come (CONSERVA) ----
+      const attack = (out[3] + 1) * 0.5;
+      if (preyJ >= 0 && myMouth > 0 && attack > 0.5 && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;
+        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]); const preyEnergy = E[preyJ] + this.mass[preyJ] * this.eD;
+          const ge = P.ηene * preyEnergy; E[i] += ge; W.detritusE[pc] += preyEnergy - ge; W.detritusM[pc] += this.mass[preyJ];
+          this.alive[preyJ] = 0; this.free[this.freeTop++] = preyJ; this.genome[preyJ] = null; this.kills++; } }
 
       // METABOLISMO: reservas → calor (basal + ∝masa + nado). Muerte si se agotan → cuerpo a detrito.
       const cost = P.baseCost + P.massCost * this.mass[i] + P.moveCost * v2 * this.drag[i];
       const spend = Math.min(E[i], cost); E[i] -= spend; W.heat += spend;
-      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += E[i] > 0 ? E[i] : 0; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; continue; }
+      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; continue; }
+
+      // ---- PLASTICIDAD (Hebbiano modulado por RECOMPENSA fisiológica = ΔE del tick; NO es objetivo de conducta) ----
+      // El cerebro aprende EN VIDA lo que recupera energía (venga de donde venga) → suaviza los valles conductuales
+      // (Baldwin). Modifica la copia de TRABAJO (Wt), nunca el cerebro de nacimiento (genoma) → no se hereda lo aprendido.
+      { let reward = E[i] - E0; reward = reward > 0.5 ? 0.5 : reward < -0.5 ? -0.5 : reward; const lr = 0.02 * reward;
+        if (lr !== 0) {
+          for (let h = 0; h < H; h++) { const po = hid[h];
+            for (let k = 0; k < I; k++) { const idx = wb + k * H + h; let w = Wt[idx] + lr * inp[k] * po; Wt[idx] = w < -3 ? -3 : w > 3 ? 3 : w; }
+            for (let p = 0; p < H; p++) { const idx = wb + wHh + p * H + h; let w = Wt[idx] + lr * PH[hb + p] * po; Wt[idx] = w < -3 ? -3 : w > 3 ? 3 : w; } }
+          for (let o = 0; o < O; o++) { const po = out[o]; for (let h = 0; h < H; h++) { const idx = wb + wHo + h * O + o; let w = Wt[idx] + lr * hid[h] * po; Wt[idx] = w < -3 ? -3 : w > 3 ? 3 : w; } }
+        }
+      }
+      for (let h = 0; h < H; h++) PH[hb + h] = hid[h];   // memoria recurrente para el próximo tick
 
       // REPRODUCCIÓN asexual + MUTACIÓN: la cría desarrolla su (posiblemente mutado) cuerpo; su MATERIA sale del
       // nutriente local (gate endógeno: no nace sin materia), su ENERGÍA del progenitor. Conserva ambas.
       this.age[i]++; if (this.cd[i] > 0) this.cd[i]--;
       else if (E[i] >= P.reproE) {
         const childG = mutate(this.genome[i], rng); const childPh = computePhenotype(develop(childG));
-        if (this._nutrientAround(cell, P.birthR) >= childPh.mass) {
+        const eCost = P.investE + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
+        if (E[i] >= eCost && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
           this._takeNutrientAround(cell, P.birthR, childPh.mass);   // MATERIA: nutriente → cuerpo de la cría
-          E[i] -= P.investE; this.cd[i] = P.cooldown;               // ENERGÍA: progenitor → cría
+          E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
           born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE);
         }
       }

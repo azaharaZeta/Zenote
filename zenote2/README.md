@@ -84,6 +84,21 @@ Keepers: `src/engine/genome.js` (genoma de reglas + `develop` + mutación) · `s
 - [x] **M5.5** render (R6) — `index.html` + `src/main.js` (Canvas 2D, cenote oscuro, organismos por grafo de partes coloreados por tejido). Servidor: launch.json `zenote2` (puerto 8732). Legible y calmado; pulido (glow/ondulación) = pasada posterior.
 - [ ] **M5.6** Web Worker (motor en hilo aparte) — *aplazable; el render va fluido en síncrono*.
 
+## M6 — Fisiología + conducta · en curso
+
+- [x] **M6.1** energía-en-biomasa (2.3) — **MEDIDO y dejado OFF** (`eDensity=0` por defecto, parametrizado). El ledger
+  con energía embebida conserva (invariantes ✓ a eD=4) PERO es net-negativo aquí (penaliza cuerpos grandes y la presa
+  no es magra → no compensa). Resultado nulo honesto: el limitante de la heterotrofía es la CONDUCTA (M6.3), no la energía.
+  `test/m6-invariants.mjs`.
+- [~] **M6.3** controlador neuronal (RNN, pesos=genes) + plasticidad Hebbiana (recompensa fisiológica) — **MÁQUINA
+  IMPLEMENTADA y correcta** (reemplaza la conducta placeholder; invariantes ✓; mundo vivo pop ~1300; ~1300 t/s) PERO
+  **la competencia conductual NO emerge aún**: el cerebro neuronal caza ≈ o MENOS que un control de salidas aleatorias
+  (`test/m6_3-behavior.mjs`). Hallazgo honesto: partiendo de cerebros EN BLANCO, con plasticidad débil + selección
+  floja (heterotrofía = nicho ~7%), el bootstrapping de conducta competente NO arranca — **desafía el supuesto de 2.3**
+  ("la plasticidad reemplaza al seedBrain"). **Decisión (usuario): ACEPTAR y seguir** — competencia débil diferida; el
+  mundo vive (autótrofo-dominado); se revisitará el bootstrap (seedBrain / reward-shaping / ↑selección) más tarde.
+- [ ] **M6.2** tripa/saciedad · [ ] **M6.4** sensado coste/ruido · [ ] **M6.5** red trófica emergente.
+
 ## Próximos hitos
-Terminar M5 (5.4 evolución → 5.5 render → 5.6 worker) → **M6** fisiología+conducta → **M7** bucle evolutivo →
-**M8** cruce vs baseline.
+**M6.2** (tripa/saciedad) → M6.4 (sensado) → M6.5 (red trófica) → revisitar bootstrap de conducta (M6.3) →
+**M7** bucle → **M8** cruce vs baseline. M5.6 (worker) aplazable.

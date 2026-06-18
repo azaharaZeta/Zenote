@@ -22,6 +22,14 @@ const clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;
 const radOf = (size) => GENOME_P.radMin + (GENOME_P.radMax - GENOME_P.radMin) * size;
 const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,1] → categoría
 
+// M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Único motor de conducta
+// (cero estrategia cableada). Entradas (8): 0,1 ∇luz · 2,3 dir-presa · 4,5 dir-amenaza · 6 hambre · 7 velocidad propia.
+// Salidas (4): 0,1 dirección de empuje · 2 esfuerzo (throttle) · 3 impulso de ataque. La plasticidad (sim) ajusta una
+// COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
+export const BRAIN = { I: 8, H: 6, O: 4, scale: 5 };
+export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O;  // 118
+export function makeBrain(rng) { const b = new Float32Array(BRAIN_W); for (let i = 0; i < BRAIN_W; i++) b[i] = (rng.next() - 0.5) * 0.4; return b; } // arranque casi ciego; la competencia EMERGE (plasticidad + selección), no se siembra
+
 let HOM = 1;   // contador global de marcas de homología (para recombinación en M7)
 
 function mkModule(rng) {
@@ -42,11 +50,12 @@ export function makeFounder(rng) {
     root: { size: 0.45, aspect: 0.3, tissue: 0.35 /*PHOTO*/, oscAmp: 0.15, phase: rng.next() },
     modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: rng.next(),
                 recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],
+    brain: makeBrain(rng),
   };
 }
 
 export function cloneGenome(g) {
-  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })) };
+  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })), brain: g.brain ? Float32Array.from(g.brain) : null };
 }
 
 // DESARROLLO: genoma de reglas → cuerpo (lista de partes con geometría). Determinista, acotado, SIEMPRE válido.
@@ -107,6 +116,8 @@ export function mutate(g, rng) {
     if (rng.next() < 0.12) m.phase = (m.phase + rng.gaussian() * 0.12 + 1) % 1;
     if (rng.next() < 0.01) m.hom = HOM++;                                                              // homología (rarísima)
   }
+  // CEREBRO: muta los pesos de NACIMIENTO (lo heredable). La copia de trabajo (aprendida en vida) NO se hereda.
+  if (n.brain) { const b = n.brain; for (let k = 0; k < b.length; k++) { if (rng.next() < 0.08) { let v = b[k] + rng.gaussian() * 0.15; b[k] = v < -3 ? -3 : v > 3 ? 3 : v; } } }
   return n;
 }
 
