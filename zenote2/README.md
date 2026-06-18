@@ -46,6 +46,17 @@ Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs
 - La plasticidad (la pieza temida) añade solo ~30-60% sobre el forward → **cabe sin degradar a los fallbacks**.
 - **R2 retirado (GO).** Motor en Web Worker → presupuesto independiente del render.
 
-## Próximos hitos
-- **M3** spike de convergencia del genoma (R3) → luego M4 leyes → M5 cuerpo+render → M6 fisiología+conducta →
-  M7 bucle → M8 cruce vs baseline.
+## M3 — Spike de convergencia del genoma (R3) ✅ **GO**
+
+`spikes/m3-genome/` → [`RESULT.md`](spikes/m3-genome/RESULT.md). Reproducir: `node zenote2/spikes/m3-genome/evolve.mjs 200 1`
+
+- El genoma generativo (grafo recursivo de 2.2) **converge** (fiable al mismo óptimo en 4/4 seeds, NO deriva al caos)
+  y **gana 1.7-1.9×** a la codificación directa (slots fijos + paramétrica).
+- **Cruza valles SIN sembrar:** en 4/4 emergen cadenas recursivas (gusano) + pares simétricos (apéndices) — las
+  formas que la app actual debe SEMBRAR (D1). **0 cuerpos inválidos en 160k desarrollos** (validez por construcción).
+- **R3 retirado (GO).**
+
+## De-risking COMPLETO → construir la pila
+Los tres riesgos retirados: **M2 (R1)·M1 (R2)·M3 (R3) = GO**. Ningún kill-criterion se dispara. Siguiente:
+**M4** leyes del mundo (2.1, con invariantes §8) → **M5** cuerpo+desarrollo+render → **M6** fisiología+conducta →
+**M7** bucle evolutivo → **M8** cruce vs baseline.
