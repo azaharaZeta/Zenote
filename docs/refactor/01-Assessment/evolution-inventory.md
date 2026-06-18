@@ -1,4 +1,4 @@
-# Inventario de complejidad biológica — Primordia
+# Inventario de complejidad biológica — Zenote
 
 > **Propósito.** Catálogo EXHAUSTIVO de todo lo que participa en la evolución y la ecología del simulador:
 > genes, campos del genotipo, rasgos del fenotipo, parámetros de conducta/ecología/reproducción/metabolismo,

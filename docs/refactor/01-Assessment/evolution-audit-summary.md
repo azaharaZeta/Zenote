@@ -1,4 +1,4 @@
-# Resumen final de auditoría evolutiva — Primordia
+# Resumen final de auditoría evolutiva — Zenote
 
 > **Propósito.** Capstone de la auditoría de refactorización. Sintetiza los cinco documentos previos y responde
 > cinco preguntas decisivas. **No propone una arquitectura nueva** — solo consolida el diagnóstico.
@@ -16,7 +16,7 @@
 
 ## TL;DR
 
-Primordia logra **emergencia genuina en dos capas** (conducta neuronal sin estrategia cableada; morfología
+Zenote logra **emergencia genuina en dos capas** (conducta neuronal sin estrategia cableada; morfología
 generativa donde la forma produce el movimiento) sobre una base técnica sólida (SoA + spatial hash + Worker +
 conservación de materia). Pero **la composición del ecosistema —qué gremios existen, en qué proporción y de forma
 estable— no emerge: se siembra y se tunea.** La causa raíz es de primer principio: el modelo tiene **una sola

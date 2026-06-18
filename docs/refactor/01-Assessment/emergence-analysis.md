@@ -1,4 +1,4 @@
-# Análisis de emergencia — Primordia
+# Análisis de emergencia — Zenote
 
 > **Propósito.** Para cada conducta importante del ecosistema, separar **lo que es genuinamente emergente** (sale
 > de la selección sobre genes) de **lo que está cableado** (física escrita por el programador), **lo que depende

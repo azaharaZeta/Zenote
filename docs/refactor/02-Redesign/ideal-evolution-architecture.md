@@ -1,4 +1,4 @@
-# Arquitectura evolutiva ideal desde primeros principios — Primordia
+# Arquitectura evolutiva ideal desde primeros principios — Zenote
 
 > **Fase 2 — Rediseño.** Diseño desde primeros principios del sustrato evolutivo. Asume que el sistema biológico
 > actual se borra; ignora compatibilidad, genes y valores de parámetros previos. Toma como input toda la auditoría

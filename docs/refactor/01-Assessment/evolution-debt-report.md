@@ -1,4 +1,4 @@
-# Informe de deuda evolutiva — Primordia
+# Informe de deuda evolutiva — Zenote
 
 > **Propósito.** Identificar la **deuda evolutiva** y los **parches acumulados**: casos especiales, excepciones,
 > mecanismos correctivos, estabilizadores, sistemas de balance artificial, genes/parámetros redundantes y reglas

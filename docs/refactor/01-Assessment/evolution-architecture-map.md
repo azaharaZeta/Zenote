@@ -1,4 +1,4 @@
-# Mapa de arquitectura del sistema evolutivo — Primordia
+# Mapa de arquitectura del sistema evolutivo — Zenote
 
 > **Propósito.** Descripción de alto nivel de CÓMO está construido el simulador evolutivo: subsistemas,
 > relaciones, flujos de datos, ciclo de vida de un organismo y ciclo de la materia/energía. Es un documento
@@ -10,7 +10,7 @@
 
 ## 0. Vista de pájaro
 
-Primordia es una aplicación web sin backend. La arquitectura se divide en **dos hilos**:
+Zenote es una aplicación web sin backend. La arquitectura se divide en **dos hilos**:
 
 ```
 ┌──────────────────────── HILO PRINCIPAL ────────────────────────┐      ┌──────────── WEB WORKER ────────────┐

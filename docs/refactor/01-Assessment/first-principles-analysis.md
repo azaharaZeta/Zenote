@@ -1,4 +1,4 @@
-# Análisis de primeros principios — Primordia
+# Análisis de primeros principios — Zenote
 
 > **Propósito.** Determinar qué **leyes de conservación** existen en el modelo biológico, cuáles se **violan o
 > faltan**, y qué fenómenos se **mantienen artificialmente** (con parámetros) en lugar de surgir de una
@@ -65,7 +65,7 @@ Es su cimiento más sólido.
 No existe ninguna ley de conservación de energía **independiente** de la materia, ni su corolario (la 2ª ley):
 - **No hay fuente de energía libre.** El "sol" (comentario en `world.js`) no inyecta nada; el sistema arranca con
   `matterBudget` y lo recicla. Un ecosistema real es una **estructura disipativa** alimentada por un flujo
-  continuo de energía solar; Primordia es un frasco sellado.
+  continuo de energía solar; Zenote es un frasco sellado.
 - **No hay sumidero (calor).** El metabolismo devuelve el 100% como nutriente ([`sim.js:671`](../../src/engine/sim.js)).
   En biología, el metabolismo **disipa** energía como calor irrecuperable; aquí no.
 - **No hay degradación trófica.** La famosa "regla del 10%" (cada nivel trófico pierde ~90% como calor) **no está
@@ -205,7 +205,7 @@ conservación de materia — pero **a costa de eliminar la termodinámica**, no 
 
 ## 5. Síntesis: dónde el modelo usa parámetros en vez de constraints
 
-**El patrón de fondo.** Primordia tiene **una sola conservación fundamental robusta (materia)** y, sobre ella,
+**El patrón de fondo.** Zenote tiene **una sola conservación fundamental robusta (materia)** y, sobre ella,
 **sustituye casi todas las demás restricciones físicas por parámetros**:
 
 1. **La termodinámica está ausente y sustituida por contabilidad de materia.** No hay fuente ni sumidero de
