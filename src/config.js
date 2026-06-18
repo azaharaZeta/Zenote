@@ -83,7 +83,7 @@ export const config = {
     headThrust: 0.06,   // UI «Empuje de la cabeza» (Locomoción y visión) · Empuje de la cabeza (motor base débil): bajo → nadar bien exige cola/aletas.
     paddleEff: 0.6,     // no-ui · Peso del remo lateral en el gait (aleta lateral propulsa, menos que la cola trasera).
     oscFloor: 0.15,     // no-ui · Suelo de amplitud de oscilación por nodo.
-    phaseGain: 0.5,     // UI «Coordinación de marcha» (Locomoción y visión) · Cuánto penaliza la marcha descoordinada → nadar coordinado emerge.
+    phaseGain: 0.1,     // UI «Coordinación de marcha» (Locomoción y visión) · Cuánto penaliza la marcha descoordinada → nadar coordinado emerge.
     elongMax: 3.0,      // no-ui · Techo de la elongación derivada de la geometría de nodos (streamlining).
     symBase: 0.4,       // no-ui · Empuje útil hacia delante mínimo (la asimetría desvía empuje a girar).
     streamBase: 1.0,    // no-ui · Arrastre base del cuerpo.
