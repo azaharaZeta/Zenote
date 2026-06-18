@@ -37,6 +37,15 @@ Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs
 - Caveats: oscilatoria (CV 0.5-0.8), necesita mundo ≥1500-2000, conducta aún codificada a mano (evolucionada = M6).
 - **R1 retirado (GO); el kill-criterion mayor no se dispara.**
 
+## M1 — Spike de coste en tiempo real (R2) ✅ **GO**
+
+`spikes/m1-cost/` → [`RESULT.md`](spikes/m1-cost/RESULT.md). Reproducir: `node zenote2/spikes/m1-cost/run.mjs 400`
+
+- Cerebro por tick + **plasticidad Hebbiana** + ocupación + productores-agente, a escala (5k ag), **caben**: peor
+  caso 13 ms/tick (76 t/s, 3.8× el objetivo de 20); realista 2.6–8 ms (122–391 t/s). Memoria ≤21 MB.
+- La plasticidad (la pieza temida) añade solo ~30-60% sobre el forward → **cabe sin degradar a los fallbacks**.
+- **R2 retirado (GO).** Motor en Web Worker → presupuesto independiente del render.
+
 ## Próximos hitos
-- **M1** spike de coste (R2) · **M3** spike de convergencia del genoma (R3) → luego M4 leyes → M5 cuerpo+render →
-  M6 fisiología+conducta → M7 bucle → M8 cruce vs baseline.
+- **M3** spike de convergencia del genoma (R3) → luego M4 leyes → M5 cuerpo+render → M6 fisiología+conducta →
+  M7 bucle → M8 cruce vs baseline.
