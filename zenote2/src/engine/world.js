@@ -42,6 +42,7 @@ export class World {
     this.heat = 0;            // energía disipada que abandonó el sistema (sumidero; monótono ↑)
     this.lightCaptured = 0;   // energía que entró por fotosíntesis (fuente; monótono ↑)
     this.daylight = 1;        // multiplicador día/noche del tick actual
+    this.lightMul = 1;        // multiplicador GLOBAL de luz (lab, en vivo): escala la productividad sin re-hornear light0
   }
 
   // Luz base: campo suave y periódico (suma de sinusoides) → parches ricos/pobres sin costura en el toro.
@@ -72,7 +73,7 @@ export class World {
   // Luz incidente en una celda: base × día/noche × sombra(ocupación). La sombra acopla luz↔espacio (competencia).
   lightAt(cell) {
     const P = this.P, sh = 1 - P.shadeCoef * Math.min(1, this.occ[cell] / P.occRef);
-    return this.light0[cell] * this.daylight * (sh > 0 ? sh : 0);
+    return this.light0[cell] * this.lightMul * this.daylight * (sh > 0 ? sh : 0);
   }
 
   // Descomposición del detrito (por tick): materia → nutriente (CONSERVA), energía residual → calor (DISIPA).

@@ -136,7 +136,34 @@ recombinación/especiación (M7) → render (M5.5). **~45 params (vs 165), >1000
 Con el **seedBrain** (M6.3), la conducta es competente y **la red trófica emerge** (44% heterótrofos, estable a 30k):
 el último gap está cerrado. El modelo nuevo es **estructuralmente superior y ecológicamente a la par+**.
 
+## R6 — Pulido visual ✅ (primera pasada)
+
+`src/main.js` + foto del worker (fase de parte + velocidad). **Glow** bioluminiscente (halo aditivo), **ondulación**
+(onda viajera por el cuerpo ∝ velocidad), **viñeta** de profundidad. Verificado en navegador: estética de cenote
+calmada, heterótrofos (boca/músculo) visibles entre el plancton. Pendiente de pulido fino opcional: ojos/textura,
+bloom downsampled, HUD/leyenda en viewport estrecho.
+
+## UI — interfaz de observación (P1-P4) · plan en [`UI-PLAN.md`](UI-PLAN.md)
+
+Toda la interacción de cámara/UI vive en el hilo de render (no toca la sim → fluida); lo que afecta al motor va por
+mensaje al worker. Verificada en navegador (escritorio + móvil 375px).
+
+- **P1 — Núcleo + cámara toroidal** ✅: panel ocultable (modo contemplación, tecla H) · velocidad (pausa + slider t/s +
+  máx) · **zoom** (slider + rueda con zoom-al-cursor) · **paneo** (arrastrar, envuelve mod tamaño) · **visión toroidal
+  infinita** (render en mosaico de tiles, sin costura) · **reinicio** (re-siembra el mundo) · HUD (pob · tick · t/s · fps).
+- **P2 — Observación** ✅: **gráfica de población** apilada autótrofo/heterótrofo (historia del worker) · **modos de color**
+  (tejido / oficio trófico / linaje) con leyenda dinámica. Gen de linaje `hue` heredable (deriva lenta).
+- **P3 — Laboratorio** ✅ (sliders de leyes EN VIVO): luz solar (`world.lightMul`) · metabolismo basal · umbral de cría ·
+  eficiencia de fotosíntesis (campos de `SIM_P` leídos por referencia → efecto instantáneo) + restaurar. Probado
+  end-to-end: luz 0.2×→extinción · 0.6×→remanente · 1.0×→pleno; metabolismo alto → colapso por deuda metabólica.
+- **P4 — Inspector** ✅: clic/toque en un organismo → tarjeta con detalle **EN VIVO** (oficio · barra de energía E/cría ·
+  masa · nº partes · v.máx · edad · foto/boca) + anillo de selección + seguir cámara + cerrar (Esc). Detecta la muerte
+  ("† murió"); el cliente reenvía `inspect` hasta que el worker confirma (autosana). **Responsive/táctil** (media query
+  ≤460px; el mundo lógico NO cambia con el tamaño). Pendiente: pinch-zoom · calidad/perf · histograma · intro.
+
 ## Próximos hitos
-El bloque de reconstrucción **M0-M8 está COMPLETO** (incl. M5.6 worker). El cruce M8 está alcanzado (ver scorecard).
-Pendiente solo **pulido/mejoras opcionales**: **R6** (pulido visual: glow/ondulación) · afinar el balance trófico
-(mundo/luz) para más biomasa · revisitar plasticidad/sensado (M6.4) · UI/controles. El núcleo está validado y vivo.
+El bloque **M0-M8 está COMPLETO**, el render tiene su pasada de pulido (R6) y la **UI de observación P1-P4** está
+construida y verificada (panel/velocidad/zoom/toro · gráficas/filtros · laboratorio en vivo · inspector · responsive).
+Pendiente solo **opcional**: pulido visual fino · pinch-zoom + controles de calidad/perf · histograma de rasgos ·
+portada/intro · afinar balance trófico · deploy. El núcleo está validado, vivo y bello, y ahora **observable e
+interactivo**. **El rediseño desde primeros principios está, en lo esencial, logrado.**

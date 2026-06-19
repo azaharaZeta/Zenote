@@ -3,24 +3,93 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>Zenote 2 — primer render (M5.5)</title>
-  <style>
-    html, body { margin: 0; height: 100%; background: #05080d; overflow: hidden; }
-    #world { display: block; width: 100vw; height: 100vh; }
-    #hud { position: fixed; left: 10px; top: 8px; font: 12px/1.5 ui-monospace, monospace; color: #7d8aa0; pointer-events: none; text-shadow: 0 1px 2px #000; }
-    #legend { position: fixed; right: 10px; top: 8px; font: 11px/1.6 ui-monospace, monospace; color: #8a94a6; text-align: right; text-shadow: 0 1px 2px #000; }
-    .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
-  </style>
+  <title>Zenote 2 — simulador de evolución</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <canvas id="world"></canvas>
-  <div id="hud">Zenote 2 · M5.5</div>
-  <div id="legend">
-    fotosíntesis<span class="sw" style="background:#3fb98f"></span><br>
-    músculo<span class="sw" style="background:#e0664d"></span><br>
-    boca<span class="sw" style="background:#e0a84a"></span><br>
-    estructura<span class="sw" style="background:#5a6b7a"></span>
-  </div>
+
+  <button id="show" title="Mostrar panel (H)">☰</button>
+
+  <aside id="panel">
+    <div class="panel-head">
+      <button id="reset" class="reset-btn" title="Reinicia el mundo: re-siembra desde cero">↻ Reiniciar</button>
+      <button id="hide" title="Modo contemplación (H)">contemplar ✕</button>
+    </div>
+
+    <div id="hud" class="readout">—</div>
+
+    <div class="ctrl">
+      <label>Velocidad <output id="tpsVal"></output></label>
+      <div class="row">
+        <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
+        <input id="tps" type="range" min="0" max="600" step="10" value="60">
+        <button id="max" class="ghost" title="Máxima velocidad">max</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Zoom <output id="zoomVal"></output></label>
+      <input id="zoom" type="range" min="0.5" max="16" step="0.1" value="1">
+    </div>
+
+    <div class="ctrl">
+      <label>Colorear por</label>
+      <select id="colorMode">
+        <option value="tissue">Tejido (función)</option>
+        <option value="role">Oficio trófico</option>
+        <option value="lineage">Linaje</option>
+      </select>
+    </div>
+
+    <div id="legend" class="legend"></div>
+
+    <div class="ctrl">
+      <label>Población <span class="cl-auto">autótrofo</span> · <span class="cl-het">heterótrofo</span></label>
+      <canvas id="popChart" class="chart" width="226" height="56"></canvas>
+    </div>
+
+    <details class="lab">
+      <summary>Laboratorio · leyes en vivo</summary>
+      <div class="ctrl">
+        <label>Luz solar <output data-for="lightMul"></output></label>
+        <input class="lab-slider" data-key="lightMul" type="range" min="0.2" max="3" step="0.05" value="1">
+      </div>
+      <div class="ctrl">
+        <label>Metabolismo basal <output data-for="baseCost"></output></label>
+        <input class="lab-slider" data-key="baseCost" type="range" min="0.005" max="0.05" step="0.001" value="0.015">
+      </div>
+      <div class="ctrl">
+        <label>Umbral de cría <output data-for="reproE"></output></label>
+        <input class="lab-slider" data-key="reproE" type="range" min="8" max="32" step="1" value="16">
+      </div>
+      <div class="ctrl">
+        <label>Eficiencia fotosíntesis <output data-for="photoEff"></output></label>
+        <input class="lab-slider" data-key="photoEff" type="range" min="0.01" max="0.15" step="0.005" value="0.05">
+      </div>
+      <button id="labReset" class="ghost">restaurar valores</button>
+    </details>
+
+    <p class="hint">Arrastra para mover · zoom con la rueda o el slider · toca un organismo para inspeccionarlo · el mundo es un toro (se repite al infinito).</p>
+  </aside>
+
+  <aside id="inspector" hidden>
+    <div class="insp-head">
+      <span id="inspRole" class="insp-role">—</span>
+      <button id="inspClose" title="Cerrar (Esc)">✕</button>
+    </div>
+    <div class="insp-energy"><i id="inspE"></i></div>
+    <div id="inspEtxt" class="insp-etxt">—</div>
+    <dl class="insp-stats">
+      <div><dt>masa</dt><dd id="inspMass">—</dd></div>
+      <div><dt>partes</dt><dd id="inspParts">—</dd></div>
+      <div><dt>v. máx</dt><dd id="inspV">—</dd></div>
+      <div><dt>edad</dt><dd id="inspAge">—</dd></div>
+      <div><dt>foto / boca</dt><dd id="inspTroph">—</dd></div>
+    </dl>
+    <button id="inspFollow" class="ghost">seguir cámara</button>
+  </aside>
+
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

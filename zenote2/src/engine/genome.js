@@ -70,11 +70,12 @@ export function makeFounder(rng) {
     modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: rng.next(),
                 recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],
     brain: seedBrain(rng),   // bootstrap de conducta competente (decisión del usuario); evoluciona/aprende desde aquí
+    hue: rng.next(),         // marcador de LINAJE (neutro, heredable, deriva lenta) → color por linaje en el render
   };
 }
 
 export function cloneGenome(g) {
-  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })), brain: g.brain ? Float32Array.from(g.brain) : null };
+  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })), brain: g.brain ? Float32Array.from(g.brain) : null, hue: g.hue };
 }
 
 // DESARROLLO: genoma de reglas → cuerpo (lista de partes con geometría). Determinista, acotado, SIEMPRE válido.
@@ -137,6 +138,7 @@ export function mutate(g, rng) {
   }
   // CEREBRO: muta los pesos de NACIMIENTO (lo heredable). La copia de trabajo (aprendida en vida) NO se hereda.
   if (n.brain) { const b = n.brain; for (let k = 0; k < b.length; k++) { if (rng.next() < 0.08) { let v = b[k] + rng.gaussian() * 0.15; b[k] = v < -3 ? -3 : v > 3 ? 3 : v; } } }
+  if (rng.next() < 0.1) n.hue = (n.hue + rng.gaussian() * 0.03 + 1) % 1;   // deriva lenta del linaje (color)
   return n;
 }
 
@@ -158,7 +160,7 @@ export function recombine(gA, gB, rng) {
   let brain = null;
   if (gA.brain && gB.brain) { brain = new Float32Array(gA.brain.length); const cut = (rng.next() * brain.length) | 0; for (let k = 0; k < brain.length; k++) brain[k] = (k < cut ? gA : gB).brain[k]; }
   else if (gA.brain || gB.brain) brain = Float32Array.from(gA.brain || gB.brain);
-  return { root, modules, brain };
+  return { root, modules, brain, hue: (rng.next() < 0.5 ? gA : gB).hue };
 }
 
 // Estadística estructural del cuerpo (para tests/inspección).
