@@ -82,7 +82,9 @@ Keepers: `src/engine/genome.js` (genoma de reglas + `develop` + mutación) · `s
 - [x] **M5.3** sim integrado (`test/m5-invariants.mjs`): **los 4 invariantes de 2.1 §8 SIGUEN pasando** con el organismo real; mundo VIVO (pop ~1160 estable, energía-limitada); 6300 t/s. Repro asexual + mutación → la morfología puede evolucionar.
 - [x] **M5.4** evolución morfológica (`test/m5-evolution.mjs`): sin sembrar, photoCap 35→44, diversidad 0→±23, partes 3→4.3, heterótrofos 0→7% (3 seeds). La FORMA evoluciona (divergencia trófica plena = M6).
 - [x] **M5.5** render (R6) — `index.html` + `src/main.js` (Canvas 2D, cenote oscuro, organismos por grafo de partes coloreados por tejido). Servidor: launch.json `zenote2` (puerto 8732). Legible y calmado; pulido (glow/ondulación) = pasada posterior.
-- [ ] **M5.6** Web Worker (motor en hilo aparte) — *aplazable; el render va fluido en síncrono*.
+- [x] **M5.6** Web Worker — el motor corre en `src/engine/worker.js` (hilo APARTE); `src/main.js` es cliente de render
+  puro: recibe "fotos" (posiciones + heading + cuerpos aplanados, transferibles) y dibuja a su ritmo (rAF). Verificado
+  en navegador: food web con heterótrofos (boca/músculo) visibles, 0 errores. Arquitectura motor↔render desacoplada (objetivo).
 
 ## M6 — Fisiología + conducta · en curso
 
@@ -135,6 +137,6 @@ Con el **seedBrain** (M6.3), la conducta es competente y **la red trófica emerg
 el último gap está cerrado. El modelo nuevo es **estructuralmente superior y ecológicamente a la par+**.
 
 ## Próximos hitos
-El cruce **M8** está esencialmente alcanzado (ver scorecard). Pendiente menor/pulido: **M5.6** (Web Worker, aplazable) ·
-**R6** (pulido visual del render: glow/ondulación) · afinar el balance trófico (mundo/luz) si se quiere más biomasa ·
-revisitar plasticidad/sensado (M6.4) como mejoras. El bloque de reconstrucción (M0-M8) está, en lo esencial, **completo**.
+El bloque de reconstrucción **M0-M8 está COMPLETO** (incl. M5.6 worker). El cruce M8 está alcanzado (ver scorecard).
+Pendiente solo **pulido/mejoras opcionales**: **R6** (pulido visual: glow/ondulación) · afinar el balance trófico
+(mundo/luz) para más biomasa · revisitar plasticidad/sensado (M6.4) · UI/controles. El núcleo está validado y vivo.
