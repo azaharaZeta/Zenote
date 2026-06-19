@@ -10,4 +10,3 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
 
 ## Ideas de usuario (pendientes de procesar)
 - evolucionar colores y texturas. ¿deriva, o ligados a alguna ventaja evolutiva o de selección sexual?
-- asegurarse de que en velocidad "MAX", los fps se sacrifican si es necesario hasta un mínimo de 1 fps

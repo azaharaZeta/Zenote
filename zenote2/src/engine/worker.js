@@ -68,12 +68,21 @@ function snapshot() {
 // arrastrada) → el t/s real sigue al slider con fidelidad. Antes se hacía `round(tps/30)` pasos/loop, que (a) cuantizaba
 // a múltiplos de 30 → se pasaba (50→60) y (b) con `max(1,…)` nunca bajaba de ~30 → tps=0 NO paraba. Ahora tps=0 = parado.
 let acc = 0, lastLoopT = performance.now();
+const MAX_SNAP_MS = 250;   // en MÁX: un fotograma cada ~250 ms (≈4 fps). Se SACRIFICAN fps para dar casi todo el tiempo a
+                           // la simulación; el lote (≤250 ms) garantiza ≥1 fps (el mínimo pedido) aun con la pop al tope.
 function loop() {
   const now = performance.now();
   if (running && maxSpeed) {
-    const t0 = now; while (performance.now() - t0 < 24) sim.step();   // MÁX: tantos ticks como quepan en el presupuesto
-    acc = 0;
-  } else if (running && tps > 0) {
+    // MÁX: simula EN LOTE hasta que toque el próximo fotograma → t/s máximo y el render no roba tiempo (un solo snapshot
+    // por lote, no uno por iteración). fps sacrificado a ~4, con suelo ≥1 fps; re-lanza ya (el lote marca el ritmo).
+    const stepUntil = now + MAX_SNAP_MS;
+    do { sim.step(); } while (performance.now() < stepUntil);
+    acc = 0; lastLoopT = now;
+    snapshot();
+    setTimeout(loop, 0);
+    return;
+  }
+  if (running && tps > 0) {
     acc += tps * (now - lastLoopT) / 1000;                            // ticks adeudados desde el último loop
     const budgetEnd = now + 28;                                       // tope de cómputo por frame (deja ~5 ms para snapshot)
     while (acc >= 1) { if (performance.now() >= budgetEnd) { acc = 0; break; } sim.step(); acc -= 1; }   // si no se alcanza el ritmo → se descartan (sin spiral de deuda)
