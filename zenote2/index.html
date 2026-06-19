@@ -42,17 +42,22 @@
     </div>
 
     <div class="ctrl">
+      <label>Bioluminiscencia <output id="bloomVal"></output></label>
+      <input id="bloom" type="range" min="0" max="1.5" step="0.05" value="0.75" title="Intensidad del bloom (luz suave). 0 = apagado (recomendado en móvil/equipos lentos). Solo render.">
+    </div>
+
+    <div class="ctrl">
       <label>Zoom <output id="zoomVal"></output></label>
-      <input id="zoom" type="range" min="0.5" max="16" step="0.1" value="1">
+      <input id="zoom" type="range" min="1" max="16" step="0.1" value="1">
     </div>
 
     <div class="ctrl">
       <label>Colorear por</label>
       <select id="colorMode">
         <option value="natural">Natural (aspecto real)</option>
-        <option value="tissueaura">Tejido + aura</option>
-        <option value="tissue">Tejido (función)</option>
-        <option value="role">Oficio trófico</option>
+        <option value="natmix">Natural + tejido</option>
+        <option value="tissue">Tejido + aura real</option>
+        <option value="role">Oficio + aura real</option>
         <option value="lineage">Linaje</option>
       </select>
     </div>

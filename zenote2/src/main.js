@@ -10,15 +10,23 @@ worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
 let cw = 0, ch = 0, vignette = null; const dpr = Math.min(2, window.devicePixelRatio || 1);
+// A4 — BLOOM (bioluminiscencia): la capa de ORGANISMOS se dibuja en un búfer aparte (glowCv); su versión reducida
+// (bloomCv, 1/BLOOM_DIV) se reescala aditivamente sobre el fondo → luz suave que sangra (coste ≈ 1/DIV², móvil ok).
+// bloomStrength=0 lo apaga (Baja/móvil). Es render PURO. Downsampled como en v1 (VISUAL.md).
+const glowCv = document.createElement('canvas'), glowCtx = glowCv.getContext('2d');
+const bloomCv = document.createElement('canvas'), bloomCtx = bloomCv.getContext('2d');
+let bloomStrength = 0.75; const BLOOM_DIV = 5;
 function resize() {
   cw = canvas.clientWidth; ch = canvas.clientHeight; canvas.width = cw * dpr; canvas.height = ch * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  glowCv.width = canvas.width; glowCv.height = canvas.height; glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bloomCv.width = Math.max(1, (canvas.width / BLOOM_DIV) | 0); bloomCv.height = Math.max(1, (canvas.height / BLOOM_DIV) | 0);
   const g = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.max(cw, ch) * 0.75);
   g.addColorStop(0, 'rgba(5,8,13,0)'); g.addColorStop(1, 'rgba(2,4,8,0.7)'); vignette = g;
 }
 window.addEventListener('resize', resize); resize();
 
 // --- Cámara + selección ---
-let zoom = 1, camX = 0, camY = 0; const MINZ = 0.5, MAXZ = 16;
+let zoom = 1, camX = 0, camY = 0; const MINZ = 1, MAXZ = 16;   // mínimo 1.0 = el mundo entero cabe; no alejar más (evita ver varios mundos en mosaico)
 let selectedId = -1, following = false;   // inspector: serial del agente seleccionado + seguimiento de cámara
 function resetCamera() { if (WORLD) { camX = WORLD.size / 2; camY = WORLD.size / 2; } }
 const fitScale = () => WORLD ? Math.min(cw, ch) / WORLD.size : 1;
@@ -52,12 +60,30 @@ function draw() {
     ctx.stroke();
   }
   ctx.globalCompositeOperation = 'source-over';
-  // GLOW (halos aditivos) por tile
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.10;
-  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawOrgs((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t, true);
-  // NÚCLEOS por tile
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawOrgs((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t, false);
+
+  // ORGANISMOS → búfer aparte (glowCv). El GLOW lo da el BLOOM (desenfoque de los núcleos) → el slider de
+  // bioluminiscencia es el único control del brillo y se nota. Halo aditivo explícito SOLO en 'tissueaura' (aura de
+  // linaje sobre núcleo de tejido, que el bloom luego suaviza).
+  glowCtx.clearRect(0, 0, cw, ch);
+  // AURA = BIOLUMINISCENCIA: halo de color real en TODOS los modos (en Natural = auto-glow; en falso-color = canal del
+  // color real). El bloom la suaviza. Gateada por el slider (0 = sin glow, móvil/Baja).
+  if (bloomStrength > 0) {
+    glowCtx.globalCompositeOperation = 'lighter';
+    for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawOrgs(glowCtx, (tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t, true);
+  }
+  glowCtx.globalCompositeOperation = 'source-over'; glowCtx.globalAlpha = 1;
+  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawOrgs(glowCtx, (tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t, false);
+
+  // A4 — BLOOM: reduce glowCv a la miniatura y reescálala ADITIVA sobre el fondo (luz suave que sangra). 0 = apagado.
+  if (bloomStrength > 0) {
+    bloomCtx.clearRect(0, 0, bloomCv.width, bloomCv.height);
+    bloomCtx.drawImage(glowCv, 0, 0, bloomCv.width, bloomCv.height);
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = bloomStrength; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bloomCv, 0, 0, cw, ch);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  // organismos NÍTIDOS encima
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(glowCv, 0, 0, cw, ch); ctx.imageSmoothingEnabled = true;
 
   // anillo de selección sobre el agente inspeccionado (en cada tile visible donde caiga)
   if (selectedId >= 0 && frame.detail && frame.detail.id === selectedId) {
@@ -88,50 +114,55 @@ function drawLight(oX, oY, sc) {
   }
 }
 
-function drawOrgs(oX, oY, sc, t, halo) {
+function drawOrgs(c, oX, oY, sc, t, halo) {
   const { n, ax, ay, ah, aspd, ahue, aE, arole, partOff, partData } = frame;
-  const mul = halo ? 2.4 : 1, baseA = halo ? 0.10 : 1;
+  const mul = halo ? 2.2 : 1, baseA = halo ? 0.10 * bloomStrength : 1;   // AURA (=bioluminiscencia): más sutil y escalada por el slider
+  if (!halo) { c.strokeStyle = 'rgba(4,7,12,0.55)'; c.lineWidth = 1.2; }   // BORDE: trazo oscuro abisal fino (definición sin "borde duro"); reaprovecha el path del relleno
   for (let a = 0; a < n; a++) {
     const wx = ax[a], wy = ay[a], bx = oX + wx * sc, by = oY + wy * sc;
     if (bx < -40 || bx > cw + 40 || by < -40 || by > ch + 40) continue;   // culling en pantalla
     const h = ah[a], chh = Math.cos(h), shh = Math.sin(h), spd = aspd[a], p0 = partOff[a], p1 = partOff[a + 1];
     // A2 — VITALIDAD: los hambrientos se atenúan (la muerte se ve venir). energía 0..1 → alpha 0.35..1.
-    ctx.globalAlpha = baseA * (aE ? 0.35 + 0.65 * aE[a] : 1);
+    c.globalAlpha = baseA * (aE ? 0.35 + 0.65 * aE[a] : 1);
     // A2 — COLOR EN CAPAS. NATURAL (defecto, lo más cercano a "cómo se ven"): NÚCLEO por tejido (anatomía) + HALO por
     // LINAJE (color heredado real = aura de familia) + brillo por energía + forma por silueta. TEJIDO/OFICIO/LINAJE =
     // modos analíticos PUROS (una sola señal). (hsl solo se construye cuando se usa → sin alocar de más.)
     // MODOS: 'natural' = ASPECTO REAL (todo el cuerpo = pigmento heredado/linaje, sin colorear por función) con auto-glow
     // del mismo color; 'tissueaura' = núcleo por tejido (anatomía) + aura de linaje; 'tissue'/'role'/'lineage' = analíticos.
-    const natural = colorMode === 'natural', tissueAura = colorMode === 'tissueaura';
+    const natural = colorMode === 'natural', natMix = colorMode === 'natmix';
     const hcol = (s, l) => `hsl(${(ahue[a] * 360) | 0},${s}%,${l}%)`;
-    const agentCol = colorMode === 'role' ? (RCOL[arole[a]] || '#3fb98f')
+    // AURA (pasada halo) = SIEMPRE el color REAL (linaje): en Natural/natmix es auto-glow; en Tejido/Oficio es el canal
+    // del color real sobre el núcleo de función. NÚCLEO (pasada !halo) = según el modo.
+    const agentCol = halo ? hcol(60, 60)
+      : colorMode === 'role' ? (RCOL[arole[a]] || '#3fb98f')
       : colorMode === 'lineage' ? hcol(58, 58)
-      : natural ? hcol(62, halo ? 60 : 54)            // cuerpo entero = pigmento heredado (núcleo y aura mismo color)
-      : tissueAura ? (halo ? hcol(60, 60) : null)     // núcleo tejido + aura linaje
-      : null;   // 'tissue' puro: núcleo y halo por tejido
+      : (natural || natMix) ? hcol(62, 54)               // cuerpo = pigmento real (natmix le superpone un % de tejido)
+      : null;                                            // 'tissue' → TCOL por nodo
     // A3 — TEXTURA procedural (Natural y Tejido+aura; solo núcleo): motas bioluminiscentes cuyo nº y color de acento
     // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
     let accent = null, patN = 0, pSeed = 0;
-    if ((natural || tissueAura) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
+    if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
     for (let k = p1 - 1; k >= p0; k--) {
       const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
       const uy = ly + (0.35 + spd * 2.2) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
-      ctx.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
+      c.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
       // A1 — SILUETA: elipse orientada (eje = rumbo + dirección de emisión del nodo), elongada por `aspect` → aletas/
       // tentáculos/cuerpos fusiformes en vez de bolitas. LOD: si es diminuta, punto barato.
       const rL = pr * (1 + aspect * 1.4);
-      ctx.beginPath();
-      if (rL > 1.6) ctx.ellipse(px, py, rL, pr, h + dir, 0, 6.283); else ctx.arc(px, py, pr, 0, 6.283);
-      ctx.fill();
+      c.beginPath();
+      if (rL > 1.6) c.ellipse(px, py, rL, pr, h + dir, 0, 6.283); else c.arc(px, py, pr, 0, 6.283);
+      c.fill();
+      if (natMix && !halo) { const ga = c.globalAlpha; c.globalAlpha = ga * 0.32; c.fillStyle = TCOL[tissue] || '#5a6b7a'; c.fill(); c.globalAlpha = ga; }   // Natural+tejido: tinte SUTIL de la función sobre el pigmento
+      if (!halo && pr > 3.5) c.stroke();   // BORDE: trazo del path ya construido (LOD: solo nodos visibles; coste medido ~2 ms)
       if (accent && pr > 3.5) {   // motas (LOD: solo nodos grandes en pantalla)
-        ctx.fillStyle = accent;
+        c.fillStyle = accent;
         for (let s = 0; s < patN; s++) { const ang = h + dir + pSeed + ph + s * 2.39, dd = pr * 0.38;
-          ctx.beginPath(); ctx.arc(px + Math.cos(ang) * dd, py + Math.sin(ang) * dd, Math.max(0.8, pr * 0.2), 0, 6.283); ctx.fill(); }
+          c.beginPath(); c.arc(px + Math.cos(ang) * dd, py + Math.sin(ang) * dd, Math.max(0.8, pr * 0.2), 0, 6.283); c.fill(); }
       }
     }
   }
-  ctx.globalAlpha = baseA;
+  c.globalAlpha = baseA;
 }
 
 // --- HUD (fps render · t/s sim · pop · tick) + gráfica de población ---
@@ -231,11 +262,20 @@ canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (!WORLD) return
 const $ = (id) => document.getElementById(id);
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
-let running = true;
-$('play').addEventListener('click', () => { running = !running; worker.postMessage({ type: 'running', value: running }); $('play').textContent = running ? '❚❚' : '▶'; });
-$('tps').addEventListener('input', (e) => { const v = +e.target.value; worker.postMessage({ type: 'tps', value: v }); $('tpsVal').textContent = v + ' t/s'; });
+let running = true, maxOn = false;
+// La barra de velocidad se "apaga" (atenúa) cuando hay pausa o MAX (el valor del slider no manda en esos modos).
+function syncSpeedUI() { $('play').textContent = running ? '❚❚' : '▶'; $('max').classList.toggle('on', maxOn); $('tps').classList.toggle('dim', !running || maxOn); }
+$('play').addEventListener('click', () => { running = !running; worker.postMessage({ type: 'running', value: running }); syncSpeedUI(); });
+$('max').addEventListener('click', () => { maxOn = !maxOn; worker.postMessage({ type: 'maxSpeed', value: maxOn }); syncSpeedUI(); });
+// Pulsar/arrastrar la barra: fija esa velocidad y vuelve al modo normal → desmarca pausa y MAX.
+$('tps').addEventListener('input', (e) => {
+  const v = +e.target.value; worker.postMessage({ type: 'tps', value: v }); $('tpsVal').textContent = v + ' t/s';
+  if (!running) { running = true; worker.postMessage({ type: 'running', value: true }); }
+  if (maxOn) { maxOn = false; worker.postMessage({ type: 'maxSpeed', value: false }); }
+  syncSpeedUI();
+});
 $('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal').textContent = maxFps + ' fps'; });   // límite de FPS de render
-$('max').addEventListener('click', () => { const on = !$('max').classList.contains('on'); $('max').classList.toggle('on', on); worker.postMessage({ type: 'maxSpeed', value: on }); });
+$('bloom').addEventListener('input', (e) => { bloomStrength = +e.target.value; $('bloomVal').textContent = bloomStrength === 0 ? 'off' : bloomStrength.toFixed(2); });   // bloom (render puro, no va al worker)
 // B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
 // nace con lightMul=1 → re-aplica el lab.
 function resetWorld() { const sv = $('seed').value.trim(); worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0) }); applyLab(); }
@@ -274,15 +314,15 @@ function buildLegend() {
   const L = $('legend');
   const sets = {
     natural: [['#7fb0d8', 'color = pigmento heredado (linaje)'], ['#e0a84a', 'motas = patrón de familia · brillo = energía']],
-    tissueaura: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = linaje · motas · brillo = energía']],
-    tissue: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#5a6b7a', 'estructura']],
-    role: [['#3fb98f', 'autótrofo'], ['#e0664d', 'heterótrofo'], ['#e0a84a', 'mixótrofo']],
+    natmix: [['#7fb0d8', 'pigmento heredado'], ['#3fb98f', '+ tinte sutil de tejido (función)'], ['#e0a84a', 'motas · brillo = energía']],
+    tissue: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = color real (linaje)']],
+    role: [['#3fb98f', 'autótrofo'], ['#e0664d', 'heterótrofo'], ['#e0a84a', 'mixótrofo'], ['#9a7bd0', 'aura = color real (linaje)']],
     lineage: [['#e0664d', 'tono = linaje (color heredado, deriva lenta)']],
   };
   L.innerHTML = (sets[colorMode] || sets.natural).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 buildLegend();
-$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps';
+$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps'; $('bloomVal').textContent = bloomStrength.toFixed(2);
 
 // depuración / preview (rAF se throttlea): forzar avance del motor + dibujar
 window.__worker = worker;

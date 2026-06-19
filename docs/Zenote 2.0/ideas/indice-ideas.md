@@ -9,8 +9,6 @@ Documentar los análisis, estados e histórico de cada idea en curso en sus resp
 Cuando una idea haya sido implementada o descartada, actualizar su fichero de idea y mover el fichero de idea a la carpeta `archivo` de la misma ruta que este fichero
 
 ## Ideas de usuario (pendientes de procesar)
-- Ajustar zoom para que no permita alejar más del tamaño del mundo (ahora mismo a zoom 0.5 aparecen varios mundos en pantalla). Imagino que esto es solo restringir zoom mínimo = 1.0
-- Mejorar el control de velocidad: Al pulsar pausa o MAX, "apagar" la barra de velocidad. Al pulsar de nuevo en la barra de velocidad, ajusta la velocidad a donde se haya pulsado, y desmarca "pausa" y "max"
 - Meter parámetros de arranque (marcados "necesita reinicio", como en zenote 1.0):
     - Tamaño del mundo
     - Cantidad de sembrado
@@ -19,3 +17,4 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
     - Permitir reproducción sexual / asexual
 - Ver si es viable controlar el volumen de sembrado inicial (cantidad de sembrado, densidad)
 - Fondo del abismo. Meter algo estético, o incluso pensar en algo funcional en el ecosistema
+- Meter ojos! Aunque sean sólo estéticos. Si no es posible hacerlo bien en el modelo de evolución natural, estudiar viabilidad meterlos solo en la capa de visualización. Que aparezcan en los heterótrofos, y sean más notables o agresivos cuanto más "cazador" sea el animal.

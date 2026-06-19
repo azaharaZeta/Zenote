@@ -101,7 +101,30 @@ fascinantes que reflejan a los organismos reales" sin falsear emergencia. Solo B
   (no hizo falta): medido `ms/draw` — zoom1 (mundo entero, ~1240 ag., SIN motas) 8.2 · zoom2 1.9 · zoom3 0.9 · zoom7 0.2.
   No hay precipicio (muchos en pantalla ⇒ pequeños ⇒ sin motas; motas visibles ⇒ pocos en pantalla). Render puro.
 
-**Pendientes:** A4 (bioluminiscencia/bloom), A5 (cadáveres con forma), y el spike B1 (color sexual evolvable / D16).
+- **Bordes ✅** (a petición): trazo oscuro abisal fino (`rgba(4,7,12,.55)`, 1.2px) por nodo, reaprovechando el path del
+  relleno; define las criaturas contra el fondo/glow y articula los nodos como lóbulos/aletas. LOD `pr>3.5`. **Coste medido
+  ~2 ms** (A/B controlado sobre el mismo mundo; `stroke` es ~3-4× un `fill` pero gateado por LOD → barato). Aviso de método:
+  comparar entre recargas ENGAÑA (cada reset re-siembra un mundo distinto/población distinta); medir el delta en una sola
+  carga (exponiendo el umbral a `window`) sobre el mismo frame.
+
+- **A4 — bioluminiscencia/BLOOM ✅**: la capa de organismos se dibuja en un búfer (`glowCv`); su miniatura (`bloomCv`,
+  1/5) se reescala ADITIVA sobre el fondo → luz suave que sangra en el color de cada criatura (abisal). Downsampled (como
+  v1) → **coste ≈ 0** (medido: delta vs off dentro del ruido; downsample/upscale son GPU). Slider "Bioluminiscencia" en el
+  panel (render puro, NO va al worker), default 0.75, **0 = apagado** (móvil/Baja). Reestructuró el render: `drawOrgs(c,…)`
+  dibuja a un ctx parametrizable; el bloom sustituye al antiguo doble-dibujo de halos sobre el lienzo principal.
+  - **BIOLUMINISCENCIA = AURA + bloom, FUSIONADAS (decisión de usuario 2026-06-19):** se probó "bloom global de los
+    núcleos" y NO daba sensación de brillo (solo sube el tono / extiende el borde). Lo que irradia es el **AURA** (halo
+    aditivo ancho de color real). Decisión: la bioluminiscencia ES el aura, en **TODOS los modos**, suavizada por el bloom.
+    Un solo slider "Bioluminiscencia" controla aura(alpha ∝ slider)+bloom; 0 = apagado (móvil/Baja). El aura va SIEMPRE en
+    el **color real** (linaje): en Natural/natmix/lineage = auto-glow del color real (bioluminiscencia); en falso-color
+    (`tissue`/`role`) hace doble función (glow + canal del color real sobre el núcleo de función). Aura algo más SUTIL que
+    antes (mul 2.4→2.2, alpha 0.10→0.10·slider). Eliminado el modo redundante "Tejido + aura".
+- **Modo "Natural + tejido" (`natmix`) ✅** (idea de usuario): pigmento heredado + tinte SUTIL del tejido (overlay `TCOL`
+  alpha 0.32). **Selector final (5 modos):** Natural (aspecto real) / Natural + tejido / Tejido + aura real / Oficio +
+  aura real / Linaje.
+
+**Pendientes:** A5 (cadáveres con forma) y el spike B1 (color sexual evolvable / D16). El eje visual de fascinación está
+prácticamente completo: silueta + pigmento real + auto-glow + motas + bordes + bloom, todo fiel a lo que evoluciona y barato en móvil.
 
 ## Próximos pasos sugeridos
 1. ~~A1 (siluetas) + A2 (color en capas) + modo "Natural (real)" default~~ ✅ HECHO 2026-06-19.
