@@ -14,6 +14,8 @@ export const GENOME_P = {
   recCap: 8,           // tope del límite de recursión por módulo
   modCap: 12,          // tope de módulos en el genoma
   radMin: 1.0, radMax: 6.0,   // gen size → radio de parte (u)
+  mutRate: 1,          // (UI) multiplicador GLOBAL del RITMO de mutación (escala las PROBABILIDADES, no las magnitudes).
+                       // 1 = comportamiento base; >1 más cambios/cría (más exploración/churn); 0 = sin mutación (clones).
 };
 
 const TWO_PI = 6.283185307;
@@ -111,36 +113,39 @@ export function develop(g) {
 
 // MUTACIÓN (operadores de 2.2 §7): paramétrica (frecuente, suave) + estructurales (raras, gran efecto = cruza-valles).
 export function mutate(g, rng) {
-  const B = GENOME_P, n = cloneGenome(g);
+  const B = GENOME_P, n = cloneGenome(g), mr = B.mutRate;
+  // RITMO de mutación escalable (UI): `chance(p)` = evento con prob p·mutRate. A mutRate=1 consume el RNG y compara
+  // EXACTAMENTE igual que antes (byte-idéntico). Escala solo PROBABILIDADES (ritmo), no las magnitudes gaussianas.
+  const chance = (p) => rng.next() < p * mr;
   // paramétricas sobre la raíz
   const r = n.root;
-  if (rng.next() < 0.2) r.size = clamp01(r.size + rng.gaussian() * 0.1);
-  if (rng.next() < 0.2) r.aspect = clamp01(r.aspect + rng.gaussian() * 0.1);
-  if (rng.next() < 0.1) r.tissue = clamp01(r.tissue + rng.gaussian() * 0.15);
-  if (rng.next() < 0.2) r.oscAmp = clamp01(r.oscAmp + rng.gaussian() * 0.1);
-  if (rng.next() < 0.2) r.phase = (r.phase + rng.gaussian() * 0.1 + 1) % 1;
+  if (chance(0.2)) r.size = clamp01(r.size + rng.gaussian() * 0.1);
+  if (chance(0.2)) r.aspect = clamp01(r.aspect + rng.gaussian() * 0.1);
+  if (chance(0.1)) r.tissue = clamp01(r.tissue + rng.gaussian() * 0.15);
+  if (chance(0.2)) r.oscAmp = clamp01(r.oscAmp + rng.gaussian() * 0.1);
+  if (chance(0.2)) r.phase = (r.phase + rng.gaussian() * 0.1 + 1) % 1;
   // estructurales sobre el conjunto de módulos
-  if (rng.next() < 0.10 && n.modules.length < B.modCap) n.modules.push(mkModule(rng));                 // AÑADIR
-  if (rng.next() < 0.08 && n.modules.length && n.modules.length < B.modCap) {                          // DUPLICAR (copia coherente)
+  if (chance(0.10) && n.modules.length < B.modCap) n.modules.push(mkModule(rng));                 // AÑADIR
+  if (chance(0.08) && n.modules.length && n.modules.length < B.modCap) {                          // DUPLICAR (copia coherente)
     const src = n.modules[(rng.next() * n.modules.length) | 0]; n.modules.push({ ...src, hom: HOM++ });
   }
-  if (rng.next() < 0.05 && n.modules.length > 0) n.modules.splice((rng.next() * n.modules.length) | 0, 1); // BORRAR
+  if (chance(0.05) && n.modules.length > 0) n.modules.splice((rng.next() * n.modules.length) | 0, 1); // BORRAR
   for (const m of n.modules) {
-    if (rng.next() < 0.06) m.recursive = !m.recursive;                                                 // toggle recursión
-    if (rng.next() < 0.10) m.recLimit = clamp((m.recLimit + (rng.next() < 0.5 ? 1 : -1)) | 0, 1, B.recCap); // límite
-    if (rng.next() < 0.06) m.symmetric = !m.symmetric;                                                 // toggle simetría (1 bit → par)
-    if (rng.next() < 0.08) m.tissue = clamp01(m.tissue + rng.gaussian() * 0.2);                        // tejido (puede cambiar de categoría)
-    if (rng.next() < 0.15) m.angle = clamp(m.angle + rng.gaussian() * 0.4, 0, Math.PI);
-    if (rng.next() < 0.15) m.size = clamp01(m.size + rng.gaussian() * 0.12);
-    if (rng.next() < 0.15) m.aspect = clamp01(m.aspect + rng.gaussian() * 0.12);
-    if (rng.next() < 0.12) m.oscAmp = clamp01(m.oscAmp + rng.gaussian() * 0.12);
-    if (rng.next() < 0.10) m.taper = clamp(m.taper + rng.gaussian() * 0.1, 0.4, 1);                    // regulatoria
-    if (rng.next() < 0.12) m.phase = (m.phase + rng.gaussian() * 0.12 + 1) % 1;
-    if (rng.next() < 0.01) m.hom = HOM++;                                                              // homología (rarísima)
+    if (chance(0.06)) m.recursive = !m.recursive;                                                 // toggle recursión
+    if (chance(0.10)) m.recLimit = clamp((m.recLimit + (rng.next() < 0.5 ? 1 : -1)) | 0, 1, B.recCap); // límite
+    if (chance(0.06)) m.symmetric = !m.symmetric;                                                 // toggle simetría (1 bit → par)
+    if (chance(0.08)) m.tissue = clamp01(m.tissue + rng.gaussian() * 0.2);                        // tejido (puede cambiar de categoría)
+    if (chance(0.15)) m.angle = clamp(m.angle + rng.gaussian() * 0.4, 0, Math.PI);
+    if (chance(0.15)) m.size = clamp01(m.size + rng.gaussian() * 0.12);
+    if (chance(0.15)) m.aspect = clamp01(m.aspect + rng.gaussian() * 0.12);
+    if (chance(0.12)) m.oscAmp = clamp01(m.oscAmp + rng.gaussian() * 0.12);
+    if (chance(0.10)) m.taper = clamp(m.taper + rng.gaussian() * 0.1, 0.4, 1);                    // regulatoria
+    if (chance(0.12)) m.phase = (m.phase + rng.gaussian() * 0.12 + 1) % 1;
+    if (chance(0.01)) m.hom = HOM++;                                                              // homología (rarísima)
   }
   // CEREBRO: muta los pesos de NACIMIENTO (lo heredable). La copia de trabajo (aprendida en vida) NO se hereda.
-  if (n.brain) { const b = n.brain; for (let k = 0; k < b.length; k++) { if (rng.next() < 0.08) { let v = b[k] + rng.gaussian() * 0.15; b[k] = v < -3 ? -3 : v > 3 ? 3 : v; } } }
-  if (rng.next() < 0.1) n.hue = (n.hue + rng.gaussian() * 0.03 + 1) % 1;   // deriva lenta del linaje (color)
+  if (n.brain) { const b = n.brain; for (let k = 0; k < b.length; k++) { if (chance(0.08)) { let v = b[k] + rng.gaussian() * 0.15; b[k] = v < -3 ? -3 : v > 3 ? 3 : v; } } }
+  if (chance(0.1)) n.hue = (n.hue + rng.gaussian() * 0.03 + 1) % 1;   // deriva lenta del linaje (color)
   return n;
 }
 

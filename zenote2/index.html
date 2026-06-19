@@ -28,6 +28,15 @@
     </div>
 
     <div class="ctrl">
+      <label>Tamaño del mundo <output id="worldSizeVal"></output> <span class="restart-tag">↻ reinicia</span></label>
+      <input id="worldSize" type="range" min="800" max="3000" step="100" value="1500" title="Lado del mundo (toro). Se aplica al pulsar «Reiniciar». Más grande = menor densidad para la misma población.">
+    </div>
+    <div class="ctrl">
+      <label>Sembrado inicial <output id="seedCountVal"></output> <span class="restart-tag">↻ reinicia</span></label>
+      <input id="seedCount" type="range" min="100" max="2500" step="50" value="800" title="Nº de organismos al sembrar. Se aplica al pulsar «Reiniciar».">
+    </div>
+
+    <div class="ctrl">
       <label>Velocidad <output id="tpsVal"></output></label>
       <div class="row">
         <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>
@@ -100,6 +109,18 @@
       <div class="ctrl">
         <label>Quietud fotosíntesis <output data-for="photoMotionK"></output></label>
         <input class="lab-slider" data-key="photoMotionK" type="range" min="0" max="6" step="0.5" value="2" title="Cuánto penaliza moverse a la captación de luz. 0 = nada. Alto → autótrofos sésiles (plantas); el movimiento queda en heterótrofos.">
+      </div>
+      <div class="ctrl">
+        <label>Ritmo de mutación <output data-for="mutRate"></output></label>
+        <input class="lab-slider" data-key="mutRate" type="range" min="0" max="3" step="0.1" value="1" title="Multiplicador global del ritmo de mutación. 1 = base. >1 = más cambios por cría (más exploración/churn). 0 = clones (sin mutación).">
+      </div>
+      <div class="ctrl">
+        <label>Reproducción</label>
+        <select id="reproMode" title="Sexual+asexual: sexual si hay pareja, asexual de respaldo. Solo asexual: clones. Solo sexual: obligada, sin respaldo (sin pareja no se reproduce → puede frenar la natalidad).">
+          <option value="both">Sexual + asexual</option>
+          <option value="asexual">Solo asexual</option>
+          <option value="sexual">Solo sexual (obligada)</option>
+        </select>
       </div>
       <button id="labReset" class="ghost">restaurar valores</button>
     </details>

@@ -278,7 +278,9 @@ $('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal'
 $('bloom').addEventListener('input', (e) => { bloomStrength = +e.target.value; $('bloomVal').textContent = bloomStrength === 0 ? 'off' : bloomStrength.toFixed(2); });   // bloom (render puro, no va al worker)
 // B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
 // nace con lightMul=1 → re-aplica el lab.
-function resetWorld() { const sv = $('seed').value.trim(); worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0) }); applyLab(); }
+function resetWorld() { const sv = $('seed').value.trim();
+  worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0), worldSize: +$('worldSize').value, seedCount: +$('seedCount').value });
+  applyLab(); }
 $('reset').addEventListener('click', resetWorld);
 $('seedRandom').addEventListener('click', () => { $('seed').value = ''; resetWorld(); });   // 🎲: semilla aleatoria nueva
 $('hide').addEventListener('click', () => document.body.classList.add('hidden-panel'));
@@ -286,8 +288,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, baseCost: 0.015, reproE: 16, photoEff: 0.05, photoMotionK: 2 };   // espejo de los valores de arranque del motor
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'photoMotionK' ? v.toFixed(1) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, baseCost: 0.015, reproE: 16, photoEff: 0.05, photoMotionK: 2, mutRate: 1 };   // espejo de los valores de arranque del motor
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'photoMotionK' ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }
@@ -300,6 +302,13 @@ $('labReset').addEventListener('click', () => {
   for (const s of labSliders) { const k = s.dataset.key; s.value = LAB_DEF[k]; labOut(k).textContent = fmtLab(k, LAB_DEF[k]); }
   applyLab();
 });
+// Parámetros de ARRANQUE (necesitan reinicio): solo actualizan su display; se aplican al pulsar «Reiniciar».
+const ws = $('worldSize'), sct = $('seedCount');
+ws.addEventListener('input', () => $('worldSizeVal').textContent = ws.value + ' u');
+sct.addEventListener('input', () => $('seedCountVal').textContent = sct.value);
+$('worldSizeVal').textContent = ws.value + ' u'; $('seedCountVal').textContent = sct.value;
+// Vía reproductiva (en vivo): both (sexual+respaldo asexual) · asexual · sexual (obligada). Manda la cadena a SIM_P.reproMode.
+$('reproMode').addEventListener('change', (e) => worker.postMessage({ type: 'set', key: 'reproMode', value: e.target.value }));
 
 // Inspector: controles de la tarjeta
 $('inspClose').addEventListener('click', deselect);

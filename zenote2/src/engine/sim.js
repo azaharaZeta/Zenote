@@ -39,6 +39,9 @@ export const SIM_P = {
   preyMassMax: 1.6,                  // factor: presa manejable si su masa ≤ maxMouthR·este (boca→tamaño de presa)
   ηene: 0.85,                        // eficiencia energética de la ingesta
   initE: 10,                         // reservas iniciales de los fundadores
+  reproMode: 'both',                 // (UI) vía reproductiva: 'both' = sexual si hay pareja + RESPALDO asexual (def) ·
+                                     // 'asexual' = siempre clon mutado · 'sexual' = OBLIGADA (sin respaldo: sin pareja
+                                     // compatible cerca, no se reproduce ese intento). Permite comparar vías en vivo.
   mateRadius: 50,                    // M7: radio de búsqueda de pareja (u)
   mateCompat: 0.5,                   // M7: umbral de compatibilidad reproductiva = distancia FENOTÍPICA (masa/luz/boca)
                                      // normalizada. Apareamiento asortativo por similitud de forma (sin métrica génica con
@@ -220,7 +223,9 @@ export class Sim {
       // nutriente local (gate endógeno: no nace sin materia), su ENERGÍA del progenitor. Conserva ambas.
       this.age[i]++; if (this.cd[i] > 0) this.cd[i]--;
       else if (E[i] >= P.reproE) {
-        const mate = this._findMate(i);   // M7: pareja compatible cercana → SEXUAL (recombinación homóloga); si no → asexual
+        const mate = P.reproMode !== 'asexual' ? this._findMate(i) : -1;   // M7: both/sexual buscan pareja compatible; asexual no
+        // 'sexual' = OBLIGADA (sin respaldo asexual): sin pareja → no se reproduce este intento (ni desarrolla ni cobra).
+        if (mate >= 0 || P.reproMode !== 'sexual') {
         const childG = mate >= 0 ? mutate(recombine(this.genome[i], this.genome[mate], rng), rng) : mutate(this.genome[i], rng);
         const childBody = develop(childG), childPh = computePhenotype(childBody);   // M2: desarrolla UNA vez; spawn lo reusa
         const eCost = P.investE + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
@@ -234,6 +239,7 @@ export class Sim {
           E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
           if (mate >= 0) this.sexBirths++; else this.asexBirths++;
           born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE, childBody, childPh);
+        }
         }
       }
     }

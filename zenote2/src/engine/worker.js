@@ -4,9 +4,10 @@
 
 import { World, WORLD_P } from './world.js';
 import { Sim, SIM_P } from './sim.js';
+import { GENOME_P } from './genome.js';   // para el ritmo de mutación (parámetro de UI en vivo)
 import { trophicCode } from './phenotype.js';   // M3: única definición del oficio trófico (compartida con tests/scorecard)
 
-const SIZE = 1500;
+let worldSize = 1500, seedCount = 800;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
 let world, sim, running = true, tps = 60, maxSpeed = false;
 let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su detalle EN VIVO viaja en cada foto
 // historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
@@ -15,19 +16,22 @@ const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet 
 const histSexB = [], histAsexB = [], histPred = [], histStarv = [];   // nacimientos sexual/asexual · muertes predación/inanición (por ventana)
 let lastSexB = 0, lastAsexB = 0, lastKills = 0, lastStarved = 0;
 
-function init(seed) {
+function init({ seed, worldSize: ws, seedCount: sc } = {}) {
+  // Parámetros de ARRANQUE: tamaño del mundo y cantidad de sembrado (necesitan reinicio). Se conservan entre resets.
+  if (Number.isFinite(+ws) && +ws > 0) worldSize = +ws | 0;
+  if (Number.isFinite(+sc) && +sc > 0) seedCount = +sc | 0;
   // B5: semilla opcional (reproducibilidad). null/no-finito → aleatoria. La MISMA semilla alimenta mundo y población
   // → el motor es determinista (mismo seed → mismo mundo). Se devuelve abajo para que la UI la muestre.
   const sd = (seed == null || !Number.isFinite(+seed)) ? (Math.random() * 1e9) | 0 : (+seed | 0);
-  world = new World(SIZE, sd, { ...WORLD_P, lightBase: 2.5 });
+  world = new World(worldSize, sd, { ...WORLD_P, lightBase: 2.5 });
   world.nutrient.fill(1.5);
   sim = new Sim(world, { seed: sd, cap: 12000 });
-  sim.seed(800);
+  sim.seed(seedCount);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
   histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
   histSexB.length = 0; histAsexB.length = 0; histPred.length = 0; histStarv.length = 0; lastSexB = lastAsexB = lastKills = lastStarved = 0;
   // campos ESTÁTICOS del mundo (cambian solo al reset) → se envían aparte. seed: la usada (para mostrarla en la UI).
-  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: SIZE, lightBase: world.P.lightBase, light0: world.light0.slice(), seed: sd });
+  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: worldSize, lightBase: world.P.lightBase, light0: world.light0.slice(), seed: sd });
 }
 
 // Foto por frame: solo vivos, cuerpos aplanados (offset + [lx,ly,r,tissue] por parte). Transferible (cero copia).
@@ -99,13 +103,13 @@ function loop() {
 
 onmessage = (e) => {
   const m = e.data;
-  if (m.type === 'reset') init(m.seed);   // B5: reset con semilla opcional (m.seed null → aleatoria)
+  if (m.type === 'reset') init(m);   // reset con seed + parámetros de arranque (worldSize, seedCount) opcionales
   else if (m.type === 'running') running = m.value;
   else if (m.type === 'tps') tps = m.value;
   else if (m.type === 'maxSpeed') maxSpeed = m.value;
-  // LABORATORIO (en vivo): ajusta una ley del mundo o del metabolismo sin reiniciar. lightMul vive en el mundo;
-  // el resto son campos de SIM_P (step() los lee por referencia cada tick → el cambio surte efecto al instante).
-  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; }
+  // LABORATORIO (en vivo): ajusta una ley del mundo o del metabolismo sin reiniciar. lightMul vive en el mundo; mutRate
+  // en GENOME_P; el resto son campos de SIM_P (step()/mutate() los leen por referencia → el cambio surte efecto al instante).
+  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; }
   else if (m.type === 'inspect') selectedId = m.id;     // inspector: fijar agente a seguir en vivo
   else if (m.type === 'deselect') selectedId = -1;
   else if (m.type === 'burst') { for (let k = 0; k < (m.n || 0); k++) sim.step(); snapshot(); }   // avance forzado (depuración/preview)
