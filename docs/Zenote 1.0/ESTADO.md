@@ -1,12 +1,12 @@
 # Estado del proyecto — dashboard
 
 > **Documento ÍNDICE.** Foto del presente + mapa de la documentación. No almacena detalle: la mecánica vive en
-> [`SPEC_EVOLUCION.md`](SPEC_EVOLUCION.md), los parámetros en [`src/config.js`](../src/config.js), la dinámica en
+> [`SPEC_EVOLUCION.md`](SPEC_EVOLUCION.md), los parámetros en [`src/config.js`](../../src/config.js), la dinámica en
 > [`ANALISIS_PARAMETROS.md`](ANALISIS_PARAMETROS.md), las ideas en [`ideas/`](ideas/indice-ideas.md), los hitos en
 > [`CHANGELOG.md`](CHANGELOG.md). Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
 **Estado (2026-06):** simulador de evolución **genuinamente emergente** — conducta y morfología bajo selección, sin
-reglas de estrategia ni fitness explícito. El **modelo actualizado ** (cuerpo generativo por nodos) está consolidado, con
+reglas de estrategia ni fitness explícito. El **modelo actualizado** (cuerpo generativo por nodos) está consolidado, con
 **locomoción por FUERZA** (el cerebro decide el ESFUERZO; la velocidad emerge de empuje−arrastre con inercia) y
 morfología evolutiva (forma/función/movimiento de los nodos). Backlog de auditoría **CERRADO (14/14)**.
 
@@ -59,14 +59,14 @@ y frágil en mundos pequeños (Allee); `carcassValue` y `expr.size.min` son pala
 | Documento | Rol | Contiene |
 |---|---|---|
 | `CLAUDE.md` | Instrucciones de trabajo | reglas innegociables, pila técnica, cómo contribuir |
-| `docs/SPEC_EVOLUCION.md` | **Fuente de verdad del MODELO** | mecánica: genoma, herencia, mutación, selección, energética, física por nodos, rendimiento |
+| `docs/Zenote 1.0/SPEC_EVOLUCION.md` | **Fuente de verdad del MODELO** | mecánica: genoma, herencia, mutación, selección, energética, física por nodos, rendimiento |
 | `src/config.js` | **Parámetros (fuente única)** | cada parámetro: valor, comentario, marca *(UI)*; agrupado por bloque |
-| `docs/ANALISIS_PARAMETROS.md` | **Mapa de interacciones** | qué hace cada subsistema a nivel de ECUACIÓN, bucles de realimentación, modos de fallo, jerarquía de palancas (base del finetuning) |
-| `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad/LOD, UI, responsive |
-| `docs/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, congelada) | análisis física/diseño, catálogo de genes, backlog CERRADO 14/14|
-| `docs/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` |
-| `docs/CHANGELOG.md` | Hitos cronológicos | qué cambió y cuándo (reciente arriba) |
-| `docs/ESTADO.md` | **Foto del presente + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs |
+| `docs/Zenote 1.0/ANALISIS_PARAMETROS.md` | **Mapa de interacciones** | qué hace cada subsistema a nivel de ECUACIÓN, bucles de realimentación, modos de fallo, jerarquía de palancas (base del finetuning) |
+| `docs/Zenote 1.0/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad/LOD, UI, responsive |
+| `docs/Zenote 1.0/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, congelada) | análisis física/diseño, catálogo de genes, backlog CERRADO 14/14|
+| `docs/Zenote 1.0/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` |
+| `docs/Zenote 1.0/CHANGELOG.md` | Hitos cronológicos | qué cambió y cuándo (reciente arriba) |
+| `docs/Zenote 1.0/ESTADO.md` | **Foto del presente + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs |
 | memoria del proyecto | Observaciones / lecciones | dinámicas emergentes y resultados medidos no derivables del código |
 
 **Reglas anti-duplicación (un hecho, un sitio):**

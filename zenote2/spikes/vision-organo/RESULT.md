@@ -2,7 +2,7 @@
 
 **Pregunta:** ¿la visión como ÓRGANO (tejido SENSOR, alcance ∝ área) (a) cruza el valle de fitness y (b) se diferencia
 por nicho? **Diseño mínimo:** el ojo cuesta solo su MASA; el sensado de presa/amenaza se gatea por `senseRange`; luz
-innata; degradación suave. Análisis: [`../../../docs/ideas/vision-organo-zenote2.md`](../../../docs/ideas/vision-organo-zenote2.md).
+innata; degradación suave. Análisis: [`../../../docs/Zenote 2.0/ideas/vision-organo-zenote2.md`](../../../docs/Zenote%202.0/ideas/vision-organo-zenote2.md).
 
 Reproducir: `node zenote2/spikes/vision-organo/run.mjs 30000 1,2,3 free,organ-seeded,organ-blind`
 

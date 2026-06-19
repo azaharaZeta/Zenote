@@ -1,12 +1,12 @@
 # Visión como órgano evolutivo — **(Zenote 2)**
 
-> **Ámbito: ZENOTE 2** (la segunda app, `../../zenote2/`), no la app v1 de esta carpeta. Análisis de viabilidad +
-> plan de spike. Spike: [`zenote2/spikes/vision-organo/`](../../zenote2/spikes/vision-organo/) · resultado medido:
-> [`RESULT.md`](../../zenote2/spikes/vision-organo/RESULT.md).
+> **Ámbito: ZENOTE 2** (la segunda app, `../../../zenote2/`), no la app v1 de esta carpeta. Análisis de viabilidad +
+> plan de spike. Spike: [`zenote2/spikes/vision-organo/`](../../../zenote2/spikes/vision-organo/) · resultado medido:
+> [`RESULT.md`](../../../zenote2/spikes/vision-organo/RESULT.md).
 
 ## Problema
 Hoy en Zenote 2 la percepción es **abstracta y universal**: el motor calcula 8 señales (∇luz, dirección a presa/amenaza
-más cercanas, hambre, velocidad) y las entrega a la RNN ([`sim.js`](../../zenote2/src/engine/sim.js) §sensado). **No hay
+más cercanas, hambre, velocidad) y las entrega a la RNN ([`sim.js`](../../../zenote2/src/engine/sim.js) §sensado). **No hay
 órgano de visión** (tejidos = ESTRUCTURA·PHOTO·MUSCLE·MOUTH). Es la **única capacidad que NO emerge de la forma** —
 fotosintetizar/mover/comer sí salen del tejido ("forma=función"), pero ver es gratis e igual para todos.
 
@@ -61,7 +61,7 @@ Headless, multi-seed, 20–40k ticks, 3 condiciones de ablación contra el basel
   establece **sin diferenciación por nicho** (autótrofos cargando ojos inútiles) → complejidad sin payoff.
 
 ## Veredicto MEDIDO (spike, 30k · 3 seeds) → **NULL parcial: el ojo es selectivamente NEUTRO** ✗
-Resultado completo: [`RESULT.md`](../../zenote2/spikes/vision-organo/RESULT.md). En corto:
+Resultado completo: [`RESULT.md`](../../../zenote2/spikes/vision-organo/RESULT.md). En corto:
 - **NO se diferencia por nicho**: autótrofos cargan tanto ojo como cazadores (het/auto = 0.9×). No emergen "autótrofos
   ciegos / cazadores de vista aguda".
 - **El ojo aparece por DERIVA, no por selección**: en `free` (ojo inútil, gate ∞) el 38% ya lo tiene → es el nivel de

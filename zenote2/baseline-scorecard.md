@@ -1,7 +1,7 @@
 # Baseline scorecard — app ACTUAL (Zenote v1)
 
 > **M0.** La vara de medir: la emergencia que la **app nueva (Zenote 2)** deberá **igualar o superar** (roadmap
-> [`2.6 §4`](../docs/refactor/02-Redesign/2.6-reconstruction-roadmap.md)). Medido **headless, multi-seed**, sobre la
+> [`2.6 §4`](../docs/Zenote%202.0/02-Redesign/2.6-reconstruction-roadmap.md)). Medido **headless, multi-seed**, sobre la
 > app actual con su **config de producción**, **sin tocarla** (solo importada). Harness: `zenote2/test/baseline-current.mjs`.
 >
 > Reproducir: `node zenote2/test/baseline-current.mjs 20000 1,2,3,4,5 1000` (ticks, seeds, tamaño de mundo).

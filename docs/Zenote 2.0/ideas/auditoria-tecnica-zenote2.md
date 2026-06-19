@@ -1,11 +1,11 @@
 # Auditoría técnica — **(Zenote 2)**
 
-> **Ámbito: ZENOTE 2** (la segunda app, `../../zenote2/`), no la app v1 de esta carpeta. Auditoría de ingeniería
+> **Ámbito: ZENOTE 2** (la segunda app, `../../../zenote2/`), no la app v1 de esta carpeta. Auditoría de ingeniería
 > (arquitectura · calidad · rendimiento · correctitud · tests) realizada el **2026-06-19** sobre la rama `biorefactor`
 > (9 módulos / ~973 líneas de motor + 10 tests). Backlog de deuda y hallazgos para **procesar más adelante** —
 > cada punto es accionable por separado. Hallazgos clave en memoria del proyecto: [[zenote2-audit-latent-findings]].
 >
-> Rutas de la tabla relativas a `../../zenote2/src/`. Verificación empírica: suite corrida en verde + dos sondas
+> Rutas de la tabla relativas a `../../../zenote2/src/`. Verificación empírica: suite corrida en verde + dos sondas
 > read-only (saturación de pool → fuga de materia; mismo seed → estado byte-idéntico).
 
 ## Veredicto

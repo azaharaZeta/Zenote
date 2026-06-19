@@ -3,7 +3,7 @@
 > **Propósito.** Capstone de la auditoría de refactorización. Sintetiza los cinco documentos previos y responde
 > cinco preguntas decisivas. **No propone una arquitectura nueva** — solo consolida el diagnóstico.
 >
-> **Documentos auditados (todos en `docs/refactor/`):**
+> **Documentos auditados (todos en `docs/Zenote 2.0/`):**
 > 1. [`evolution-architecture-map.md`](evolution-architecture-map.md) — subsistemas, flujos, ciclos de vida.
 > 2. [`evolution-inventory.md`](evolution-inventory.md) — 208 genes, ~120 parámetros, fenotipo, reglas.
 > 3. [`evolution-debt-report.md`](evolution-debt-report.md) — 21 ítems de deuda (D1-D21).

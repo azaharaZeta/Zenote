@@ -1,12 +1,12 @@
 # Auditoría del modelo evolutivo — **(Zenote 2)**
 
-> **Ámbito: ZENOTE 2** (la segunda app, `../../zenote2/`), no la app v1 de esta carpeta. Auditoría **del modelo
+> **Ámbito: ZENOTE 2** (la segunda app, `../../../zenote2/`), no la app v1 de esta carpeta. Auditoría **del modelo
 > evolutivo desde la biología evolutiva** (mecanismos, plausibilidad, supuestos, fenómenos reproducibles), realizada el
 > **2026-06-19** sobre la rama `biorefactor`. Complementa la [auditoría TÉCNICA](auditoria-tecnica-zenote2.md) del mismo
 > día (ingeniería) con el eje científico. Hallazgos para **procesar más adelante** — cada punto es accionable por separado.
 >
-> Rutas relativas a `../../zenote2/`. Lectura: motor completo (`genome.js`, `sim.js`, `phenotype.js`, `world.js`,
-> `rng.js`, `worker.js`) + diseño [`2.4-bucle-evolutivo`](../refactor/02-Redesign/2.4-bucle-evolutivo.md) + tests
+> Rutas relativas a `../../../zenote2/`. Lectura: motor completo (`genome.js`, `sim.js`, `phenotype.js`, `world.js`,
+> `rng.js`, `worker.js`) + diseño [`2.4-bucle-evolutivo`](../02-Redesign/2.4-bucle-evolutivo.md) + tests
 > (m5-evolution, m5-formfunction, m6_3-behavior, m7-speciation, spike m3).
 
 ## Veredicto

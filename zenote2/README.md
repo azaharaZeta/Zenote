@@ -1,6 +1,6 @@
 # Zenote 2 — segunda aplicación (modelo desde primeros principios)
 
-Segunda app que implementa el modelo rediseñado en [`../docs/refactor/02-Redesign/`](../docs/refactor/02-Redesign/)
+Segunda app que implementa el modelo rediseñado en [`../docs/Zenote 2.0/02-Redesign/`](../docs/Zenote%202.0/02-Redesign/)
 (2.1-2.6). **La app actual (`../src/`) NO se toca** — queda de baseline medido. La promoción (si algún día sustituye
 a la actual) es una decisión futura y separada.
 
@@ -9,7 +9,7 @@ Convenciones heredadas de la app actual: vanilla JS (ES modules), SoA + typed ar
 
 ## Estado: M0 — Andamio + baseline ✅ CERRADO
 
-Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs/refactor/02-Redesign/2.6-reconstruction-roadmap.md)).
+Construcción **headless-first, guiada por riesgo** (roadmap → [`2.6`](../docs/Zenote%202.0/02-Redesign/2.6-reconstruction-roadmap.md)).
 
 - [x] **Andamio de plataforma** (SoA + pool, spatial hash toroidal, bucle de tick). **SIN biología** (los agentes
   hacen marcha aleatoria + escaneo de vecindad que ejercita el hash). Solo prueba que la plataforma escala.
