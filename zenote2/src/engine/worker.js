@@ -6,9 +6,10 @@ import { World, WORLD_P } from './world.js';
 import { Sim, SIM_P } from './sim.js';
 import { GENOME_P } from './genome.js';   // para el ritmo de mutación (parámetro de UI en vivo)
 import { trophicCode } from './phenotype.js';   // M3: única definición del oficio trófico (compartida con tests/scorecard)
+import { START, RENDER_P } from '../config.js';   // defaults de arranque y velocidad inicial (fuente única)
 
-let worldSize = 1500, seedCount = 800, spawnSpread = 1, diversity = 1;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
-let world, sim, running = true, tps = 60, maxSpeed = false;
+let worldSize = START.worldSize, seedCount = START.seedCount, spawnSpread = START.spawnSpread, diversity = START.diversity;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
+let world, sim, running = true, tps = RENDER_P.tps, maxSpeed = false;
 let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su detalle EN VIVO viaja en cada foto
 // historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
 // muertes = DELTA por ventana (un ritmo), de contadores ACUMULADOS del motor → guardamos su último valor para restar.
@@ -25,9 +26,9 @@ function init({ seed, worldSize: ws, seedCount: sc, spawnSpread: sp, diversity: 
   // B5: semilla opcional (reproducibilidad). null/no-finito → aleatoria. La MISMA semilla alimenta mundo y población
   // → el motor es determinista (mismo seed → mismo mundo). Se devuelve abajo para que la UI la muestre.
   const sd = (seed == null || !Number.isFinite(+seed)) ? (Math.random() * 1e9) | 0 : (+seed | 0);
-  world = new World(worldSize, sd, { ...WORLD_P, lightBase: 2.5 });
-  world.nutrient.fill(1.5);
-  sim = new Sim(world, { seed: sd, cap: 12000 });
+  world = new World(worldSize, sd, { ...WORLD_P, lightBase: START.lightBase });
+  world.nutrient.fill(START.nutrientInit);
+  sim = new Sim(world, { seed: sd, cap: START.cap });
   sim.seed(seedCount, spawnSpread, diversity);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
   histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
@@ -79,8 +80,8 @@ function snapshot() {
 // arrastrada) → el t/s real sigue al slider con fidelidad. Antes se hacía `round(tps/30)` pasos/loop, que (a) cuantizaba
 // a múltiplos de 30 → se pasaba (50→60) y (b) con `max(1,…)` nunca bajaba de ~30 → tps=0 NO paraba. Ahora tps=0 = parado.
 let acc = 0, lastLoopT = performance.now();
-const MAX_SNAP_MS = 250;   // en MÁX: un fotograma cada ~250 ms (≈4 fps). Se SACRIFICAN fps para dar casi todo el tiempo a
-                           // la simulación; el lote (≤250 ms) garantiza ≥1 fps (el mínimo pedido) aun con la pop al tope.
+const MAX_SNAP_MS = RENDER_P.maxSnapMs;   // en MÁX: un fotograma cada ~N ms (≈4 fps). Se SACRIFICAN fps para dar casi todo
+                           // el tiempo a la simulación; el lote (≤N ms) garantiza ≥1 fps (el mínimo pedido) aun con la pop al tope.
 function loop() {
   const now = performance.now();
   if (running && maxSpeed) {

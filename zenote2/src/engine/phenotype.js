@@ -5,15 +5,8 @@
 // cachea. Frontera auditable: aquí solo se TRADUCE forma→capacidad; quién gana lo dicta la selección.
 
 import { TISSUE } from './genome.js';
-
-export const PHENO_P = {
-  massCoef: 0.04,       // masa estructural ∝ área de las partes (materia). O(1) por cuerpo → coste por masa y presupuesto de materia sanos.
-  dragBase: 1.0, dragCoef: 0.3, streamline: 0.4,   // arrastre (forma); elongado (aspect↑) arrastra menos
-  thrustGain: 1.2,     // ganancia de empuje de las partes MUSCLE
-  photoGain: 1.0,      // ganancia de captación de luz de las partes PHOTO (× área expuesta)
-  mouthGain: 1.0,      // ganancia de ingesta de las partes MOUTH
-  vGain: 3.0, vMax: 4.0,   // velocidad emergente = vGain · empuje/arrastre, acotada
-};
+import { PHENO_P } from '../config.js';   // parámetros forma→función: fuente única en config.js
+export { PHENO_P };
 
 // Devuelve el fenotipo físico cacheado de un cuerpo (lista de partes de develop()).
 export function computePhenotype(parts) {

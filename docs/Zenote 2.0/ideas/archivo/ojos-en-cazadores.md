@@ -26,6 +26,8 @@ Los ojos son una LECTURA del rol depredador, no tocan la simulación (motor byte
   nodos sobre el rumbo), no en la extensión máxima `bodyR` → en bichos elongados (cola) los ojos NO flotan por delante.
   La separación entre ojos es ∝ tamaño del ojo (no `bodyR`) → nunca quedan anchos/sueltos.
 - **Borde del ojo**: trazo oscuro fino (reusa el `strokeStyle` del borde del cuerpo, `lineWidth ∝ er` y restaurado a 1.2) → define el ojo contra el cuerpo.
+- **Bug "gafas" (resuelto)**: dibujar las DOS escleras con dos `arc()` en el MISMO path y luego `stroke()` hacía que Canvas
+  uniera los círculos con una recta (puente de gafas 🤓). Fix: cada ojo (y cada pupila) en su propio `beginPath()`.
 - **Mirada hacia el rumbo**: la pupila se desplaza en la dirección del heading → "mira hacia donde va" (= hacia la presa/
   pareja/luz que persigue, porque el cerebro orienta el cuerpo al objetivo). Gaze por objetivo real exigiría enviar el
   vector de presa desde el motor (posible, no hecho — el rumbo es buen proxy y gratis).

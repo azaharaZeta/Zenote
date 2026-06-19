@@ -2,6 +2,7 @@
 // y se maneja la CÁMARA (zoom + paneo TOROIDAL infinito) + los controles del panel. La cámara no toca la sim (fluida).
 
 import { TISSUE } from './engine/genome.js';
+import { RENDER_P, START, SIM_P, GENOME_P } from './config.js';   // fuente única de parámetros (render/arranque/lab)
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
@@ -9,13 +10,13 @@ worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = 
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
-let cw = 0, ch = 0, vignette = null; const dpr = Math.min(2, window.devicePixelRatio || 1);
+let cw = 0, ch = 0, vignette = null; const dpr = Math.min(RENDER_P.dprCap, window.devicePixelRatio || 1);
 // A4 — BLOOM (bioluminiscencia): la capa de ORGANISMOS se dibuja en un búfer aparte (glowCv); su versión reducida
 // (bloomCv, 1/BLOOM_DIV) se reescala aditivamente sobre el fondo → luz suave que sangra (coste ≈ 1/DIV², móvil ok).
 // bloomStrength=0 lo apaga (Baja/móvil). Es render PURO. Downsampled como en v1 (VISUAL.md).
 const glowCv = document.createElement('canvas'), glowCtx = glowCv.getContext('2d');
 const bloomCv = document.createElement('canvas'), bloomCtx = bloomCv.getContext('2d');
-let bloomStrength = 0.75; const BLOOM_DIV = 5;
+let bloomStrength = RENDER_P.bloom; const BLOOM_DIV = RENDER_P.bloomDiv;
 function resize() {
   cw = canvas.clientWidth; ch = canvas.clientHeight; canvas.width = cw * dpr; canvas.height = ch * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   glowCv.width = canvas.width; glowCv.height = canvas.height; glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -26,7 +27,7 @@ function resize() {
 window.addEventListener('resize', resize); resize();
 
 // --- Cámara + selección ---
-let zoom = 1, camX = 0, camY = 0; const MINZ = 1, MAXZ = 16;   // mínimo 1.0 = el mundo entero cabe; no alejar más (evita ver varios mundos en mosaico)
+let zoom = RENDER_P.zoom, camX = 0, camY = 0; const MINZ = RENDER_P.zoomMin, MAXZ = RENDER_P.zoomMax;   // mínimo 1.0 = el mundo entero cabe
 let selectedId = -1, following = false;   // inspector: serial del agente seleccionado + seguimiento de cámara
 function resetCamera() { if (WORLD) { camX = WORLD.size / 2; camY = WORLD.size / 2; } }
 const fitScale = () => WORLD ? Math.min(cw, ch) / WORLD.size : 1;
@@ -36,7 +37,7 @@ function wrap(v) { const S = WORLD.size; return ((v % S) + S) % S; }
 const TCOL = [ '#5a6b7a', '#3fb98f', '#e0664d', '#e0a84a' ];   // STRUCTURE, PHOTO, MUSCLE, MOUTH (índice = tissue)
 const RCOL = [ '#3fb98f', '#e0664d', '#e0a84a' ];              // rol: 0 autótrofo · 1 heterótrofo · 2 mixótrofo
 const ROLE_TXT = [ 'autótrofo', 'heterótrofo', 'mixótrofo' ];
-let colorMode = 'natural';
+let colorMode = RENDER_P.colorMode;
 
 function draw() {
   const t = performance.now() / 1000;
@@ -116,8 +117,8 @@ function drawLight(oX, oY, sc) {
 
 function drawOrgs(c, oX, oY, sc, t, halo) {
   const { n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, partOff, partData } = frame;
-  const mul = halo ? 2.2 : 1, baseA = halo ? 0.10 * bloomStrength : 1;   // AURA (=bioluminiscencia): más sutil y escalada por el slider
-  if (!halo) { c.strokeStyle = 'rgba(4,7,12,0.55)'; c.lineWidth = 1.2; }   // BORDE: trazo oscuro abisal fino (definición sin "borde duro"); reaprovecha el path del relleno
+  const mul = halo ? RENDER_P.auraMul : 1, baseA = halo ? RENDER_P.auraAlpha * bloomStrength : 1;   // AURA (=bioluminiscencia): escalada por el slider
+  if (!halo) { c.strokeStyle = RENDER_P.border; c.lineWidth = RENDER_P.borderW; }   // BORDE: trazo oscuro abisal fino; reaprovecha el path del relleno
   for (let a = 0; a < n; a++) {
     const wx = ax[a], wy = ay[a], bx = oX + wx * sc, by = oY + wy * sc;
     if (bx < -40 || bx > cw + 40 || by < -40 || by > ch + 40) continue;   // culling en pantalla
@@ -141,11 +142,11 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
     // A3 — TEXTURA procedural (Natural y Tejido+aura; solo núcleo): motas bioluminiscentes cuyo nº y color de acento
     // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
     let accent = null, patN = 0, pSeed = 0;
-    if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
+    if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % RENDER_P.speckleMax; pSeed = hh * 6.283; }
     let bodyR = 0, frontExt = 0;   // OJOS: extensión total + alcance FRONTAL (proyección sobre el rumbo) → ojos sobre la parte delantera
     for (let k = p1 - 1; k >= p0; k--) {
       const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
-      const uy = ly + (0.35 + spd * 2.2) * Math.sin(t * 5 + lx * 0.16 + ph);
+      const uy = ly + (0.35 + spd * RENDER_P.undulation) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
       if (!halo) { const dx = px - bx, dy = py - by, ext = Math.hypot(dx, dy) + pr; if (ext > bodyR) bodyR = ext;
         const fp = dx * chh + dy * shh + pr; if (fp > frontExt) frontExt = fp; }   // alcance del cuerpo + cuán adelante llega (eje rumbo)
@@ -167,7 +168,7 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
     // OJOS (solo render, lectura del rol depredador; no toca la sim). Aparecen GRADUALMENTE (sin pop): rampa por el tamaño
     // en pantalla (LOD suave) y por lo CAZADOR. Pequeños, con variedad por linaje. La pupila MIRA hacia el rumbo del
     // organismo (= hacia la presa/pareja/luz que persigue, ya que el cerebro lo orienta hacia su objetivo).
-    if (!halo && aHunt && aHunt[a] > 0.12) {
+    if (!halo && aHunt && aHunt[a] > RENDER_P.eyeThresh - 0.08) {   // empieza tenue algo antes del umbral nominal
       const hunt = aHunt[a];
       const sizeRamp = (bodyR - 4) / 14;                          // 0 (≤4px) → 1 (≥18px): fundido al acercar
       const huntRamp = (hunt - 0.12) / 0.55;                      // tenue al empezar, pleno en cazadores claros
@@ -179,12 +180,17 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
         const fx = bx + chh * fwd, fy = by + shh * fwd;
         const e1x = fx - shh * sep, e1y = fy + chh * sep, e2x = fx + shh * sep, e2y = fy - chh * sep;
         const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt * 1.6);   // fundido de opacidad (refuerza la aparición suave)
-        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(62 + 22 * hunt) | 0}%,${(80 - 12 * hunt) | 0}%)`;  // esclera = TONO del color del organismo (más viva/saturada cuanto más cazador)
-        c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.arc(e2x, e2y, er, 0, 6.283); c.fill();
-        c.lineWidth = Math.max(0.5, er * 0.28); c.stroke(); c.lineWidth = 1.2;   // BORDE del ojo (fino, ∝ tamaño; reusa el trazo oscuro y restaura para el cuerpo)
+        // esclera = TONO del color del organismo (más viva cuanto más cazador). CADA ojo en su PROPIO path → el stroke NO
+        // une los dos círculos con una línea (si no, salen "gafas" 🤓).
+        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(62 + 22 * hunt) | 0}%,${(80 - 12 * hunt) | 0}%)`;
+        c.lineWidth = Math.max(0.5, er * 0.28);   // borde del ojo (fino, ∝ tamaño)
+        c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.fill(); c.stroke();
+        c.beginPath(); c.arc(e2x, e2y, er, 0, 6.283); c.fill(); c.stroke();
+        c.lineWidth = RENDER_P.borderW;   // restaura para el borde del cuerpo
         const pf = er * (0.3 + 0.55 * hunt);                      // pupila desplazada hacia el RUMBO → "mira hacia donde va"
         c.fillStyle = 'rgba(8,6,10,0.94)';
-        c.beginPath(); c.arc(e1x + chh * pf, e1y + shh * pf, er * 0.52, 0, 6.283); c.arc(e2x + chh * pf, e2y + shh * pf, er * 0.52, 0, 6.283); c.fill();
+        c.beginPath(); c.arc(e1x + chh * pf, e1y + shh * pf, er * 0.52, 0, 6.283); c.fill();
+        c.beginPath(); c.arc(e2x + chh * pf, e2y + shh * pf, er * 0.52, 0, 6.283); c.fill();
         c.globalAlpha = ga0;
       }
     }
@@ -242,7 +248,7 @@ function drawChart() {
 
 // Limitador de FPS de RENDER (no afecta a la simulación: el motor corre en el worker a su propio t/s). rAF sigue
 // firando a la frecuencia de pantalla; saltamos el draw() (lo caro) hasta que toca → ahorra CPU/batería.
-let maxFps = 20, lastDrawT = 0;
+let maxFps = RENDER_P.maxFps, lastDrawT = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   if (now - lastDrawT < 1000 / maxFps - 2) return;   // aún no toca dibujar este frame
@@ -287,6 +293,13 @@ canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (!WORLD) return
 
 // --- Panel: controles ---
 const $ = (id) => document.getElementById(id);
+// FUENTE ÚNICA: los valores INICIALES de los controles salen de config.js (el HTML es solo fallback). Debe ir antes de
+// los inits de display y del bucle del laboratorio (que leen .value).
+$('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; $('spawnSpread').value = START.spawnSpread; $('diversity').value = START.diversity;
+$('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('bloom').value = RENDER_P.bloom; $('zoom').value = RENDER_P.zoom;
+$('colorMode').value = RENDER_P.colorMode; $('reproMode').value = SIM_P.reproMode;
+{ const src = { baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, mutRate: GENOME_P.mutRate };
+  for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
 let running = true, maxOn = false;
@@ -315,7 +328,7 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, baseCost: 0.015, reproE: 16, photoEff: 0.05, photoMotionK: 2, mutRate: 1 };   // espejo de los valores de arranque del motor
+const LAB_DEF = { lightMul: 1, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
 const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'photoMotionK' ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);

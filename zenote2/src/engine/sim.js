@@ -14,42 +14,8 @@ import { computePhenotype, phenoDistance } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
 
-export const SIM_P = {
-  photoEff: 0.05, photoHalf: 40,     // captación: share de la luz de la celda ∝ photoCap/(photoCap+half)
-  photoMotionK: 2,                   // (UI) la fotosíntesis PREMIA LA QUIETUD: captación × 1/(1+k·velocidad). k=0 = sin
-                                     // efecto. >0 → moverse cuesta luz → los autótrofos evolucionan sésiles (plantas) y el
-                                     // movimiento se concentra en heterótrofos (animales que buscan comida). Energía sigue
-                                     // conservando. Default 2 medido (spikes/movement-by-trophic): autótrofos 0% en movimiento
-                                     // a 25k, heterótrofos persisten, ecosistema estable. k=0 = comportamiento anterior.
-  baseCost: 0.015, massCost: 0.004,  // metabolismo: basal + ∝ masa
-  moveCost: 0.004,                   // coste de nado ∝ drag·v² (energía → calor)
-  reproE: 16, investE: 7, cooldown: 50,   // reproducción: umbral, energía a la cría, enfriamiento
-  eDensity: 0,                       // M6.1 (2.3 energía-en-biomasa): MEDIDO y dejado OFF. Probado eD=4 (el cuerpo guarda energía,
-                                     // pagada al nacer y liberada al ser comido): conserva (invariantes ✓) PERO net-negativo aquí —
-                                     // su coste embebido al nacer penaliza los cuerpos grandes (depredadores) y NO compensa porque la
-                                     // presa NO es magra (los autótrofos llevan reservas). El "problema de la presa magra" no se
-                                     // manifiesta en este modelo. Código parametrizado (eDensity>0) por si hace falta en cadenas
-                                     // profundas; por defecto 0 = separación limpia materia/energía de M5. El limitante real de la
-                                     // heterotrofía es la CONDUCTA (M6.3), no la energía.
-  birthR: 1,                         // radio (celdas) del vecindario del que la cría reúne MATERIA al nacer
-  gutBase: 4, gutPerMass: 4, digestRate: 0.6,   // M6.2: TRIPA (energía orgánica en tránsito). Comer la llena (tope ∝ masa)
-                                     // → SACIEDAD: lleno no caza más (respuesta funcional tipo II EMERGENTE, sin handlingTime).
-                                     // Digiere a reservas a ritmo limitado. La tripa cuenta en la energía total (conserva).
-  eatReach: 4,                       // alcance extra de captura (u)
-  preyMassMax: 1.6,                  // factor: presa manejable si su masa ≤ maxMouthR·este (boca→tamaño de presa)
-  ηene: 0.85,                        // eficiencia energética de la ingesta
-  initE: 10,                         // reservas iniciales de los fundadores
-  reproMode: 'both',                 // (UI) vía reproductiva: 'both' = sexual si hay pareja + RESPALDO asexual (def) ·
-                                     // 'asexual' = siempre clon mutado · 'sexual' = OBLIGADA (sin respaldo: sin pareja
-                                     // compatible cerca, no se reproduce ese intento). Permite comparar vías en vivo.
-  mateRadius: 50,                    // M7: radio de búsqueda de pareja (u)
-  mateCompat: 0.5,                   // M7: umbral de compatibilidad reproductiva = distancia FENOTÍPICA (masa/luz/boca)
-                                     // normalizada. Apareamiento asortativo por similitud de forma (sin métrica génica con
-                                     // loci excluidos a mano). NO da especies discretas: la distancia con umbral es CLINAL y
-                                     // no transitiva → estructura de componentes (ver m7), no especiación limpia. Es una
-                                     // métrica FENOTÍPICA elegida a mano (3 ejes), no la señal↔preferencia evolvable de D14/D16.
-                                     // Sin pareja compatible → asexual.
-};
+import { SIM_P } from '../config.js';   // parámetros de simulación: fuente única en config.js
+export { SIM_P };
 
 export class Sim {
   constructor(world, { seed = 1, cap = 8000, eDensity = SIM_P.eDensity, randomBehavior = false, freezeBrain = false } = {}) {

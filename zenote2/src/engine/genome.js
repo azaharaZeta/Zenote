@@ -9,14 +9,8 @@
 export const TISSUE = { STRUCTURE: 0, PHOTO: 1, MUSCLE: 2, MOUTH: 3 };
 export const TISSUE_N = 4;
 
-export const GENOME_P = {
-  partBudget: 32,      // tope de partes del cuerpo (acota recursión → coste y validez)
-  recCap: 8,           // tope del límite de recursión por módulo
-  modCap: 12,          // tope de módulos en el genoma
-  radMin: 1.0, radMax: 6.0,   // gen size → radio de parte (u)
-  mutRate: 1,          // (UI) multiplicador GLOBAL del RITMO de mutación (escala las PROBABILIDADES, no las magnitudes).
-                       // 1 = comportamiento base; >1 más cambios/cría (más exploración/churn); 0 = sin mutación (clones).
-};
+import { GENOME_P } from '../config.js';   // parámetros del genoma/mutación: fuente única en config.js
+export { GENOME_P };
 
 const TWO_PI = 6.283185307;
 const clamp01 = (x) => x < 0 ? 0 : x > 1 ? 1 : x;

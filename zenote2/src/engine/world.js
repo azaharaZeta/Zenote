@@ -11,19 +11,8 @@
 // los acumuladores del libro mayor. Toda transacción re-enruta materia (conserva) y contabiliza energía (disipa).
 
 import { makeRng } from '../util/rng.js';
-
-export const WORLD_P = {
-  cellRef: 20,          // tamaño de celda (u) constante → rejilla ∝ tamaño de mundo (recurso/luz total ∝ área)
-  lightBase: 0.06,      // irradiancia base por celda y tick (energía/celda/tick) — la FUENTE; 0 = noche eterna (test)
-  lightContrast: 0.7,   // heterogeneidad espacial de la luz (0 uniforme · 1 muy en parches)
-  dayNightAmp: 0.0,     // amplitud del ciclo día/noche (0 = sin ciclo; el test lo activa)
-  dayNightPeriod: 2000, // periodo del ciclo (ticks)
-  shadeCoef: 0.6,       // sombra: la ocupación reduce la luz que llega al suelo (competencia por luz)
-  occRef: 4,            // ocupación de referencia para normalizar la sombra
-  diffuseN: 0.12,       // difusión del nutriente (conservativa)
-  diffuseDet: 0.05,     // difusión del detrito (conservativa)
-  decompose: 0.02,      // descomposición del detrito por tick: materia → nutriente, energía → calor
-};
+import { WORLD_P } from '../config.js';   // parámetros del mundo: fuente única en config.js
+export { WORLD_P };
 
 export class World {
   constructor(size, seed = 1, P = WORLD_P) {
