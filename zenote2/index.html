@@ -90,6 +90,10 @@
         <label>Eficiencia fotosíntesis <output data-for="photoEff"></output></label>
         <input class="lab-slider" data-key="photoEff" type="range" min="0.01" max="0.15" step="0.005" value="0.05">
       </div>
+      <div class="ctrl">
+        <label>Quietud fotosíntesis <output data-for="photoMotionK"></output></label>
+        <input class="lab-slider" data-key="photoMotionK" type="range" min="0" max="6" step="0.5" value="2" title="Cuánto penaliza moverse a la captación de luz. 0 = nada. Alto → autótrofos sésiles (plantas); el movimiento queda en heterótrofos.">
+      </div>
       <button id="labReset" class="ghost">restaurar valores</button>
     </details>
 

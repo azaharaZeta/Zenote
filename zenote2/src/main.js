@@ -220,8 +220,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, baseCost: 0.015, reproE: 16, photoEff: 0.05 };   // espejo de los valores de arranque del motor
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'reproE' ? v.toFixed(0) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, baseCost: 0.015, reproE: 16, photoEff: 0.05, photoMotionK: 2 };   // espejo de los valores de arranque del motor
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'photoMotionK' ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }

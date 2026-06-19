@@ -16,6 +16,11 @@ import { makeRng } from '../util/rng.js';
 
 export const SIM_P = {
   photoEff: 0.05, photoHalf: 40,     // captación: share de la luz de la celda ∝ photoCap/(photoCap+half)
+  photoMotionK: 2,                   // (UI) la fotosíntesis PREMIA LA QUIETUD: captación × 1/(1+k·velocidad). k=0 = sin
+                                     // efecto. >0 → moverse cuesta luz → los autótrofos evolucionan sésiles (plantas) y el
+                                     // movimiento se concentra en heterótrofos (animales que buscan comida). Energía sigue
+                                     // conservando. Default 2 medido (spikes/movement-by-trophic): autótrofos 0% en movimiento
+                                     // a 25k, heterótrofos persisten, ecosistema estable. k=0 = comportamiento anterior.
   baseCost: 0.015, massCost: 0.004,  // metabolismo: basal + ∝ masa
   moveCost: 0.004,                   // coste de nado ∝ drag·v² (energía → calor)
   reproE: 16, investE: 7, cooldown: 50,   // reproducción: umbral, energía a la cría, enfriamiento
@@ -135,7 +140,11 @@ export class Sim {
       const E0 = E[i];   // M6.3: reservas al inicio del tick → recompensa de plasticidad = ΔE
 
       // FOTOSÍNTESIS: capta una porción de la luz de la celda ∝ photoCap (compite por sombra/ocupación). Energía ENTRA.
-      if (this.photoCap[i] > 0) { const dE = P.photoEff * W.lightAt(cell) * (this.photoCap[i] / (this.photoCap[i] + P.photoHalf)) / Math.max(1, W.occ[cell]);
+      // Premia la QUIETUD (photoMotionK): moverse reduce la captación → la sesilidad emerge en los autótrofos (la
+      // velocidad es la del tick previo; ínfimo desfase). Frontera genotipo→física: el programador define el coste de
+      // moverse para un fotosintetizador, no qué oficio es "bueno".
+      if (this.photoCap[i] > 0) { const still = P.photoMotionK > 0 ? 1 / (1 + P.photoMotionK * Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i])) : 1;
+        const dE = P.photoEff * W.lightAt(cell) * (this.photoCap[i] / (this.photoCap[i] + P.photoHalf)) / Math.max(1, W.occ[cell]) * still;
         if (dE > 0) { E[i] += dE; W.lightCaptured += dE; } }
 
       // ---- SENSADO: ∇luz + presa/amenaza más cercanas (un barrido del hash) ----
