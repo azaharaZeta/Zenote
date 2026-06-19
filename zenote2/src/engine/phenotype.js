@@ -49,9 +49,17 @@ export function computePhenotype(parts) {
 
 // Lectura del "oficio" (NO afecta a la sim; para color/diagnóstico). Emerge de la inversión de tejido del cuerpo.
 // autótrofo si la captación de luz domina sobre la capacidad heterótrofa (caza+ingesta); si no, heterótrofo/mixto.
-export function trophicRole(ph) {
-  const hetero = ph.thrust + ph.mouthCap * 2;
-  if (ph.photoCap > hetero * 1.5) return 'autotrofo';
-  if (hetero > ph.photoCap * 1.5) return 'heterotrofo';
-  return 'mixotrofo';
+// ÚNICA definición (M3): la comparten el worker/inspector (vía código) y los tests/scorecard (vía string) → clasifican igual.
+const ROLE_NAMES = ['autotrofo', 'heterotrofo', 'mixotrofo'];
+export function trophicCode(photoCap, thrust, mouthCap) {   // 0 autótrofo · 1 heterótrofo · 2 mixótrofo
+  const hetero = thrust + mouthCap * 2;
+  return photoCap > hetero * 1.5 ? 0 : hetero > photoCap * 1.5 ? 1 : 2;
+}
+export function trophicRole(ph) { return ROLE_NAMES[trophicCode(ph.photoCap, ph.thrust, ph.mouthCap)]; }
+
+// Distancia FENOTÍPICA normalizada (masa/luz/boca). Escala del aislamiento reproductivo (mateCompat) y de la
+// especiación (D14). ÚNICA definición (B1): la comparten sim._findMate y test/m7-speciation (antes duplicada).
+export function phenoDistance(m1, p1, mo1, m2, p2, mo2) {
+  const dm = (m1 - m2) / 2, dp = (p1 - p2) / 40, dmo = (mo1 - mo2) / 10;
+  return Math.sqrt(dm * dm + dp * dp + dmo * dmo);
 }

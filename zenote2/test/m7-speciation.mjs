@@ -5,7 +5,7 @@
 import { World, WORLD_P } from '../src/engine/world.js';
 import { Sim, SIM_P } from '../src/engine/sim.js';
 import { develop, GENOME_P } from '../src/engine/genome.js';
-import { computePhenotype } from '../src/engine/phenotype.js';
+import { computePhenotype, phenoDistance } from '../src/engine/phenotype.js';
 
 const eD = SIM_P.eDensity, TICKS = +(process.argv[2] || 15000), SEEDS = [1, 2, 3];
 const matter = (s) => s.world.totalNutrient() + s.world.totalDetritusM() + s.totalMass();
@@ -18,8 +18,8 @@ function speciesCount(s) {
   const reps = [];
   for (const i of pick) {
     let found = false;
-    for (const r of reps) { const dm = (s.mass[i] - s.mass[r]) / 2, dp = (s.photoCap[i] - s.photoCap[r]) / 40, dmo = (s.mouthCap[i] - s.mouthCap[r]) / 10;
-      if (Math.sqrt(dm * dm + dp * dp + dmo * dmo) < SIM_P.mateCompat) { found = true; break; } }
+    for (const r of reps) {
+      if (phenoDistance(s.mass[i], s.photoCap[i], s.mouthCap[i], s.mass[r], s.photoCap[r], s.mouthCap[r]) < SIM_P.mateCompat) { found = true; break; } }
     if (!found) reps.push(i);
   }
   return reps.length;

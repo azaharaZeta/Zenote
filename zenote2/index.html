@@ -20,6 +20,14 @@
     <div id="hud" class="readout">—</div>
 
     <div class="ctrl">
+      <label>Semilla del mundo</label>
+      <div class="row">
+        <input id="seed" class="seed-in" type="number" min="0" step="1" placeholder="aleatoria" title="Semilla del mundo y la población. «Reiniciar» la aplica (mismo número → mismo mundo). Vacío = aleatoria.">
+        <button id="seedRandom" class="ghost" title="Semilla aleatoria nueva y reiniciar">🎲</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
       <label>Velocidad <output id="tpsVal"></output></label>
       <div class="row">
         <button id="play" title="Pausa / reanudar (Espacio)">❚❚</button>

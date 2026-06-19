@@ -4,6 +4,7 @@
 
 import { World, WORLD_P } from './world.js';
 import { Sim, SIM_P } from './sim.js';
+import { trophicCode } from './phenotype.js';   // M3: única definición del oficio trófico (compartida con tests/scorecard)
 
 const SIZE = 1500;
 let world, sim, running = true, tps = 60, maxSpeed = false;
@@ -11,15 +12,18 @@ let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su det
 // historial para la gráfica de población (muestreado por ticks; ventana acotada): total · autótrofos · heterótrofos
 const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet = []; let lastHist = -1e9;
 
-function init() {
-  world = new World(SIZE, (Math.random() * 1e9) | 0, { ...WORLD_P, lightBase: 2.5 });
+function init(seed) {
+  // B5: semilla opcional (reproducibilidad). null/no-finito → aleatoria. La MISMA semilla alimenta mundo y población
+  // → el motor es determinista (mismo seed → mismo mundo). Se devuelve abajo para que la UI la muestre.
+  const sd = (seed == null || !Number.isFinite(+seed)) ? (Math.random() * 1e9) | 0 : (+seed | 0);
+  world = new World(SIZE, sd, { ...WORLD_P, lightBase: 2.5 });
   world.nutrient.fill(1.5);
-  sim = new Sim(world, { seed: (Math.random() * 1e9) | 0, cap: 12000 });
+  sim = new Sim(world, { seed: sd, cap: 12000 });
   sim.seed(800);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
   histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historial limpio al (re)iniciar
-  // campos ESTÁTICOS del mundo (cambian solo al reset) → se envían aparte
-  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: SIZE, lightBase: world.P.lightBase, light0: world.light0.slice() });
+  // campos ESTÁTICOS del mundo (cambian solo al reset) → se envían aparte. seed: la usada (para mostrarla en la UI).
+  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: SIZE, lightBase: world.P.lightBase, light0: world.light0.slice(), seed: sd });
 }
 
 // Foto por frame: solo vivos, cuerpos aplanados (offset + [lx,ly,r,tissue] por parte). Transferible (cero copia).
@@ -34,8 +38,8 @@ function snapshot() {
     const vx = s.vx[i], vy = s.vy[i], sp = Math.sqrt(vx * vx + vy * vy); ah[a] = sp > 1e-3 ? Math.atan2(vy, vx) : 0;
     aspd[a] = sp / 3 > 1 ? 1 : sp / 3;   // velocidad normalizada → amplitud de ondulación del render
     // oficio trófico per-agente (para colorear por rol): 0 autótrofo · 1 heterótrofo · 2 mixótrofo
-    const photo = s.photoCap[i], het = s.mouthCap[i] * 3;
-    arole[a] = photo > het * 1.5 ? 0 : het > photo * 1.5 ? 1 : 2;
+    const photo = s.photoCap[i];
+    arole[a] = trophicCode(photo, s.thrust[i], s.mouthCap[i]);
     if (arole[a] === 0) nAuto++; else nHet++;
     partOff[a] = po; const body = s.body[i];
     let rad = 0;
@@ -64,7 +68,7 @@ function loop() {
 
 onmessage = (e) => {
   const m = e.data;
-  if (m.type === 'reset') init();
+  if (m.type === 'reset') init(m.seed);   // B5: reset con semilla opcional (m.seed null → aleatoria)
   else if (m.type === 'running') running = m.value;
   else if (m.type === 'tps') tps = m.value;
   else if (m.type === 'maxSpeed') maxSpeed = m.value;

@@ -5,7 +5,7 @@ import { TISSUE } from './engine/genome.js';
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); } else if (m.type === 'frame') frame = m; };
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); if (m.seed != null) { const el = document.getElementById('seed'); if (el) el.value = m.seed; } } else if (m.type === 'frame') frame = m; };
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -202,7 +202,11 @@ $('play').addEventListener('click', () => { running = !running; worker.postMessa
 $('tps').addEventListener('input', (e) => { const v = +e.target.value; worker.postMessage({ type: 'tps', value: v }); $('tpsVal').textContent = v + ' t/s'; });
 $('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal').textContent = maxFps + ' fps'; });   // límite de FPS de render
 $('max').addEventListener('click', () => { const on = !$('max').classList.contains('on'); $('max').classList.toggle('on', on); worker.postMessage({ type: 'maxSpeed', value: on }); });
-$('reset').addEventListener('click', () => { worker.postMessage({ type: 'reset' }); applyLab(); });   // el mundo nuevo nace con lightMul=1 → re-aplica el lab
+// B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
+// nace con lightMul=1 → re-aplica el lab.
+function resetWorld() { const sv = $('seed').value.trim(); worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0) }); applyLab(); }
+$('reset').addEventListener('click', resetWorld);
+$('seedRandom').addEventListener('click', () => { $('seed').value = ''; resetWorld(); });   // 🎲: semilla aleatoria nueva
 $('hide').addEventListener('click', () => document.body.classList.add('hidden-panel'));
 $('show').addEventListener('click', () => document.body.classList.remove('hidden-panel'));
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });

@@ -10,7 +10,7 @@
 // flojo; lo arregla M6). El foco de M5.3 es: organismo real + invariantes + morfología evoluciona.
 
 import { develop, mutate, makeFounder, recombine, BRAIN, BRAIN_W } from './genome.js';
-import { computePhenotype } from './phenotype.js';
+import { computePhenotype, phenoDistance } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
 
@@ -53,24 +53,31 @@ export class Sim {
     // fenotipo cacheado (de develop+computePhenotype al nacer)
     this.mass = new Float32Array(cap); this.photoCap = new Float32Array(cap); this.vmax = new Float32Array(cap);
     this.drag = new Float32Array(cap); this.mouthCap = new Float32Array(cap); this.maxMouthR = new Float32Array(cap);
+    this.thrust = new Float32Array(cap);   // empuje cacheado (solo para el oficio trófico del render; no entra en la sim)
     this.free = new Int32Array(cap); for (let i = 0; i < cap; i++) this.free[i] = cap - 1 - i; this.freeTop = cap;
     this.active = new Int32Array(cap); this.nA = 0;
-    this.hash = new SpatialHash(world.size, 60); this.hash.setCapacity(cap);
+    // M4: la celda del hash = mayor alcance que el barrido 3×3 debe cubrir. Derivada (no hardcodeada): el piso 60 es
+    // el alcance de sensado de presa/amenaza; mateRadius (búsqueda de pareja) la eleva si lo supera → así el barrido
+    // nunca falla en silencio. Hoy mateRadius=50 < 60 → celda 60 (igual que antes).
+    this.hash = new SpatialHash(world.size, Math.max(60, SIM_P.mateRadius)); this.hash.setCapacity(cap);
     this.kills = 0; this.sexBirths = 0; this.asexBirths = 0;   // instrumentación: depredación y vía reproductiva
     // M6.3 — cerebro: COPIA DE TRABAJO de pesos por agente (aprendida en vida; NO heredable) + estado oculto recurrente.
     this.wbrain = new Float32Array(cap * BRAIN_W); this.hidden = new Float32Array(cap * BRAIN.H);
     this._in = new Float32Array(BRAIN.I); this._hid = new Float32Array(BRAIN.H); this._out = new Float32Array(BRAIN.O);
   }
 
-  _expr(i) { const parts = develop(this.genome[i]); this.body[i] = parts; const ph = computePhenotype(parts);
+  // cachea el cuerpo desarrollado + su fenotipo en la SoA del slot i (lo leen el render y las transacciones)
+  _setBody(i, parts, ph) { this.body[i] = parts;
     this.mass[i] = ph.mass; this.photoCap[i] = ph.photoCap; this.vmax[i] = ph.vmax; this.drag[i] = ph.drag;
-    this.mouthCap[i] = ph.mouthCap; this.maxMouthR[i] = ph.maxMouthR; }
+    this.mouthCap[i] = ph.mouthCap; this.maxMouthR[i] = ph.maxMouthR; this.thrust[i] = ph.thrust; }
+  _expr(i) { const parts = develop(this.genome[i]); this._setBody(i, parts, computePhenotype(parts)); }
 
-  spawn(genome, x, y, E) {
+  spawn(genome, x, y, E, parts = null, ph = null) {
     if (this.freeTop === 0) return -1; const i = this.free[--this.freeTop];
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
-    this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0; this._expr(i);
+    this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0;
+    if (parts) this._setBody(i, parts, ph); else this._expr(i);   // M2: reusa el cuerpo ya desarrollado en el gate (evita doble develop)
     // cerebro de trabajo = cerebro de NACIMIENTO (genoma); memoria a cero (la plasticidad parte de aquí; Baldwin)
     const b = genome.brain, wb = i * BRAIN_W; for (let k = 0; k < BRAIN_W; k++) this.wbrain[wb + k] = b ? b[k] : 0;
     const hb = i * BRAIN.H; for (let k = 0; k < BRAIN.H; k++) this.hidden[hb + k] = 0;
@@ -98,10 +105,8 @@ export class Sim {
       while (j !== -1) { if (j !== i && this.alive[j]) {
         let dx = this.x[j] - this.x[i], dy = this.y[j] - this.y[i]; if (dx > size * 0.5) dx -= size; else if (dx < -size * 0.5) dx += size; if (dy > size * 0.5) dy -= size; else if (dy < -size * 0.5) dy += size;
         const d2 = dx * dx + dy * dy;
-        if (d2 < bestD) { // compatibilidad fenotípica (masa/luz/boca normalizadas)
-          const dm = (this.mass[i] - this.mass[j]) / 2, dp = (this.photoCap[i] - this.photoCap[j]) / 40, dmo = (this.mouthCap[i] - this.mouthCap[j]) / 10;
-          if (Math.sqrt(dm * dm + dp * dp + dmo * dmo) < P.mateCompat) { bestD = d2; best = j; }
-        }
+        if (d2 < bestD &&   // compatibilidad fenotípica (masa/luz/boca normalizadas) < umbral
+            phenoDistance(this.mass[i], this.photoCap[i], this.mouthCap[i], this.mass[j], this.photoCap[j], this.mouthCap[j]) < P.mateCompat) { bestD = d2; best = j; }
       } j = this.hash.next[j]; }
     }
     return best;
@@ -115,9 +120,9 @@ export class Sim {
     for (let a = 0; a < na; a++) { const i = this.active[a]; this.hash.insert(i, this.x[i], this.y[i]); W.occ[W.cellAt(this.x[i], this.y[i])] += 1; }
 
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
-    const born = []; const maxSer = this._serial;
+    const born = [];   // nacimientos diferidos (6 entradas/cría: genoma, x, y, E, cuerpo, fenotipo) → spawn al final del tick
     for (let a = 0; a < na; a++) {
-      const i = this.active[a]; if (!this.alive[i] || this.serial[i] > maxSer) continue;
+      const i = this.active[a]; if (!this.alive[i]) continue;   // pudo morir antes en ESTE tick (depredación)
       const cell = W.cellAt(x[i], y[i]);
       const E0 = E[i];   // M6.3: reservas al inicio del tick → recompensa de plasticidad = ΔE
 
@@ -127,7 +132,10 @@ export class Sim {
 
       // ---- SENSADO: ∇luz + presa/amenaza más cercanas (un barrido del hash) ----
       const cols = W.cols, rows = W.rows, cx = cell % cols, cy = (cell / cols) | 0;
-      const xl = cx > 0 ? cell - 1 : cell, xr = cx < cols - 1 ? cell + 1 : cell, yt = cy > 0 ? cell - cols : cell, yb = cy < rows - 1 ? cell + cols : cell;
+      // B2: vecinos TOROIDALES (el mundo envuelve) → ∇luz coherente también en las celdas de borde (antes clampaba a
+      // `cell` allí → banda de artefacto). Índices envueltos: izq/der en x, arriba/abajo en y.
+      const xl = cx > 0 ? cell - 1 : cell + (cols - 1), xr = cx < cols - 1 ? cell + 1 : cell - (cols - 1);
+      const yt = cy > 0 ? cell - cols : cell + (rows - 1) * cols, yb = cy < rows - 1 ? cell + cols : cell - (rows - 1) * cols;
       const lgx = (W.light0[xr] - W.light0[xl]) * 8, lgy = (W.light0[yb] - W.light0[yt]) * 8;
       let preyJ = -1, preyD = 1e9, preyDX = 0, preyDY = 0, thD = 1e9, thDX = 0, thDY = 0;
       const myMass = this.mass[i], myMouth = this.mouthCap[i], myReach = this.maxMouthR[i] * P.preyMassMax;
@@ -148,7 +156,8 @@ export class Sim {
       const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._in, hid = this._hid, out = this._out, wb = i * BRAIN_W, hb = i * H, Wt = this.wbrain, PH = this.hidden;
       const wHh = I * H, bH = I * H + H * H, wHo = bH + H, bO = wHo + H * O;
       inp[0] = lgx < -1 ? -1 : lgx > 1 ? 1 : lgx; inp[1] = lgy < -1 ? -1 : lgy > 1 ? 1 : lgy; inp[2] = preyDX; inp[3] = preyDY; inp[4] = thDX; inp[5] = thDY;
-      inp[6] = (E[i] / P.reproE) * 2 - 1; const spd0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]); inp[7] = this.vmax[i] > 1e-4 ? (spd0 / this.vmax[i]) * 2 - 1 : -1;
+      const h6 = (E[i] / P.reproE) * 2 - 1; inp[6] = h6 > 1 ? 1 : h6 < -1 ? -1 : h6;   // B3: hambre acotada a [-1,1] (consistencia con el resto de entradas)
+      const spd0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]); inp[7] = this.vmax[i] > 1e-4 ? (spd0 / this.vmax[i]) * 2 - 1 : -1;
       for (let h = 0; h < H; h++) { let s = Wt[wb + bH + h]; for (let k = 0; k < I; k++) s += inp[k] * Wt[wb + k * H + h]; for (let p = 0; p < H; p++) s += PH[hb + p] * Wt[wb + wHh + p * H + h]; hid[h] = Math.tanh(s); }
       for (let o = 0; o < O; o++) { let s = Wt[wb + bO + o]; for (let h = 0; h < H; h++) s += hid[h] * Wt[wb + wHo + h * O + o]; out[o] = Math.tanh(s); }
       if (this.randomBehavior) { out[0] = rng.next() * 2 - 1; out[1] = rng.next() * 2 - 1; out[2] = rng.next() * 2 - 1; out[3] = rng.next() * 2 - 1; }   // control: ignora el cerebro
@@ -196,19 +205,24 @@ export class Sim {
       else if (E[i] >= P.reproE) {
         const mate = this._findMate(i);   // M7: pareja compatible cercana → SEXUAL (recombinación homóloga); si no → asexual
         const childG = mate >= 0 ? mutate(recombine(this.genome[i], this.genome[mate], rng), rng) : mutate(this.genome[i], rng);
-        const childPh = computePhenotype(develop(childG));
+        const childBody = develop(childG), childPh = computePhenotype(childBody);   // M2: desarrolla UNA vez; spawn lo reusa
         const eCost = P.investE + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
-        if (E[i] >= eCost && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
+        // A1 — RESERVAR el slot ANTES de cobrar. El nacimiento se difiere a `born` y se materializa con spawn() al
+        // final del tick; si el pool estuviera lleno spawn devolvería -1 y la materia/energía YA cobradas aquí se
+        // perderían (fuga de conservación). `freeTop - cunas ya comprometidas este tick` es el hueco disponible;
+        // freeTop sólo CRECE con las muertes posteriores del bucle → exigirlo aquí es conservador y garantiza que
+        // todo cobro nazca. (`born.length / 6` = nacimientos ya en cola, 6 entradas c/u.)
+        if (E[i] >= eCost && this.freeTop - (born.length / 6 | 0) > 0 && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
           this._takeNutrientAround(cell, P.birthR, childPh.mass);   // MATERIA: nutriente → cuerpo de la cría
           E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
           if (mate >= 0) this.sexBirths++; else this.asexBirths++;
-          born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE);
+          born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE, childBody, childPh);
         }
       }
     }
-    for (let k = 0; k < born.length; k += 4) { let bx = born[k + 1], by = born[k + 2];
+    for (let k = 0; k < born.length; k += 6) { let bx = born[k + 1], by = born[k + 2];
       if (bx < 0) bx += size; else if (bx >= size) bx -= size; if (by < 0) by += size; else if (by >= size) by -= size;
-      this.spawn(born[k], bx, by, born[k + 3]); }
+      this.spawn(born[k], bx, by, born[k + 3], born[k + 4], born[k + 5]); }
 
     W.decomposeStep(); W.diffuseStep(); this.tick++;
   }

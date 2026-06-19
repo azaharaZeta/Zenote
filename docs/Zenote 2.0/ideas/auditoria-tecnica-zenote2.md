@@ -15,6 +15,52 @@ reducción real de parámetros (~45 vs 165). **No hay bugs que rompan la operaci
 **proceso de validación**, no de diseño: la invariante que es el alma del proyecto (conservación materia+energía) tiene
 una **fuga latente sin test** y un **test que debería cubrirla está roto sin que nadie lo note por falta de CI**.
 
+## Estado (2026-06-19): A1 · M1 · M5 RESUELTOS ✅
+Procesados en la rama `biorefactor` (el primer bloque de "Primeros pasos"):
+- **A1 (fuga de conservación al saturar) — RESUELTO.** `sim.js` reserva el slot **antes** de cobrar: la reproducción
+  sólo se compromete si `freeTop − (cunas ya en cola este tick) > 0`. Como `freeTop` sólo crece con las muertes
+  posteriores del bucle, el guard garantiza que todo cobro nazca → materia+energía conservadas aun con el pool lleno.
+  En régimen normal (pop ≪ cap) el guard nunca dispara → motor **byte-idéntico** (m6/m7 verdes sin cambios).
+- **M1 (test M5.3 obsoleto) — RESUELTO.** `totalStored` en `test/m5-invariants.mjs` ahora incluye `gut + mass·eD`.
+  Balance de energía/tick: residuo `1.68e+1 → 2.70e-4` (de FALLO a OK).
+- **M5 (sin runner/CI) — RESUELTO.** `zenote2/test/run-all.mjs` ejecuta los 7 tests de correctitud como subprocesos y
+  gatea por exit-code y marcadores `FALLO`/`✗`; `npm run test:zenote2`. (El `test` raíz sigue siendo el de la app v1.)
+- **NUEVO test de saturación** `test/m5-saturation.mjs`: fuerza el pool lleno (cap 600, luz/nutriente altos) y verifica
+  conservación. Regresión genuina: pre-fix materia −10.1% / residuo 28 (FALLO); post-fix conserva (exit 0).
+
+Segunda tanda — limpiezas oportunistas (byte-idénticas salvo donde se indica):
+- **M2 (doble develop por nacimiento) — RESUELTO.** `sim.js` desarrolla el cuerpo UNA vez en el gate (`develop`+
+  `computePhenotype`) y lo pasa a `spawn(…, parts, ph)` vía `_setBody`; `born` lleva ahora 6 entradas/cría. Byte-idéntico
+  (pop final M5.3 = 1225, igual que antes).
+- **M3 (`trophicRole` con dos definiciones) — RESUELTO.** Única def en `phenotype.js`: `trophicCode(photoCap, thrust,
+  mouthCap)` (0/1/2) + `trophicRole(ph)` string sobre ella. El worker la importa y cachea `thrust` en la SoA del Sim →
+  inspector/render y tests/scorecard clasifican IGUAL. (Cambia el coloreado por rol del worker — el FIX; verificado en vivo.)
+- **B1 (fórmula de distancia fenotípica duplicada) — RESUELTO.** `phenoDistance(...)` exportada de `phenotype.js`; la
+  usan `sim._findMate` y `test/m7-speciation`.
+- **B6 (guard muerto `serial[i] > maxSer`) — RESUELTO.** Retirado (queda `!alive`); `maxSer` eliminado.
+- **M4 (parcial) — `config.js` huérfano BORRADO** + comentada la cota `hash.cell (60) ≥ max(mateRadius, alcance sensorial)`.
+  Pendiente lo opcional de M4 (derivar la celda del alcance en código).
+
+Tercera tanda — flecos de correctitud (CAMBIAN la dinámica) + regresión de determinismo:
+- **B2 (gradiente de luz no toroidal) — RESUELTO.** El ∇luz del sensado usa vecinos TOROIDALES (antes clampaba en
+  borde → banda de artefacto). `sim.js`.
+- **B3 (entrada de hambre sin acotar) — RESUELTO.** `inp[6]` acotada a [-1,1] (consistencia con el resto de entradas).
+- **NUEVO checksum dorado** `test/m8-determinism.mjs`: corre seed fijo 2× (determinismo) y ancla el estado a un valor
+  DORADO (`0xa54c81ce`, motor post-A1/M1/M2/M3/B1/B2/B3/B6) → detecta deriva NO intencionada. En el runner (8º test).
+  Cierra el hueco "sin test de regresión de determinismo" de la sección Tests.
+
+Cuarta tanda — cierre del backlog:
+- **M4-opcional (derivar `hash.cell`) — RESUELTO.** `sim.js`: celda = `Math.max(60, SIM_P.mateRadius)` (piso = alcance de
+  sensado; mateRadius la eleva si lo supera → fin del fallo silencioso). Hoy 60 → byte-idéntico (dorado intacto).
+- **B5 (seed reproducible en UI) — RESUELTO.** El worker acepta semilla opcional en `reset` (vacío → aleatoria) y la
+  MISMA semilla alimenta mundo+población; devuelve la usada. Panel: campo «Semilla del mundo» + botón 🎲. `worker.js`,
+  `main.js`, `index.html`, `styles.css`. Verificado: reset con seed fijo → mundo reproducible (vía mensaje directo al
+  worker + dorado headless); el server sirve el `main.js` correcto. (La ruta de click en vivo en el PREVIEW quedó tapada
+  por la caché del navegador del preview — `SimpleHTTP` sin `Cache-Control` —, no por el código.)
+
+Pendiente único: **B7** (estilo ultradenso) — descartado a propósito (va contra el estilo deliberado del proyecto).
+**Backlog técnico cerrado salvo B7.** La tabla siguiente se conserva íntegra como referencia histórica.
+
 ## Hallazgos priorizados
 
 | # | Sev. | Hallazgo | Ubicación | Recomendación |
@@ -60,6 +106,8 @@ M5.3 obsoleto (M1); sin runner/CI (M5); worker/render/`snapshot` sin tests headl
 tests de casos límite; sin test de regresión de determinismo (checksum dorado).
 
 ## Primeros pasos sugeridos (cuando se procese)
-1. **A1 + M1** juntos (máximo impacto / mínimo riesgo): re-acreditar en `spawn` fallido + arreglar el contador de M5.3 + test de saturación que cubra ambos.
-2. **M5**: runner agregado de `zenote2/test/*` con gate, para que M1 no se repita.
-3. Limpiezas oportunistas: M2 (perf), M3/B1 (duplicación), M4 (`config.js` muerto).
+1. ~~**A1 + M1** juntos~~ ✅ HECHO 2026-06-19 (slot reservado antes de cobrar + contador M5.3 con gut + test de saturación).
+2. ~~**M5**: runner agregado con gate~~ ✅ HECHO 2026-06-19 (`run-all.mjs` + `npm run test:zenote2`).
+3. ~~Limpiezas oportunistas: M2, M3/B1, M4 (`config.js` muerto), B6~~ ✅ HECHO 2026-06-19 (byte-idénticas; gate 7/7 verde).
+4. ~~Flecos: B2 (gradiente toroidal), B3 (clamp `inp[6]`) + checksum dorado~~ ✅ HECHO 2026-06-19 (gate 8/8 verde; dorado `0xa54c81ce`).
+5. ~~M4-opcional (`hash.cell`), B5 (seed en UI)~~ ✅ HECHO 2026-06-19 (gate 8/8 verde; dorado intacto). **Backlog técnico cerrado salvo B7 (estilo, descartado).** El trabajo pendiente de Zenote 2.0 es ya la pista de honestidad científica (D14/D16, ver auditoría biológica).
