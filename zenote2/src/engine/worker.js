@@ -57,11 +57,23 @@ function snapshot() {
     [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
 }
 
+// Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción
+// arrastrada) → el t/s real sigue al slider con fidelidad. Antes se hacía `round(tps/30)` pasos/loop, que (a) cuantizaba
+// a múltiplos de 30 → se pasaba (50→60) y (b) con `max(1,…)` nunca bajaba de ~30 → tps=0 NO paraba. Ahora tps=0 = parado.
+let acc = 0, lastLoopT = performance.now();
 function loop() {
-  if (running) {
-    if (maxSpeed) { const t0 = performance.now(); while (performance.now() - t0 < 24) sim.step(); }   // máx: tantos ticks como quepan
-    else { let n = Math.max(1, Math.round(tps / 30)); const t0 = performance.now(); while (n-- > 0 && performance.now() - t0 < 28) sim.step(); }   // tps objetivo (~30 fotos/s)
+  const now = performance.now();
+  if (running && maxSpeed) {
+    const t0 = now; while (performance.now() - t0 < 24) sim.step();   // MÁX: tantos ticks como quepan en el presupuesto
+    acc = 0;
+  } else if (running && tps > 0) {
+    acc += tps * (now - lastLoopT) / 1000;                            // ticks adeudados desde el último loop
+    const budgetEnd = now + 28;                                       // tope de cómputo por frame (deja ~5 ms para snapshot)
+    while (acc >= 1) { if (performance.now() >= budgetEnd) { acc = 0; break; } sim.step(); acc -= 1; }   // si no se alcanza el ritmo → se descartan (sin spiral de deuda)
+  } else {
+    acc = 0;                                                          // PAUSADO o tps=0: el mundo NO avanza
   }
+  lastLoopT = now;
   snapshot();
   setTimeout(loop, 33);
 }
