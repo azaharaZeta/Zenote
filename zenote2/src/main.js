@@ -28,7 +28,7 @@ function wrap(v) { const S = WORLD.size; return ((v % S) + S) % S; }
 const TCOL = [ '#5a6b7a', '#3fb98f', '#e0664d', '#e0a84a' ];   // STRUCTURE, PHOTO, MUSCLE, MOUTH (índice = tissue)
 const RCOL = [ '#3fb98f', '#e0664d', '#e0a84a' ];              // rol: 0 autótrofo · 1 heterótrofo · 2 mixótrofo
 const ROLE_TXT = [ 'autótrofo', 'heterótrofo', 'mixótrofo' ];
-let colorMode = 'tissue';
+let colorMode = 'natural';
 
 function draw() {
   const t = performance.now() / 1000;
@@ -89,23 +89,49 @@ function drawLight(oX, oY, sc) {
 }
 
 function drawOrgs(oX, oY, sc, t, halo) {
-  const { n, ax, ay, ah, aspd, ahue, arole, partOff, partData } = frame;
-  const mul = halo ? 2.4 : 1;
+  const { n, ax, ay, ah, aspd, ahue, aE, arole, partOff, partData } = frame;
+  const mul = halo ? 2.4 : 1, baseA = halo ? 0.10 : 1;
   for (let a = 0; a < n; a++) {
     const wx = ax[a], wy = ay[a], bx = oX + wx * sc, by = oY + wy * sc;
     if (bx < -40 || bx > cw + 40 || by < -40 || by > ch + 40) continue;   // culling en pantalla
     const h = ah[a], chh = Math.cos(h), shh = Math.sin(h), spd = aspd[a], p0 = partOff[a], p1 = partOff[a + 1];
-    // color por agente (rol o linaje); en modo tejido es null → se colorea por parte
-    const agentCol = colorMode === 'role' ? (RCOL[arole[a]] || '#3fb98f') : colorMode === 'lineage' ? `hsl(${(ahue[a] * 360) | 0},55%,58%)` : null;
+    // A2 — VITALIDAD: los hambrientos se atenúan (la muerte se ve venir). energía 0..1 → alpha 0.35..1.
+    ctx.globalAlpha = baseA * (aE ? 0.35 + 0.65 * aE[a] : 1);
+    // A2 — COLOR EN CAPAS. NATURAL (defecto, lo más cercano a "cómo se ven"): NÚCLEO por tejido (anatomía) + HALO por
+    // LINAJE (color heredado real = aura de familia) + brillo por energía + forma por silueta. TEJIDO/OFICIO/LINAJE =
+    // modos analíticos PUROS (una sola señal). (hsl solo se construye cuando se usa → sin alocar de más.)
+    // MODOS: 'natural' = ASPECTO REAL (todo el cuerpo = pigmento heredado/linaje, sin colorear por función) con auto-glow
+    // del mismo color; 'tissueaura' = núcleo por tejido (anatomía) + aura de linaje; 'tissue'/'role'/'lineage' = analíticos.
+    const natural = colorMode === 'natural', tissueAura = colorMode === 'tissueaura';
+    const hcol = (s, l) => `hsl(${(ahue[a] * 360) | 0},${s}%,${l}%)`;
+    const agentCol = colorMode === 'role' ? (RCOL[arole[a]] || '#3fb98f')
+      : colorMode === 'lineage' ? hcol(58, 58)
+      : natural ? hcol(62, halo ? 60 : 54)            // cuerpo entero = pigmento heredado (núcleo y aura mismo color)
+      : tissueAura ? (halo ? hcol(60, 60) : null)     // núcleo tejido + aura linaje
+      : null;   // 'tissue' puro: núcleo y halo por tejido
+    // A3 — TEXTURA procedural (Natural y Tejido+aura; solo núcleo): motas bioluminiscentes cuyo nº y color de acento
+    // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
+    let accent = null, patN = 0, pSeed = 0;
+    if ((natural || tissueAura) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
     for (let k = p1 - 1; k >= p0; k--) {
-      const lx = partData[k * 5], ly = partData[k * 5 + 1], r = partData[k * 5 + 2], tissue = partData[k * 5 + 3], ph = partData[k * 5 + 4];
+      const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
       const uy = ly + (0.35 + spd * 2.2) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
-      ctx.beginPath(); ctx.arc(px, py, pr, 0, 6.283);
       ctx.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
+      // A1 — SILUETA: elipse orientada (eje = rumbo + dirección de emisión del nodo), elongada por `aspect` → aletas/
+      // tentáculos/cuerpos fusiformes en vez de bolitas. LOD: si es diminuta, punto barato.
+      const rL = pr * (1 + aspect * 1.4);
+      ctx.beginPath();
+      if (rL > 1.6) ctx.ellipse(px, py, rL, pr, h + dir, 0, 6.283); else ctx.arc(px, py, pr, 0, 6.283);
       ctx.fill();
+      if (accent && pr > 3.5) {   // motas (LOD: solo nodos grandes en pantalla)
+        ctx.fillStyle = accent;
+        for (let s = 0; s < patN; s++) { const ang = h + dir + pSeed + ph + s * 2.39, dd = pr * 0.38;
+          ctx.beginPath(); ctx.arc(px + Math.cos(ang) * dd, py + Math.sin(ang) * dd, Math.max(0.8, pr * 0.2), 0, 6.283); ctx.fill(); }
+      }
     }
   }
+  ctx.globalAlpha = baseA;
 }
 
 // --- HUD (fps render · t/s sim · pop · tick) + gráfica de población ---
@@ -247,11 +273,13 @@ window.addEventListener('keydown', (e) => {
 function buildLegend() {
   const L = $('legend');
   const sets = {
+    natural: [['#7fb0d8', 'color = pigmento heredado (linaje)'], ['#e0a84a', 'motas = patrón de familia · brillo = energía']],
+    tissueaura: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = linaje · motas · brillo = energía']],
     tissue: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#5a6b7a', 'estructura']],
     role: [['#3fb98f', 'autótrofo'], ['#e0664d', 'heterótrofo'], ['#e0a84a', 'mixótrofo']],
     lineage: [['#e0664d', 'tono = linaje (color heredado, deriva lenta)']],
   };
-  L.innerHTML = (sets[colorMode] || sets.tissue).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
+  L.innerHTML = (sets[colorMode] || sets.natural).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 buildLegend();
 $('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps';

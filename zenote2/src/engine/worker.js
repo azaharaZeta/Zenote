@@ -35,10 +35,13 @@ function snapshot() {
   const s = sim, idx = []; let totalParts = 0;
   for (let i = 0; i < s.cap; i++) if (s.alive[i] && s.body[i]) { idx.push(i); totalParts += s.body[i].length; }
   const n = idx.length;
-  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 5);
+  // partData = [lx, ly, r, tissue, phase, aspect, dir] por nodo (stride 7): aspect+dir → siluetas orientadas en el render.
+  // aE = energía normalizada [0,1] por agente (E/reproE) → el render atenúa a los hambrientos ("la muerte se ve venir").
+  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
   let po = 0, nAuto = 0, nHet = 0, detail = null;
   for (let a = 0; a < n; a++) {
     const i = idx[a]; ax[a] = s.x[i]; ay[a] = s.y[i]; ahue[a] = s.genome[i].hue; aid[a] = s.serial[i];
+    aE[a] = Math.min(1, Math.max(0, s.E[i] / SIM_P.reproE));   // vitalidad para el render (atenúa hambrientos)
     const vx = s.vx[i], vy = s.vy[i], sp = Math.sqrt(vx * vx + vy * vy); ah[a] = sp > 1e-3 ? Math.atan2(vy, vx) : 0;
     aspd[a] = sp / 3 > 1 ? 1 : sp / 3;   // velocidad normalizada → amplitud de ondulación del render
     // oficio trófico per-agente (para colorear por rol): 0 autótrofo · 1 heterótrofo · 2 mixótrofo
@@ -47,7 +50,7 @@ function snapshot() {
     if (arole[a] === 0) nAuto++; else nHet++;
     partOff[a] = po; const body = s.body[i];
     let rad = 0;
-    for (let k = 0; k < body.length; k++) { const p = body[k]; partData[po * 5] = p.x; partData[po * 5 + 1] = p.y; partData[po * 5 + 2] = p.r; partData[po * 5 + 3] = p.tissue; partData[po * 5 + 4] = p.phase; po++;
+    for (let k = 0; k < body.length; k++) { const p = body[k]; const o = po * 7; partData[o] = p.x; partData[o + 1] = p.y; partData[o + 2] = p.r; partData[o + 3] = p.tissue; partData[o + 4] = p.phase; partData[o + 5] = p.aspect; partData[o + 6] = p.dir; po++;
       const d = Math.hypot(p.x, p.y) + p.r; if (d > rad) rad = d; }
     // detalle EN VIVO del agente inspeccionado (si sigue vivo): stats fisiológicos + morfológicos para el inspector
     if (s.serial[i] === selectedId) detail = { id: selectedId, role: arole[a], E: s.E[i], reproE: SIM_P.reproE, gut: s.gut[i],
@@ -60,8 +63,8 @@ function snapshot() {
     lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
     if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
-  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
-    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
+  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
+    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción
