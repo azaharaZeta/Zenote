@@ -9,7 +9,7 @@
 // y energía-en-biomasa (presa magra) son de M6 → en M5.3 el heterótrofo vive de las RESERVAS de la presa (puede ser
 // flojo; lo arregla M6). El foco de M5.3 es: organismo real + invariantes + morfología evoluciona.
 
-import { develop, mutate, makeFounder, BRAIN, BRAIN_W } from './genome.js';
+import { develop, mutate, makeFounder, recombine, BRAIN, BRAIN_W } from './genome.js';
 import { computePhenotype } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
@@ -27,10 +27,17 @@ export const SIM_P = {
                                      // profundas; por defecto 0 = separación limpia materia/energía de M5. El limitante real de la
                                      // heterotrofía es la CONDUCTA (M6.3), no la energía.
   birthR: 1,                         // radio (celdas) del vecindario del que la cría reúne MATERIA al nacer
+  gutBase: 4, gutPerMass: 4, digestRate: 0.6,   // M6.2: TRIPA (energía orgánica en tránsito). Comer la llena (tope ∝ masa)
+                                     // → SACIEDAD: lleno no caza más (respuesta funcional tipo II EMERGENTE, sin handlingTime).
+                                     // Digiere a reservas a ritmo limitado. La tripa cuenta en la energía total (conserva).
   eatReach: 4,                       // alcance extra de captura (u)
   preyMassMax: 1.6,                  // factor: presa manejable si su masa ≤ maxMouthR·este (boca→tamaño de presa)
   ηene: 0.85,                        // eficiencia energética de la ingesta
   initE: 10,                         // reservas iniciales de los fundadores
+  mateRadius: 50,                    // M7: radio de búsqueda de pareja (u)
+  mateCompat: 0.5,                   // M7: umbral de compatibilidad reproductiva = distancia FENOTÍPICA (masa/luz/boca)
+                                     // normalizada. El AISLAMIENTO emerge de la divergencia morfológica (no es una métrica
+                                     // génica curada con loci excluidos a mano → ataca D14). Sin pareja compatible → asexual.
 };
 
 export class Sim {
@@ -39,7 +46,7 @@ export class Sim {
     this.randomBehavior = randomBehavior;   // control: salidas aleatorias (ignora el cerebro) → mide si la conducta neuronal es ADAPTATIVA
     this.x = new Float32Array(cap); this.y = new Float32Array(cap);
     this.vx = new Float32Array(cap); this.vy = new Float32Array(cap);
-    this.E = new Float32Array(cap); this.age = new Float32Array(cap); this.cd = new Float32Array(cap);
+    this.E = new Float32Array(cap); this.gut = new Float32Array(cap); this.age = new Float32Array(cap); this.cd = new Float32Array(cap);
     this.alive = new Uint8Array(cap); this.serial = new Int32Array(cap); this._serial = 0;
     this.genome = new Array(cap).fill(null);
     this.body = new Array(cap).fill(null);   // cuerpo desarrollado (partes) cacheado al nacer → lo lee el render (M5.5)
@@ -48,7 +55,8 @@ export class Sim {
     this.drag = new Float32Array(cap); this.mouthCap = new Float32Array(cap); this.maxMouthR = new Float32Array(cap);
     this.free = new Int32Array(cap); for (let i = 0; i < cap; i++) this.free[i] = cap - 1 - i; this.freeTop = cap;
     this.active = new Int32Array(cap); this.nA = 0;
-    this.hash = new SpatialHash(world.size, 60); this.hash.setCapacity(cap); this.kills = 0;   // depredación (instrumentación)
+    this.hash = new SpatialHash(world.size, 60); this.hash.setCapacity(cap);
+    this.kills = 0; this.sexBirths = 0; this.asexBirths = 0;   // instrumentación: depredación y vía reproductiva
     // M6.3 — cerebro: COPIA DE TRABAJO de pesos por agente (aprendida en vida; NO heredable) + estado oculto recurrente.
     this.wbrain = new Float32Array(cap * BRAIN_W); this.hidden = new Float32Array(cap * BRAIN.H);
     this._in = new Float32Array(BRAIN.I); this._hid = new Float32Array(BRAIN.H); this._out = new Float32Array(BRAIN.O);
@@ -61,7 +69,7 @@ export class Sim {
   spawn(genome, x, y, E) {
     if (this.freeTop === 0) return -1; const i = this.free[--this.freeTop];
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
-    this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.age[i] = 0;
+    this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
     this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0; this._expr(i);
     // cerebro de trabajo = cerebro de NACIMIENTO (genoma); memoria a cero (la plasticidad parte de aquí; Baldwin)
     const b = genome.brain, wb = i * BRAIN_W; for (let k = 0; k < BRAIN_W; k++) this.wbrain[wb + k] = b ? b[k] : 0;
@@ -77,6 +85,27 @@ export class Sim {
     for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -R; dx <= R; dx++) { const xx = ((cx + dx) % cols + cols) % cols; s += W.nutrient[yy * cols + xx]; } } return s; }
   _takeNutrientAround(cell, R, amount) { const W = this.world, total = this._nutrientAround(cell, R); if (total <= 0) return; const f = amount / total, cols = W.cols, rows = W.rows, cx = cell % cols, cy = (cell / cols) | 0;
     for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -R; dx <= R; dx++) { const idx = yy * cols + ((cx + dx) % cols + cols) % cols; W.nutrient[idx] -= W.nutrient[idx] * f; } } }
+
+  // M7 — pareja compatible más cercana (hash): vivo, dentro de mateRadius, distancia FENOTÍPICA < mateCompat. El
+  // aislamiento reproductivo EMERGE de la divergencia morfológica (sin métrica génica curada → D14). -1 si no hay.
+  _findMate(i) {
+    const P = SIM_P, size = this.world.size, mr2 = P.mateRadius * P.mateRadius;
+    const hc = this.hash.cell, hx = (this.x[i] / hc) | 0, hy = (this.y[i] / hc) | 0;
+    let best = -1, bestD = mr2;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const gx = ((hx + ox) % this.hash.cols + this.hash.cols) % this.hash.cols, gy = ((hy + oy) % this.hash.rows + this.hash.rows) % this.hash.rows;
+      let j = this.hash.head[gy * this.hash.cols + gx];
+      while (j !== -1) { if (j !== i && this.alive[j]) {
+        let dx = this.x[j] - this.x[i], dy = this.y[j] - this.y[i]; if (dx > size * 0.5) dx -= size; else if (dx < -size * 0.5) dx += size; if (dy > size * 0.5) dy -= size; else if (dy < -size * 0.5) dy += size;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD) { // compatibilidad fenotípica (masa/luz/boca normalizadas)
+          const dm = (this.mass[i] - this.mass[j]) / 2, dp = (this.photoCap[i] - this.photoCap[j]) / 40, dmo = (this.mouthCap[i] - this.mouthCap[j]) / 10;
+          if (Math.sqrt(dm * dm + dp * dp + dmo * dmo) < P.mateCompat) { bestD = d2; best = j; }
+        }
+      } j = this.hash.next[j]; }
+    }
+    return best;
+  }
 
   step() {
     const W = this.world, rng = this.rng, size = W.size, P = SIM_P;
@@ -132,15 +161,21 @@ export class Sim {
 
       // ---- INGESTA: el cerebro DECIDE atacar (out[3]); en contacto con la presa, la come (CONSERVA) ----
       const attack = (out[3] + 1) * 0.5;
-      if (preyJ >= 0 && myMouth > 0 && attack > 0.5 && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;
-        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]); const preyEnergy = E[preyJ] + this.mass[preyJ] * this.eD;
-          const ge = P.ηene * preyEnergy; E[i] += ge; W.detritusE[pc] += preyEnergy - ge; W.detritusM[pc] += this.mass[preyJ];
+      const Gmax = P.gutBase + P.gutPerMass * this.mass[i];   // capacidad de tripa ∝ masa
+      if (preyJ >= 0 && myMouth > 0 && attack > 0.5 && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
+        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]);
+          const preyEnergy = E[preyJ] + this.gut[preyJ] + this.mass[preyJ] * this.eD;   // reservas + tripa + cuerpo de la presa
+          const ge = P.ηene * preyEnergy, room = Gmax - this.gut[i], intoGut = ge < room ? ge : room;
+          this.gut[i] += intoGut; W.detritusE[pc] += preyEnergy - intoGut;              // lo asimilable → TRIPA; el resto → detrito (CONSERVA)
+          W.detritusM[pc] += this.mass[preyJ];
           this.alive[preyJ] = 0; this.free[this.freeTop++] = preyJ; this.genome[preyJ] = null; this.kills++; } }
+      // DIGESTIÓN: la tripa pasa a reservas a ritmo limitado (energía en tránsito → utilizable)
+      if (this.gut[i] > 0) { const d = this.gut[i] < P.digestRate ? this.gut[i] : P.digestRate; this.gut[i] -= d; E[i] += d; }
 
       // METABOLISMO: reservas → calor (basal + ∝masa + nado). Muerte si se agotan → cuerpo a detrito.
       const cost = P.baseCost + P.massCost * this.mass[i] + P.moveCost * v2 * this.drag[i];
       const spend = Math.min(E[i], cost); E[i] -= spend; W.heat += spend;
-      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; continue; }
+      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.gut[i] + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; continue; }
 
       // ---- PLASTICIDAD (Hebbiano modulado por RECOMPENSA fisiológica = ΔE del tick; NO es objetivo de conducta) ----
       // El cerebro aprende EN VIDA lo que recupera energía (venga de donde venga) → suaviza los valles conductuales
@@ -159,11 +194,14 @@ export class Sim {
       // nutriente local (gate endógeno: no nace sin materia), su ENERGÍA del progenitor. Conserva ambas.
       this.age[i]++; if (this.cd[i] > 0) this.cd[i]--;
       else if (E[i] >= P.reproE) {
-        const childG = mutate(this.genome[i], rng); const childPh = computePhenotype(develop(childG));
+        const mate = this._findMate(i);   // M7: pareja compatible cercana → SEXUAL (recombinación homóloga); si no → asexual
+        const childG = mate >= 0 ? mutate(recombine(this.genome[i], this.genome[mate], rng), rng) : mutate(this.genome[i], rng);
+        const childPh = computePhenotype(develop(childG));
         const eCost = P.investE + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
         if (E[i] >= eCost && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
           this._takeNutrientAround(cell, P.birthR, childPh.mass);   // MATERIA: nutriente → cuerpo de la cría
           E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
+          if (mate >= 0) this.sexBirths++; else this.asexBirths++;
           born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE);
         }
       }

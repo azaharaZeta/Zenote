@@ -10,7 +10,7 @@ import { computePhenotype, trophicRole } from '../src/engine/phenotype.js';
 
 const eD = SIM_P.eDensity;
 function totalMatter(s) { return s.world.totalNutrient() + s.world.totalDetritusM() + s.totalMass(); }
-function totalStored(s) { let e = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) e += s.E[i] + s.mass[i] * eD; return e + s.world.totalDetritusE(); }
+function totalStored(s) { let e = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) e += s.E[i] + s.gut[i] + s.mass[i] * eD; return e + s.world.totalDetritusE(); }
 function hetFrac(s) { const idx = []; for (let i = 0; i < s.cap; i++) if (s.alive[i]) idx.push(i); if (!idx.length) return 0;
   const pick = idx.length <= 300 ? idx : Array.from({ length: 300 }, () => idx[(Math.random() * idx.length) | 0]);
   let het = 0; for (const i of pick) { const r = trophicRole(computePhenotype(develop(s.genome[i]))); if (r !== 'autotrofo') het++; } return het / pick.length; }

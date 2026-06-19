@@ -67,3 +67,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 window.__sim = sim; window.__world = world;   // sonda de depuración
+window.__advance = (n) => { for (let k = 0; k < (n || 1); k++) sim.step(); draw(); };   // avance+dibujo síncrono (el rAF se throttlea en preview)

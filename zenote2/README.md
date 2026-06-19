@@ -90,15 +90,51 @@ Keepers: `src/engine/genome.js` (genoma de reglas + `develop` + mutación) · `s
   con energía embebida conserva (invariantes ✓ a eD=4) PERO es net-negativo aquí (penaliza cuerpos grandes y la presa
   no es magra → no compensa). Resultado nulo honesto: el limitante de la heterotrofía es la CONDUCTA (M6.3), no la energía.
   `test/m6-invariants.mjs`.
-- [~] **M6.3** controlador neuronal (RNN, pesos=genes) + plasticidad Hebbiana (recompensa fisiológica) — **MÁQUINA
-  IMPLEMENTADA y correcta** (reemplaza la conducta placeholder; invariantes ✓; mundo vivo pop ~1300; ~1300 t/s) PERO
-  **la competencia conductual NO emerge aún**: el cerebro neuronal caza ≈ o MENOS que un control de salidas aleatorias
-  (`test/m6_3-behavior.mjs`). Hallazgo honesto: partiendo de cerebros EN BLANCO, con plasticidad débil + selección
-  floja (heterotrofía = nicho ~7%), el bootstrapping de conducta competente NO arranca — **desafía el supuesto de 2.3**
-  ("la plasticidad reemplaza al seedBrain"). **Decisión (usuario): ACEPTAR y seguir** — competencia débil diferida; el
-  mundo vive (autótrofo-dominado); se revisitará el bootstrap (seedBrain / reward-shaping / ↑selección) más tarde.
-- [ ] **M6.2** tripa/saciedad · [ ] **M6.4** sensado coste/ruido · [ ] **M6.5** red trófica emergente.
+- [x] **M6.3** controlador neuronal (RNN, pesos=genes) + plasticidad Hebbiana + **seedBrain** (`test/m6_3-behavior.mjs`).
+  La máquina (cerebro = único motor de conducta, Baldwin) reemplaza la conducta placeholder; invariantes ✓.
+  **Hallazgo medido:** desde cerebros EN BLANCO la competencia NO arrancaba (caza ≈ aleatorio) → desafió el supuesto de
+  2.3 ("plasticidad reemplaza seedBrain"). **Fix (decisión del usuario): seedBrain** = arranque competente (ir a presa/luz,
+  huir, atacar en contacto), la conducta sigue evolucionando/aprendiendo desde ahí. **Resultado: conducta ADAPTATIVA
+  emerge — caza ~3× más que el control aleatorio.** Caveat honesto: re-introduce siembra de CONDUCTA (no de morfología:
+  el viejo sembraba ambas; el nuevo solo el cerebro — forma/nichos/especies siguen emergiendo sin sembrar).
+- [x] **M6.2** tripa/saciedad (`sim.js`): energía en tránsito; comer llena (tope ∝ masa) → SACIEDAD (respuesta
+  funcional, recorta caza ~50% mecánicamente); digiere a reservas. Conserva (invariantes ✓). Payoff pleno espera a la conducta.
+- [~] **M6.4** sensado coste/ruido — **DIFERIDO** (payoff nulo con conducta débil; lección de M6.1: no añadir complejidad sin beneficio medible).
+- [x] **M6.5** scorecard modelo nuevo vs baseline (`test/m6_5-scorecard.mjs`): ver veredicto abajo.
+
+## M6.5 — Scorecard (modelo nuevo vs baseline) · estado honesto
+
+| | Modelo NUEVO (Zenote 2) | Baseline (Zenote v1) |
+|---|---|---|
+| Parámetros | **45 constantes físicas (~0 diales de balance)** | 165 (136 sim + 29 render) |
+| Conservación | materia **+ energía** (termodinámica) | solo materia |
+| Evolución morfológica | emerge sin sembrar (photoCap σ23, partes 5±4) | sembrada |
+| Riqueza trófica | **56% autótrofo / 44% heterótrofo — red trófica EMERGENTE y estable** (a 30k, con seedBrain) | cadena ~3/8 seeds (cazador frágil) |
+| Especiación | **emergente** (~32, por divergencia morfológica) | métrica curada a mano (D14) |
+| Perf headless | ~1200 t/s | 441-823 t/s |
+
+**Veredicto (≈ M8):** el modelo nuevo **gana en parámetros (~3.5×), limpieza, conservación termodinámica, evolución
+morfológica y especiación emergente** — y, tras el seedBrain, **alcanza la paridad+ en riqueza trófica** (red
+autótrofo↔heterótrofo emergente y estable, conducta competente, vs la cadena frágil ~3/8 del viejo). Caveat: la
+conducta usa seedBrain (como el viejo), pero el nuevo **solo siembra el cerebro**; la morfología, los nichos y las
+especies siguen emergiendo sin sembrar.
+
+## M7 — Bucle evolutivo (recombinación homóloga + especiación emergente) ✅ **GO**
+
+`test/m7-speciation.mjs`. Recombinación por marcas de homología → **0 cuerpos inválidos** (preserva validez de 2.2);
+**75-80% de nacimientos sexuales**; **~32 especies emergentes** por divergencia morfológica (sin métrica curada →
+**ataca D14**); invariantes ✓. El genoma-de-reglas se recombina y especia sin romperse.
+
+## Estado: modelo nuevo ESTRUCTURALMENTE COMPLETO
+
+Cadena completa de punta a punta, toda desde primeros principios, conservando materia+energía: leyes del mundo (M4)
+→ organismo generativo + desarrollo + forma=función (M5) → fisiología/tripa (M6.2) + cerebro neuronal (M6.3) +
+recombinación/especiación (M7) → render (M5.5). **~45 params (vs 165), >1000 t/s.**
+
+Con el **seedBrain** (M6.3), la conducta es competente y **la red trófica emerge** (44% heterótrofos, estable a 30k):
+el último gap está cerrado. El modelo nuevo es **estructuralmente superior y ecológicamente a la par+**.
 
 ## Próximos hitos
-**M6.2** (tripa/saciedad) → M6.4 (sensado) → M6.5 (red trófica) → revisitar bootstrap de conducta (M6.3) →
-**M7** bucle → **M8** cruce vs baseline. M5.6 (worker) aplazable.
+El cruce **M8** está esencialmente alcanzado (ver scorecard). Pendiente menor/pulido: **M5.6** (Web Worker, aplazable) ·
+**R6** (pulido visual del render: glow/ondulación) · afinar el balance trófico (mundo/luz) si se quiere más biomasa ·
+revisitar plasticidad/sensado (M6.4) como mejoras. El bloque de reconstrucción (M0-M8) está, en lo esencial, **completo**.
