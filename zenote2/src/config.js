@@ -7,9 +7,9 @@
 // (La "Semilla" es un campo de texto aparte; vacío = aleatoria. No tiene default numérico aquí.)
 export const START = {
   worldSize: 1500,     // UI: Tamaño del mundo — lado del toro (u)
-  seedCount: 800,      // UI: Sembrado inicial — nº de fundadores
-  spawnSpread: 1,      // UI: Extensión del sembrado — 1 = todo el mundo (uniforme) · <1 = disco central de radio spread·mundo/2
-  diversity: 1,        // UI: Diversidad inicial — 1 = fundadores variados (tono/fase/cerebro) · 0 = todos idénticos (clones)
+  seedCount: 100,      // UI: Sembrado inicial — nº de fundadores
+  spawnSpread: 0.30,      // UI: Extensión del sembrado — 1 = todo el mundo (uniforme) · <1 = disco central de radio spread·mundo/2
+  diversity: 0,        // UI: Diversidad inicial — 1 = fundadores variados (tono/fase/cerebro) · 0 = todos idénticos (clones)
   cap: 12000,          // NO UI — tope del pool (nº máx. de agentes)
   lightBase: 2.5,      // NO UI — irradiancia OPERATIVA del mundo (la UI "Luz solar" ajusta el MULTIPLICADOR, no esto). Sustituye a WORLD_P.lightBase al crear el mundo.
   nutrientInit: 1.5,   // NO UI — nutriente inicial por celda

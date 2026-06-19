@@ -9,4 +9,7 @@ Documentar los análisis, estados e histórico de cada idea en curso en sus resp
 Cuando una idea haya sido implementada o descartada, actualizar su fichero de idea y mover el fichero de idea a la carpeta `archivo` de la misma ruta que este fichero
 
 ## Ideas de usuario (pendientes de procesar)
-- Fondo del abismo. Meter algo estético, o incluso pensar en algo funcional en el ecosistema
+- Quitar de la ui la semilla y el random. Hacer siempre random al iniciar, y al reiniciar.
+- sustituir el desplegable de tipo de reproducción por dos checkboxes sexual y asexual
+- quitar de la ui "bioluminiscencia" . solo de la ui. 
+- Fondo del abismo funcional (corrientes que arrastren, gradientes térmicos, zonas de peligro/refugio) 

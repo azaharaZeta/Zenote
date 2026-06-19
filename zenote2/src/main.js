@@ -6,7 +6,7 @@ import { RENDER_P, START, SIM_P, GENOME_P } from './config.js';   // fuente úni
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); if (m.seed != null) { const el = document.getElementById('seed'); if (el) el.value = m.seed; } } else if (m.type === 'frame') frame = m; };
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); if (m.seed != null) { const el = document.getElementById('seed'); if (el) el.value = m.seed; } } else if (m.type === 'frame') frame = m; };
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -17,6 +17,20 @@ let cw = 0, ch = 0, vignette = null; const dpr = Math.min(RENDER_P.dprCap, windo
 const glowCv = document.createElement('canvas'), glowCtx = glowCv.getContext('2d');
 const bloomCv = document.createElement('canvas'), bloomCtx = bloomCv.getContext('2d');
 let bloomStrength = RENDER_P.bloom; const BLOOM_DIV = RENDER_P.bloomDiv;
+// FONDO DEL ABISMO: el campo de luz (estático) se hornea a una mini-textura (1 px/celda) y se reescala SUAVIZADA →
+// nebulosa fosforescente teal/algas tenue (en vez de la rejilla de cuadrados). Se rehornea solo al (re)iniciar el mundo.
+const lightCv = document.createElement('canvas');
+function bakeLight() {
+  if (!WORLD) return;
+  const cols = WORLD.cols, rows = WORLD.rows, L0 = WORLD.light0, lb = WORLD.lightBase || 1;
+  lightCv.width = cols; lightCv.height = rows;
+  const lc = lightCv.getContext('2d'), img = lc.createImageData(cols, rows), d = img.data;
+  for (let i = 0; i < cols * rows; i++) {
+    const L = Math.max(0, Math.min(1.2, L0[i] / lb)), o = i * 4;   // intensidad de luz → fosforescencia teal sobre abismo
+    d[o] = 7 + L * 9; d[o + 1] = 11 + L * 34; d[o + 2] = 17 + L * 30; d[o + 3] = 255;
+  }
+  lc.putImageData(img, 0, 0);
+}
 function resize() {
   cw = canvas.clientWidth; ch = canvas.clientHeight; canvas.width = cw * dpr; canvas.height = ch * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   glowCv.width = canvas.width; glowCv.height = canvas.height; glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -103,16 +117,10 @@ function draw() {
 }
 
 function drawLight(oX, oY, sc) {
-  const L0 = WORLD.light0, cols = WORLD.cols, rows = WORLD.rows, cell = WORLD.cellW, lb = WORLD.lightBase;
-  let cx0 = Math.floor((-oX / sc) / cell), cx1 = Math.ceil((cw - oX) / sc / cell);
-  let cy0 = Math.floor((-oY / sc) / cell), cy1 = Math.ceil((ch - oY) / sc / cell);
-  cx0 = Math.max(0, cx0); cx1 = Math.min(cols - 1, cx1); cy0 = Math.max(0, cy0); cy1 = Math.min(rows - 1, cy1);
-  const cs = cell * sc;
-  for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-    const L = L0[cy * cols + cx] / lb, b = (8 + L * 14) | 0;
-    ctx.fillStyle = `rgb(${b - 2},${b + 4},${b + 10})`;
-    ctx.fillRect(oX + cx * cs, oY + cy * cs, cs + 1, cs + 1);
-  }
+  // un tile del mundo = la mini-textura de luz reescalada SUAVIZADA (bilinear) → nebulosa fosforescente sin rejilla.
+  const wpx = WORLD.size * sc;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(lightCv, oX, oY, wpx, wpx);
 }
 
 function drawOrgs(c, oX, oY, sc, t, halo) {
