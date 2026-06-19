@@ -6,7 +6,7 @@
 > [`CHANGELOG.md`](CHANGELOG.md). Aquí solo se sintetiza y se enlaza. Actualizar en cada hito.
 
 **Estado (2026-06):** simulador de evolución **genuinamente emergente** — conducta y morfología bajo selección, sin
-reglas de estrategia ni fitness explícito. El **modelo v2.0** (cuerpo generativo por nodos) está consolidado, con
+reglas de estrategia ni fitness explícito. El **modelo actualizado ** (cuerpo generativo por nodos) está consolidado, con
 **locomoción por FUERZA** (el cerebro decide el ESFUERZO; la velocidad emerge de empuje−arrastre con inercia) y
 morfología evolutiva (forma/función/movimiento de los nodos). Backlog de auditoría **CERRADO (14/14)**.
 
@@ -63,7 +63,7 @@ y frágil en mundos pequeños (Allee); `carcassValue` y `expr.size.min` son pala
 | `src/config.js` | **Parámetros (fuente única)** | cada parámetro: valor, comentario, marca *(UI)*; agrupado por bloque |
 | `docs/ANALISIS_PARAMETROS.md` | **Mapa de interacciones** | qué hace cada subsistema a nivel de ECUACIÓN, bucles de realimentación, modos de fallo, jerarquía de palancas (base del finetuning) |
 | `docs/VISUAL.md` | Estética y RENDER | look, render por nodos, calidad/LOD, UI, responsive |
-| `docs/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, congelada) | análisis física/diseño, catálogo de genes, backlog CERRADO 14/14, el porqué de v2.0 |
+| `docs/archivo/AUDIT_EVOLUCION.md` | Auditoría (histórica, congelada) | análisis física/diseño, catálogo de genes, backlog CERRADO 14/14|
 | `docs/ideas/indice-ideas.md` | **Índice de ideas** | enumeración + estado; fichas en `ideas/<slug>.md`, archivadas en `ideas/archivo/` |
 | `docs/CHANGELOG.md` | Hitos cronológicos | qué cambió y cuándo (reciente arriba) |
 | `docs/ESTADO.md` | **Foto del presente + índice** (este) | estado 1-línea, resumen del modelo, qué emerge, huecos, mapa de docs |
