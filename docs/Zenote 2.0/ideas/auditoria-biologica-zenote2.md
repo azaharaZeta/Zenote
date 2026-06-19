@@ -149,9 +149,27 @@ frente al código** son las afirmaciones puntuales más fuertes: **D14** (especi
 sexual con carga). Si figuran como resultados del proyecto, hoy **no están respaldadas** y deberían reformularse o
 completarse.
 
+## Estado (2026-06-19): honestidad D14/D16 procesada (pasos 1–3) ✅
+Rama `biorefactor`. Subconjunto de honestidad (bajo riesgo: tests/métricas + texto, sin mecánica nueva):
+- **D14 reformulado y MEDIDO (paso 2) ✅.** `test/m7-speciation` ya no cuenta el recubrimiento voraz como "especies"
+  (era dispersión). Ahora calcula **componentes conexos** de un grafo de compatibilidad (arista si `phenoDistance <
+  mateCompat`) + tamaños. Medido (3 seeds, 15k): ~61–71 componentes totales pero **solo ~16–23 con ≥3 miembros**, y el
+  **mayor agrupa 26–53%** de la muestra → núcleo interfértil dominante + clústeres menores + muchos singletons. NO es ni
+  una nube panmíctica única ni especies discretas limpias: estructura **clinal/parcial**. El GO de m7 ya **no gatea** un
+  nº de especies; valida la MECÁNICA (recombinación válida + sexo + invariantes) y REPORTA la estructura como observable.
+- **Brazo de control `seedBrain`-congelado (paso 3) ✅.** Nuevo flag `Sim({freezeBrain})` (seedBrain canónico para todos,
+  sin mutación/recombinación/plasticidad del cerebro; la morfología sí evoluciona). `test/m6_3-behavior` corre 3 brazos.
+  Medido: seedBrain vs aleatorio **1.81×** (el arranque sembrado YA es competente); evo+plast vs seedBrain **solo 1.18×**
+  → **la conducta la sostiene el seedBrain, no la emergencia**. El "1.5× vs aleatorio" original medía el seed, no la
+  evolución. Comentarios de código corregidos ("cero estrategia cableada" → "arranque sembrado que evoluciona/aprende").
+- **D16 (paso 1): claim REBAJADA, no implementada.** No hay señal↔preferencia evolvable ni runaway de Fisher en el código;
+  `mateCompat` es una métrica fenotípica fija de 3 ejes. Implementarla de verdad es la pista AMBICIOSA (mecánica nueva,
+  no elegida). Comentarios de `sim.js` corregidos para no vender D14/D16. La afirmación honesta del proyecto: "apareamiento
+  asortativo por forma con estructura reproductiva emergente clinal", NO "especiación discreta / selección sexual con carga".
+
 ## Primeros pasos sugeridos (cuando se procese), por impacto en la validez evolutiva
-1. **Implementar señal + preferencia evolvables** (cerrar D16 de verdad) **o rebajar la afirmación** de selección sexual.
-2. **Sustituir el conteo de especies por componentes de un grafo de compatibilidad** (aislamiento real); reconocer la naturaleza clinal del aislamiento por similitud.
-3. **Brazo de control `seedBrain`-congelado** en m6_3 para aislar la aportación de la evolución/plasticidad frente al arranque sembrado.
-4. **Volver evolvables `reproE`/`investE`** (genes, no constantes) para que el eje r/K emerja como promete 2.4.
+1. ~~Señal + preferencia evolvables (D16) **o** rebajar la afirmación~~ → **rebajada** ✅ (implementarla = pista ambiciosa, pendiente si se quiere el fenómeno).
+2. ~~Componentes de un grafo de compatibilidad~~ ✅ HECHO (m7; clinal confirmado, núcleo 26–53%).
+3. ~~Brazo de control `seedBrain`-congelado~~ ✅ HECHO (m6_3; el seed domina, evo aporta ~18%).
+4. **SIGUIENTE** — Volver evolvables `reproE`/`investE` (genes, no constantes) para que el eje r/K emerja como promete 2.4.
 5. Detalles de homología: marcas compartidas entre fundadores + preservar paralogía en la duplicación.

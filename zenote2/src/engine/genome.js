@@ -22,8 +22,10 @@ const clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;
 const radOf = (size) => GENOME_P.radMin + (GENOME_P.radMax - GENOME_P.radMin) * size;
 const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,1] → categoría
 
-// M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Único motor de conducta
-// (cero estrategia cableada). Entradas (8): 0,1 ∇luz · 2,3 dir-presa · 4,5 dir-amenaza · 6 hambre · 7 velocidad propia.
+// M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Motor de la conducta, que
+// arranca SEMBRADO (seedBrain, abajo) y evoluciona/aprende desde ahí — NO emerge de cero (medido en m6_3: el seedBrain
+// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (8): 0,1 ∇luz · 2,3 dir-presa ·
+// 4,5 dir-amenaza · 6 hambre · 7 velocidad propia.
 // Salidas (4): 0,1 dirección de empuje · 2 esfuerzo (throttle) · 3 impulso de ataque. La plasticidad (sim) ajusta una
 // COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
 export const BRAIN = { I: 8, H: 6, O: 4, scale: 5 };

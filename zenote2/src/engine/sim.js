@@ -9,7 +9,7 @@
 // y energía-en-biomasa (presa magra) son de M6 → en M5.3 el heterótrofo vive de las RESERVAS de la presa (puede ser
 // flojo; lo arregla M6). El foco de M5.3 es: organismo real + invariantes + morfología evoluciona.
 
-import { develop, mutate, makeFounder, recombine, BRAIN, BRAIN_W } from './genome.js';
+import { develop, mutate, makeFounder, recombine, seedBrain, BRAIN, BRAIN_W } from './genome.js';
 import { computePhenotype, phenoDistance } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
@@ -36,14 +36,20 @@ export const SIM_P = {
   initE: 10,                         // reservas iniciales de los fundadores
   mateRadius: 50,                    // M7: radio de búsqueda de pareja (u)
   mateCompat: 0.5,                   // M7: umbral de compatibilidad reproductiva = distancia FENOTÍPICA (masa/luz/boca)
-                                     // normalizada. El AISLAMIENTO emerge de la divergencia morfológica (no es una métrica
-                                     // génica curada con loci excluidos a mano → ataca D14). Sin pareja compatible → asexual.
+                                     // normalizada. Apareamiento asortativo por similitud de forma (sin métrica génica con
+                                     // loci excluidos a mano). NO da especies discretas: la distancia con umbral es CLINAL y
+                                     // no transitiva → estructura de componentes (ver m7), no especiación limpia. Es una
+                                     // métrica FENOTÍPICA elegida a mano (3 ejes), no la señal↔preferencia evolvable de D14/D16.
+                                     // Sin pareja compatible → asexual.
 };
 
 export class Sim {
-  constructor(world, { seed = 1, cap = 8000, eDensity = SIM_P.eDensity, randomBehavior = false } = {}) {
+  constructor(world, { seed = 1, cap = 8000, eDensity = SIM_P.eDensity, randomBehavior = false, freezeBrain = false } = {}) {
     this.world = world; this.cap = cap; this.rng = makeRng(seed); this.tick = 0; this.eD = eDensity;
     this.randomBehavior = randomBehavior;   // control: salidas aleatorias (ignora el cerebro) → mide si la conducta neuronal es ADAPTATIVA
+    // control M6.3: cerebro CONGELADO a un seedBrain canónico (sin mutación, recombinación ni plasticidad del cerebro;
+    // la morfología SÍ evoluciona). Aísla la conducta SEMBRADA de la aportación de la evolución/aprendizaje del cerebro.
+    this.freezeBrain = freezeBrain; this._seedBrain = freezeBrain ? seedBrain(this.rng) : null;
     this.x = new Float32Array(cap); this.y = new Float32Array(cap);
     this.vx = new Float32Array(cap); this.vy = new Float32Array(cap);
     this.E = new Float32Array(cap); this.gut = new Float32Array(cap); this.age = new Float32Array(cap); this.cd = new Float32Array(cap);
@@ -75,6 +81,7 @@ export class Sim {
   spawn(genome, x, y, E, parts = null, ph = null) {
     if (this.freeTop === 0) return -1; const i = this.free[--this.freeTop];
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
+    if (this.freezeBrain && genome.brain) genome.brain.set(this._seedBrain);   // control: anula la herencia/mutación del cerebro → todos usan el seedBrain canónico
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
     this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0;
     if (parts) this._setBody(i, parts, ph); else this._expr(i);   // M2: reusa el cuerpo ya desarrollado en el gate (evita doble develop)
@@ -94,7 +101,8 @@ export class Sim {
     for (let dy = -R; dy <= R; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -R; dx <= R; dx++) { const idx = yy * cols + ((cx + dx) % cols + cols) % cols; W.nutrient[idx] -= W.nutrient[idx] * f; } } }
 
   // M7 — pareja compatible más cercana (hash): vivo, dentro de mateRadius, distancia FENOTÍPICA < mateCompat. El
-  // aislamiento reproductivo EMERGE de la divergencia morfológica (sin métrica génica curada → D14). -1 si no hay.
+  // apareamiento asortativo por divergencia morfológica (métrica fenotípica fija de 3 ejes, no señal↔preferencia
+  // evolvable; aislamiento clinal, no especies discretas — ver mateCompat y m7). -1 si no hay.
   _findMate(i) {
     const P = SIM_P, size = this.world.size, mr2 = P.mateRadius * P.mateRadius;
     const hc = this.hash.cell, hx = (this.x[i] / hc) | 0, hy = (this.y[i] / hc) | 0;
@@ -152,7 +160,7 @@ export class Sim {
       if (preyJ >= 0) { const m = Math.sqrt(preyD) || 1; preyDX /= m; preyDY /= m; }
       if (thD < 1e9) { const m = Math.sqrt(thD) || 1; thDX /= m; thDY /= m; }
 
-      // ---- CEREBRO (forward Elman; pesos = copia de trabajo aprendida). Único motor de conducta: cero estrategia cableada. ----
+      // ---- CEREBRO (forward Elman; pesos = copia de trabajo aprendida). Motor de la conducta; arranca SEMBRADO (seedBrain) y evoluciona/aprende. ----
       const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._in, hid = this._hid, out = this._out, wb = i * BRAIN_W, hb = i * H, Wt = this.wbrain, PH = this.hidden;
       const wHh = I * H, bH = I * H + H * H, wHo = bH + H, bO = wHo + H * O;
       inp[0] = lgx < -1 ? -1 : lgx > 1 ? 1 : lgx; inp[1] = lgy < -1 ? -1 : lgy > 1 ? 1 : lgy; inp[2] = preyDX; inp[3] = preyDY; inp[4] = thDX; inp[5] = thDY;
@@ -189,7 +197,7 @@ export class Sim {
       // ---- PLASTICIDAD (Hebbiano modulado por RECOMPENSA fisiológica = ΔE del tick; NO es objetivo de conducta) ----
       // El cerebro aprende EN VIDA lo que recupera energía (venga de donde venga) → suaviza los valles conductuales
       // (Baldwin). Modifica la copia de TRABAJO (Wt), nunca el cerebro de nacimiento (genoma) → no se hereda lo aprendido.
-      { let reward = E[i] - E0; reward = reward > 0.5 ? 0.5 : reward < -0.5 ? -0.5 : reward; const lr = 0.02 * reward;
+      if (!this.freezeBrain) { let reward = E[i] - E0; reward = reward > 0.5 ? 0.5 : reward < -0.5 ? -0.5 : reward; const lr = 0.02 * reward;
         if (lr !== 0) {
           for (let h = 0; h < H; h++) { const po = hid[h];
             for (let k = 0; k < I; k++) { const idx = wb + k * H + h; let w = Wt[idx] + lr * inp[k] * po; Wt[idx] = w < -3 ? -3 : w > 3 ? 3 : w; }
