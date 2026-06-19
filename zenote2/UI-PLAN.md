@@ -22,10 +22,11 @@ patrones** (no se copia código vivo) al motor-en-worker de zenote 2.
 
 ## Plan (incremental, verificable en navegador)
 
-- **P1 — Núcleo + cámara toroidal** ✅ HECHO (verificado en navegador): panel ocultable · velocidad (pausa + slider
-  t/s + máx, → worker) · zoom (slider + rueda con zoom-al-cursor) · paneo (arrastrar, envuelve mod size) ·
-  **visión toroidal infinita** (render en mosaico de tiles visibles, sin costura) · reinicio (→ worker reseed) ·
-  HUD (fps · t/s · pop · tick). Worker: tps variable + pausa + reset + burst.
+- **P1 — Núcleo + cámara toroidal** ✅ HECHO (verificado en navegador): panel ocultable · velocidad de sim (pausa +
+  slider t/s + máx, → worker) · **límite de FPS de render** (slider 5-120, def 20; throttle del rAF en el cliente, no
+  toca la sim) · zoom (slider + rueda con zoom-al-cursor) · paneo (arrastrar, envuelve mod size) · **visión toroidal
+  infinita** (render en mosaico de tiles visibles, sin costura) · reinicio (→ worker reseed) · HUD (fps · t/s · pop ·
+  tick). Worker: tps variable + pausa + reset + burst.
 - **P2 — Observación** ✅ HECHO (verificado): gráfica de población apilada autótrofo/heterótrofo (el worker envía
   `histPop/histAuto/histHet`, ventana de 160 muestras) · modos de color (tejido / oficio trófico / linaje) +
   leyenda dinámica. Gen de linaje `hue` heredable (deriva lenta en mutación, heredado en clon/recombinación);

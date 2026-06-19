@@ -137,7 +137,15 @@ function drawChart() {
   pctx.beginPath(); for (let i = 0; i < n; i++) { const x = X(i), y = Y(A[i] + H[i]); i ? pctx.lineTo(x, y) : pctx.moveTo(x, y); } for (let i = n - 1; i >= 0; i--) pctx.lineTo(X(i), Y(A[i])); pctx.closePath(); pctx.fillStyle = 'rgba(224,102,77,.55)'; pctx.fill();   // heterótrofo apilado
 }
 
-function loop() { draw(); requestAnimationFrame(loop); }
+// Limitador de FPS de RENDER (no afecta a la simulación: el motor corre en el worker a su propio t/s). rAF sigue
+// firando a la frecuencia de pantalla; saltamos el draw() (lo caro) hasta que toca → ahorra CPU/batería.
+let maxFps = 20, lastDrawT = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (now - lastDrawT < 1000 / maxFps - 2) return;   // aún no toca dibujar este frame
+  lastDrawT = now;
+  draw();
+}
 requestAnimationFrame(loop);
 
 // --- Interacción de cámara (no toca la sim) + clic para inspeccionar ---
@@ -181,6 +189,7 @@ $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
 let running = true;
 $('play').addEventListener('click', () => { running = !running; worker.postMessage({ type: 'running', value: running }); $('play').textContent = running ? '❚❚' : '▶'; });
 $('tps').addEventListener('input', (e) => { const v = +e.target.value; worker.postMessage({ type: 'tps', value: v }); $('tpsVal').textContent = v + ' t/s'; });
+$('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal').textContent = maxFps + ' fps'; });   // límite de FPS de render
 $('max').addEventListener('click', () => { const on = !$('max').classList.contains('on'); $('max').classList.toggle('on', on); worker.postMessage({ type: 'maxSpeed', value: on }); });
 $('reset').addEventListener('click', () => { worker.postMessage({ type: 'reset' }); applyLab(); });   // el mundo nuevo nace con lightMul=1 → re-aplica el lab
 $('hide').addEventListener('click', () => document.body.classList.add('hidden-panel'));
@@ -222,7 +231,7 @@ function buildLegend() {
   L.innerHTML = (sets[colorMode] || sets.tissue).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 buildLegend();
-$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×';
+$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps';
 
 // depuración / preview (rAF se throttlea): forzar avance del motor + dibujar
 window.__worker = worker;

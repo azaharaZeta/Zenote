@@ -148,9 +148,10 @@ bloom downsampled, HUD/leyenda en viewport estrecho.
 Toda la interacción de cámara/UI vive en el hilo de render (no toca la sim → fluida); lo que afecta al motor va por
 mensaje al worker. Verificada en navegador (escritorio + móvil 375px).
 
-- **P1 — Núcleo + cámara toroidal** ✅: panel ocultable (modo contemplación, tecla H) · velocidad (pausa + slider t/s +
-  máx) · **zoom** (slider + rueda con zoom-al-cursor) · **paneo** (arrastrar, envuelve mod tamaño) · **visión toroidal
-  infinita** (render en mosaico de tiles, sin costura) · **reinicio** (re-siembra el mundo) · HUD (pob · tick · t/s · fps).
+- **P1 — Núcleo + cámara toroidal** ✅: panel ocultable (modo contemplación, tecla H) · velocidad de simulación (pausa +
+  slider t/s + máx) · **límite de FPS de render** (slider 5-120, def **20**; cap el dibujado vía rAF sin tocar la sim →
+  ahorra CPU/batería) · **zoom** (slider + rueda con zoom-al-cursor) · **paneo** (arrastrar, envuelve mod tamaño) ·
+  **visión toroidal infinita** (render en mosaico de tiles, sin costura) · **reinicio** · HUD (pob · tick · t/s · fps).
 - **P2 — Observación** ✅: **gráfica de población** apilada autótrofo/heterótrofo (historia del worker) · **modos de color**
   (tejido / oficio trófico / linaje) con leyenda dinámica. Gen de linaje `hue` heredable (deriva lenta).
 - **P3 — Laboratorio** ✅ (sliders de leyes EN VIVO): luz solar (`world.lightMul`) · metabolismo basal · umbral de cría ·
