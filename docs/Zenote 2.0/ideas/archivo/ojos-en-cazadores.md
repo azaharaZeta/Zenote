@@ -22,6 +22,10 @@ Los ojos son una LECTURA del rol depredador, no tocan la simulación (motor byte
 - **Variedad por linaje**: tamaño, separación y distancia frontal varían con un hash de `hue` (cada familia tiene su cara).
 - **Color del ojo = TONO del color del organismo** (`hsl(hue,…)`, no un ámbar/rojo fijo): la esclera es una versión clara/
   viva del pigmento del bicho, más saturada cuanto más cazador → armoniza con la criatura y da variedad sola (cada familia, su color de ojo).
+- **Posición pegada al frente**: el avance (`fwd`) se basa en el ALCANCE FRONTAL real (`frontExt` = máx. proyección de los
+  nodos sobre el rumbo), no en la extensión máxima `bodyR` → en bichos elongados (cola) los ojos NO flotan por delante.
+  La separación entre ojos es ∝ tamaño del ojo (no `bodyR`) → nunca quedan anchos/sueltos.
+- **Borde del ojo**: trazo oscuro fino (reusa el `strokeStyle` del borde del cuerpo, `lineWidth ∝ er` y restaurado a 1.2) → define el ojo contra el cuerpo.
 - **Mirada hacia el rumbo**: la pupila se desplaza en la dirección del heading → "mira hacia donde va" (= hacia la presa/
   pareja/luz que persigue, porque el cerebro orienta el cuerpo al objetivo). Gaze por objetivo real exigiría enviar el
   vector de presa desde el motor (posible, no hecho — el rumbo es buen proxy y gratis).

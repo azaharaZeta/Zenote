@@ -7,7 +7,7 @@ import { Sim, SIM_P } from './sim.js';
 import { GENOME_P } from './genome.js';   // para el ritmo de mutación (parámetro de UI en vivo)
 import { trophicCode } from './phenotype.js';   // M3: única definición del oficio trófico (compartida con tests/scorecard)
 
-let worldSize = 1500, seedCount = 800;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
+let worldSize = 1500, seedCount = 800, spawnSpread = 1, diversity = 1;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
 let world, sim, running = true, tps = 60, maxSpeed = false;
 let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su detalle EN VIVO viaja en cada foto
 // historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
@@ -16,17 +16,19 @@ const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet 
 const histSexB = [], histAsexB = [], histPred = [], histStarv = [];   // nacimientos sexual/asexual · muertes predación/inanición (por ventana)
 let lastSexB = 0, lastAsexB = 0, lastKills = 0, lastStarved = 0;
 
-function init({ seed, worldSize: ws, seedCount: sc } = {}) {
-  // Parámetros de ARRANQUE: tamaño del mundo y cantidad de sembrado (necesitan reinicio). Se conservan entre resets.
+function init({ seed, worldSize: ws, seedCount: sc, spawnSpread: sp, diversity: dv } = {}) {
+  // Parámetros de ARRANQUE (necesitan reinicio). Se conservan entre resets.
   if (Number.isFinite(+ws) && +ws > 0) worldSize = +ws | 0;
   if (Number.isFinite(+sc) && +sc > 0) seedCount = +sc | 0;
+  if (Number.isFinite(+sp)) spawnSpread = Math.min(1, Math.max(0.05, +sp));   // 1 = todo el mundo · <1 = disco central
+  if (Number.isFinite(+dv)) diversity = Math.min(1, Math.max(0, +dv));        // 1 = normal · 0 = founders idénticos
   // B5: semilla opcional (reproducibilidad). null/no-finito → aleatoria. La MISMA semilla alimenta mundo y población
   // → el motor es determinista (mismo seed → mismo mundo). Se devuelve abajo para que la UI la muestre.
   const sd = (seed == null || !Number.isFinite(+seed)) ? (Math.random() * 1e9) | 0 : (+seed | 0);
   world = new World(worldSize, sd, { ...WORLD_P, lightBase: 2.5 });
   world.nutrient.fill(1.5);
   sim = new Sim(world, { seed: sd, cap: 12000 });
-  sim.seed(seedCount);
+  sim.seed(seedCount, spawnSpread, diversity);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
   histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
   histSexB.length = 0; histAsexB.length = 0; histPred.length = 0; histStarv.length = 0; lastSexB = lastAsexB = lastKills = lastStarved = 0;

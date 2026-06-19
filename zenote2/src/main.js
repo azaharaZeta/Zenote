@@ -142,12 +142,13 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
     // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
     let accent = null, patN = 0, pSeed = 0;
     if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
-    let bodyR = 0;   // OJOS: extensión del cuerpo en pantalla (se acumula en el bucle de nodos)
+    let bodyR = 0, frontExt = 0;   // OJOS: extensión total + alcance FRONTAL (proyección sobre el rumbo) → ojos sobre la parte delantera
     for (let k = p1 - 1; k >= p0; k--) {
       const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
       const uy = ly + (0.35 + spd * 2.2) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
-      if (!halo) { const ext = Math.hypot(px - bx, py - by) + pr; if (ext > bodyR) bodyR = ext; }   // extensión del cuerpo (sitúa los ojos)
+      if (!halo) { const dx = px - bx, dy = py - by, ext = Math.hypot(dx, dy) + pr; if (ext > bodyR) bodyR = ext;
+        const fp = dx * chh + dy * shh + pr; if (fp > frontExt) frontExt = fp; }   // alcance del cuerpo + cuán adelante llega (eje rumbo)
       c.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
       // A1 — SILUETA: elipse orientada (eje = rumbo + dirección de emisión del nodo), elongada por `aspect` → aletas/
       // tentáculos/cuerpos fusiformes en vez de bolitas. LOD: si es diminuta, punto barato.
@@ -174,12 +175,13 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
       if (amt > 0.015) {
         const v = (ahue[a] * 41.7) % 1;                           // variedad determinista por linaje
         const er = bodyR * (0.05 + 0.045 * hunt) * (0.8 + 0.5 * v) * amt;   // más pequeños + variados + crecen con `amt`
-        const fwd = bodyR * (0.46 + 0.1 * v), sep = bodyR * (0.16 + 0.12 * v);
+        const fwd = frontExt * (0.5 + 0.12 * v), sep = er * (1.9 + 0.8 * v);   // fwd = alcance FRONTAL real (no bodyR) → sobre el cuerpo; separación ∝ tamaño del ojo (nunca "flotando")
         const fx = bx + chh * fwd, fy = by + shh * fwd;
         const e1x = fx - shh * sep, e1y = fy + chh * sep, e2x = fx + shh * sep, e2y = fy - chh * sep;
         const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt * 1.6);   // fundido de opacidad (refuerza la aparición suave)
         c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(62 + 22 * hunt) | 0}%,${(80 - 12 * hunt) | 0}%)`;  // esclera = TONO del color del organismo (más viva/saturada cuanto más cazador)
         c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.arc(e2x, e2y, er, 0, 6.283); c.fill();
+        c.lineWidth = Math.max(0.5, er * 0.28); c.stroke(); c.lineWidth = 1.2;   // BORDE del ojo (fino, ∝ tamaño; reusa el trazo oscuro y restaura para el cuerpo)
         const pf = er * (0.3 + 0.55 * hunt);                      // pupila desplazada hacia el RUMBO → "mira hacia donde va"
         c.fillStyle = 'rgba(8,6,10,0.94)';
         c.beginPath(); c.arc(e1x + chh * pf, e1y + shh * pf, er * 0.52, 0, 6.283); c.arc(e2x + chh * pf, e2y + shh * pf, er * 0.52, 0, 6.283); c.fill();
@@ -304,7 +306,7 @@ $('bloom').addEventListener('input', (e) => { bloomStrength = +e.target.value; $
 // B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
 // nace con lightMul=1 → re-aplica el lab.
 function resetWorld() { const sv = $('seed').value.trim();
-  worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0), worldSize: +$('worldSize').value, seedCount: +$('seedCount').value });
+  worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0), worldSize: +$('worldSize').value, seedCount: +$('seedCount').value, spawnSpread: +$('spawnSpread').value, diversity: +$('diversity').value });
   applyLab(); }
 $('reset').addEventListener('click', resetWorld);
 $('seedRandom').addEventListener('click', () => { $('seed').value = ''; resetWorld(); });   // 🎲: semilla aleatoria nueva
@@ -328,10 +330,14 @@ $('labReset').addEventListener('click', () => {
   applyLab();
 });
 // Parámetros de ARRANQUE (necesitan reinicio): solo actualizan su display; se aplican al pulsar «Reiniciar».
-const ws = $('worldSize'), sct = $('seedCount');
+const ws = $('worldSize'), sct = $('seedCount'), spr = $('spawnSpread'), dvr = $('diversity');
+const pct = (el) => Math.round(+el.value * 100) + '%';
 ws.addEventListener('input', () => $('worldSizeVal').textContent = ws.value + ' u');
 sct.addEventListener('input', () => $('seedCountVal').textContent = sct.value);
+spr.addEventListener('input', () => $('spawnSpreadVal').textContent = +spr.value >= 1 ? 'todo el mundo' : pct(spr) + ' (disco central)');
+dvr.addEventListener('input', () => $('diversityVal').textContent = pct(dvr));
 $('worldSizeVal').textContent = ws.value + ' u'; $('seedCountVal').textContent = sct.value;
+$('spawnSpreadVal').textContent = +spr.value >= 1 ? 'todo el mundo' : pct(spr) + ' (disco central)'; $('diversityVal').textContent = pct(dvr);
 // Vía reproductiva (en vivo): both (sexual+respaldo asexual) · asexual · sexual (obligada). Manda la cadena a SIM_P.reproMode.
 $('reproMode').addEventListener('change', (e) => worker.postMessage({ type: 'set', key: 'reproMode', value: e.target.value }));
 

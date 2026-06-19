@@ -99,8 +99,17 @@ export class Sim {
     return i;
   }
 
-  seed(n) { const W = this.world, rng = this.rng;
-    for (let k = 0; k < n; k++) this.spawn(makeFounder(rng), rng.next() * W.size, rng.next() * W.size, SIM_P.initE); }
+  // spread = fracción del mundo donde se siembra (1 = todo el mundo, uniforme = comportamiento actual; <1 = DISCO central
+  // de radio spread·mundo/2). div = diversidad inicial (1 = normal · 0 = founders idénticos). Orden RNG: genoma → x → y
+  // (idéntico al actual) → spread=1 & div=1 es byte-idéntico.
+  seed(n, spread = 1, div = 1) { const W = this.world, rng = this.rng, S = W.size, c = S * 0.5;
+    for (let k = 0; k < n; k++) {
+      const g = makeFounder(rng, div);
+      let x, y;
+      if (spread >= 1) { x = rng.next() * S; y = rng.next() * S; }                                  // uniforme (actual)
+      else { const ang = rng.next() * 6.283185307, rr = spread * c * Math.sqrt(rng.next()); x = c + Math.cos(ang) * rr; y = c + Math.sin(ang) * rr; }   // disco central
+      this.spawn(g, x, y, SIM_P.initE);
+    } }
 
   // materia del vecindario (para que la cría construya su cuerpo) — gate de natalidad endógeno (2.1)
   _nutrientAround(cell, R) { const W = this.world, cols = W.cols, rows = W.rows, cx = cell % cols, cy = (cell / cols) | 0; let s = 0;

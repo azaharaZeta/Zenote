@@ -19,22 +19,32 @@
 
     <div id="hud" class="readout">—</div>
 
-    <div class="ctrl">
-      <label>Semilla del mundo</label>
-      <div class="row">
-        <input id="seed" class="seed-in" type="number" min="0" step="1" placeholder="aleatoria" title="Semilla del mundo y la población. «Reiniciar» la aplica (mismo número → mismo mundo). Vacío = aleatoria.">
-        <button id="seedRandom" class="ghost" title="Semilla aleatoria nueva y reiniciar">🎲</button>
+    <details class="lab" open>
+      <summary>Mundo nuevo <span class="restart-tag">↻ al reiniciar</span></summary>
+      <div class="ctrl">
+        <label>Semilla</label>
+        <div class="row">
+          <input id="seed" class="seed-in" type="number" min="0" step="1" placeholder="aleatoria" title="Semilla del mundo y la población (mismo número → mismo mundo). Vacío = aleatoria.">
+          <button id="seedRandom" class="ghost" title="Semilla aleatoria nueva y reiniciar">🎲</button>
+        </div>
       </div>
-    </div>
-
-    <div class="ctrl">
-      <label>Tamaño del mundo <output id="worldSizeVal"></output> <span class="restart-tag">↻ reinicia</span></label>
-      <input id="worldSize" type="range" min="800" max="3000" step="100" value="1500" title="Lado del mundo (toro). Se aplica al pulsar «Reiniciar». Más grande = menor densidad para la misma población.">
-    </div>
-    <div class="ctrl">
-      <label>Sembrado inicial <output id="seedCountVal"></output> <span class="restart-tag">↻ reinicia</span></label>
-      <input id="seedCount" type="range" min="100" max="2500" step="50" value="800" title="Nº de organismos al sembrar. Se aplica al pulsar «Reiniciar».">
-    </div>
+      <div class="ctrl">
+        <label>Tamaño del mundo <output id="worldSizeVal"></output></label>
+        <input id="worldSize" type="range" min="800" max="3000" step="100" value="1500" title="Lado del mundo (toro). Más grande = menor densidad para la misma población.">
+      </div>
+      <div class="ctrl">
+        <label>Sembrado inicial <output id="seedCountVal"></output></label>
+        <input id="seedCount" type="range" min="100" max="2500" step="50" value="800" title="Nº de organismos al sembrar.">
+      </div>
+      <div class="ctrl">
+        <label>Extensión del sembrado <output id="spawnSpreadVal"></output></label>
+        <input id="spawnSpread" type="range" min="0.05" max="1" step="0.05" value="1" title="Dónde se siembra: 100% = todo el mundo (uniforme); menos = un disco central (inóculo que luego se expande).">
+      </div>
+      <div class="ctrl">
+        <label>Diversidad inicial <output id="diversityVal"></output></label>
+        <input id="diversity" type="range" min="0" max="1" step="0.05" value="1" title="Variación entre los fundadores: 100% = como ahora (tono/fase/cerebro varían); 0% = todos idénticos (la diversidad emergerá sola por mutación).">
+      </div>
+    </details>
 
     <div class="ctrl">
       <label>Velocidad <output id="tpsVal"></output></label>

@@ -32,15 +32,16 @@ const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,
 // COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
 export const BRAIN = { I: 8, H: 6, O: 4, scale: 5 };
 export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O;  // 118
-export function makeBrain(rng) { const b = new Float32Array(BRAIN_W); for (let i = 0; i < BRAIN_W; i++) b[i] = (rng.next() - 0.5) * 0.4; return b; }
+// `div` (diversidad inicial, 1=normal · 0=sin ruido → todos idénticos) escala el ruido de pesos. Consume el mismo RNG → div=1 byte-idéntico.
+export function makeBrain(rng, div = 1) { const b = new Float32Array(BRAIN_W); for (let i = 0; i < BRAIN_W; i++) b[i] = (rng.next() - 0.5) * 0.4 * div; return b; }
 
 // M6.3-bootstrap — SEEDBRAIN: pesos de partida COMPETENTES (no ciegos). Decisión del usuario: el bootstrapping de
 // conducta no arrancaba desde cerebro en blanco (medido: caza ≈ aleatorio). Es el fallback previsto en 2.3, probado
 // en la app actual. NO es estrategia cableada fija: es el PUNTO DE PARTIDA — la conducta sigue evolucionando (mutación
 // del cerebro de nacimiento) y aprendiendo en vida (plasticidad). Cablea: ir hacia presa/∇luz, huir de amenaza, moverse
 // y atacar en contacto, vía 2 neuronas-relé (eje X/Y). El resto = ruido pequeño (makeBrain).
-export function seedBrain(rng) {
-  const b = makeBrain(rng), I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, k = 1.5;
+export function seedBrain(rng, div = 1) {
+  const b = makeBrain(rng, div), I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, k = 1.5;   // div escala SOLO el ruido; la estructura (relés) es fija → a div=0 todos los cerebros idénticos
   const wHo = I * H + H * H + H, bO = wHo + H * O;
   // h0 = relé del eje X: + hacia presa (in2) · − amenaza (in4) · + ∇luz (in0)   [índice wIh = in·H + h]
   b[2 * H + 0] = k; b[4 * H + 0] = -k; b[0 * H + 0] = k * 0.5;
@@ -68,13 +69,16 @@ function mkModule(rng) {
 
 // Fundador SIMPLE (la complejidad EMERGE): cabeza + un módulo fotosintético pequeño (plántula viable, no estéril).
 // tissue 0.35 → bin PHOTO (tissueOf: t·4|0 = 1). [PHOTO = [0.25,0.5); ojo: valores <0.25 caen en STRUCTURE.]
-export function makeFounder(rng) {
+export function makeFounder(rng, div = 1) {
+  // div = DIVERSIDAD inicial (1 = normal, byte-idéntico · 0 = todos idénticos). Mezcla las partes variables (fase/tono/
+  // cerebro) hacia un valor fijo (0.5) con `div`; consume el MISMO RNG (a div=1 el valor es exactamente rng.next()).
+  const dv = (x) => 0.5 + (x - 0.5) * div;
   return {
-    root: { size: 0.45, aspect: 0.3, tissue: 0.35 /*PHOTO*/, oscAmp: 0.15, phase: rng.next() },
-    modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: rng.next(),
+    root: { size: 0.45, aspect: 0.3, tissue: 0.35 /*PHOTO*/, oscAmp: 0.15, phase: dv(rng.next()) },
+    modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: dv(rng.next()),
                 recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],
-    brain: seedBrain(rng),   // bootstrap de conducta competente (decisión del usuario); evoluciona/aprende desde aquí
-    hue: rng.next(),         // marcador de LINAJE (neutro, heredable, deriva lenta) → color por linaje en el render
+    brain: seedBrain(rng, div),   // bootstrap de conducta competente; div escala el ruido (div=0 → cerebro idéntico)
+    hue: dv(rng.next()),          // marcador de LINAJE (neutro, heredable, deriva lenta); a div=0 todos el mismo tono
   };
 }
 
