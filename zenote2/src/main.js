@@ -111,6 +111,8 @@ function drawOrgs(oX, oY, sc, t, halo) {
 // --- HUD (fps render · t/s sim · pop · tick) + gráfica de población ---
 let lastT = performance.now(), lastTick = 0, frames = 0, fps = 0, tpsReal = 0;
 const pc = document.getElementById('popChart'), pctx = pc.getContext('2d');
+const bc = document.getElementById('birthChart'), bctx = bc && bc.getContext('2d');   // nacimientos por vía reproductiva
+const dc = document.getElementById('deathChart'), dctx = dc && dc.getContext('2d');   // muertes por causa
 function updateHud() {
   frames++; const now = performance.now(), dt = now - lastT;
   if (dt > 500 && frame) { fps = Math.round(frames * 1000 / dt); tpsReal = Math.round((frame.tick - lastTick) * 1000 / dt); frames = 0; lastT = now; lastTick = frame.tick; drawChart(); }
@@ -139,13 +141,19 @@ function updateInspector() {
   $('inspTroph').textContent = `${d.photoCap.toFixed(1)} / ${d.mouthCap.toFixed(2)}`;
   if (following) { camX = wrap(d.x); camY = wrap(d.y); }   // seguir: la cámara se centra en el agente
 }
-function drawChart() {
-  const w = pc.width, h = pc.height; pctx.clearRect(0, 0, w, h);
-  const P = frame.histPop, A = frame.histAuto, H = frame.histHet; if (!P || P.length < 2) return;
-  const n = P.length; let mx = 1; for (let i = 0; i < n; i++) if (P[i] > mx) mx = P[i];
+// Gráfica de ÁREA APILADA de dos series (lower abajo, upper encima). Escala al máximo de la suma → muestra composición.
+function drawStack(cv, c, lower, upper, colLow, colUp) {
+  const w = cv.width, h = cv.height; c.clearRect(0, 0, w, h);
+  if (!lower || lower.length < 2) return;
+  const n = lower.length; let mx = 1; for (let i = 0; i < n; i++) { const t = lower[i] + upper[i]; if (t > mx) mx = t; }
   const X = (i) => i / (n - 1) * w, Y = (v) => h - v / mx * (h - 2) - 1;
-  pctx.beginPath(); pctx.moveTo(0, h); for (let i = 0; i < n; i++) pctx.lineTo(X(i), Y(A[i])); pctx.lineTo(w, h); pctx.closePath(); pctx.fillStyle = 'rgba(63,185,143,.5)'; pctx.fill();   // autótrofo
-  pctx.beginPath(); for (let i = 0; i < n; i++) { const x = X(i), y = Y(A[i] + H[i]); i ? pctx.lineTo(x, y) : pctx.moveTo(x, y); } for (let i = n - 1; i >= 0; i--) pctx.lineTo(X(i), Y(A[i])); pctx.closePath(); pctx.fillStyle = 'rgba(224,102,77,.55)'; pctx.fill();   // heterótrofo apilado
+  c.beginPath(); c.moveTo(0, h); for (let i = 0; i < n; i++) c.lineTo(X(i), Y(lower[i])); c.lineTo(w, h); c.closePath(); c.fillStyle = colLow; c.fill();
+  c.beginPath(); for (let i = 0; i < n; i++) { const x = X(i), y = Y(lower[i] + upper[i]); i ? c.lineTo(x, y) : c.moveTo(x, y); } for (let i = n - 1; i >= 0; i--) c.lineTo(X(i), Y(lower[i])); c.closePath(); c.fillStyle = colUp; c.fill();
+}
+function drawChart() {
+  drawStack(pc, pctx, frame.histAuto, frame.histHet, 'rgba(63,185,143,.5)', 'rgba(224,102,77,.55)');           // población: autótrofo + heterótrofo
+  if (bctx) drawStack(bc, bctx, frame.histAsexB, frame.histSexB, 'rgba(111,174,90,.55)', 'rgba(201,138,224,.6)'); // nacimientos: asexual + sexual
+  if (dctx) drawStack(dc, dctx, frame.histPred, frame.histStarv, 'rgba(224,102,77,.55)', 'rgba(120,134,150,.6)'); // muertes: depredación + inanición
 }
 
 // Limitador de FPS de RENDER (no afecta a la simulación: el motor corre en el worker a su propio t/s). rAF sigue

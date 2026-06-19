@@ -11,6 +11,5 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
 ## Ideas de usuario (pendientes de procesar)
 - biología: surgen organismos autótrofos con movimiento, y pocos heterótrofos. En el mundo real no pasa, revisar modelo, por si no estuviera bien definido o pudiera modelizarse de manera que el movimiento emerja más en heterótrofos
 - evolucionar colores y texturas. ¿deriva, o ligados a alguna ventaja evolutiva o de selección sexual?
-- crear gráficas de nacimientos por tipo de reproducción, y fallecimientos por causa. 
 -bug? en la emulación, más de una vez he visto un organismo estático, que cada cierto tiempo produce una descendencia totalmente distinta, que se aleja rápido y muere enseguida.  Revisar si esto es síntoma de algún error en el modelo
 - asegurarse de que en velocidad "MAX", los fps se sacrifican si es necesario hasta un mínimo de 1 fps

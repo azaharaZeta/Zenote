@@ -66,7 +66,7 @@ export class Sim {
     // el alcance de sensado de presa/amenaza; mateRadius (búsqueda de pareja) la eleva si lo supera → así el barrido
     // nunca falla en silencio. Hoy mateRadius=50 < 60 → celda 60 (igual que antes).
     this.hash = new SpatialHash(world.size, Math.max(60, SIM_P.mateRadius)); this.hash.setCapacity(cap);
-    this.kills = 0; this.sexBirths = 0; this.asexBirths = 0;   // instrumentación: depredación y vía reproductiva
+    this.kills = 0; this.sexBirths = 0; this.asexBirths = 0; this.starved = 0;   // instrumentación: depredación · vía reproductiva · muertes por inanición (causas de muerte = kills + starved)
     // M6.3 — cerebro: COPIA DE TRABAJO de pesos por agente (aprendida en vida; NO heredable) + estado oculto recurrente.
     this.wbrain = new Float32Array(cap * BRAIN_W); this.hidden = new Float32Array(cap * BRAIN.H);
     this._in = new Float32Array(BRAIN.I); this._hid = new Float32Array(BRAIN.H); this._out = new Float32Array(BRAIN.O);
@@ -192,7 +192,7 @@ export class Sim {
       // METABOLISMO: reservas → calor (basal + ∝masa + nado). Muerte si se agotan → cuerpo a detrito.
       const cost = P.baseCost + P.massCost * this.mass[i] + P.moveCost * v2 * this.drag[i];
       const spend = Math.min(E[i], cost); E[i] -= spend; W.heat += spend;
-      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.gut[i] + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; continue; }
+      if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.gut[i] + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; this.starved++; continue; }
 
       // ---- PLASTICIDAD (Hebbiano modulado por RECOMPENSA fisiológica = ΔE del tick; NO es objetivo de conducta) ----
       // El cerebro aprende EN VIDA lo que recupera energía (venga de donde venga) → suaviza los valles conductuales

@@ -9,8 +9,11 @@ import { trophicCode } from './phenotype.js';   // M3: única definición del of
 const SIZE = 1500;
 let world, sim, running = true, tps = 60, maxSpeed = false;
 let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su detalle EN VIVO viaja en cada foto
-// historial para la gráfica de población (muestreado por ticks; ventana acotada): total · autótrofos · heterótrofos
+// historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
+// muertes = DELTA por ventana (un ritmo), de contadores ACUMULADOS del motor → guardamos su último valor para restar.
 const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet = []; let lastHist = -1e9;
+const histSexB = [], histAsexB = [], histPred = [], histStarv = [];   // nacimientos sexual/asexual · muertes predación/inanición (por ventana)
+let lastSexB = 0, lastAsexB = 0, lastKills = 0, lastStarved = 0;
 
 function init(seed) {
   // B5: semilla opcional (reproducibilidad). null/no-finito → aleatoria. La MISMA semilla alimenta mundo y población
@@ -21,7 +24,8 @@ function init(seed) {
   sim = new Sim(world, { seed: sd, cap: 12000 });
   sim.seed(800);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
-  histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historial limpio al (re)iniciar
+  histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
+  histSexB.length = 0; histAsexB.length = 0; histPred.length = 0; histStarv.length = 0; lastSexB = lastAsexB = lastKills = lastStarved = 0;
   // campos ESTÁTICOS del mundo (cambian solo al reset) → se envían aparte. seed: la usada (para mostrarla en la UI).
   postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: SIZE, lightBase: world.P.lightBase, light0: world.light0.slice(), seed: sd });
 }
@@ -51,9 +55,12 @@ function snapshot() {
   }
   partOff[n] = po;
   if (s.tick - lastHist >= HIST_EVERY) { lastHist = s.tick; histPop.push(n); histAuto.push(nAuto); histHet.push(nHet);
-    if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); } }
+    // ritmos por ventana: delta de los contadores acumulados desde el último muestreo
+    histSexB.push(s.sexBirths - lastSexB); histAsexB.push(s.asexBirths - lastAsexB); histPred.push(s.kills - lastKills); histStarv.push(s.starved - lastStarved);
+    lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
+    if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
-  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, arole, aid, partOff, partData, histPop, histAuto, histHet, sel: selectedId, detail },
+  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
     [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
 }
 
