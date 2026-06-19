@@ -23,6 +23,9 @@ Otros docs: mecánica → [`../SPEC_EVOLUCION.md`](../SPEC_EVOLUCION.md) · par�
 - **Apiñamiento de hermanos** — reparto angular sutil entre nodos con igual `parent`/`emit`.
 - **Visor de especie en móvil** — añadir la dieta al panel; recordar qué `<details>` quedaron abiertos.
 
+### Zenote 2 (segunda app — `../../zenote2/`)
+- **Visión como órgano evolutivo** — que la percepción emerja de la forma (5º tejido SENSOR), no abstracta. Con spike de viabilidad. → [vision-organo-zenote2.md](vision-organo-zenote2.md)
+
 ## Bandeja de entrada
 *Ideas crudas sin procesar; convertir en idea (con su ficha) al abordarlas.*
 

@@ -41,6 +41,17 @@ function draw() {
 
   // sustrato (campo de luz) por tile
   for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawLight((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
+  // BORDE DEL TORO: las líneas del límite del mundo (x=k·size, y=k·size) repetidas en el mosaico. Clara pero suave y
+  // DIFUSA (3 pasadas aditivas: ancha+tenue → fina+clara). Cada línea se traza UNA vez (full-canvas) → uniforme.
+  ctx.globalCompositeOperation = 'lighter';
+  for (const pass of [[9, 0.018], [4, 0.038], [1.4, 0.12]]) {
+    ctx.lineWidth = pass[0]; ctx.strokeStyle = `rgba(150,182,208,${pass[1]})`;
+    ctx.beginPath();
+    for (let tx = txMin; tx <= txMax + 1; tx++) { const x = (tx * size - camX) * sc + cw / 2; ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
+    for (let ty = tyMin; ty <= tyMax + 1; ty++) { const y = (ty * size - camY) * sc + ch / 2; ctx.moveTo(0, y); ctx.lineTo(cw, y); }
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
   // GLOW (halos aditivos) por tile
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.10;
   for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawOrgs((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t, true);
@@ -178,7 +189,7 @@ function deselect() { selectedId = -1; following = false; $('inspFollow').classL
 canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (!WORLD) return;
   const r = canvas.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, sc0 = scaleOf();
   const wx = camX + (px - cw / 2) / sc0, wy = camY + (py - ch / 2) / sc0;
-  setZoom(zoom * Math.exp(-e.deltaY * 0.0012));
+  setZoom(zoom * Math.exp(-e.deltaY * 0.0020));   // sensibilidad de la rueda (mayor = más zoom por muesca)
   const sc1 = scaleOf(); camX = wrap(wx - (px - cw / 2) / sc1); camY = wrap(wy - (py - ch / 2) / sc1);
 }, { passive: false });
 
