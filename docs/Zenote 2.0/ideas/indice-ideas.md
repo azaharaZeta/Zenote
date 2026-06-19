@@ -10,4 +10,3 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
 
 ## Ideas de usuario (pendientes de procesar)
 - Fondo del abismo. Meter algo estético, o incluso pensar en algo funcional en el ecosistema
-- Meter ojos! Aunque sean sólo estéticos. Si no es posible hacerlo bien en el modelo de evolución natural, estudiar viabilidad meterlos solo en la capa de visualización. Que aparezcan en los heterótrofos, y sean más notables o agresivos cuanto más "cazador" sea el animal.

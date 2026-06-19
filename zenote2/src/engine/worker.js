@@ -41,7 +41,8 @@ function snapshot() {
   const n = idx.length;
   // partData = [lx, ly, r, tissue, phase, aspect, dir] por nodo (stride 7): aspect+dir → siluetas orientadas en el render.
   // aE = energía normalizada [0,1] por agente (E/reproE) → el render atenúa a los hambrientos ("la muerte se ve venir").
-  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
+  // aHunt = "lo cazador que es" [0,1] por agente (capacidad de boca vs fotosíntesis) → el render le pone OJOS más grandes/agresivos.
+  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), aHunt = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
   let po = 0, nAuto = 0, nHet = 0, detail = null;
   for (let a = 0; a < n; a++) {
     const i = idx[a]; ax[a] = s.x[i]; ay[a] = s.y[i]; ahue[a] = s.genome[i].hue; aid[a] = s.serial[i];
@@ -51,6 +52,7 @@ function snapshot() {
     // oficio trófico per-agente (para colorear por rol): 0 autótrofo · 1 heterótrofo · 2 mixótrofo
     const photo = s.photoCap[i];
     arole[a] = trophicCode(photo, s.thrust[i], s.mouthCap[i]);
+    const mc3 = s.mouthCap[i] * 3; aHunt[a] = mc3 / (mc3 + photo + 1e-3);   // "cazador" ∝ boca vs fotosíntesis (0 autótrofo .. ~1 cazador)
     if (arole[a] === 0) nAuto++; else nHet++;
     partOff[a] = po; const body = s.body[i];
     let rad = 0;
@@ -67,8 +69,8 @@ function snapshot() {
     lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
     if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
-  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
-    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
+  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
+    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción

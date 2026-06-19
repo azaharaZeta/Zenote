@@ -115,7 +115,7 @@ function drawLight(oX, oY, sc) {
 }
 
 function drawOrgs(c, oX, oY, sc, t, halo) {
-  const { n, ax, ay, ah, aspd, ahue, aE, arole, partOff, partData } = frame;
+  const { n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, partOff, partData } = frame;
   const mul = halo ? 2.2 : 1, baseA = halo ? 0.10 * bloomStrength : 1;   // AURA (=bioluminiscencia): más sutil y escalada por el slider
   if (!halo) { c.strokeStyle = 'rgba(4,7,12,0.55)'; c.lineWidth = 1.2; }   // BORDE: trazo oscuro abisal fino (definición sin "borde duro"); reaprovecha el path del relleno
   for (let a = 0; a < n; a++) {
@@ -142,10 +142,12 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
     // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
     let accent = null, patN = 0, pSeed = 0;
     if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % 3; pSeed = hh * 6.283; }
+    let bodyR = 0;   // OJOS: extensión del cuerpo en pantalla (se acumula en el bucle de nodos)
     for (let k = p1 - 1; k >= p0; k--) {
       const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
       const uy = ly + (0.35 + spd * 2.2) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
+      if (!halo) { const ext = Math.hypot(px - bx, py - by) + pr; if (ext > bodyR) bodyR = ext; }   // extensión del cuerpo (sitúa los ojos)
       c.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
       // A1 — SILUETA: elipse orientada (eje = rumbo + dirección de emisión del nodo), elongada por `aspect` → aletas/
       // tentáculos/cuerpos fusiformes en vez de bolitas. LOD: si es diminuta, punto barato.
@@ -159,6 +161,29 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
         c.fillStyle = accent;
         for (let s = 0; s < patN; s++) { const ang = h + dir + pSeed + ph + s * 2.39, dd = pr * 0.38;
           c.beginPath(); c.arc(px + Math.cos(ang) * dd, py + Math.sin(ang) * dd, Math.max(0.8, pr * 0.2), 0, 6.283); c.fill(); }
+      }
+    }
+    // OJOS (solo render, lectura del rol depredador; no toca la sim). Aparecen GRADUALMENTE (sin pop): rampa por el tamaño
+    // en pantalla (LOD suave) y por lo CAZADOR. Pequeños, con variedad por linaje. La pupila MIRA hacia el rumbo del
+    // organismo (= hacia la presa/pareja/luz que persigue, ya que el cerebro lo orienta hacia su objetivo).
+    if (!halo && aHunt && aHunt[a] > 0.12) {
+      const hunt = aHunt[a];
+      const sizeRamp = (bodyR - 4) / 14;                          // 0 (≤4px) → 1 (≥18px): fundido al acercar
+      const huntRamp = (hunt - 0.12) / 0.55;                      // tenue al empezar, pleno en cazadores claros
+      const amt = Math.min(1, Math.max(0, sizeRamp)) * Math.min(1, Math.max(0, huntRamp));
+      if (amt > 0.015) {
+        const v = (ahue[a] * 41.7) % 1;                           // variedad determinista por linaje
+        const er = bodyR * (0.05 + 0.045 * hunt) * (0.8 + 0.5 * v) * amt;   // más pequeños + variados + crecen con `amt`
+        const fwd = bodyR * (0.46 + 0.1 * v), sep = bodyR * (0.16 + 0.12 * v);
+        const fx = bx + chh * fwd, fy = by + shh * fwd;
+        const e1x = fx - shh * sep, e1y = fy + chh * sep, e2x = fx + shh * sep, e2y = fy - chh * sep;
+        const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt * 1.6);   // fundido de opacidad (refuerza la aparición suave)
+        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(62 + 22 * hunt) | 0}%,${(80 - 12 * hunt) | 0}%)`;  // esclera = TONO del color del organismo (más viva/saturada cuanto más cazador)
+        c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.arc(e2x, e2y, er, 0, 6.283); c.fill();
+        const pf = er * (0.3 + 0.55 * hunt);                      // pupila desplazada hacia el RUMBO → "mira hacia donde va"
+        c.fillStyle = 'rgba(8,6,10,0.94)';
+        c.beginPath(); c.arc(e1x + chh * pf, e1y + shh * pf, er * 0.52, 0, 6.283); c.arc(e2x + chh * pf, e2y + shh * pf, er * 0.52, 0, 6.283); c.fill();
+        c.globalAlpha = ga0;
       }
     }
   }
