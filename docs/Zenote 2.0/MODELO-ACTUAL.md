@@ -10,9 +10,12 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 ## Qué es zenote2 ahora
 - **TODOS los organismos son ANIMALES** (heterótrofos). No fotosintetizan. Tejidos del genoma: `STRUCTURE · MUSCLE · MOUTH`
   (sin PHOTO). Cerebro neuronal (pesos = genes), morfología de reglas (genoma→develop→cuerpo), reproducción sexual/asexual.
-- **La VEGETACIÓN es el productor, parametrizado (NO genético).** Campo `world.veg` por celda: crece logísticamente captando
-  LUZ (energía entra al ecosistema aquí) y consumiendo NUTRIENTE (materia), con capacidad ∝ luz local; senesce a detrito. No
-  evoluciona — es física del mundo. (Dar genética a la vegetación = idea `ideas/vegetacion-con-genetica.md`, Escenario 2.)
+- **La VEGETACIÓN es el productor, parametrizado (NO genético).** Campo `world.veg` por celda: crece captando LUZ (energía entra
+  al ecosistema aquí) y consumiendo NUTRIENTE (materia), con capacidad ∝ luz local; senesce a detrito. Rebrote con `patchiness`
+  (logístico + difusión de semilla al vecindario, adaptado de zenote1) → forma y MIGRA **parches** orgánicos con el pastoreo↔
+  rebrote. **Productividad ∝ luz local** → las zonas frondosas SIGUEN al campo de luz (que deriva con "Corriente del abismo")
+  → la vegetación FLUYE. Pastoreo con **reserva de rebrote** (`grazeRefuge`, anti-sobrepastoreo) y **forrajeo por ÁREA∝talla**
+  (`forageReach`, payoff de talla del herbívoro). No evoluciona — es física del mundo. (Genética en la veg = `ideas/vegetacion-con-genetica.md`, Escenario 2.)
 - **Los animales comen** (única vía de energía): **pastan** vegetación · **cazan** presa viva · **carroñean** detrito — todo con
   el mismo gesto neuronal de "abrir boca". El eje **herbívoro↔carnívoro EMERGE de la DIETA realizada** (a qué dedica la boca),
   no de la morfología ni de un if/else. La conducta (forrajear/cazar/huir) emerge del cerebro+selección (regla #1 intacta).
@@ -32,7 +35,7 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 - Arranque (reinicio): Tamaño de mundo, Sembrado inicial, Extensión, Diversidad, + `vegInit` (NO UI).
 
 ## Render
-- Fondo = **campo de VEGETACIÓN** (nebulosa verde; más verde = más comida; fluye con la luz). Sustituye a la antigua nebulosa de luz.
+- Fondo = **campo de VEGETACIÓN** (nebulosa TEAL con parches; más brillo = más comida; realce del pasto tenue; fluye/migra). Sustituye a la antigua nebulosa de luz.
 - Organismos: siluetas por nodo, color por modo (Natural=linaje · Tejido · **Oficio**=herbívoro/carnívoro/omnívoro por dieta · Linaje).
   Ojos = fracción carnívora de la dieta. Cadáveres con forma que se desvanecen. Inspector: dieta "pasto/caza/carroña" + linaje.
 

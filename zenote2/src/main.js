@@ -29,8 +29,10 @@ function bakeVeg(veg) {
   vegCv.width = cols; vegCv.height = rows;
   const lc = vegCv.getContext('2d'), img = lc.createImageData(cols, rows), d = img.data;
   for (let i = 0; i < cols * rows; i++) {
-    const v = Math.sqrt(Math.max(0, Math.min(1, veg[i] / ref))), o = i * 4;   // densidad de vegetación → verde sobre abismo
-    d[o] = 6 + v * 16; d[o + 1] = 12 + v * 96; d[o + 2] = 16 + v * 44; d[o + 3] = 255;
+    // realce del pasto tenue: exponente bajo (^0.45) sube los mids → hasta el pasto ralo brilla (como zenote1). Incremento TEAL
+    // (verde-azulado) sobre abismo azul oscuro, no verde puro → la estética acuática que tenía zenote1.
+    const v = Math.pow(Math.max(0, Math.min(1, veg[i] / ref)), 0.45), o = i * 4;
+    d[o] = 6 + v * 12; d[o + 1] = 13 + v * 86; d[o + 2] = 18 + v * 82; d[o + 3] = 255;
   }
   lc.putImageData(img, 0, 0);
 }
@@ -347,7 +349,7 @@ $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; 
 $('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
 $('colorMode').value = RENDER_P.colorMode;
 $('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
-{ const src = { lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
+{ const src = { lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
@@ -375,8 +377,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'grazeRate' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : (k === 'reproE' || k === 'forageReach') ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'grazeRate' || k === 'scavRate' || k === 'vegGrowth' || k === 'patchiness' || k === 'grazeRefuge') ? v.toFixed(2) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }

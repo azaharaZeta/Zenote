@@ -95,13 +95,33 @@ export class World {
   // veg→calor (senescencia). Lo PASTAN los animales (transacción en sim). Frontera genotipo→física: la vegetación es física del
   // mundo (no evoluciona); qué animal la explota lo dicta la selección.
   vegStep() {
-    const P = this.P, veg = this.veg, N = this.nutrient, Dm = this.detritusM;
+    const P = this.P, veg = this.veg, N = this.nutrient, Dm = this.detritusM, prev = this._scratch;
     const g = P.vegGrowth, kc = P.vegKcoef, ec = P.vegEcoef, dec = P.vegDecay, seed = P.vegSeed, lm = this.lightMul * this.daylight;
-    for (let i = 0; i < veg.length; i++) {
-      const K = kc * this.light0[i] * lm;
-      if (K > 1e-6) { const grow = g * (veg[i] + seed) * (1 - veg[i] / K);
-        if (grow > 0) { let take = grow; if (take > N[i]) take = N[i]; if (take > 0) { veg[i] += take; N[i] -= take; this.lightCaptured += take * ec; } } }   // materia nutriente→veg; energía luz captada
-      if (veg[i] > 0) { const die = dec * veg[i]; veg[i] -= die; Dm[i] += die; this.heat += die * ec; }   // senescencia: materia→detrito, energía→calor
+    const cols = this.cols, rows = this.rows, lbase = P.lightBase || 1; let p = P.patchiness || 0; if (p > 1) p = 1;
+    prev.set(veg);   // snapshot del tick previo → rebrote orden-independiente (como zenote1)
+    for (let y = 0; y < rows; y++) {
+      const up = ((y - 1 + rows) % rows) * cols, dn = ((y + 1) % rows) * cols, rw = y * cols;
+      for (let x = 0; x < cols; x++) {
+        const i = rw + x, K = kc * this.light0[i] * lm;
+        if (K > 1e-6) { const r = prev[i], head = K - r;
+          if (head > 0) {
+            let inc;
+            if (p <= 0) inc = g * (r + seed) * (1 - r / K);                          // logístico simple
+            else {                                                                    // logístico + DIFUSIÓN de semilla → parches migrantes
+              const xl = (x - 1 + cols) % cols, xr = (x + 1) % cols;
+              const meanNb = (prev[rw + xl] + prev[rw + xr] + prev[up + x] + prev[dn + x]) * 0.25;
+              const seeded = g * (seed + r / K + meanNb / K);                         // crece donde ya hay pasto o lo hay al lado (siembra al vecindario)
+              inc = (1 - p) * (g * (r + seed) * (1 - r / K)) + p * seeded;
+            }
+            // PRODUCTIVIDAD ∝ LUZ: la veg crece más rápido donde hay más luz (factor light/lightBase ∈ ~[0.3,1]) → las zonas
+            // frondosas SIGUEN al campo de luz → la "Corriente del abismo" (deriva de la luz) MUEVE la vegetación visiblemente.
+            inc *= (this.light0[i] * lm) / lbase;
+            if (inc > head) inc = head; if (inc < 0) inc = 0;
+            if (inc > 0) { let take = inc; if (take > N[i]) take = N[i]; if (take > 0) { veg[i] += take; N[i] -= take; this.lightCaptured += take * ec; } }   // materia nutriente→veg; energía luz captada
+          }
+        }
+        if (veg[i] > 0) { const die = dec * veg[i]; veg[i] -= die; Dm[i] += die; this.heat += die * ec; }   // senescencia: materia→detrito, energía→calor
+      }
     }
   }
 

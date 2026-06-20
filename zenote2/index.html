@@ -89,33 +89,51 @@
 
     <details class="lab">
       <summary>Laboratorio · leyes en vivo</summary>
+
+      <div class="lab-group">Luz y vegetación</div>
       <div class="ctrl">
         <label>Luz solar <output data-for="lightMul"></output></label>
-        <input class="lab-slider" data-key="lightMul" type="range" min="0.2" max="3" step="0.05" value="1">
+        <input class="lab-slider" data-key="lightMul" type="range" min="0.2" max="3" step="0.05" value="1" title="Multiplicador de la luz solar → escala la productividad de la vegetación.">
       </div>
       <div class="ctrl">
         <label>Corriente del abismo <output data-for="lightFlow"></output></label>
-        <input class="lab-slider" data-key="lightFlow" type="range" min="0" max="0.0008" step="0.00002" value="0.00012" title="Velocidad a la que FLUYE el campo de luz (el fondo). 0 = estático (parches fijos → los organismos se asientan siempre en las mismas zonas). Sube para que la nebulosa se reorganice más rápido (forma zonas nuevas); los organismos tienen que perseguir el bloom.">
+        <input class="lab-slider" data-key="lightFlow" type="range" min="0" max="0.0012" step="0.00004" value="0.0004" title="Velocidad a la que FLUYE el campo de luz: las zonas frondosas de vegetación (que siguen a la luz) MIGRAN por el mundo. 0 = estático. Sube para una corriente más rápida; los animales persiguen el pasto que se mueve.">
       </div>
       <div class="ctrl">
-        <label>Metabolismo basal <output data-for="baseCost"></output></label>
-        <input class="lab-slider" data-key="baseCost" type="range" min="0.005" max="0.05" step="0.001" value="0.015">
+        <label>Productividad <output data-for="vegGrowth"></output></label>
+        <input class="lab-slider" data-key="vegGrowth" type="range" min="0.02" max="0.4" step="0.01" value="0.12" title="Ritmo de rebrote de la vegetación = cuánta comida hay. El regulador principal del ecosistema.">
       </div>
       <div class="ctrl">
-        <label>Umbral de cría <output data-for="reproE"></output></label>
-        <input class="lab-slider" data-key="reproE" type="range" min="8" max="40" step="1" value="16" title="Energía que un organismo debe acumular antes de reproducirse. Más alto = menos nacimientos. Súbelo en vivo si ves demasiados organismos (es un dial, no aplana del todo el boom-bust).">
+        <label>Comida en parches <output data-for="patchiness"></output></label>
+        <input class="lab-slider" data-key="patchiness" type="range" min="0" max="1" step="0.05" value="0.7" title="0 = rebrote uniforme · 1 = parches que se forman y migran con el pastoreo↔rebrote (campo más vivo).">
       </div>
+      <div class="ctrl">
+        <label>Reserva de rebrote <output data-for="grazeRefuge"></output></label>
+        <input class="lab-slider" data-key="grazeRefuge" type="range" min="0" max="0.2" step="0.01" value="0.06" title="Fracción de pasto intocable por celda → anti-sobrepastoreo (estabiliza la base). OJO: valores altos colapsan (no queda nada pastable).">
+      </div>
+
+      <div class="lab-group">Alimentación</div>
       <div class="ctrl">
         <label>Pastoreo <output data-for="grazeRate"></output></label>
-        <input class="lab-slider" data-key="grazeRate" type="range" min="0.1" max="2" step="0.1" value="0.5" title="Cuánta vegetación puede pastar una boca por tick. Más alto = los herbívoros consumen el pasto más rápido (riesgo de sobrepastoreo); más bajo = pastar renta menos.">
+        <input class="lab-slider" data-key="grazeRate" type="range" min="0.1" max="2" step="0.1" value="0.5" title="Cuánta vegetación pasta una boca por tick. Alto = consumen el pasto más rápido (riesgo de sobrepastoreo).">
+      </div>
+      <div class="ctrl">
+        <label>Alcance de forrajeo <output data-for="forageReach"></output></label>
+        <input class="lab-slider" data-key="forageReach" type="range" min="0" max="6" step="1" value="3" title="Radio (celdas) del que pasta un animal GRANDE → payoff de talla del herbívoro (diversidad de tamaños). 0 = solo su celda.">
       </div>
       <div class="ctrl">
         <label>Carroñeo <output data-for="scavRate"></output></label>
-        <input class="lab-slider" data-key="scavRate" type="range" min="0" max="2" step="0.1" value="0.5" title="Cuánta energía de la carroña (detrito de las muertes) puede rebañar una boca por tick. 0 = apagado. La MISMA boca que caza presa viva también come carroña → emerge carroñeo facultativo. Sube para ver más organismos sobre los cadáveres.">
+        <input class="lab-slider" data-key="scavRate" type="range" min="0" max="2" step="0.1" value="0.5" title="Cuánta energía de la carroña (detrito de las muertes) rebaña una boca por tick. 0 = apagado. La misma boca que caza también carroñea.">
+      </div>
+
+      <div class="lab-group">Metabolismo y cría</div>
+      <div class="ctrl">
+        <label>Metabolismo basal <output data-for="baseCost"></output></label>
+        <input class="lab-slider" data-key="baseCost" type="range" min="0.005" max="0.05" step="0.001" value="0.015" title="Coste metabólico basal por tick.">
       </div>
       <div class="ctrl">
-        <label>Ritmo de mutación <output data-for="mutRate"></output></label>
-        <input class="lab-slider" data-key="mutRate" type="range" min="0" max="3" step="0.1" value="1" title="Multiplicador global del ritmo de mutación. 1 = base. >1 = más cambios por cría (más exploración/churn). 0 = clones (sin mutación).">
+        <label>Umbral de cría <output data-for="reproE"></output></label>
+        <input class="lab-slider" data-key="reproE" type="range" min="8" max="40" step="1" value="16" title="Energía que un organismo debe acumular antes de reproducirse. Más alto = menos nacimientos.">
       </div>
       <div class="ctrl">
         <label>Reproducción</label>
@@ -123,6 +141,12 @@
           <label style="flex:0"><input id="reproSex" type="checkbox" checked> sexual</label>
           <label style="flex:0"><input id="reproAsex" type="checkbox" checked> asexual</label>
         </div>
+      </div>
+
+      <div class="lab-group">Evolución</div>
+      <div class="ctrl">
+        <label>Ritmo de mutación <output data-for="mutRate"></output></label>
+        <input class="lab-slider" data-key="mutRate" type="range" min="0" max="3" step="0.1" value="1" title="Multiplicador global del ritmo de mutación. 1 = base · >1 = más exploración · 0 = clones.">
       </div>
       <button id="labReset" class="ghost">restaurar valores</button>
     </details>

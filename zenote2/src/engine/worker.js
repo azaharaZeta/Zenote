@@ -137,7 +137,7 @@ onmessage = (e) => {
   else if (m.type === 'maxSpeed') maxSpeed = m.value;
   // LABORATORIO (en vivo): ajusta una ley del mundo o del metabolismo sin reiniciar. lightMul vive en el mundo; mutRate
   // en GENOME_P; el resto son campos de SIM_P (step()/mutate() los leen por referencia → el cambio surte efecto al instante).
-  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'lightFlow') world.P.lightFlow = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; }
+  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; else if (m.key in world.P) world.P[m.key] = m.value; }   // world.P: lightFlow, vegGrowth, patchiness… (vegStep los lee por ref)
   else if (m.type === 'inspect') selectedId = m.id;     // inspector: fijar agente a seguir en vivo
   else if (m.type === 'deselect') selectedId = -1;
   else if (m.type === 'burst') { for (let k = 0; k < (m.n || 0); k++) sim.step(); snapshot(); }   // avance forzado (depuración/preview)

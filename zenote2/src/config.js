@@ -41,7 +41,7 @@ export const WORLD_P = {
   cellRef: 20,          // NO UI — tamaño de celda (u) → rejilla ∝ tamaño de mundo (recurso/luz total ∝ área)
   lightBase: 0.06,      // NO UI — irradiancia base por defecto (el punto de operación lo fija START.lightBase=2.5). La UI "Luz solar" multiplica vía world.lightMul.
   lightContrast: 0.7,   // NO UI — heterogeneidad espacial de la luz (0 uniforme · 1 muy en parches)
-  lightFlow: 0.00012,   // UI: Corriente del abismo — VELOCIDAD del "tiempo de flujo" del campo de luz: el fondo FLUYE formando
+  lightFlow: 0.0004,    // UI: Corriente del abismo — VELOCIDAD del "tiempo de flujo" del campo de luz: el fondo FLUYE formando
                         // ZONAS que se reorganizan (vagabundeo de fases, no traslación lineal) → no hay asentamiento permanente;
                         // los organismos persiguen el bloom (vía su sensor de ∇luz). 0 = estático (byte-idéntico). Lento/contemplativo.
   lightFlowEvery: 5,    // NO UI — cada cuántos ticks se re-hornea el campo de luz al derivar (la luz cambia despacio → throttle barato)
@@ -53,6 +53,8 @@ export const WORLD_P = {
   // --- VEGETACIÓN (productor PARAMETRIZADO, no genético): la base trófica. Capta LUZ (energía) creciendo logísticamente y
   // consumiendo NUTRIENTE (materia). Los ANIMALES la pastan. Conserva: nutriente↔veg↔detrito (materia); luz→veg→animal/calor (energía). ---
   vegGrowth: 0.12,      // NO UI — ritmo de crecimiento logístico de la vegetación/tick
+  patchiness: 0.7,      // NO UI — dinámica de rebrote (adaptado de zenote1): 0 = logístico simple · 1 = logístico + DIFUSIÓN de
+                        // semilla al vecindario → la vegetación forma y MIGRA parches orgánicos con el pastoreo↔rebrote (más vivo).
   vegKcoef: 6.0,        // NO UI — capacidad de carga por celda = vegKcoef · luz local (biomasa máx donde hay luz)
   vegEcoef: 1.0,        // NO UI — energía embebida por unidad de biomasa vegetal (lo que el pastador obtiene al comerla)
   vegDecay: 0.02,       // NO UI — senescencia vegetal/tick: biomasa → detrito (materia), energía → calor
@@ -85,6 +87,12 @@ export const SIM_P = {
   reproE: 16,          // UI: Umbral de cría — energía mínima para reproducirse (palanca viva, slider hasta 40)
   grazeRate: 0.5,      // UI: Pastoreo — biomasa vegetal que una boca puede pastar por tick ∝ mouthCap. La MISMA boca pasta veg,
                        // caza presa y rebaña carroña → el eje herbívoro↔carnívoro EMERGE de a qué dedica su esfuerzo el animal.
+  grazeRefuge: 0.06,   // NO UI — RESERVA DE REBROTE (adaptado de zenote1): fracción de la capacidad de cada celda INTOCABLE por el
+                       // pastoreo (no se puede pastar veg por debajo de grazeRefuge·K) → evita el sobrepastoreo letal, estabiliza la
+                       // base. Medido: con forrajeo por área, 0.06 = punto dulce (pop sana + MÁXIMA diversidad de talla + veg sostenible).
+  forageReach: 3,      // NO UI — FORRAJEO POR ÁREA: radio (celdas) del que pasta un animal a talla máx → el grande accede a más
+                       // terreno (payoff de talla del herbívoro). 0 = solo su celda. El radio efectivo ∝ talla (mass/forageMassRef).
+  forageMassRef: 4,    // NO UI — masa a la que el radio de forrajeo llega al máximo (forageReach); por debajo, proporcional.
   reproMode: 'both',   // UI: Reproducción — 'both' (sexual si hay pareja + respaldo asexual) · 'asexual' · 'sexual' (obligada, sin respaldo)
   // --- resto (NO UI) ---
   scavRate: 0.5,       // UI: Carroñeo — energía de detrito (detritusE de animales muertos) ingerible por tick ∝ mouthCap. 0 = apagado.

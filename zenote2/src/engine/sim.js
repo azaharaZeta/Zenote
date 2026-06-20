@@ -181,14 +181,24 @@ export class Sim {
       const attack = (out[3] + 1) * 0.5;
       const Gmax = P.gutBase + P.gutPerMass * this.mass[i];   // capacidad de tripa ∝ masa
       const eating = attack > 0.5 && myMouth > 0;
-      // PASTOREO: la boca consume biomasa vegetal de la celda → energía a la tripa (∝ vegEcoef·eficiencia) · la materia
-      // vegetal vuelve al nutriente (excreción). CONSERVA: veg→nutriente (materia); veg·vegEcoef → tripa(ηene) + calor(resto).
-      if (eating && this.gut[i] < Gmax) { const vAvail = W.veg[cell];
-        if (vAvail > 0) { const room = Gmax - this.gut[i], ec = W.P.vegEcoef;
-          let gb = P.grazeRate * myMouth; if (gb > vAvail) gb = vAvail;
+      // PASTOREO (adaptado de zenote1): la boca consume biomasa vegetal → energía a la tripa · la materia veg vuelve al nutriente.
+      // RESERVA DE REBROTE (grazeRefuge): solo es pastable lo que excede grazeRefuge·K de cada celda → no se puede pelar a cero
+      // (anti-sobrepastoreo). FORRAJEO POR ÁREA: un animal grande (mass alta) pasta de un vecindario de radio fR∝talla → accede a
+      // más terreno (payoff de talla del herbívoro). CONSERVA: veg→nutriente (materia); veg·vegEcoef → tripa(ηene) + calor(resto).
+      if (eating && this.gut[i] < Gmax) { const ec = W.P.vegEcoef, room = Gmax - this.gut[i];
+        const kc = W.P.vegKcoef, lmd = W.lightMul * W.daylight, refF = P.grazeRefuge;
+        const fR = P.forageReach > 0 ? Math.round(P.forageReach * Math.min(1, this.mass[i] / P.forageMassRef)) : 0;
+        const grazable = (c) => { const a = W.veg[c] - refF * kc * W.light0[c] * lmd; return a > 0 ? a : 0; };
+        let avail = 0;   // biomasa pastable disponible (por encima del refugio) en la celda o el área
+        if (fR === 0) avail = grazable(cell);
+        else { for (let dy = -fR; dy <= fR; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -fR; dx <= fR; dx++) avail += grazable(yy * cols + ((cx + dx) % cols + cols) % cols); } }
+        if (avail > 0) {
+          let gb = P.grazeRate * myMouth; if (gb > avail) gb = avail;
           let eGain = gb * ec * P.ηene; if (eGain > room) { eGain = room; gb = room / (ec * P.ηene); }
-          if (gb > 0) { W.veg[cell] -= gb; W.nutrient[cell] += gb; const eRaw = gb * ec;
-            this.gut[i] += eGain; W.heat += eRaw - eGain; this.vegIn[i] += eGain; } } }
+          if (gb > 0) { const frac = gb / avail;   // mismo % de lo pastable en cada celda → deplea el área, CONSERVA (Σtomas = gb)
+            if (fR === 0) { const t = grazable(cell) * frac; W.veg[cell] -= t; W.nutrient[cell] += t; }
+            else { for (let dy = -fR; dy <= fR; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -fR; dx <= fR; dx++) { const c = yy * cols + ((cx + dx) % cols + cols) % cols; const t = grazable(c) * frac; if (t > 0) { W.veg[c] -= t; W.nutrient[c] += t; } } } }
+            const eRaw = gb * ec; this.gut[i] += eGain; W.heat += eRaw - eGain; this.vegIn[i] += eGain; } } }
       if (preyJ >= 0 && eating && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
         if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]);
           const preyEnergy = E[preyJ] + this.gut[preyJ] + this.mass[preyJ] * this.eD;   // reservas + tripa + cuerpo de la presa
