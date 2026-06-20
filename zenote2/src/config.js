@@ -40,6 +40,10 @@ export const WORLD_P = {
   cellRef: 20,          // NO UI — tamaño de celda (u) → rejilla ∝ tamaño de mundo (recurso/luz total ∝ área)
   lightBase: 0.06,      // NO UI — irradiancia base por defecto (el punto de operación lo fija START.lightBase=2.5). La UI "Luz solar" multiplica vía world.lightMul.
   lightContrast: 0.7,   // NO UI — heterogeneidad espacial de la luz (0 uniforme · 1 muy en parches)
+  lightFlow: 0.00012,   // UI: Corriente del abismo — VELOCIDAD del "tiempo de flujo" del campo de luz: el fondo FLUYE formando
+                        // ZONAS que se reorganizan (vagabundeo de fases, no traslación lineal) → no hay asentamiento permanente;
+                        // los organismos persiguen el bloom (vía su sensor de ∇luz). 0 = estático (byte-idéntico). Lento/contemplativo.
+  lightFlowEvery: 5,    // NO UI — cada cuántos ticks se re-hornea el campo de luz al derivar (la luz cambia despacio → throttle barato)
   dayNightAmp: 0.0,     // NO UI — amplitud del ciclo día/noche (0 = sin ciclo)
   dayNightPeriod: 2000, // NO UI — periodo del ciclo (ticks)
   shadeCoef: 0.6,       // NO UI — sombra: la ocupación reduce la luz (competencia por luz)

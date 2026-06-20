@@ -126,7 +126,7 @@ export class Sim {
 
   step() {
     const W = this.world, rng = this.rng, size = W.size, P = SIM_P;
-    W.setDayNight(this.tick);
+    W.setDayNight(this.tick); W.stepLight(this.tick);   // corriente del abismo: el campo de luz puede derivar en el tiempo
     let na = 0; for (let i = 0; i < this.cap; i++) if (this.alive[i]) this.active[na++] = i; this.nA = na;
     W.occ.fill(0); this.hash.clear();
     for (let a = 0; a < na; a++) { const i = this.active[a]; this.hash.insert(i, this.x[i], this.y[i]); W.occ[W.cellAt(this.x[i], this.y[i])] += 1; }

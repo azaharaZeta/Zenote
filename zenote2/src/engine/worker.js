@@ -88,6 +88,9 @@ function snapshot() {
       dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
     [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer,
      dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer]);
+  // CORRIENTE DEL ABISMO: si el campo de luz deriva, manda el light0 actual (throttleado al ritmo de fotograma) → el render
+  // re-hornea la nebulosa y se ve FLUIR. Solo cuando lightFlow>0 (si no, el fondo es estático y se horneó al iniciar).
+  if (world.P.lightFlow > 0) { const l0 = world.light0.slice(); postMessage({ type: 'light', light0: l0 }, [l0.buffer]); }
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción
@@ -128,7 +131,7 @@ onmessage = (e) => {
   else if (m.type === 'maxSpeed') maxSpeed = m.value;
   // LABORATORIO (en vivo): ajusta una ley del mundo o del metabolismo sin reiniciar. lightMul vive en el mundo; mutRate
   // en GENOME_P; el resto son campos de SIM_P (step()/mutate() los leen por referencia → el cambio surte efecto al instante).
-  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; }
+  else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'lightFlow') world.P.lightFlow = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; }
   else if (m.type === 'inspect') selectedId = m.id;     // inspector: fijar agente a seguir en vivo
   else if (m.type === 'deselect') selectedId = -1;
   else if (m.type === 'burst') { for (let k = 0; k < (m.n || 0); k++) sim.step(); snapshot(); }   // avance forzado (depuración/preview)

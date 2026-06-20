@@ -9,7 +9,6 @@ Documentar los análisis, estados e histórico de cada idea en curso en sus resp
 Cuando una idea haya sido implementada o descartada, actualizar su fichero de idea y mover el fichero de idea a la carpeta `archivo` de la misma ruta que este fichero
 
 ## Ideas de usuario (pendientes de procesar)
-- Fondo del abismo funcional (corrientes que arrastren, gradientes térmicos, zonas de peligro/refugio) 
 - Inspector al hacer clic en un organismo: genoma, linaje, edad, energía, oficio (verificar/completar si ya existe parcialmente).
 
 

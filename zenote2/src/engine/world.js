@@ -34,16 +34,47 @@ export class World {
     this.lightMul = 1;        // multiplicador GLOBAL de luz (lab, en vivo): escala la productividad sin re-hornear light0
   }
 
-  // Luz base: campo suave y periódico (suma de sinusoides) → parches ricos/pobres sin costura en el toro.
+  // Luz base: SUMA DE LÓBULOS = ondas planas con frecuencia/dirección/fase ALEATORIAS (por semilla) → parches ricos/pobres
+  // sin costura en el toro (freqs enteras → periódicas), distintos en cada mundo "desde el inicio". Cada lóbulo lleva además
+  // freqs/offsets de VAGABUNDEO (para la deriva temporal de stepLight). El "abismo" puede así formar ZONAS que se
+  // reorganizan sin dirección neta (no una traslación lineal).
   _buildLight(seed) {
-    const rng = makeRng(seed), { cols, rows } = this, P = this.P;
-    const ph1 = rng.next() * 6.283, ph2 = rng.next() * 6.283, ph3 = rng.next() * 6.283;
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      const u = x / cols * 6.283, v = y / rows * 6.283;
-      let n = (Math.sin(u + ph1) * Math.cos(v + ph2) + Math.sin(2 * u + v + ph3)) * 0.5; // [-1,1] aprox
-      n = 0.5 + 0.5 * n;                                                    // → [0,1]
-      this.light0[y * cols + x] = P.lightBase * (1 - P.lightContrast + P.lightContrast * n);
+    const rng = makeRng(seed), L = 6; this._lobes = []; let sumAmp = 0;
+    for (let k = 0; k < L; k++) {
+      const kx = 1 + (rng.next() * 3 | 0);                  // 1..3 ciclos en x (ENTERO → periódico en el toro)
+      const ky = (rng.next() * 5 | 0) - 2;                  // -2..2 en y (orientación variada, entero)
+      const ph = rng.next() * 6.283, amp = 0.5 + rng.next() * 0.7;
+      const wf = [0.5 + rng.next() * 1.5, 0.5 + rng.next() * 1.5, 0.5 + rng.next() * 1.5];   // freqs de vagabundeo (incommensurables → cuasi-aperiódico)
+      const wo = [rng.next() * 6.283, rng.next() * 6.283, rng.next() * 6.283];
+      this._lobes.push({ kx, ky, ph, amp, wf, wo }); sumAmp += amp;
     }
+    this._lobeNorm = sumAmp > 0 ? 1 / (0.62 * sumAmp) : 1;   // normaliza a ~[-1,1] (factor <1 = más contraste; se clampa)
+    this._ep = new Float64Array(L);                          // fase efectiva por lóbulo (preasignada; sin asignar en re-horneado)
+    this._fillLight(0);
+  }
+
+  // Rellena light0 en el "tiempo de flujo" s. Cada lóbulo VAGABUNDEA su fase = base + WA·(osciladores lentos) → al avanzar s
+  // las zonas se forman/disuelven y se mueven en direcciones variables (NO traslación lineal). s=0 = patrón base.
+  _fillLight(s) {
+    const { cols, rows } = this, P = this.P, lobes = this._lobes, norm = this._lobeNorm, ep = this._ep, WA = 3.0;
+    for (let k = 0; k < lobes.length; k++) { const l = lobes[k];
+      ep[k] = l.ph + WA * (Math.sin(s * l.wf[0] + l.wo[0]) + 0.6 * Math.sin(s * l.wf[1] + l.wo[1]) + 0.4 * Math.sin(s * l.wf[2] + l.wo[2])); }
+    for (let y = 0; y < rows; y++) { const v = y / rows * 6.283;
+      for (let x = 0; x < cols; x++) { const u = x / cols * 6.283;
+        let n = 0; for (let k = 0; k < lobes.length; k++) { const l = lobes[k]; n += l.amp * Math.sin(l.kx * u + l.ky * v + ep[k]); }
+        n *= norm; n = n < -1 ? -1 : n > 1 ? 1 : n;                         // clamp [-1,1]
+        this.light0[y * cols + x] = P.lightBase * (1 - P.lightContrast + P.lightContrast * (0.5 + 0.5 * n));
+      }
+    }
+  }
+
+  // CORRIENTE DEL ABISMO: re-hornea el campo de luz avanzando el "tiempo de flujo" s = lightFlow·tick → el fondo (paisaje de
+  // recurso) FLUYE formando zonas que se reorganizan; los organismos lo persiguen vía su sensor de ∇luz (no hay asentamiento
+  // permanente). Throttle por lightFlowEvery (la luz cambia despacio). lightFlow=0 → light0 NO cambia tras el horneado inicial
+  // (byte-idéntico). Determinista (función de tick). La luz es ENERGÍA (fuente abierta) → variar el campo no afecta a la conservación.
+  stepLight(tick) {
+    const P = this.P; if (!(P.lightFlow > 0) || tick % P.lightFlowEvery !== 0) return;
+    this._fillLight(P.lightFlow * tick);
   }
 
   cellAt(x, y) {

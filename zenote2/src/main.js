@@ -2,11 +2,12 @@
 // y se maneja la CÁMARA (zoom + paneo TOROIDAL infinito) + los controles del panel. La cámara no toca la sim (fluida).
 
 import { TISSUE } from './engine/genome.js';
-import { RENDER_P, START, SIM_P, GENOME_P } from './config.js';   // fuente única de parámetros (render/arranque/lab)
+import { RENDER_P, START, SIM_P, GENOME_P, WORLD_P } from './config.js';   // fuente única de parámetros (render/arranque/lab)
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); } else if (m.type === 'frame') frame = m; };
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); } else if (m.type === 'frame') frame = m;
+  else if (m.type === 'light') { if (WORLD) { WORLD.light0 = m.light0; bakeLight(); } } };   // corriente del abismo: re-hornea la nebulosa al derivar la luz
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -336,7 +337,7 @@ $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; 
 $('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
 $('colorMode').value = RENDER_P.colorMode;
 $('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
-{ const src = { baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
+{ const src = { lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
@@ -364,8 +365,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : (k === 'photoMotionK' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'photoMotionK' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }
