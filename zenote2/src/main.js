@@ -6,7 +6,7 @@ import { RENDER_P, START, SIM_P, GENOME_P } from './config.js';   // fuente úni
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); if (m.seed != null) { const el = document.getElementById('seed'); if (el) el.value = m.seed; } } else if (m.type === 'frame') frame = m; };
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); } else if (m.type === 'frame') frame = m; };
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -304,8 +304,9 @@ const $ = (id) => document.getElementById(id);
 // FUENTE ÚNICA: los valores INICIALES de los controles salen de config.js (el HTML es solo fallback). Debe ir antes de
 // los inits de display y del bucle del laboratorio (que leen .value).
 $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; $('spawnSpread').value = START.spawnSpread; $('diversity').value = START.diversity;
-$('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('bloom').value = RENDER_P.bloom; $('zoom').value = RENDER_P.zoom;
-$('colorMode').value = RENDER_P.colorMode; $('reproMode').value = SIM_P.reproMode;
+$('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
+$('colorMode').value = RENDER_P.colorMode;
+$('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
 { const src = { baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
@@ -323,14 +324,12 @@ $('tps').addEventListener('input', (e) => {
   syncSpeedUI();
 });
 $('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal').textContent = maxFps + ' fps'; });   // límite de FPS de render
-$('bloom').addEventListener('input', (e) => { bloomStrength = +e.target.value; $('bloomVal').textContent = bloomStrength === 0 ? 'off' : bloomStrength.toFixed(2); });   // bloom (render puro, no va al worker)
 // B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
 // nace con lightMul=1 → re-aplica el lab.
-function resetWorld() { const sv = $('seed').value.trim();
-  worker.postMessage({ type: 'reset', seed: sv === '' ? null : (parseInt(sv, 10) | 0), worldSize: +$('worldSize').value, seedCount: +$('seedCount').value, spawnSpread: +$('spawnSpread').value, diversity: +$('diversity').value });
+function resetWorld() {   // semilla SIEMPRE aleatoria (seed:null → el worker la elige); el mundo nuevo nace con lightMul=1 → re-aplica el lab.
+  worker.postMessage({ type: 'reset', seed: null, worldSize: +$('worldSize').value, seedCount: +$('seedCount').value, spawnSpread: +$('spawnSpread').value, diversity: +$('diversity').value });
   applyLab(); }
 $('reset').addEventListener('click', resetWorld);
-$('seedRandom').addEventListener('click', () => { $('seed').value = ''; resetWorld(); });   // 🎲: semilla aleatoria nueva
 $('hide').addEventListener('click', () => document.body.classList.add('hidden-panel'));
 $('show').addEventListener('click', () => document.body.classList.remove('hidden-panel'));
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
@@ -360,7 +359,15 @@ dvr.addEventListener('input', () => $('diversityVal').textContent = pct(dvr));
 $('worldSizeVal').textContent = ws.value + ' u'; $('seedCountVal').textContent = sct.value;
 $('spawnSpreadVal').textContent = +spr.value >= 1 ? 'todo el mundo' : pct(spr) + ' (disco central)'; $('diversityVal').textContent = pct(dvr);
 // Vía reproductiva (en vivo): both (sexual+respaldo asexual) · asexual · sexual (obligada). Manda la cadena a SIM_P.reproMode.
-$('reproMode').addEventListener('change', (e) => worker.postMessage({ type: 'set', key: 'reproMode', value: e.target.value }));
+// Reproducción = dos checkboxes (sexual / asexual) → reproMode. No se permite dejar las DOS apagadas (revierte la última).
+function applyRepro(changed) {
+  let sx = $('reproSex').checked, ax = $('reproAsex').checked;
+  if (!sx && !ax) { if (changed) changed.checked = true; sx = $('reproSex').checked; ax = $('reproAsex').checked; }
+  const mode = sx && ax ? 'both' : ax ? 'asexual' : 'sexual';
+  worker.postMessage({ type: 'set', key: 'reproMode', value: mode });
+}
+$('reproSex').addEventListener('change', (e) => applyRepro(e.target));
+$('reproAsex').addEventListener('change', (e) => applyRepro(e.target));
 
 // Inspector: controles de la tarjeta
 $('inspClose').addEventListener('click', deselect);
@@ -383,7 +390,7 @@ function buildLegend() {
   L.innerHTML = (sets[colorMode] || sets.natural).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 buildLegend();
-$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps'; $('bloomVal').textContent = bloomStrength.toFixed(2);
+$('tpsVal').textContent = $('tps').value + ' t/s'; $('zoomVal').textContent = (+$('zoom').value).toFixed(1) + '×'; $('fpsVal').textContent = $('fps').value + ' fps';
 
 // depuración / preview (rAF se throttlea): forzar avance del motor + dibujar
 window.__worker = worker;

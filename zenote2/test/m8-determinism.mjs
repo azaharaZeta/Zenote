@@ -28,7 +28,7 @@ function run(ticks) {
   return { c: checksum(s), pop: s.pop(), tick: s.tick };
 }
 
-const GOLDEN = 0x0cb2b800;   // motor en biorefactor; re-fijado al añadir photoMotionK=2 (fotosíntesis premia quietud) 2026-06-19; seed 1, cap 4000, 2000 ticks
+const GOLDEN = 0xe57394c3;   // re-fijado al añadir massCostExp=1.2 (coste de masa super-lineal anti-bloat) 2026-06-20; seed 1, cap 4000, 2000 ticks
 const TICKS = 2000;
 console.log('=== Checksum dorado — determinismo + deriva ===\n');
 const a = run(TICKS), b = run(TICKS);

@@ -177,7 +177,8 @@ export class Sim {
       if (this.gut[i] > 0) { const d = this.gut[i] < P.digestRate ? this.gut[i] : P.digestRate; this.gut[i] -= d; E[i] += d; }
 
       // METABOLISMO: reservas → calor (basal + ∝masa + nado). Muerte si se agotan → cuerpo a detrito.
-      const cost = P.baseCost + P.massCost * this.mass[i] + P.moveCost * v2 * this.drag[i];
+      const mC = P.massCostExp === 1 ? this.mass[i] : Math.pow(this.mass[i], P.massCostExp);   // BALANCE: coste de masa super-lineal (exp>1 frena el bloat)
+      const cost = P.baseCost + P.massCost * mC + P.moveCost * v2 * this.drag[i];
       const spend = Math.min(E[i], cost); E[i] -= spend; W.heat += spend;
       if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.gut[i] + this.mass[i] * this.eD; this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; this.starved++; continue; }
 

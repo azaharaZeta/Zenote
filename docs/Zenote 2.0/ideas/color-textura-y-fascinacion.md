@@ -123,8 +123,15 @@ fascinantes que reflejan a los organismos reales" sin falsear emergencia. Solo B
   alpha 0.32). **Selector final (5 modos):** Natural (aspecto real) / Natural + tejido / Tejido + aura real / Oficio +
   aura real / Linaje.
 
-**Pendientes:** A5 (cadáveres con forma) y el spike B1 (color sexual evolvable / D16). El eje visual de fascinación está
-prácticamente completo: silueta + pigmento real + auto-glow + motas + bordes + bloom, todo fiel a lo que evoluciona y barato en móvil.
+- **B1 — color como señal sexual evolvable — SPIKE GO pero REVERTIDO por decisión de usuario (2026-06-19).** Se implementó
+  tras flag `SIM_P.sexSel`: `hue`=SEÑAL + gen `pref`=PREFERENCIA evolvables; `_findMate` elegía por match señal↔preferencia
+  (tono circular). Medido (`m9-sexual-selection`, 3 seeds × 25k): **coupling +0.057** (realMatch ~0.18 vs shuffled ~0.24,
+  métrica autocontrolada que descarta coalescencia) → señal/preferencia se ACOPLAN = firma de Fisher (cerraría D16). Efecto
+  CLARO pero MODERADO (no runaway dramático). **El usuario decidió REVERTIRLO** (código quitado, gate byte-idéntico). Queda
+  como receta validada por si se retoma; para más fuerza habría que endurecer la preferencia (rechazo, no solo "prefiere").
+
+**Pendientes:** A5 (cadáveres con forma). El eje visual de fascinación está prácticamente completo: silueta + pigmento real
++ auto-glow + motas + bordes + bloom, todo fiel a lo que evoluciona y barato en móvil.
 
 ## Próximos pasos sugeridos
 1. ~~A1 (siluetas) + A2 (color en capas) + modo "Natural (real)" default~~ ✅ HECHO 2026-06-19.

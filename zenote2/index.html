@@ -22,13 +22,6 @@
     <details class="lab" open>
       <summary>Mundo nuevo <span class="restart-tag">↻ al reiniciar</span></summary>
       <div class="ctrl">
-        <label>Semilla</label>
-        <div class="row">
-          <input id="seed" class="seed-in" type="number" min="0" step="1" placeholder="aleatoria" title="Semilla del mundo y la población (mismo número → mismo mundo). Vacío = aleatoria.">
-          <button id="seedRandom" class="ghost" title="Semilla aleatoria nueva y reiniciar">🎲</button>
-        </div>
-      </div>
-      <div class="ctrl">
         <label>Tamaño del mundo <output id="worldSizeVal"></output></label>
         <input id="worldSize" type="range" min="800" max="3000" step="100" value="1500" title="Lado del mundo (toro). Más grande = menor densidad para la misma población.">
       </div>
@@ -60,10 +53,6 @@
       <input id="fps" type="range" min="5" max="120" step="5" value="20" title="Límite de cuadros por segundo del render (no afecta a la simulación)">
     </div>
 
-    <div class="ctrl">
-      <label>Bioluminiscencia <output id="bloomVal"></output></label>
-      <input id="bloom" type="range" min="0" max="1.5" step="0.05" value="0.75" title="Intensidad del bloom (luz suave). 0 = apagado (recomendado en móvil/equipos lentos). Solo render.">
-    </div>
 
     <div class="ctrl">
       <label>Zoom <output id="zoomVal"></output></label>
@@ -126,11 +115,10 @@
       </div>
       <div class="ctrl">
         <label>Reproducción</label>
-        <select id="reproMode" title="Sexual+asexual: sexual si hay pareja, asexual de respaldo. Solo asexual: clones. Solo sexual: obligada, sin respaldo (sin pareja no se reproduce → puede frenar la natalidad).">
-          <option value="both">Sexual + asexual</option>
-          <option value="asexual">Solo asexual</option>
-          <option value="sexual">Solo sexual (obligada)</option>
-        </select>
+        <div class="row" style="gap:14px">
+          <label style="flex:0"><input id="reproSex" type="checkbox" checked> sexual</label>
+          <label style="flex:0"><input id="reproAsex" type="checkbox" checked> asexual</label>
+        </div>
       </div>
       <button id="labReset" class="ghost">restaurar valores</button>
     </details>

@@ -78,7 +78,10 @@ export const SIM_P = {
   reproMode: 'both',   // UI: Reproducción — 'both' (sexual si hay pareja + respaldo asexual) · 'asexual' · 'sexual' (obligada, sin respaldo)
   // --- resto (NO UI) ---
   photoHalf: 40,       // NO UI — saturación de la captación de luz
-  massCost: 0.004,     // NO UI — coste metabólico ∝ masa
+  massCost: 0.004,     // NO UI — coste metabólico ∝ masa^massCostExp
+  massCostExp: 1.2,    // NO UI — exponente del coste de masa (super-lineal). Frena el BLOAT: sin él los cuerpos se inflaban
+                       // (masa ×4, generalistas "lo tienen todo" 1%→~40% a 30k, pop a la mitad). Medido (spikes/trophic-balance):
+                       // 1.2 → pop ×2, masa a la mitad, generalistas ~6%, mantiene diversidad de talla. (1 = lineal/antiguo.)
   moveCost: 0.004,     // NO UI — coste de nado ∝ drag·v² (energía → calor)
   investE: 7,          // NO UI — energía que el progenitor pone en la cría
   cooldown: 50,        // NO UI — enfriamiento reproductivo (ticks)
