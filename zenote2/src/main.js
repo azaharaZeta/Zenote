@@ -273,7 +273,7 @@ function updateInspector() {
     $('inspDietTxt').textContent = `dieta: pasto ${pV.toFixed(0)}% · caza ${pP.toFixed(0)}%` + (pS >= 0.5 ? ` · carroña ${pS.toFixed(0)}%` : '');
   } else { seg[0].style.width = seg[1].style.width = seg[2].style.width = '0%'; $('inspDietTxt').textContent = 'dieta: — (recién nacido)'; }
   $('inspE').style.width = (Math.max(0, Math.min(1, d.E / d.reproE)) * 100).toFixed(0) + '%';
-  $('inspEtxt').textContent = `energía ${d.E.toFixed(1)} / cría ${d.reproE}` + (d.gut > 0.05 ? ` · tripa ${d.gut.toFixed(1)}` : '');
+  $('inspEtxt').textContent = `energía ${d.E.toFixed(1)} / cría ${d.reproE.toFixed(0)}` + (d.investE != null ? ` · inv/cría ${d.investE.toFixed(1)}` : '') + (d.gut > 0.05 ? ` · tripa ${d.gut.toFixed(1)}` : '');   // r/K: umbral e inversión PROPIOS
   $('inspMass').textContent = d.mass.toFixed(2);
   $('inspParts').textContent = d.nParts;
   $('inspV').textContent = d.vmax.toFixed(2);
@@ -349,7 +349,7 @@ $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; 
 $('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
 $('colorMode').value = RENDER_P.colorMode;
 $('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
-{ const src = { lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
+{ const src = { lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, fleeSpeed: SIM_P.fleeSpeed, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
@@ -377,8 +377,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : (k === 'reproE' || k === 'forageReach') ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'grazeRate' || k === 'scavRate' || k === 'vegGrowth' || k === 'patchiness' || k === 'grazeRefuge') ? v.toFixed(2) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, fleeSpeed: SIM_P.fleeSpeed, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : (k === 'mutRate' || k === 'fleeSpeed') ? v.toFixed(1) + '×' : (k === 'reproE' || k === 'forageReach') ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'grazeRate' || k === 'scavRate' || k === 'vegGrowth' || k === 'patchiness' || k === 'grazeRefuge') ? v.toFixed(2) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }

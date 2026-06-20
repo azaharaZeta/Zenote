@@ -28,7 +28,10 @@ function run(ticks) {
   return { c: checksum(s), pop: s.pop(), tick: s.tick };
 }
 
-const GOLDEN = 0x5a8fb59e;   // re-fijado: productividad vegetal ∝ luz (la veg sigue a la luz → la "Corriente del abismo" la mueve) + lightFlow def 0.0004 2026-06-20; seed 1, cap 4000, 2000 ticks
+const GOLDEN = 0xebd987f9;   // re-fijado 2026-06-20: r/K EVOLVABLE — el umbral de cría (gen reproK) y la inversión por cría (gen
+                             // investFrac) son ahora GENES por organismo (antes constantes SIM_P.reproE/investE). Cambio INTENCIONADO
+                             // (el eje r↔K emerge de la selección). Previos: 0xe5d3f569 (escape por velocidad fleeSpeed), 0x5a8fb59e
+                             // (productividad vegetal ∝ luz). seed 1, cap 4000, 800 fundadores, 2000 ticks.
 const TICKS = 2000;
 console.log('=== Checksum dorado — determinismo + deriva ===\n');
 const a = run(TICKS), b = run(TICKS);

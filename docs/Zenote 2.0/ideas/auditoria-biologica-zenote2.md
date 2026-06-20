@@ -1,5 +1,16 @@
 # Auditoría del modelo evolutivo — **(Zenote 2)**
 
+> ## ⚠️ AUDITORÍA DEL MODELO PREVIO (fotosíntesis) — 2026-06-19
+> El **2026-06-20 cambiaron los cimientos** (fotosíntesis-en-el-genoma → **solo animales + vegetación parametrizada**;
+> ver [`MODELO-ACTUAL.md`](../MODELO-ACTUAL.md)). Esta auditoría se hizo el día ANTES. La **maquinaria genética/reproductiva
+> NO cambió**, así que la mayoría de los hallazgos **SIGUEN VIGENTES** contra el código de hoy: fitness implícito,
+> Baldwin (no Lamarck), mapa genotipo→fenotipo generativo, haploidía, **D16** (sin selección sexual de Fisher; `mateCompat`
+> es métrica curada — hoy sobre masa/mouthCap/maxMouthR), **D14** (especiación clinal, no discreta), **seedBrain** (conducta
+> sembrada, evo aporta ~18%), **r/K no evolvable** (`reproE`/`investE` constantes). **SUPERADO:** el eje trófico ya no es
+> autótrofo↔heterótrofo por `photoCap` sino **herbívoro↔carnívoro por DIETA** sobre vegetación — y la estructura trófica
+> ahora es **más robusta** (el cazador ya no se extingue). **Hallazgo NUEVO** (no cubierto aquí): la **locomoción decaía**
+> con el tiempo evolutivo. **Auditoría fresca + medidas:** [`auditoria-zenote2-2026-06-20.md`](auditoria-zenote2-2026-06-20.md).
+
 > **Ámbito: ZENOTE 2** (la segunda app, `../../../zenote2/`), no la app v1 de esta carpeta. Auditoría **del modelo
 > evolutivo desde la biología evolutiva** (mecanismos, plausibilidad, supuestos, fenómenos reproducibles), realizada el
 > **2026-06-19** sobre la rama `biorefactor`. Complementa la [auditoría TÉCNICA](auditoria-tecnica-zenote2.md) del mismo

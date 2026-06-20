@@ -75,11 +75,15 @@ export function makeFounder(rng, div = 1) {
                 recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],   // par de aletas traseras propulsoras
     brain: seedBrain(rng, div),   // bootstrap de conducta competente; div escala el ruido (div=0 → cerebro idéntico)
     hue: dv(rng.next()),          // marcador de LINAJE (neutro, heredable, deriva lenta); a div=0 todos el mismo tono
+    // r/K: genes de historia de vida. TODOS los fundadores arrancan IDÉNTICOS (reproK=1, investFrac=0.4375 = defaults previos)
+    // → la divergencia r↔K es 100% emergente (mutación+selección), no sembrada. No consumen RNG ni dependen de div.
+    reproK: 1.0, investFrac: 0.4375,
   };
 }
 
 export function cloneGenome(g) {
-  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })), brain: g.brain ? Float32Array.from(g.brain) : null, hue: g.hue };
+  return { root: { ...g.root }, modules: g.modules.map((m) => ({ ...m })), brain: g.brain ? Float32Array.from(g.brain) : null, hue: g.hue,
+           reproK: g.reproK, investFrac: g.investFrac };
 }
 
 // DESARROLLO: genoma de reglas → cuerpo (lista de partes con geometría). Determinista, acotado, SIEMPRE válido.
@@ -146,6 +150,9 @@ export function mutate(g, rng) {
   // CEREBRO: muta los pesos de NACIMIENTO (lo heredable). La copia de trabajo (aprendida en vida) NO se hereda.
   if (n.brain) { const b = n.brain; for (let k = 0; k < b.length; k++) { if (chance(0.08)) { let v = b[k] + rng.gaussian() * 0.15; b[k] = v < -3 ? -3 : v > 3 ? 3 : v; } } }
   if (chance(0.1)) n.hue = (n.hue + rng.gaussian() * 0.03 + 1) % 1;   // deriva lenta del linaje (color)
+  // r/K (historia de vida): perturba el umbral de cría relativo y la inversión por cría → el eje r↔K deriva bajo selección.
+  if (chance(0.12)) n.reproK = clamp(n.reproK + rng.gaussian() * 0.08, B.reproKMin, B.reproKMax);
+  if (chance(0.12)) n.investFrac = clamp(n.investFrac + rng.gaussian() * 0.05, B.investFracMin, B.investFracMax);
   return n;
 }
 
@@ -167,7 +174,8 @@ export function recombine(gA, gB, rng) {
   let brain = null;
   if (gA.brain && gB.brain) { brain = new Float32Array(gA.brain.length); const cut = (rng.next() * brain.length) | 0; for (let k = 0; k < brain.length; k++) brain[k] = (k < cut ? gA : gB).brain[k]; }
   else if (gA.brain || gB.brain) brain = Float32Array.from(gA.brain || gB.brain);
-  return { root, modules, brain, hue: (rng.next() < 0.5 ? gA : gB).hue };
+  return { root, modules, brain, hue: (rng.next() < 0.5 ? gA : gB).hue,
+           reproK: (rng.next() < 0.5 ? gA : gB).reproK, investFrac: (rng.next() < 0.5 ? gA : gB).investFrac };   // r/K: cada gen de un progenitor
 }
 
 // Estadística estructural del cuerpo (para tests/inspección).

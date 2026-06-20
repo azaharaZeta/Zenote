@@ -69,6 +69,14 @@ export const GENOME_P = {
   modCap: 12,          // NO UI — tope de módulos del genoma
   radMin: 1.0, radMax: 6.0,   // NO UI — gen size → radio de parte (u)
   mutRate: 1,          // UI: Ritmo de mutación — multiplicador global de las PROBABILIDADES de mutación (1 = base · 0 = clones)
+  // --- ESTRATEGIA r/K (genes de historia de vida, heredables/mutables; 2.4 §1.1). `reproK` = multiplicador GENÉTICO del umbral
+  // de cría (sobre SIM_P.reproE, baseline-palanca del lab); `investFrac` = fracción del umbral que el progenitor PONE en cada cría.
+  // Sustituyen a las CONSTANTES reproE/investE (dial→gen). Fundador: reproK=1.0 · investFrac=0.4375 (=7/16) → arranque equivalente.
+  // MEDIDO (spikes + auditoría 2026-06-20): el eje r↔K queda NEAR-NEUTRAL (no diverge) en la pecera cerrada y saturada — la
+  // r-selección exige condiciones NO saturadas/de expansión que un equilibrio cerrado no da (se probó disturbio: tampoco). El
+  // sustrato es correcto y conserva; la divergencia esperaría a dinámica abierta/perturbada. (Se probó NIDADA y se revirtió: nulo.)
+  reproKMin: 0.5, reproKMax: 2.0,        // NO UI — rango del gen reproK (umbral_i = SIM_P.reproE · reproK)
+  investFracMin: 0.2, investFracMax: 0.8, // NO UI — rango del gen investFrac (investE_i = investFrac · umbral_i; siempre ≤ umbral → cría asequible)
 };
 
 // ===================== FENOTIPO (forma → función) =====================
@@ -84,7 +92,8 @@ export const PHENO_P = {
 export const SIM_P = {
   // --- expuestos en el LABORATORIO (en vivo) ---
   baseCost: 0.015,     // UI: Metabolismo basal — coste metabólico basal/tick
-  reproE: 16,          // UI: Umbral de cría — energía mínima para reproducirse (palanca viva, slider hasta 40)
+  reproE: 16,          // UI: Umbral de cría — energía mínima para reproducirse. BASELINE del lab (palanca viva, slider hasta 40): el
+                       // umbral REAL de cada organismo es reproE · su gen `reproK` (r/K evolvable, ver GENOME_P). El slider escala a toda la población.
   grazeRate: 0.5,      // UI: Pastoreo — biomasa vegetal que una boca puede pastar por tick ∝ mouthCap. La MISMA boca pasta veg,
                        // caza presa y rebaña carroña → el eje herbívoro↔carnívoro EMERGE de a qué dedica su esfuerzo el animal.
   grazeRefuge: 0.06,   // NO UI — RESERVA DE REBROTE (adaptado de zenote1): fracción de la capacidad de cada celda INTOCABLE por el
@@ -102,7 +111,8 @@ export const SIM_P = {
                        // (masa ×4, generalistas "lo tienen todo" 1%→~40% a 30k, pop a la mitad). Medido (spikes/trophic-balance):
                        // 1.2 → pop ×2, masa a la mitad, generalistas ~6%, mantiene diversidad de talla. (1 = lineal/antiguo.)
   moveCost: 0.004,     // NO UI — coste de nado ∝ drag·v² (energía → calor)
-  investE: 7,          // NO UI — energía que el progenitor pone en la cría
+  investE: 7,          // NO UI — energía que el progenitor pone en la cría. SOLO de referencia del fundador: la inversión REAL es
+                       // genética (investFrac · umbral_i, ver GENOME_P); 7 = 0.4375·16 reproduce el valor del fundador. Ya no se lee en el bucle.
   cooldown: 50,        // NO UI — enfriamiento reproductivo (ticks)
   eDensity: 0,         // NO UI — energía-en-biomasa (M6.1). 0 = separación limpia materia/energía. Se probó eD=4 para el nicho
                        // carroñero (#4) pero AGRAVABA el inmovilismo: a eD>0 la masa es cara al nacer (eCost+=masa·eD) → el músculo
@@ -111,6 +121,14 @@ export const SIM_P = {
   gutBase: 4, gutPerMass: 4, digestRate: 0.6,   // NO UI — TRIPA: tope ∝ masa (saciedad EMERGENTE) + ritmo de digestión
   eatReach: 4,         // NO UI — alcance extra de captura (u)
   preyMassMax: 1.6,    // NO UI — presa manejable si su masa ≤ maxMouthR·este
+  fleeSpeed: 1.0,      // UI: Escape por velocidad — la presa escapa de la captura si corre más rápido que el depredador (× este factor).
+                       // 0 = captura garantizada dentro de alcance (antiguo: nada premia la velocidad → el músculo se poda y la locomoción
+                       // DECAE monótonamente con el tiempo evolutivo — medido: spMean 1.66→0.18, vmax→0.27 a 50k, "todo a paso de tortuga").
+                       // >0 = la velocidad relativa decide la captura → ser rápido es defensa (huir) y ataque (alcanzar) → carrera armamentística
+                       // que mantiene el MÚSCULO y el movimiento bajo selección. Medido (spikes/flee-speed, 50k): 1.0 hace que la locomoción se
+                       // ESTABILICE en una meseta (spMean ~0.30, vmax ~0.41, +52% vs 0.27) en vez de seguir cayendo — sin extinguir al cazador ni
+                       // romper la coexistencia (C sano, pop estable, menos bloat). 1.5+ sube más la velocidad pero exprime al cazador (la presa
+                       // escapa demasiado). Barrido completo en spikes/flee-speed/run.mjs.
   ηene: 0.85,          // NO UI — eficiencia energética de la ingesta
   initE: 10,           // NO UI — reservas iniciales de los fundadores
   mateRadius: 50,      // NO UI — radio de búsqueda de pareja (u)

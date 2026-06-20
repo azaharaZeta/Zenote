@@ -1,5 +1,13 @@
 # Auditoría técnica — **(Zenote 2)**
 
+> ## ⚠️ AUDITORÍA DEL MODELO PREVIO (fotosíntesis) — 2026-06-19
+> El **2026-06-20 cambiaron los cimientos** (fotosíntesis-en-el-genoma → **solo animales + vegetación parametrizada**;
+> ver [`MODELO-ACTUAL.md`](../MODELO-ACTUAL.md)). Esta auditoría se hizo el día ANTES, sobre el modelo de fotosíntesis.
+> **Lo que sigue VIGENTE:** todo el eje de ingeniería (arquitectura en capas, motor en Web Worker, SoA + hash O(n),
+> determinismo + checksum dorado, gate runner) y la resolución del backlog A1/M1–M5/B1–B6. Eso no lo tocó el cambio de
+> cimientos. **Lo SUPERADO:** las menciones a fotosíntesis / `photoCap` / sensor de ∇luz / monedas "luz→fotosíntesis".
+> **Auditoría fresca contra el código vivo:** [`auditoria-zenote2-2026-06-20.md`](auditoria-zenote2-2026-06-20.md).
+
 > **Ámbito: ZENOTE 2** (la segunda app, `../../../zenote2/`), no la app v1 de esta carpeta. Auditoría de ingeniería
 > (arquitectura · calidad · rendimiento · correctitud · tests) realizada el **2026-06-19** sobre la rama `biorefactor`
 > (9 módulos / ~973 líneas de motor + 10 tests). Backlog de deuda y hallazgos para **procesar más adelante** —

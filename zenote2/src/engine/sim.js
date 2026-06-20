@@ -29,6 +29,8 @@ export class Sim {
     this.mass = new Float32Array(cap); this.vmax = new Float32Array(cap);
     this.drag = new Float32Array(cap); this.mouthCap = new Float32Array(cap); this.maxMouthR = new Float32Array(cap);
     this.thrust = new Float32Array(cap);   // empuje cacheado (solo para el oficio trófico del render; no entra en la sim)
+    // r/K (historia de vida, genético): umbral_i = SIM_P.reproE·reproK (SIM_P.reproE = baseline live del lab); investE_i = investFrac·umbral_i.
+    this.reproK = new Float32Array(cap); this.investFrac = new Float32Array(cap);
     this.free = new Int32Array(cap); for (let i = 0; i < cap; i++) this.free[i] = cap - 1 - i; this.freeTop = cap;
     this.active = new Int32Array(cap); this.nA = 0;
     // M4: la celda del hash = mayor alcance que el barrido 3×3 debe cubrir. Derivada (no hardcodeada): el piso 60 es
@@ -70,6 +72,7 @@ export class Sim {
   spawn(genome, x, y, E, parts = null, ph = null) {
     if (this.freeTop === 0) return -1; const i = this.free[--this.freeTop];
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
+    this.reproK[i] = genome.reproK != null ? genome.reproK : 1.0; this.investFrac[i] = genome.investFrac != null ? genome.investFrac : 0.4375;   // r/K: cachea los genes de historia de vida al nacer
     if (this.freezeBrain && genome.brain) genome.brain.set(this._seedBrain);   // control: anula la herencia/mutación del cerebro → todos usan el seedBrain canónico
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
     this.vegIn[i] = 0; this.preyIn[i] = 0; this.scavIn[i] = 0;   // ingreso por agente: a cero al nacer
@@ -132,6 +135,7 @@ export class Sim {
       const i = this.active[a]; if (!this.alive[i]) continue;   // pudo morir antes en ESTE tick (depredación)
       const cell = W.cellAt(x[i], y[i]);
       const E0 = E[i];   // M6.3: reservas al inicio del tick → recompensa de plasticidad = ΔE
+      const reproEi = P.reproE * this.reproK[i];   // r/K: umbral de cría de ESTE organismo = baseline (lab) · gen reproK → alimenta hambre y gate de cría
       // (Los animales NO fotosintetizan: la luz la capta la VEGETACIÓN del mundo. El animal obtiene energía PASTÁNDOLA, cazando o carroñeando, abajo.)
 
       // ---- SENSADO: ∇vegetación (olor a comida) + ∇detrito + presa/amenaza más cercanas (un barrido del hash) ----
@@ -163,7 +167,7 @@ export class Sim {
       const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._in, hid = this._hid, out = this._out, wb = i * BRAIN_W, hb = i * H, Wt = this.wbrain, PH = this.hidden;
       const wHh = I * H, bH = I * H + H * H, wHo = bH + H, bO = wHo + H * O;
       inp[0] = lgx < -1 ? -1 : lgx > 1 ? 1 : lgx; inp[1] = lgy < -1 ? -1 : lgy > 1 ? 1 : lgy; inp[2] = preyDX; inp[3] = preyDY; inp[4] = thDX; inp[5] = thDY;
-      const h6 = (E[i] / P.reproE) * 2 - 1; inp[6] = h6 > 1 ? 1 : h6 < -1 ? -1 : h6;   // B3: hambre acotada a [-1,1] (consistencia con el resto de entradas)
+      const h6 = (E[i] / reproEi) * 2 - 1; inp[6] = h6 > 1 ? 1 : h6 < -1 ? -1 : h6;   // B3: hambre acotada a [-1,1]; relativa al umbral PROPIO (r/K)
       const spd0 = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]); inp[7] = this.vmax[i] > 1e-4 ? (spd0 / this.vmax[i]) * 2 - 1 : -1;
       inp[8] = dgx < -1 ? -1 : dgx > 1 ? 1 : dgx; inp[9] = dgy < -1 ? -1 : dgy > 1 ? 1 : dgy;   // #4: ∇detrito (olor a carroña)
       for (let h = 0; h < H; h++) { let s = Wt[wb + bH + h]; for (let k = 0; k < I; k++) s += inp[k] * Wt[wb + k * H + h]; for (let p = 0; p < H; p++) s += PH[hb + p] * Wt[wb + wHh + p * H + h]; hid[h] = Math.tanh(s); }
@@ -200,7 +204,16 @@ export class Sim {
             else { for (let dy = -fR; dy <= fR; dy++) { const yy = ((cy + dy) % rows + rows) % rows; for (let dx = -fR; dx <= fR; dx++) { const c = yy * cols + ((cx + dx) % cols + cols) % cols; const t = grazable(c) * frac; if (t > 0) { W.veg[c] -= t; W.nutrient[c] += t; } } } }
             const eRaw = gb * ec; this.gut[i] += eGain; W.heat += eRaw - eGain; this.vegIn[i] += eGain; } } }
       if (preyJ >= 0 && eating && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
-        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]);
+        // ESCAPE POR VELOCIDAD (fleeSpeed): la presa escapa de la captura si corre más rápido que el depredador (×fleeSpeed).
+        // fleeSpeed=0 → siempre capturable dentro de `reach` (comportamiento antiguo: la velocidad no era ni defensa ni ataque →
+        // nada premiaba el músculo → la locomoción se podaba y todo derivaba a lento). >0 → la velocidad RELATIVA decide la captura
+        // → ser rápido es DEFENSA (presa que huye) y ATAQUE (depredador que alcanza) → carrera armamentística que mantiene el músculo
+        // y el movimiento bajo selección. v2 = velocidad² del depredador (ya calculada arriba); preySp2 = la de la presa. CONSERVA
+        // (un escape = no hay kill, no se mueve materia ni energía). Frontera genotipo→física: el programador define que correr ayuda
+        // a cazar/huir; la selección decide cuánto músculo invertir. Sin estrategia cableada (el cerebro decide hacia dónde y cuánto).
+        const preySp2 = vx[preyJ] * vx[preyJ] + vy[preyJ] * vy[preyJ];
+        const caught = P.fleeSpeed <= 0 || v2 >= preySp2 * P.fleeSpeed * P.fleeSpeed;
+        if (preyD < reach * reach && caught) { const pc = W.cellAt(x[preyJ], y[preyJ]);
           const preyEnergy = E[preyJ] + this.gut[preyJ] + this.mass[preyJ] * this.eD;   // reservas + tripa + cuerpo de la presa
           const ge = P.ηene * preyEnergy, room = Gmax - this.gut[i], intoGut = ge < room ? ge : room;
           this.gut[i] += intoGut; this.preyIn[i] += intoGut; W.detritusE[pc] += preyEnergy - intoGut;   // lo asimilable → TRIPA; el resto → detrito (CONSERVA)
@@ -239,13 +252,14 @@ export class Sim {
       // REPRODUCCIÓN asexual + MUTACIÓN: la cría desarrolla su (posiblemente mutado) cuerpo; su MATERIA sale del
       // nutriente local (gate endógeno: no nace sin materia), su ENERGÍA del progenitor. Conserva ambas.
       this.age[i]++; if (this.cd[i] > 0) this.cd[i]--;
-      else if (E[i] >= P.reproE) {
+      else if (E[i] >= reproEi) {   // r/K: cría al alcanzar el umbral PROPIO (gen reproK)
         const mate = P.reproMode !== 'asexual' ? this._findMate(i) : -1;   // M7: both/sexual buscan pareja compatible; asexual no
         // 'sexual' = OBLIGADA (sin respaldo asexual): sin pareja → no se reproduce este intento (ni desarrolla ni cobra).
         if (mate >= 0 || P.reproMode !== 'sexual') {
         const childG = mate >= 0 ? mutate(recombine(this.genome[i], this.genome[mate], rng), rng) : mutate(this.genome[i], rng);
         const childBody = develop(childG), childPh = computePhenotype(childBody);   // M2: desarrolla UNA vez; spawn lo reusa
-        const eCost = P.investE + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
+        const investEi = this.investFrac[i] * reproEi;          // r/K: energía que ESTE progenitor pone en la cría (fracción de su umbral PROPIO)
+        const eCost = investEi + childPh.mass * this.eD;        // ENERGÍA: reservas de la cría + energía EMBEBIDA en su cuerpo (M6.1)
         // A1 — RESERVAR el slot ANTES de cobrar. El nacimiento se difiere a `born` y se materializa con spawn() al
         // final del tick; si el pool estuviera lleno spawn devolvería -1 y la materia/energía YA cobradas aquí se
         // perderían (fuga de conservación). `freeTop - cunas ya comprometidas este tick` es el hueco disponible;
@@ -255,7 +269,7 @@ export class Sim {
           this._takeNutrientAround(cell, P.birthR, childPh.mass);   // MATERIA: nutriente → cuerpo de la cría
           E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
           if (mate >= 0) this.sexBirths++; else this.asexBirths++;
-          born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, P.investE, childBody, childPh);
+          born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, investEi, childBody, childPh);   // r/K: la cría nace con la inversión del progenitor
         }
         }
       }

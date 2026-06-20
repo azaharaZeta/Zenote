@@ -10,6 +10,9 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 ## Qué es zenote2 ahora
 - **TODOS los organismos son ANIMALES** (heterótrofos). No fotosintetizan. Tejidos del genoma: `STRUCTURE · MUSCLE · MOUTH`
   (sin PHOTO). Cerebro neuronal (pesos = genes), morfología de reglas (genoma→develop→cuerpo), reproducción sexual/asexual.
+  El genoma incluye además genes de **historia de vida r/K** (`reproK` = umbral de cría · `investFrac` = inversión por cría),
+  evolucionados sobre el baseline `SIM_P.reproE` (slider). MEDIDO: el eje r↔K queda **near-neutral** (no diverge) en la pecera
+  cerrada y saturada — resultado honesto, ver `ideas/auditoria-zenote2-2026-06-20.md` §5.
 - **La VEGETACIÓN es el productor, parametrizado (NO genético).** Campo `world.veg` por celda: crece captando LUZ (energía entra
   al ecosistema aquí) y consumiendo NUTRIENTE (materia), con capacidad ∝ luz local; senesce a detrito. Rebrote con `patchiness`
   (logístico + difusión de semilla al vecindario, adaptado de zenote1) → forma y MIGRA **parches** orgánicos con el pastoreo↔
@@ -19,6 +22,10 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 - **Los animales comen** (única vía de energía): **pastan** vegetación · **cazan** presa viva · **carroñean** detrito — todo con
   el mismo gesto neuronal de "abrir boca". El eje **herbívoro↔carnívoro EMERGE de la DIETA realizada** (a qué dedica la boca),
   no de la morfología ni de un if/else. La conducta (forrajear/cazar/huir) emerge del cerebro+selección (regla #1 intacta).
+- **La caza depende de la VELOCIDAD relativa (`fleeSpeed`, 2026-06-20):** una presa escapa de la captura si corre más rápido que
+  su depredador (× `fleeSpeed`). Así **ser rápido es defensa (huir) y ataque (alcanzar)** → carrera armamentística que mantiene el
+  **músculo y el movimiento bajo selección**. Sin esto, nada premiaba la velocidad → el músculo se podaba y la locomoción decaía con
+  el tiempo evolutivo (todo derivaba a lento). Sigue sin estrategia cableada: el cerebro decide hacia dónde y cuánto correr.
 - **Sensores del cerebro (10):** ∇vegetación (olor a comida) · dir-presa · dir-amenaza · hambre · velocidad propia · ∇detrito.
 
 ## Libro mayor (CONSERVA — verificado por el gate, m4/m5/m6)
@@ -27,18 +34,36 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 - **ENERGÍA (abierta):** entra como LUZ (capturada por la vegetación), se almacena (`veg·vegEcoef + reservas + tripa + detritoE`),
   sale como CALOR (metabolismo, digestión ineficiente, senescencia/descomposición). Sin luz → la vegetación se apaga → todo muere.
 
-## Parámetros clave (UI en vivo · `config.js`)
-- Productor: `vegGrowth/vegKcoef/vegEcoef/vegDecay/vegSeed/vegDiffuse` (WORLD_P, NO UI).
-- Lab vivo: **Pastoreo** (`grazeRate`), **Carroñeo** (`scavRate`), Metabolismo basal, Umbral de cría, Luz solar (`lightMul`,
-  escala la productividad vegetal), **Corriente del abismo** (`lightFlow`, el campo de luz deriva → los parches de vegetación
-  fluyen), Ritmo de mutación, Reproducción.
+## Parámetros (todos en `config.js`, fuente única). Laboratorio en vivo AGRUPADO por tipo (11 sliders):
+- **Luz y vegetación:** Luz solar (`lightMul`) · Corriente del abismo (`lightFlow`) · Productividad (`vegGrowth`) · Comida en
+  parches (`patchiness`) · Reserva de rebrote (`grazeRefuge`).
+- **Alimentación:** Pastoreo (`grazeRate`) · Alcance de forrajeo (`forageReach`) · Carroñeo (`scavRate`) · Escape por velocidad (`fleeSpeed`).
+- **Metabolismo y cría:** Metabolismo basal (`baseCost`) · Umbral de cría (`reproE`) · Reproducción (`reproMode`).
+- **Evolución:** Ritmo de mutación (`mutRate`).
+- NO UI (config): `vegKcoef/vegEcoef/vegDecay/vegSeed/vegDiffuse/forageMassRef`, `massCost/massCostExp`, etc.
 - Arranque (reinicio): Tamaño de mundo, Sembrado inicial, Extensión, Diversidad, + `vegInit` (NO UI).
+- El worker `set` acepta claves de SIM_P, GENOME_P (mutRate), `world.lightMul` y cualquier clave de `world.P` (lightFlow/vegGrowth/patchiness…) → afectan en vivo.
 
 ## Render
 - Fondo = **campo de VEGETACIÓN** (nebulosa TEAL con parches; más brillo = más comida; realce del pasto tenue; fluye/migra). Sustituye a la antigua nebulosa de luz.
 - Organismos: siluetas por nodo, color por modo (Natural=linaje · Tejido · **Oficio**=herbívoro/carnívoro/omnívoro por dieta · Linaje).
   Ojos = fracción carnívora de la dieta. Cadáveres con forma que se desvanecen. Inspector: dieta "pasto/caza/carroña" + linaje.
 
-## Resultados medidos
-Conserva (gate 8/8, dorado `0xe6e247bd`); emerge estructura trófica (herbívoros + carnívoros); **~94% de la población en
-movimiento** (sin fotosíntesis no hay subsidio a estar quieto → comer obliga a moverse). Memoria: `zenote2-animals-only-vegetation`.
+## Resultados medidos (headless, 3-5 semillas, 30-50k ticks)
+- **Conserva** materia (deriva ~0.004% = ruido f32) + energía (luz→calor): gate **8/8 verde** (`npm run test:zenote2`).
+- **Estructura trófica robusta y persistente:** herbívoros + carnívoros + carroñeros coexisten a 30-50k en TODAS las semillas
+  (≈65%/15%/20% por dieta); el **cazador NO se extingue** (el baseline de v1 lo perdía en 5/5 a mundo pequeño). Mortalidad
+  **depredación-dominante** (~2:1 frente a inanición). Diversidad de talla emerge incluso desde clones (σ≈2.0).
+- **Población estable** (no boom-bust): ~400-480 en mundo 1500, energía-limitada (≪ cap).
+- **Locomoción viva y estable** (gracias al escape-por-velocidad `fleeSpeed`): el "94% móvil" de antes era un **transitorio de la
+  siembra** (t≈500, dirigido por el seedBrain). Sin `fleeSpeed` la velocidad **decaía a paso de tortuga** con la evolución
+  (spMean 1.66→0.18, vmax→0.27 a 50k; el músculo se podaba). Con `fleeSpeed=1.0` se **ESTABILIZA en meseta** (spMean ~0.30,
+  vmax ~0.41, +52-64% vs sin él) → el movimiento ya no se apaga con el tiempo. El equilibrio real es **~60% móvil a paso vivo**, no 94%.
+- El **dorado vivo** está en `zenote2/test/m8-determinism.mjs` (hoy `0xe5d3f569`; cámbialo solo con cambios de física INTENCIONADOS).
+- Memoria: `zenote2-animals-only-vegetation`.
+
+## Historia (memorias SUPERADAS por el cambio de cimientos — no aplicarlas como vigentes)
+El modelo PREVIO tenía fotosíntesis en el genoma. Quedaron obsoletas: `zenote2-immobility-photohalf-fix` (photoHalf),
+`photomotion-sessility-lever` (photoMotionK, ya no existe), `zenote2-scavenger-needs-edensity` (eD=0 ahora), parte de
+`zenote2-abyss-flowing-light` (la corriente ahora mueve la veg vía productividad∝luz). `zenote2-bloat-masscostexp` SIGUE
+vigente (massCostExp aplica a los cuerpos animales).

@@ -1,5 +1,14 @@
 # Zenote 2 — segunda aplicación (modelo desde primeros principios)
 
+> ## ⚠️ CAMBIO DE CIMIENTOS (2026-06-20): fotosíntesis → SOLO ANIMALES + vegetación parametrizada
+> La **fuente de verdad del estado vivo** es [`../docs/Zenote 2.0/MODELO-ACTUAL.md`](../docs/Zenote%202.0/MODELO-ACTUAL.md).
+> Este README conserva el **log histórico de hitos (M0–M8)**: donde diga `photoCap`, "autótrofo↔heterótrofo" o "eficiencia
+> de fotosíntesis" describe el **modelo PREVIO** (la fotosíntesis vivía en el genoma y degeneraba a sesilidad). **Hoy:**
+> todos los organismos son ANIMALES (tejidos `STRUCTURE/MUSCLE/MOUTH`); la **energía entra por la VEGETACIÓN** (productor
+> parametrizado del mundo) que los animales **pastan/cazan/carroñean**; el eje **herbívoro↔carnívoro emerge de la DIETA**.
+> Las secciones de **estado actual** (scorecard, "estructuralmente completo") están actualizadas a este modelo más abajo.
+> Auditoría fresca con medidas: [`../docs/Zenote 2.0/ideas/auditoria-zenote2-2026-06-20.md`](../docs/Zenote%202.0/ideas/auditoria-zenote2-2026-06-20.md).
+
 Segunda app que implementa el modelo rediseñado en [`../docs/Zenote 2.0/02-Redesign/`](../docs/Zenote%202.0/02-Redesign/)
 (2.1-2.6). **La app actual (`../src/`) NO se toca** — queda de baseline medido. La promoción (si algún día sustituye
 a la actual) es una decisión futura y separada.
@@ -106,26 +115,31 @@ Keepers: `src/engine/genome.js` (genoma de reglas + `develop` + mutación) · `s
 
 ## M6.5 — Scorecard (modelo nuevo vs baseline) · estado honesto
 
-| | Modelo NUEVO (Zenote 2) | Baseline (Zenote v1) |
+> **Actualizado al modelo de hoy (animales + vegetación).** La columna "NUEVO" original medía el modelo de fotosíntesis
+> (56% autótrofo…); abajo, las cifras del modelo VIGENTE (medidas headless, 3-5 semillas, 30k, junio 2026).
+
+| | Modelo NUEVO (Zenote 2, animales+veg) | Baseline (Zenote v1) |
 |---|---|---|
-| Parámetros | **45 constantes físicas (~0 diales de balance)** | 165 (136 sim + 29 render) |
+| Parámetros | **~45 constantes físicas (~0 diales de balance)** | 165 (136 sim + 29 render) |
 | Conservación | materia **+ energía** (termodinámica) | solo materia |
-| Evolución morfológica | emerge sin sembrar (photoCap σ23, partes 5±4) | sembrada |
-| Riqueza trófica | **56% autótrofo / 44% heterótrofo — red trófica EMERGENTE y estable** (a 30k, con seedBrain) | cadena ~3/8 seeds (cazador frágil) |
-| Especiación | **emergente** (~32, por divergencia morfológica) | métrica curada a mano (D14) |
-| Perf headless | ~1200 t/s | 441-823 t/s |
+| Evolución morfológica | emerge sin sembrar (talla σ≈2.0 incluso desde clones, partes ~20) | sembrada |
+| Riqueza trófica | **herbívoro/carnívoro/carroñero ≈65/15/20% por DIETA — red EMERGENTE, persistente a 50k en TODAS las semillas; cazador NO se extingue** | cadena ~3/8 seeds (cazador frágil) |
+| Locomoción | **viva y estable** (escape-por-velocidad; spMean en meseta, no decae) | n/a |
+| Especiación | **emergente clinal** (núcleo interfértil + clústeres, no especies discretas — ver auditoría) | métrica curada a mano (D14) |
+| Perf headless | ~1000-2000 t/s | 441-823 t/s |
 
 **Veredicto (≈ M8):** el modelo nuevo **gana en parámetros (~3.5×), limpieza, conservación termodinámica, evolución
-morfológica y especiación emergente** — y, tras el seedBrain, **alcanza la paridad+ en riqueza trófica** (red
-autótrofo↔heterótrofo emergente y estable, conducta competente, vs la cadena frágil ~3/8 del viejo). Caveat: la
-conducta usa seedBrain (como el viejo), pero el nuevo **solo siembra el cerebro**; la morfología, los nichos y las
-especies siguen emergiendo sin sembrar.
+morfológica y especiación emergente** — y **supera al baseline en riqueza trófica**: red **herbívoro↔carnívoro↔carroñero
+emergente y persistente** (el cazador no se extingue, vs la cadena frágil ~3/8 del viejo), con **locomoción estable** desde
+el escape-por-velocidad. Caveat: la conducta usa seedBrain (como el viejo), pero el nuevo **solo siembra el cerebro**; la
+morfología, los nichos y las especies siguen emergiendo sin sembrar. La especiación es **clinal** (no especies discretas).
 
 ## M7 — Bucle evolutivo (recombinación homóloga + especiación emergente) ✅ **GO**
 
 `test/m7-speciation.mjs`. Recombinación por marcas de homología → **0 cuerpos inválidos** (preserva validez de 2.2);
-**75-80% de nacimientos sexuales**; **~32 especies emergentes** por divergencia morfológica (sin métrica curada →
-**ataca D14**); invariantes ✓. El genoma-de-reglas se recombina y especia sin romperse.
+**75-80% de nacimientos sexuales**; estructura reproductiva **emergente CLINAL** por divergencia morfológica (núcleo
+interfértil dominante + clústeres menores + singletons — m7 cuenta componentes conexos, no "especies discretas";
+matiza D14, no lo cierra); invariantes ✓. El genoma-de-reglas se recombina y especia sin romperse.
 
 ## Estado: modelo nuevo ESTRUCTURALMENTE COMPLETO
 
@@ -133,8 +147,9 @@ Cadena completa de punta a punta, toda desde primeros principios, conservando ma
 → organismo generativo + desarrollo + forma=función (M5) → fisiología/tripa (M6.2) + cerebro neuronal (M6.3) +
 recombinación/especiación (M7) → render (M5.5). **~45 params (vs 165), >1000 t/s.**
 
-Con el **seedBrain** (M6.3), la conducta es competente y **la red trófica emerge** (44% heterótrofos, estable a 30k):
-el último gap está cerrado. El modelo nuevo es **estructuralmente superior y ecológicamente a la par+**.
+Con el **seedBrain** (M6.3), la conducta es competente y **la red trófica emerge** (herbívoro/carnívoro/carroñero
+≈65/15/20%, persistente a 50k) y el **escape-por-velocidad** mantiene viva la locomoción: el último gap está cerrado.
+El modelo nuevo es **estructuralmente superior y ecológicamente a la par+** (supera al baseline: el cazador no se extingue).
 
 ## R6 — Pulido visual ✅ (primera pasada)
 
@@ -152,11 +167,13 @@ mensaje al worker. Verificada en navegador (escritorio + móvil 375px).
   slider t/s + máx) · **límite de FPS de render** (slider 5-120, def **20**; cap el dibujado vía rAF sin tocar la sim →
   ahorra CPU/batería) · **zoom** (slider + rueda con zoom-al-cursor) · **paneo** (arrastrar, envuelve mod tamaño) ·
   **visión toroidal infinita** (render en mosaico de tiles, sin costura) · **reinicio** · HUD (pob · tick · t/s · fps).
-- **P2 — Observación** ✅: **gráfica de población** apilada autótrofo/heterótrofo (historia del worker) · **modos de color**
-  (tejido / oficio trófico / linaje) con leyenda dinámica. Gen de linaje `hue` heredable (deriva lenta).
-- **P3 — Laboratorio** ✅ (sliders de leyes EN VIVO): luz solar (`world.lightMul`) · metabolismo basal · umbral de cría ·
-  eficiencia de fotosíntesis (campos de `SIM_P` leídos por referencia → efecto instantáneo) + restaurar. Probado
-  end-to-end: luz 0.2×→extinción · 0.6×→remanente · 1.0×→pleno; metabolismo alto → colapso por deuda metabólica.
+- **P2 — Observación** ✅: **gráficas apiladas** (población herbívoro/carnívoro · nacimientos sexual/asexual · muertes
+  depredación/inanición, historia del worker) · **modos de color** (natural/tejido/oficio por dieta/linaje) con leyenda
+  dinámica. Gen de linaje `hue` heredable (deriva lenta).
+- **P3 — Laboratorio** ✅ (sliders de leyes EN VIVO, agrupados): **Luz y vegetación** (luz solar `world.lightMul` · corriente
+  del abismo · productividad · parches · reserva de rebrote) · **Alimentación** (pastoreo · alcance de forrajeo · carroñeo ·
+  escape por velocidad) · **Metabolismo y cría** (basal · umbral de cría · modo de reproducción) · **Evolución** (ritmo de
+  mutación) + restaurar. `SIM_P`/`world.P`/`GENOME_P` leídos por referencia → efecto instantáneo. Probado: luz baja → extinción.
 - **P4 — Inspector** ✅: clic/toque en un organismo → tarjeta con detalle **EN VIVO** (oficio · barra de energía E/cría ·
   masa · nº partes · v.máx · edad · foto/boca) + anillo de selección + seguir cámara + cerrar (Esc). Detecta la muerte
   ("† murió"); el cliente reenvía `inspect` hasta que el worker confirma (autosana). **Responsive/táctil** (media query

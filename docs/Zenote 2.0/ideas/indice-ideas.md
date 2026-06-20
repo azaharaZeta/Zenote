@@ -11,6 +11,13 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
 ## Ideas de usuario (pendientes de procesar)
 _(ninguna pendiente — todas procesadas; ver carpeta `archivo/`)_
 
+## Ideas DOCUMENTADAS con ficha (analizadas, no implementadas — futuras)
+- `vegetacion-de-zenote1-adaptar.md` — adaptar la vegetación de zenote1. Tier 1+2 HECHOS; **pendientes: Tier 3 cobertura + micro-flora**.
+- `cobertura-vegetal-refugio.md` — la presa se esconde en vegetación densa (estabilizador depredador-presa).
+- `micro-flora-plancton.md` — motas de plancton sobre el sustrato (pulido visual).
+- `vegetacion-con-genetica.md` — Escenario 2: dar genética a la vegetación (coevolución). Grande, opcional.
+- `analisis-vegetacion-aparte.md` — análisis del cambio de cimientos (solo animales + veg parametrizada), ya IMPLEMENTADO.
+
 
 ## Ideas propuestas por Claude (para revisar por el humano; mover arriba las que aceptes)
 Emergencia / realismo:
@@ -21,7 +28,7 @@ Emergencia / realismo:
 
 Fascinación / observación:
 
-- Histograma en vivo de un gen seleccionable (size, photoCap, mouthCap…): ver la distribución derivar = prueba visual de la selección.
+- Histograma en vivo de un gen seleccionable (size, mouthCap, masa…): ver la distribución derivar = prueba visual de la selección.
 - Resaltar a los PARIENTES del organismo inspeccionado (mismo linaje/hue) → ver familias.
 - Botón "capturar PNG" del lienzo (compartir el ecosistema).
 - Gráfica de masa/talla media en el tiempo (con el bloat ya controlado, ver la talla evolucionar).
