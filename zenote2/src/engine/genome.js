@@ -20,12 +20,12 @@ const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,
 
 // M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Motor de la conducta, que
 // arranca SEMBRADO (seedBrain, abajo) y evoluciona/aprende desde ahí — NO emerge de cero (medido en m6_3: el seedBrain
-// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (8): 0,1 ∇luz · 2,3 dir-presa ·
-// 4,5 dir-amenaza · 6 hambre · 7 velocidad propia.
+// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (10): 0,1 ∇luz · 2,3 dir-presa ·
+// 4,5 dir-amenaza · 6 hambre · 7 velocidad propia · 8,9 ∇detrito (#4: rastrear carroña → especializa el nicho carroñero).
 // Salidas (4): 0,1 dirección de empuje · 2 esfuerzo (throttle) · 3 impulso de ataque. La plasticidad (sim) ajusta una
 // COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
-export const BRAIN = { I: 8, H: 6, O: 4, scale: 5 };
-export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O;  // 118
+export const BRAIN = { I: 10, H: 6, O: 4, scale: 5 };
+export const BRAIN_W = BRAIN.I * BRAIN.H + BRAIN.H * BRAIN.H + BRAIN.H + BRAIN.H * BRAIN.O + BRAIN.O;  // 130
 // `div` (diversidad inicial, 1=normal · 0=sin ruido → todos idénticos) escala el ruido de pesos. Consume el mismo RNG → div=1 byte-idéntico.
 export function makeBrain(rng, div = 1) { const b = new Float32Array(BRAIN_W); for (let i = 0; i < BRAIN_W; i++) b[i] = (rng.next() - 0.5) * 0.4 * div; return b; }
 
@@ -37,10 +37,10 @@ export function makeBrain(rng, div = 1) { const b = new Float32Array(BRAIN_W); f
 export function seedBrain(rng, div = 1) {
   const b = makeBrain(rng, div), I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, k = 1.5;   // div escala SOLO el ruido; la estructura (relés) es fija → a div=0 todos los cerebros idénticos
   const wHo = I * H + H * H + H, bO = wHo + H * O;
-  // h0 = relé del eje X: + hacia presa (in2) · − amenaza (in4) · + ∇luz (in0)   [índice wIh = in·H + h]
-  b[2 * H + 0] = k; b[4 * H + 0] = -k; b[0 * H + 0] = k * 0.5;
-  // h1 = relé del eje Y: + presa (in3) · − amenaza (in5) · + ∇luz (in1)
-  b[3 * H + 1] = k; b[5 * H + 1] = -k; b[1 * H + 1] = k * 0.5;
+  // h0 = relé del eje X: + hacia presa (in2) · − amenaza (in4) · + ∇luz (in0) · + ∇detrito (in8)   [índice wIh = in·H + h]
+  b[2 * H + 0] = k; b[4 * H + 0] = -k; b[0 * H + 0] = k * 0.5; b[8 * H + 0] = k * 0.6;
+  // h1 = relé del eje Y: + presa (in3) · − amenaza (in5) · + ∇luz (in1) · + ∇detrito (in9)
+  b[3 * H + 1] = k; b[5 * H + 1] = -k; b[1 * H + 1] = k * 0.5; b[9 * H + 1] = k * 0.6;
   // oculta→salida: h0→dir X (out0) · h1→dir Y (out1)   [índice wHo + h·O + o]
   b[wHo + 0 * O + 0] = k; b[wHo + 1 * O + 1] = k;
   // sesgos de salida: throttle (out2) + → se mueve · ataque (out3) + → ataca en contacto

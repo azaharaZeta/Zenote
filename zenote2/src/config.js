@@ -77,6 +77,9 @@ export const SIM_P = {
   photoMotionK: 2,     // UI: Quietud fotosíntesis — captación × 1/(1+k·velocidad). >0 → autótrofos sésiles, el movimiento se concentra en heterótrofos (medido 25k). 0 = comportamiento anterior.
   reproMode: 'both',   // UI: Reproducción — 'both' (sexual si hay pareja + respaldo asexual) · 'asexual' · 'sexual' (obligada, sin respaldo)
   // --- resto (NO UI) ---
+  scavRate: 0.5,       // UI: Carroñeo — energía de detrito (detritusE) ingerible por tick ∝ mouthCap. 0 = apagado. >0 → la MISMA
+                       // boca que caza presa viva también rebaña carroña → emerge carroñeo FACULTATIVO (heterótrofos suplementan
+                       // ~15-18% de su dieta con carroña; el carroñero OBLIGADO es marginal — carroña = recurso fino a escala pecera).
   photoHalf: 40,       // NO UI — saturación de la captación de luz
   massCost: 0.004,     // NO UI — coste metabólico ∝ masa^massCostExp
   massCostExp: 1.2,    // NO UI — exponente del coste de masa (super-lineal). Frena el BLOAT: sin él los cuerpos se inflaban
@@ -85,7 +88,9 @@ export const SIM_P = {
   moveCost: 0.004,     // NO UI — coste de nado ∝ drag·v² (energía → calor)
   investE: 7,          // NO UI — energía que el progenitor pone en la cría
   cooldown: 50,        // NO UI — enfriamiento reproductivo (ticks)
-  eDensity: 0,         // NO UI — energía-en-biomasa (M6.1); 0 = separación limpia materia/energía. >0 parametrizado por si hace falta en cadenas profundas.
+  eDensity: 4,         // NO UI — energía-en-biomasa (M6.1): cada unidad de masa lleva eDensity de energía, PAGADA por el progenitor
+                       // al nacer y LIBERADA al morir → el cadáver lleva energía (detritusE). Es lo que hace VIABLE el carroñeo (#4):
+                       // sin esto el organismo muere con E≈0 y la carroña está vacía. Conserva (m6). 0 = separación limpia materia/energía.
   birthR: 1,           // NO UI — radio (celdas) del vecindario del que la cría reúne MATERIA
   gutBase: 4, gutPerMass: 4, digestRate: 0.6,   // NO UI — TRIPA: tope ∝ masa (saciedad EMERGENTE) + ritmo de digestión
   eatReach: 4,         // NO UI — alcance extra de captura (u)

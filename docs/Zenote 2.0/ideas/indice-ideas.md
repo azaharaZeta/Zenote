@@ -10,9 +10,6 @@ Cuando una idea haya sido implementada o descartada, actualizar su fichero de id
 
 ## Ideas de usuario (pendientes de procesar)
 - Fondo del abismo funcional (corrientes que arrastren, gradientes térmicos, zonas de peligro/refugio) 
-- Las zonas dsplegables de la UI, remarcalas con algún marco
-- Cadáveres CON FORMA que se desvanecen con su carroña (muerte visible; "A5" del estudio de color/fascinación).
-- Detrito comestible: que los cadáveres (detritusM/E) sean ingeribles → nicho de CARROÑERO/descomponedor emergente, no solo herbívoro/cazador.
 - Inspector al hacer clic en un organismo: genoma, linaje, edad, energía, oficio (verificar/completar si ya existe parcialmente).
 
 

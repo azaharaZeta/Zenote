@@ -28,7 +28,7 @@ function run(ticks) {
   return { c: checksum(s), pop: s.pop(), tick: s.tick };
 }
 
-const GOLDEN = 0xe57394c3;   // re-fijado al añadir massCostExp=1.2 (coste de masa super-lineal anti-bloat) 2026-06-20; seed 1, cap 4000, 2000 ticks
+const GOLDEN = 0xfc785e37;   // re-fijado al implementar #4 carroñeo: eDensity 0→4 + scavRate 0→0.5 + sensor de ∇detrito (BRAIN.I 8→10) 2026-06-20; seed 1, cap 4000, 2000 ticks
 const TICKS = 2000;
 console.log('=== Checksum dorado — determinismo + deriva ===\n');
 const a = run(TICKS), b = run(TICKS);

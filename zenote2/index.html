@@ -110,6 +110,10 @@
         <input class="lab-slider" data-key="photoMotionK" type="range" min="0" max="6" step="0.5" value="2" title="Cuánto penaliza moverse a la captación de luz. 0 = nada. Alto → autótrofos sésiles (plantas); el movimiento queda en heterótrofos.">
       </div>
       <div class="ctrl">
+        <label>Carroñeo <output data-for="scavRate"></output></label>
+        <input class="lab-slider" data-key="scavRate" type="range" min="0" max="2" step="0.1" value="0.5" title="Cuánta energía de la carroña (detrito de las muertes) puede rebañar una boca por tick. 0 = apagado. La MISMA boca que caza presa viva también come carroña → emerge carroñeo facultativo. Sube para ver más organismos sobre los cadáveres.">
+      </div>
+      <div class="ctrl">
         <label>Ritmo de mutación <output data-for="mutRate"></output></label>
         <input class="lab-slider" data-key="mutRate" type="range" min="0" max="3" step="0.1" value="1" title="Multiplicador global del ritmo de mutación. 1 = base. >1 = más cambios por cría (más exploración/churn). 0 = clones (sin mutación).">
       </div>

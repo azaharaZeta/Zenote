@@ -11,6 +11,7 @@ import { START, RENDER_P } from '../config.js';   // defaults de arranque y velo
 let worldSize = START.worldSize, seedCount = START.seedCount, spawnSpread = START.spawnSpread, diversity = START.diversity;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
 let world, sim, running = true, tps = RENDER_P.tps, maxSpeed = false;
 let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su detalle EN VIVO viaja en cada foto
+const CORPSE_LIFE = 240;   // #3 — vida visual del cadáver (ticks): ≈ lo que tarda su carroña en mineralizarse (decompose 0.02 → ~99% en ~230 ticks)
 // historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
 // muertes = DELTA por ventana (un ritmo), de contadores ACUMULADOS del motor → guardamos su último valor para restar.
 const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet = []; let lastHist = -1e9;
@@ -71,9 +72,22 @@ function snapshot() {
     histSexB.push(s.sexBirths - lastSexB); histAsexB.push(s.asexBirths - lastAsexB); histPred.push(s.kills - lastKills); histStarv.push(s.starved - lastStarved);
     lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
     if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
+  // CADÁVERES (#3): los recientes (edad < CORPSE_LIFE) con su forma → el render los desvanece con su carroña. Acotado por
+  // el ring del motor; aplanado como los organismos (offset + [lx,ly,r,aspect,dir] por parte, stride 5). dcfade = edad/vida.
+  const cidx = []; let ctp = 0;
+  for (let k = 0; k < s.CORPSE_CAP; k++) { const nn = s.ccn[k]; if (nn <= 0) continue; const age = s.tick - s.cct0[k]; if (age < 0 || age >= CORPSE_LIFE) continue; cidx.push(k); ctp += nn; }
+  const dcm = cidx.length;
+  const dcx = new Float32Array(dcm), dcy = new Float32Array(dcm), dch = new Float32Array(dcm), dchue = new Float32Array(dcm), dcfade = new Float32Array(dcm), dcOff = new Int32Array(dcm + 1), dcData = new Float32Array(ctp * 5);
+  let cpo = 0;
+  for (let a = 0; a < dcm; a++) { const k = cidx[a]; dcx[a] = s.ccx[k]; dcy[a] = s.ccy[k]; dch[a] = s.cch[k]; dchue[a] = s.cchue[k]; dcfade[a] = (s.tick - s.cct0[k]) / CORPSE_LIFE;
+    dcOff[a] = cpo; const nn = s.ccn[k]; let o = k * s.CORPSE_MAXP * 5;
+    for (let j = 0; j < nn; j++) { const d = cpo * 5; dcData[d] = s.ccData[o]; dcData[d + 1] = s.ccData[o + 1]; dcData[d + 2] = s.ccData[o + 2]; dcData[d + 3] = s.ccData[o + 3]; dcData[d + 4] = s.ccData[o + 4]; o += 5; cpo++; } }
+  dcOff[dcm] = cpo;
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
-  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, aid, partOff, partData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
-    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer]);
+  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, aid, partOff, partData,
+      dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
+    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer,
+     dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer]);
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción

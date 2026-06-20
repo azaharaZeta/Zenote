@@ -76,6 +76,9 @@ function draw() {
   }
   ctx.globalCompositeOperation = 'source-over';
 
+  // CADÁVERES (#3): bajo los organismos, siluetas oscuras del linaje que se DESVANECEN con su carroña (muerte visible).
+  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawCorpses((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
+
   // ORGANISMOS → búfer aparte (glowCv). El GLOW lo da el BLOOM (desenfoque de los núcleos) → el slider de
   // bioluminiscencia es el único control del brillo y se nota. Halo aditivo explícito SOLO en 'tissueaura' (aura de
   // linaje sobre núcleo de tejido, que el bloom luego suaviza).
@@ -121,6 +124,32 @@ function drawLight(oX, oY, sc) {
   const wpx = WORLD.size * sc;
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(lightCv, oX, oY, wpx, wpx);
+}
+
+// CADÁVERES (#3): cuerpos muertos recientes, en su orientación final (sin ondulación ni ojos), tono del linaje muy
+// desaturado y OSCURO que se apaga al descomponerse. alpha y luminosidad caen con `dcfade` (edad/vida) → se funden con
+// el fondo a la vez que su carroña (detritusE) se consume/mineraliza. Se dibujan en `ctx` (bajo el glow de los vivos).
+function drawCorpses(oX, oY, sc) {
+  const f = frame; if (!f.dcm) return;
+  const { dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData } = f;
+  for (let a = 0; a < dcm; a++) {
+    const wx = dcx[a], wy = dcy[a], bx = oX + wx * sc, by = oY + wy * sc;
+    if (bx < -40 || bx > cw + 40 || by < -40 || by > ch + 40) continue;   // culling
+    const fade = dcfade[a], alpha = (1 - fade) * 0.55; if (alpha <= 0.01) continue;
+    const hh = dch[a], chh = Math.cos(hh), shh = Math.sin(hh), p0 = dcOff[a], p1 = dcOff[a + 1];
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsl(${(dchue[a] * 360) | 0},${(20 * (1 - fade)) | 0}%,${(34 - 16 * fade) | 0}%)`;   // linaje desaturado, oscureciéndose
+    for (let k = p0; k < p1; k++) {
+      const o = k * 5, lx = dcData[o], ly = dcData[o + 1], r = dcData[o + 2], aspect = dcData[o + 3], dir = dcData[o + 4];
+      const pr = Math.max(1, r * sc); if (pr < 1.2) continue;   // LOD
+      const px = oX + (wx + (lx * chh - ly * shh)) * sc, py = oY + (wy + (lx * shh + ly * chh)) * sc;
+      const rL = pr * (1 + aspect * 1.4);
+      ctx.beginPath();
+      if (rL > 1.6) ctx.ellipse(px, py, rL, pr, hh + dir, 0, 6.283); else ctx.arc(px, py, pr, 0, 6.283);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawOrgs(c, oX, oY, sc, t, halo) {
@@ -307,7 +336,7 @@ $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; 
 $('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
 $('colorMode').value = RENDER_P.colorMode;
 $('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
-{ const src = { baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, mutRate: GENOME_P.mutRate };
+{ const src = { baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
@@ -335,8 +364,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'photoMotionK' ? v.toFixed(1) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : (k === 'photoMotionK' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }
