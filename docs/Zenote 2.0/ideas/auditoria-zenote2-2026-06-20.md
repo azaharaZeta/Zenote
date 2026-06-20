@@ -98,7 +98,8 @@ incluso un poco MENOS bloat). `fleeSpeed=1.0` elegido por equilibrio locomoción
 2. **Boca bajo selección, no deriva:** encarecer la boca o volver evolvable la digestión, para que la morfología de ingesta
    pague su precio (hoy infla casi neutra por el cuello de botella de digestión).
 3. **D16 real** (señal↔preferencia evolvables) o seguir con la afirmación rebajada (asortativo por forma, clinal).
-4. **CI** que corra el gate en cada push.
+4. ~~**CI** que corra el gate en cada push~~ → **HECHO** (`.github/workflows/zenote2-gate.yml`: corre `npm run test:zenote2` en push/PR que toquen `zenote2/**`).
+5. ~~**Promover spikes a tests de regresión** (anti-bloat + balance trófico)~~ → **HECHO** (`test/m9-ecology.mjs`, en el gate: ancla coexistencia trófica + anti-bloat + conservación a escala de ecosistema, con umbrales generosos y seeds fijos → determinista, no flaky; cubre el hueco que el dorado m8 no ve).
 
 ## 5. r/K evolvable — HECHO + hallazgo nulo de divergencia (2026-06-20)
 

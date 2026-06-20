@@ -2,8 +2,9 @@
 // la app VIEJA y que los tests de zenote2 se corrían a mano → un test obsoleto (M1) pasaba inadvertido. Este runner
 // ejecuta cada test de CORRECCIÓN como subproceso y FALLA (exit 1) si alguno: (a) sale con código ≠ 0, o (b) imprime un
 // marcador de fallo (`FALLO` / `✗`). Pensado como gate de pre-commit/CI.  uso: node zenote2/test/run-all.mjs
-//   Sólo agrega los tests de INVARIANTES/correctitud (deterministas, rápidos). Los de MEDICIÓN/exploración
-//   (baseline, m5-evolution, m6_3-behavior, m6_5-scorecard) imprimen números y ✗ no-críticos → NO gatean; córrelos a mano.
+//   Agrega los tests de INVARIANTES/correctitud (deterministas) + m9 (regresión ECOLÓGICA: una medición PROMOVIDA a gate con
+//   umbrales generosos y seeds fijos → determinista, no flaky; ancla coexistencia/anti-bloat que el dorado no cubre).
+//   Los de MEDICIÓN/exploración (baseline, m5-evolution, m6_3-behavior, m6_5-scorecard) imprimen números y ✗ no-críticos → NO gatean; córrelos a mano.
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +20,7 @@ const GATE = [
   'm6-invariants.mjs',    // M6.1: energía-en-biomasa + heterotrofía viable
   'm7-speciation.mjs',    // M7: recombinación válida + sexual + invariantes (D14)
   'm8-determinism.mjs',   // checksum dorado: determinismo + detección de deriva
+  'm9-ecology.mjs',       // regresión ecológica: coexistencia trófica + anti-bloat + conservación a escala de ecosistema
 ];
 
 const FAIL_RE = /FALLO|✗/;
