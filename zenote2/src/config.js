@@ -81,10 +81,16 @@ export const SIM_P = {
   photoMotionK: 2,     // UI: Quietud fotosíntesis — captación × 1/(1+k·velocidad). >0 → autótrofos sésiles, el movimiento se concentra en heterótrofos (medido 25k). 0 = comportamiento anterior.
   reproMode: 'both',   // UI: Reproducción — 'both' (sexual si hay pareja + respaldo asexual) · 'asexual' · 'sexual' (obligada, sin respaldo)
   // --- resto (NO UI) ---
+  huntCloseMin: 0,     // NO UI (prototipo) — CAPTURA EXIGE ACERCARSE: la presa viva solo se captura si la velocidad de ACERCAMIENTO
+                       // del depredador (su velocidad proyectada hacia la presa) ≥ este umbral. 0 = comportamiento anterior (byte-idéntico,
+                       // una boca quieta caza al contacto). >0 → la trampa pasiva deja de rendir → para cazar hay que PERSEGUIR → cazador móvil.
   scavRate: 0.5,       // UI: Carroñeo — energía de detrito (detritusE) ingerible por tick ∝ mouthCap. 0 = apagado. >0 → la MISMA
                        // boca que caza presa viva también rebaña carroña → emerge carroñeo FACULTATIVO (heterótrofos suplementan
                        // ~15-18% de su dieta con carroña; el carroñero OBLIGADO es marginal — carroña = recurso fino a escala pecera).
-  photoHalf: 40,       // NO UI — saturación de la captación de luz
+  photoHalf: 4,        // NO UI — saturación de la captación de luz (photoCap/(photoCap+photoHalf)). BAJO a propósito: a 40 los
+                       // organismos SOBREINVERTÍAN en foto (photoCap 80-130) y se quedaban TODOS sésiles (la foto subsidia estar
+                       // quieto). A ~4 la foto satura con poca inversión → libera presupuesto de partes → muchos más con BOCA y
+                       // MÚSCULO, el mundo pasa de ~86% quieto a ~37% (medido 3 seeds, robusto) → inmovilismo heterótrofo residual.
   massCost: 0.004,     // NO UI — coste metabólico ∝ masa^massCostExp
   massCostExp: 1.2,    // NO UI — exponente del coste de masa (super-lineal). Frena el BLOAT: sin él los cuerpos se inflaban
                        // (masa ×4, generalistas "lo tienen todo" 1%→~40% a 30k, pop a la mitad). Medido (spikes/trophic-balance):
@@ -92,9 +98,9 @@ export const SIM_P = {
   moveCost: 0.004,     // NO UI — coste de nado ∝ drag·v² (energía → calor)
   investE: 7,          // NO UI — energía que el progenitor pone en la cría
   cooldown: 50,        // NO UI — enfriamiento reproductivo (ticks)
-  eDensity: 4,         // NO UI — energía-en-biomasa (M6.1): cada unidad de masa lleva eDensity de energía, PAGADA por el progenitor
-                       // al nacer y LIBERADA al morir → el cadáver lleva energía (detritusE). Es lo que hace VIABLE el carroñeo (#4):
-                       // sin esto el organismo muere con E≈0 y la carroña está vacía. Conserva (m6). 0 = separación limpia materia/energía.
+  eDensity: 0,         // NO UI — energía-en-biomasa (M6.1). 0 = separación limpia materia/energía. Se probó eD=4 para el nicho
+                       // carroñero (#4) pero AGRAVABA el inmovilismo: a eD>0 la masa es cara al nacer (eCost+=masa·eD) → el músculo
+                       // se poda a cero → todo sésil. Revertido a 0 (movilidad > nicho carroñero, que era marginal). Carroñeo dormido a eD=0.
   birthR: 1,           // NO UI — radio (celdas) del vecindario del que la cría reúne MATERIA
   gutBase: 4, gutPerMass: 4, digestRate: 0.6,   // NO UI — TRIPA: tope ∝ masa (saciedad EMERGENTE) + ritmo de digestión
   eatReach: 4,         // NO UI — alcance extra de captura (u)

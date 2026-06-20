@@ -193,7 +193,11 @@ export class Sim {
       const attack = (out[3] + 1) * 0.5;
       const Gmax = P.gutBase + P.gutPerMass * this.mass[i];   // capacidad de tripa ∝ masa
       if (preyJ >= 0 && myMouth > 0 && attack > 0.5 && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
-        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]);
+        // CAPTURA EXIGE ACERCARSE (prototipo, huntCloseMin>0): solo captura si la velocidad de ACERCAMIENTO del depredador
+        // (su velocidad proyectada sobre la dirección a la presa, preyDX/DY = vector unitario) ≥ umbral. Boca QUIETA → no caza
+        // → la trampa pasiva muere → para comer presa hay que PERSEGUIR → especialización a cazador MÓVIL (física, no cableado).
+        const closing = P.huntCloseMin > 0 ? (vx[i] * preyDX + vy[i] * preyDY) : 1;
+        if (preyD < reach * reach && closing >= P.huntCloseMin) { const pc = W.cellAt(x[preyJ], y[preyJ]);
           const preyEnergy = E[preyJ] + this.gut[preyJ] + this.mass[preyJ] * this.eD;   // reservas + tripa + cuerpo de la presa
           const ge = P.ηene * preyEnergy, room = Gmax - this.gut[i], intoGut = ge < room ? ge : room;
           this.gut[i] += intoGut; this.preyIn[i] += intoGut; W.detritusE[pc] += preyEnergy - intoGut;   // lo asimilable → TRIPA; el resto → detrito (CONSERVA)
