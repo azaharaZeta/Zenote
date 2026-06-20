@@ -4,10 +4,11 @@
 // lista de PARTES con geometría. Validez POR CONSTRUCCIÓN (recursión acotada → siempre un cuerpo legal). La forma
 // que produce alimenta la física (M5.2 forma=función) y el render (M5.5). Validado conceptualmente en el spike M3.
 
-// Tejido de una parte → de aquí EMERGE el eje autótrofo↔heterótrofo (M5.2): PHOTO capta luz · MUSCLE propulsa ·
-// MOUTH ingiere · STRUCTURE solo da cuerpo. La frontera (qué hace cada tejido) es física; la selección decide cuál.
-export const TISSUE = { STRUCTURE: 0, PHOTO: 1, MUSCLE: 2, MOUTH: 3 };
-export const TISSUE_N = 4;
+// Tejido de una parte. TODOS los organismos son ANIMALES (no hay PHOTO: la fotosíntesis la hace la VEGETACIÓN parametrizada
+// del mundo, no el genoma). MUSCLE propulsa · MOUTH ingiere (pasta veg / caza / carroñea) · STRUCTURE solo da cuerpo. De la
+// inversión MOUTH/MUSCLE + la dieta realizada EMERGE el eje herbívoro↔carnívoro. La frontera (qué hace cada tejido) es física.
+export const TISSUE = { STRUCTURE: 0, MUSCLE: 1, MOUTH: 2 };
+export const TISSUE_N = 3;
 
 import { GENOME_P } from '../config.js';   // parámetros del genoma/mutación: fuente única en config.js
 export { GENOME_P };
@@ -20,8 +21,8 @@ const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,
 
 // M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Motor de la conducta, que
 // arranca SEMBRADO (seedBrain, abajo) y evoluciona/aprende desde ahí — NO emerge de cero (medido en m6_3: el seedBrain
-// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (10): 0,1 ∇luz · 2,3 dir-presa ·
-// 4,5 dir-amenaza · 6 hambre · 7 velocidad propia · 8,9 ∇detrito (#4: rastrear carroña → especializa el nicho carroñero).
+// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (10): 0,1 ∇VEGETACIÓN (olor a comida) ·
+// 2,3 dir-presa · 4,5 dir-amenaza · 6 hambre · 7 velocidad propia · 8,9 ∇detrito (rastrear carroña).
 // Salidas (4): 0,1 dirección de empuje · 2 esfuerzo (throttle) · 3 impulso de ataque. La plasticidad (sim) ajusta una
 // COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
 export const BRAIN = { I: 10, H: 6, O: 4, scale: 5 };
@@ -37,10 +38,10 @@ export function makeBrain(rng, div = 1) { const b = new Float32Array(BRAIN_W); f
 export function seedBrain(rng, div = 1) {
   const b = makeBrain(rng, div), I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, k = 1.5;   // div escala SOLO el ruido; la estructura (relés) es fija → a div=0 todos los cerebros idénticos
   const wHo = I * H + H * H + H, bO = wHo + H * O;
-  // h0 = relé del eje X: + hacia presa (in2) · − amenaza (in4) · + ∇luz (in0) · + ∇detrito (in8)   [índice wIh = in·H + h]
-  b[2 * H + 0] = k; b[4 * H + 0] = -k; b[0 * H + 0] = k * 0.5; b[8 * H + 0] = k * 0.6;
-  // h1 = relé del eje Y: + presa (in3) · − amenaza (in5) · + ∇luz (in1) · + ∇detrito (in9)
-  b[3 * H + 1] = k; b[5 * H + 1] = -k; b[1 * H + 1] = k * 0.5; b[9 * H + 1] = k * 0.6;
+  // h0 = relé del eje X: + hacia presa (in2) · − amenaza (in4) · + ∇veg/comida (in0) · + ∇detrito (in8)   [índice wIh = in·H + h]
+  b[2 * H + 0] = k; b[4 * H + 0] = -k; b[0 * H + 0] = k * 0.6; b[8 * H + 0] = k * 0.6;
+  // h1 = relé del eje Y: + presa (in3) · − amenaza (in5) · + ∇veg/comida (in1) · + ∇detrito (in9)
+  b[3 * H + 1] = k; b[5 * H + 1] = -k; b[1 * H + 1] = k * 0.6; b[9 * H + 1] = k * 0.6;
   // oculta→salida: h0→dir X (out0) · h1→dir Y (out1)   [índice wHo + h·O + o]
   b[wHo + 0 * O + 0] = k; b[wHo + 1 * O + 1] = k;
   // sesgos de salida: throttle (out2) + → se mueve · ataque (out3) + → ataca en contacto
@@ -61,16 +62,17 @@ function mkModule(rng) {
   };
 }
 
-// Fundador SIMPLE (la complejidad EMERGE): cabeza + un módulo fotosintético pequeño (plántula viable, no estéril).
-// tissue 0.35 → bin PHOTO (tissueOf: t·4|0 = 1). [PHOTO = [0.25,0.5); ojo: valores <0.25 caen en STRUCTURE.]
+// Fundador SIMPLE = ANIMAL grazer (la complejidad EMERGE): cabeza con BOCA (pasta vegetación) + un par bilateral de MÚSCULO
+// (aletas que propulsan → puede moverse a buscar comida). tissueOf con TISSUE_N=3 (t·3|0): <0.333 STRUCTURE · 0.333-0.667
+// MUSCLE · ≥0.667 MOUTH. Desde aquí emergen herbívoros (boca chica, pastan) y carnívoros (boca grande, cazan).
 export function makeFounder(rng, div = 1) {
   // div = DIVERSIDAD inicial (1 = normal, byte-idéntico · 0 = todos idénticos). Mezcla las partes variables (fase/tono/
   // cerebro) hacia un valor fijo (0.5) con `div`; consume el MISMO RNG (a div=1 el valor es exactamente rng.next()).
   const dv = (x) => 0.5 + (x - 0.5) * div;
   return {
-    root: { size: 0.45, aspect: 0.3, tissue: 0.35 /*PHOTO*/, oscAmp: 0.15, phase: dv(rng.next()) },
-    modules: [{ angle: 0.6, size: 0.4, aspect: 0.6, tissue: 0.35 /*PHOTO*/, oscAmp: 0.2, phase: dv(rng.next()),
-                recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],
+    root: { size: 0.42, aspect: 0.4, tissue: 0.8 /*MOUTH*/, oscAmp: 0.1, phase: dv(rng.next()) },
+    modules: [{ angle: 2.8, size: 0.35, aspect: 0.6, tissue: 0.5 /*MUSCLE*/, oscAmp: 0.4, phase: dv(rng.next()),
+                recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],   // par de aletas traseras propulsoras
     brain: seedBrain(rng, div),   // bootstrap de conducta competente; div escala el ruido (div=0 → cerebro idéntico)
     hue: dv(rng.next()),          // marcador de LINAJE (neutro, heredable, deriva lenta); a div=0 todos el mismo tono
   };
@@ -171,7 +173,7 @@ export function recombine(gA, gB, rng) {
 // Estadística estructural del cuerpo (para tests/inspección).
 export function bodyStats(parts) {
   let chain = new Array(parts.length).fill(1), maxChain = 1;
-  const tissues = [0, 0, 0, 0];
+  const tissues = [0, 0, 0];
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]; tissues[p.tissue]++;
     if (p.parent >= 0) { chain[i] = chain[p.parent] + 1; if (chain[i] > maxChain) maxChain = chain[i]; }

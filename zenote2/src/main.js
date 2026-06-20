@@ -6,8 +6,7 @@ import { RENDER_P, START, SIM_P, GENOME_P, WORLD_P } from './config.js';   // fu
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); bakeLight(); } else if (m.type === 'frame') frame = m;
-  else if (m.type === 'light') { if (WORLD) { WORLD.light0 = m.light0; bakeLight(); } } };   // corriente del abismo: re-hornea la nebulosa al derivar la luz
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); } else if (m.type === 'frame') { frame = m; if (m.veg) bakeVeg(m.veg); } };   // el fondo = campo de VEGETACIÓN (llega cada frame; fluye con la luz)
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -18,17 +17,20 @@ let cw = 0, ch = 0, vignette = null; const dpr = Math.min(RENDER_P.dprCap, windo
 const glowCv = document.createElement('canvas'), glowCtx = glowCv.getContext('2d');
 const bloomCv = document.createElement('canvas'), bloomCtx = bloomCv.getContext('2d');
 let bloomStrength = RENDER_P.bloom; const BLOOM_DIV = RENDER_P.bloomDiv;
-// FONDO DEL ABISMO: el campo de luz (estático) se hornea a una mini-textura (1 px/celda) y se reescala SUAVIZADA →
-// nebulosa fosforescente teal/algas tenue (en vez de la rejilla de cuadrados). Se rehornea solo al (re)iniciar el mundo.
-const lightCv = document.createElement('canvas');
-function bakeLight() {
+// FONDO DEL ABISMO = la VEGETACIÓN: el campo veg (que llega en cada frame) se hornea a una mini-textura (1 px/celda) y se
+// reescala SUAVIZADA → nebulosa VERDE (pasto/algas) sobre abismo. Donde hay más vegetación, más verde = ahí está la comida.
+// Fluye con la luz (su K sigue al campo de luz, que puede derivar — "Corriente del abismo").
+const vegCv = document.createElement('canvas');
+function bakeVeg(veg) {
   if (!WORLD) return;
-  const cols = WORLD.cols, rows = WORLD.rows, L0 = WORLD.light0, lb = WORLD.lightBase || 1;
-  lightCv.width = cols; lightCv.height = rows;
-  const lc = lightCv.getContext('2d'), img = lc.createImageData(cols, rows), d = img.data;
+  // normaliza por la veg en pie TÍPICA (≈ ref·0.25), no por el máximo teórico — el pastoreo la mantiene bien por debajo de K,
+  // así que normalizar por K la dejaría casi negra. sqrt para realzar las zonas ralas.
+  const cols = WORLD.cols, rows = WORLD.rows, ref = (WORLD.vegRef || 10) * 0.25;
+  vegCv.width = cols; vegCv.height = rows;
+  const lc = vegCv.getContext('2d'), img = lc.createImageData(cols, rows), d = img.data;
   for (let i = 0; i < cols * rows; i++) {
-    const L = Math.max(0, Math.min(1.2, L0[i] / lb)), o = i * 4;   // intensidad de luz → fosforescencia teal sobre abismo
-    d[o] = 7 + L * 9; d[o + 1] = 11 + L * 34; d[o + 2] = 17 + L * 30; d[o + 3] = 255;
+    const v = Math.sqrt(Math.max(0, Math.min(1, veg[i] / ref))), o = i * 4;   // densidad de vegetación → verde sobre abismo
+    d[o] = 6 + v * 16; d[o + 1] = 12 + v * 96; d[o + 2] = 16 + v * 44; d[o + 3] = 255;
   }
   lc.putImageData(img, 0, 0);
 }
@@ -49,9 +51,9 @@ const fitScale = () => WORLD ? Math.min(cw, ch) / WORLD.size : 1;
 const scaleOf = () => fitScale() * zoom;
 function wrap(v) { const S = WORLD.size; return ((v % S) + S) % S; }
 
-const TCOL = [ '#5a6b7a', '#3fb98f', '#e0664d', '#e0a84a' ];   // STRUCTURE, PHOTO, MUSCLE, MOUTH (índice = tissue)
-const RCOL = [ '#3fb98f', '#e0664d', '#e0a84a' ];              // rol: 0 autótrofo · 1 heterótrofo · 2 mixótrofo
-const ROLE_TXT = [ 'autótrofo', 'heterótrofo', 'mixótrofo' ];
+const TCOL = [ '#5a6b7a', '#e0664d', '#e0a84a' ];   // STRUCTURE, MUSCLE, MOUTH (índice = tissue)
+const RCOL = [ '#3fb98f', '#e0664d', '#e0a84a' ];   // rol (por dieta): 0 herbívoro · 1 carnívoro · 2 omnívoro
+const ROLE_TXT = [ 'herbívoro', 'carnívoro', 'omnívoro' ];
 let colorMode = RENDER_P.colorMode;
 
 function draw() {
@@ -63,8 +65,8 @@ function draw() {
   const txMin = Math.floor((camX - vwHalf) / size), txMax = Math.floor((camX + vwHalf) / size);
   const tyMin = Math.floor((camY - vhHalf) / size), tyMax = Math.floor((camY + vhHalf) / size);
 
-  // sustrato (campo de luz) por tile
-  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawLight((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
+  // sustrato (campo de VEGETACIÓN) por tile
+  for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawVeg((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
   // BORDE DEL TORO: las líneas del límite del mundo (x=k·size, y=k·size) repetidas en el mosaico. Clara pero suave y
   // DIFUSA (3 pasadas aditivas: ancha+tenue → fina+clara). Cada línea se traza UNA vez (full-canvas) → uniforme.
   ctx.globalCompositeOperation = 'lighter';
@@ -120,11 +122,12 @@ function draw() {
   updateInspector();
 }
 
-function drawLight(oX, oY, sc) {
-  // un tile del mundo = la mini-textura de luz reescalada SUAVIZADA (bilinear) → nebulosa fosforescente sin rejilla.
+function drawVeg(oX, oY, sc) {
+  // un tile del mundo = la mini-textura de vegetación reescalada SUAVIZADA (bilinear) → nebulosa verde sin rejilla.
+  if (!vegCv.width) return;
   const wpx = WORLD.size * sc;
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(lightCv, oX, oY, wpx, wpx);
+  ctx.drawImage(vegCv, oX, oY, wpx, wpx);
 }
 
 // CADÁVERES (#3): cuerpos muertos recientes, en su orientación final (sin ondulación ni ojos), tono del linaje muy
@@ -260,13 +263,20 @@ function updateInspector() {
     following = false; $('inspFollow').classList.remove('on'); return;
   }
   $('inspRole').textContent = ROLE_TXT[d.role]; $('inspRole').style.color = RCOL[d.role] || '#c3cdda';
+  $('inspHue').style.background = `hsl(${(d.hue * 360) | 0},62%,58%)`;   // swatch de linaje (tono heredado) → identificar familias
+  // DIETA emergente real (pasto/caza/carroña, acumulada en vida) → barra apilada + texto. Revela el OFICIO de ESTE animal.
+  const dV = d.dietV || 0, dP = d.dietP || 0, dS = d.dietS || 0, dT = dV + dP + dS, seg = $('inspDiet').children;
+  if (dT > 0.5) { const pV = dV / dT * 100, pP = dP / dT * 100, pS = dS / dT * 100;
+    seg[0].style.width = pV + '%'; seg[1].style.width = pP + '%'; seg[2].style.width = pS + '%';
+    $('inspDietTxt').textContent = `dieta: pasto ${pV.toFixed(0)}% · caza ${pP.toFixed(0)}%` + (pS >= 0.5 ? ` · carroña ${pS.toFixed(0)}%` : '');
+  } else { seg[0].style.width = seg[1].style.width = seg[2].style.width = '0%'; $('inspDietTxt').textContent = 'dieta: — (recién nacido)'; }
   $('inspE').style.width = (Math.max(0, Math.min(1, d.E / d.reproE)) * 100).toFixed(0) + '%';
   $('inspEtxt').textContent = `energía ${d.E.toFixed(1)} / cría ${d.reproE}` + (d.gut > 0.05 ? ` · tripa ${d.gut.toFixed(1)}` : '');
   $('inspMass').textContent = d.mass.toFixed(2);
   $('inspParts').textContent = d.nParts;
   $('inspV').textContent = d.vmax.toFixed(2);
   $('inspAge').textContent = d.age | 0;
-  $('inspTroph').textContent = `${d.photoCap.toFixed(1)} / ${d.mouthCap.toFixed(2)}`;
+  $('inspTroph').textContent = `${d.mouthCap.toFixed(2)} / ${d.maxMouthR.toFixed(1)}`;
   if (following) { camX = wrap(d.x); camY = wrap(d.y); }   // seguir: la cámara se centra en el agente
 }
 // Gráfica de ÁREA APILADA de dos series (lower abajo, upper encima). Escala al máximo de la suma → muestra composición.
@@ -279,7 +289,7 @@ function drawStack(cv, c, lower, upper, colLow, colUp) {
   c.beginPath(); for (let i = 0; i < n; i++) { const x = X(i), y = Y(lower[i] + upper[i]); i ? c.lineTo(x, y) : c.moveTo(x, y); } for (let i = n - 1; i >= 0; i--) c.lineTo(X(i), Y(lower[i])); c.closePath(); c.fillStyle = colUp; c.fill();
 }
 function drawChart() {
-  drawStack(pc, pctx, frame.histAuto, frame.histHet, 'rgba(63,185,143,.5)', 'rgba(224,102,77,.55)');           // población: autótrofo + heterótrofo
+  drawStack(pc, pctx, frame.histHerb, frame.histCarn, 'rgba(63,185,143,.5)', 'rgba(224,102,77,.55)');           // población: herbívoro + carnívoro
   if (bctx) drawStack(bc, bctx, frame.histAsexB, frame.histSexB, 'rgba(111,174,90,.55)', 'rgba(201,138,224,.6)'); // nacimientos: asexual + sexual
   if (dctx) drawStack(dc, dctx, frame.histPred, frame.histStarv, 'rgba(224,102,77,.55)', 'rgba(120,134,150,.6)'); // muertes: depredación + inanición
 }
@@ -337,7 +347,7 @@ $('worldSize').value = START.worldSize; $('seedCount').value = START.seedCount; 
 $('tps').value = RENDER_P.tps; $('fps').value = RENDER_P.maxFps; $('zoom').value = RENDER_P.zoom;
 $('colorMode').value = RENDER_P.colorMode;
 $('reproSex').checked = SIM_P.reproMode !== 'asexual'; $('reproAsex').checked = SIM_P.reproMode !== 'sexual';   // both→ambos · asexual→solo asex · sexual→solo sex
-{ const src = { lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
+{ const src = { lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };
   for (const s of document.querySelectorAll('.lab-slider')) if (s.dataset.key in src) s.value = src[s.dataset.key]; }
 function setZoom(z) { zoom = Math.max(MINZ, Math.min(MAXZ, z)); $('zoom').value = zoom.toFixed(1); $('zoomVal').textContent = zoom.toFixed(1) + '×'; }
 $('zoom').addEventListener('input', (e) => setZoom(+e.target.value));
@@ -365,8 +375,8 @@ $('show').addEventListener('click', () => document.body.classList.remove('hidden
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
-const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, photoEff: SIM_P.photoEff, photoMotionK: SIM_P.photoMotionK, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
-const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'photoMotionK' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
+const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
+const fmtLab = (k, v) => k === 'lightMul' ? v.toFixed(2) + '×' : k === 'mutRate' ? v.toFixed(1) + '×' : k === 'reproE' ? v.toFixed(0) : k === 'lightFlow' ? (v * 10000).toFixed(1) : (k === 'grazeRate' || k === 'scavRate') ? v.toFixed(1) : v.toFixed(3);
 const labSliders = [...document.querySelectorAll('.lab-slider')];
 const labOut = (k) => document.querySelector(`output[data-for="${k}"]`);
 function applyLab() { for (const s of labSliders) worker.postMessage({ type: 'set', key: s.dataset.key, value: +s.value }); }
@@ -412,9 +422,9 @@ function buildLegend() {
   const L = $('legend');
   const sets = {
     natural: [['#7fb0d8', 'color = pigmento heredado (linaje)'], ['#e0a84a', 'motas = patrón de familia · brillo = energía']],
-    natmix: [['#7fb0d8', 'pigmento heredado'], ['#3fb98f', '+ tinte sutil de tejido (función)'], ['#e0a84a', 'motas · brillo = energía']],
-    tissue: [['#3fb98f', 'fotosíntesis'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = color real (linaje)']],
-    role: [['#3fb98f', 'autótrofo'], ['#e0664d', 'heterótrofo'], ['#e0a84a', 'mixótrofo'], ['#9a7bd0', 'aura = color real (linaje)']],
+    natmix: [['#7fb0d8', 'pigmento heredado'], ['#e0a84a', '+ tinte sutil de tejido (función)'], ['#e0a84a', 'motas · brillo = energía']],
+    tissue: [['#5a6b7a', 'estructura'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = color real (linaje)']],
+    role: [['#3fb98f', 'herbívoro'], ['#e0664d', 'carnívoro'], ['#e0a84a', 'omnívoro'], ['#9a7bd0', 'aura = color real (linaje)'], ['#3fb98f', '(oficio por DIETA real)']],
     lineage: [['#e0664d', 'tono = linaje (color heredado, deriva lenta)']],
   };
   L.innerHTML = (sets[colorMode] || sets.natural).map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');

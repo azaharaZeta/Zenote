@@ -15,20 +15,20 @@ function checksum(s) {
   for (let i = 0; i < s.cap; i++) if (s.alive[i]) {
     mix(s.serial[i]);
     mix(Math.round(s.x[i] * 1000)); mix(Math.round(s.y[i] * 1000));
-    mix(Math.round(s.E[i] * 1000)); mix(Math.round(s.mass[i] * 1000)); mix(Math.round(s.photoCap[i] * 1000));
+    mix(Math.round(s.E[i] * 1000)); mix(Math.round(s.mass[i] * 1000)); mix(Math.round(s.mouthCap[i] * 1000));
   }
   return h >>> 0;
 }
 
 function run(ticks) {
   const w = new World(1500, 1, { ...WORLD_P, lightBase: 2.5 });
-  w.nutrient.fill(1.5);
+  w.nutrient.fill(1.5); w.veg.fill(1.0);
   const s = new Sim(w, { seed: 1, cap: 4000 }); s.seed(800);
   for (let t = 0; t < ticks; t++) s.step();
   return { c: checksum(s), pop: s.pop(), tick: s.tick };
 }
 
-const GOLDEN = 0xa51bdfd6;   // re-fijado: FIX inmovilismo → photoHalf 40→4 (foto satura antes, libera presupuesto → movilidad) + eDensity 4→0 (revertido; eD>0 encarecía el músculo) 2026-06-20; seed 1, cap 4000, 2000 ticks
+const GOLDEN = 0xe6e247bd;   // re-fijado: REFACTOR a solo-animales + VEGETACIÓN parametrizada (sin fotosíntesis en el genoma; los animales pastan) 2026-06-20; seed 1, cap 4000, 2000 ticks
 const TICKS = 2000;
 console.log('=== Checksum dorado — determinismo + deriva ===\n');
 const a = run(TICKS), b = run(TICKS);

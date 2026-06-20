@@ -73,7 +73,7 @@
     <div id="legend" class="legend"></div>
 
     <div class="ctrl">
-      <label>Población <span class="cl-auto">autótrofo</span> · <span class="cl-het">heterótrofo</span></label>
+      <label>Población <span class="cl-auto">herbívoro</span> · <span class="cl-het">carnívoro</span></label>
       <canvas id="popChart" class="chart" width="226" height="56"></canvas>
     </div>
 
@@ -103,15 +103,11 @@
       </div>
       <div class="ctrl">
         <label>Umbral de cría <output data-for="reproE"></output></label>
-        <input class="lab-slider" data-key="reproE" type="range" min="8" max="32" step="1" value="16">
+        <input class="lab-slider" data-key="reproE" type="range" min="8" max="40" step="1" value="16" title="Energía que un organismo debe acumular antes de reproducirse. Más alto = menos nacimientos. Súbelo en vivo si ves demasiados organismos (es un dial, no aplana del todo el boom-bust).">
       </div>
       <div class="ctrl">
-        <label>Eficiencia fotosíntesis <output data-for="photoEff"></output></label>
-        <input class="lab-slider" data-key="photoEff" type="range" min="0.01" max="0.15" step="0.005" value="0.05">
-      </div>
-      <div class="ctrl">
-        <label>Quietud fotosíntesis <output data-for="photoMotionK"></output></label>
-        <input class="lab-slider" data-key="photoMotionK" type="range" min="0" max="6" step="0.5" value="2" title="Cuánto penaliza moverse a la captación de luz. 0 = nada. Alto → autótrofos sésiles (plantas); el movimiento queda en heterótrofos.">
+        <label>Pastoreo <output data-for="grazeRate"></output></label>
+        <input class="lab-slider" data-key="grazeRate" type="range" min="0.1" max="2" step="0.1" value="0.5" title="Cuánta vegetación puede pastar una boca por tick. Más alto = los herbívoros consumen el pasto más rápido (riesgo de sobrepastoreo); más bajo = pastar renta menos.">
       </div>
       <div class="ctrl">
         <label>Carroñeo <output data-for="scavRate"></output></label>
@@ -136,17 +132,20 @@
 
   <aside id="inspector" hidden>
     <div class="insp-head">
+      <i id="inspHue" class="insp-hue" title="color de linaje (pigmento heredado)"></i>
       <span id="inspRole" class="insp-role">—</span>
       <button id="inspClose" title="Cerrar (Esc)">✕</button>
     </div>
     <div class="insp-energy"><i id="inspE"></i></div>
     <div id="inspEtxt" class="insp-etxt">—</div>
+    <div class="insp-diet" id="inspDiet"><i class="d-luz"></i><i class="d-caza"></i><i class="d-carr"></i></div>
+    <div id="inspDietTxt" class="insp-etxt">—</div>
     <dl class="insp-stats">
       <div><dt>masa</dt><dd id="inspMass">—</dd></div>
       <div><dt>partes</dt><dd id="inspParts">—</dd></div>
       <div><dt>v. máx</dt><dd id="inspV">—</dd></div>
       <div><dt>edad</dt><dd id="inspAge">—</dd></div>
-      <div><dt>foto / boca</dt><dd id="inspTroph">—</dd></div>
+      <div><dt>boca / presa máx</dt><dd id="inspTroph">—</dd></div>
     </dl>
     <button id="inspFollow" class="ghost">seguir cámara</button>
   </aside>

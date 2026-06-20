@@ -6,11 +6,10 @@ import { World, WORLD_P } from '../src/engine/world.js';
 import { Sim } from '../src/engine/sim.js';
 
 function makeWorld(light) { return new World(1500, 1, { ...WORLD_P, lightBase: light ? 2.5 : 0 }); }
-function initNutrient(w, perCell) { w.nutrient.fill(perCell); }
-function totalMatter(s) { return s.world.totalNutrient() + s.world.totalDetritusM() + s.totalMass(); }
-// M1: incluir la TRIPA (gut, añadida en M6.2) y la energía embebida en biomasa (mass·eD, M6.1) en la energía
-// almacenada; omitirlas hacía que el balance de energía/tick reportara FALLO espurio con el motor actual.
-function totalStored(s) { let g = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) g += s.gut[i] + s.mass[i] * s.eD; return s.totalE() + g + s.world.totalDetritusE(); }
+function initNutrient(w, perCell) { w.nutrient.fill(perCell); w.veg.fill(1.0); }
+// MATERIA incluye la VEGETACIÓN (productor); ENERGÍA incluye la embebida en vegetación (veg·vegEcoef) + tripa + (mass·eD).
+function totalMatter(s) { return s.world.totalNutrient() + s.world.totalVeg() + s.world.totalDetritusM() + s.totalMass(); }
+function totalStored(s) { let g = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) g += s.gut[i] + s.mass[i] * s.eD; return s.totalE() + g + s.world.totalVeg() * WORLD_P.vegEcoef + s.world.totalDetritusE(); }
 
 // ---------- TEST A: luz ON → conservación + balance + persistencia + perf ----------
 console.log('=== M5.3 — invariantes con el ORGANISMO REAL (2.1 §8) ===\n');

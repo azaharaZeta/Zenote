@@ -10,7 +10,7 @@ const LINEAGES = 2000, STEPS = 60;   // 2000 linajes × 60 mutaciones acumuladas
 
 let invalid = 0, total = 0;
 let maxParts = 0, maxChain = 0, maxModules = 0;
-const tissueSeen = [0, 0, 0, 0];     // ¿se alcanzan los 4 tejidos por evolución?
+const tissueSeen = [0, 0, 0];     // ¿se alcanzan los 3 tejidos (STRUCT/MUSCLE/MOUTH) por evolución?
 let chainsReached = 0, pairsReached = 0;
 
 for (let l = 0; l < LINEAGES; l++) {
@@ -40,5 +40,5 @@ console.log(`Cuerpos INVÁLIDOS: ${invalid}  → ${invalid === 0 ? 'validez por 
 console.log(`\nDiversidad estructural alcanzada (sin sembrar):`);
 console.log(`  máx partes ${maxParts}/${GENOME_P.partBudget} · máx cadena ${maxChain} · máx módulos ${maxModules}`);
 console.log(`  cuerpos con cadena≥4 (gusano): ${pct(chainsReached)} · con par simétrico: ${pct(pairsReached)}`);
-console.log(`  tejidos alcanzados [STRUCT,PHOTO,MUSCLE,MOUTH]: ${tissueSeen.map(pct).join(' · ')}`);
+console.log(`  tejidos alcanzados [STRUCT,MUSCLE,MOUTH]: ${tissueSeen.map(pct).join(' · ')}`);
 console.log(`\n${invalid === 0 && maxChain >= 4 && tissueSeen.every((t) => t > 0) ? 'M5.1 GO ✓ (válido siempre + diversidad estructural y de tejidos emerge)' : 'revisar'}`);

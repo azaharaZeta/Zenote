@@ -3,12 +3,11 @@
 // abierta (entra como LUZ, se almacena, sale como CALOR). Su independencia dimensional hace imposible la trampa
 // "energía = materia relabelada" del modelo viejo. Campos en rejilla (∝ tamaño → densidad constante), toro.
 //
-// Compartimentos:
-//   MATERIA  = Σ nutrient (inorgánica) + Σ detritusM (orgánica muerta) + Σ organismos.mass   = CONSTANTE
-//   ENERGÍA  = Σ organismos.E (reservas) + Σ detritusE (residual)  ;  entra: lightCaptured  ;  sale: heat
-// El motor de transacciones (fotosíntesis/crecimiento/ingesta/metabolismo/muerte/descomposición) vive en quien
-// usa el mundo (la sonda M4, luego el organismo M5); aquí están los CAMPOS, la difusión/descomposición, la luz y
-// los acumuladores del libro mayor. Toda transacción re-enruta materia (conserva) y contabiliza energía (disipa).
+// Compartimentos (el PRODUCTOR es la VEGETACIÓN parametrizada, no los organismos — todos los organismos son ANIMALES):
+//   MATERIA  = Σ nutrient (inorgánica) + Σ veg (vegetación) + Σ detritusM (orgánica muerta) + Σ animales.mass   = CONSTANTE
+//   ENERGÍA  = Σ animales.E + Σ veg·vegEcoef (embebida en vegetación) + Σ detritusE  ;  entra: lightCaptured (vía vegetación) ;  sale: heat
+// La LUZ ya no la captan los organismos: la capta la VEGETACIÓN al crecer (vegStep). Los animales obtienen energía PASTÁNDOLA
+// (o cazando/carroñeando, en sim). Toda transacción re-enruta materia (conserva) y contabiliza energía (disipa).
 
 import { makeRng } from '../util/rng.js';
 import { WORLD_P } from '../config.js';   // parámetros del mundo: fuente única en config.js
@@ -22,14 +21,14 @@ export class World {
     const N = this.cols * this.rows;
     this.light0 = new Float32Array(N);     // luz base espacial (heterogénea, periódica en el toro)
     this.nutrient = new Float32Array(N);   // N: materia inorgánica
+    this.veg = new Float32Array(N);        // VEGETACIÓN: biomasa del productor (materia; energía embebida = veg·vegEcoef)
     this.detritusM = new Float32Array(N);  // materia orgánica muerta
     this.detritusE = new Float32Array(N);  // energía residual del detrito
-    this.occ = new Float32Array(N);        // ocupación (recomputada por tick desde los agentes)
     this._scratch = new Float32Array(N);
     this._buildLight(seed);
     // Libro mayor (acumuladores de energía abierta): monótonos.
     this.heat = 0;            // energía disipada que abandonó el sistema (sumidero; monótono ↑)
-    this.lightCaptured = 0;   // energía que entró por fotosíntesis (fuente; monótono ↑)
+    this.lightCaptured = 0;   // energía que entró por la VEGETACIÓN al captar luz (fuente; monótono ↑)
     this.daylight = 1;        // multiplicador día/noche del tick actual
     this.lightMul = 1;        // multiplicador GLOBAL de luz (lab, en vivo): escala la productividad sin re-hornear light0
   }
@@ -90,10 +89,20 @@ export class World {
     this.daylight = P.dayNightAmp > 0 ? Math.max(0, 1 + P.dayNightAmp * Math.sin(tick / P.dayNightPeriod * 6.283)) : 1;
   }
 
-  // Luz incidente en una celda: base × día/noche × sombra(ocupación). La sombra acopla luz↔espacio (competencia).
-  lightAt(cell) {
-    const P = this.P, sh = 1 - P.shadeCoef * Math.min(1, this.occ[cell] / P.occRef);
-    return this.light0[cell] * this.lightMul * this.daylight * (sh > 0 ? sh : 0);
+  // VEGETACIÓN (productor parametrizado): crece logísticamente captando LUZ (energía ENTRA) y consumiendo NUTRIENTE (materia),
+  // y senesce a detrito. K(celda) = vegKcoef·luz local → los parches vegetales SIGUEN al campo de luz (que puede fluir). El
+  // brote `vegSeed` permite recolonizar celdas vacías. CONSERVA: materia nutriente→veg→detrito · energía luz→veg (captada) y
+  // veg→calor (senescencia). Lo PASTAN los animales (transacción en sim). Frontera genotipo→física: la vegetación es física del
+  // mundo (no evoluciona); qué animal la explota lo dicta la selección.
+  vegStep() {
+    const P = this.P, veg = this.veg, N = this.nutrient, Dm = this.detritusM;
+    const g = P.vegGrowth, kc = P.vegKcoef, ec = P.vegEcoef, dec = P.vegDecay, seed = P.vegSeed, lm = this.lightMul * this.daylight;
+    for (let i = 0; i < veg.length; i++) {
+      const K = kc * this.light0[i] * lm;
+      if (K > 1e-6) { const grow = g * (veg[i] + seed) * (1 - veg[i] / K);
+        if (grow > 0) { let take = grow; if (take > N[i]) take = N[i]; if (take > 0) { veg[i] += take; N[i] -= take; this.lightCaptured += take * ec; } } }   // materia nutriente→veg; energía luz captada
+      if (veg[i] > 0) { const die = dec * veg[i]; veg[i] -= die; Dm[i] += die; this.heat += die * ec; }   // senescencia: materia→detrito, energía→calor
+    }
   }
 
   // Descomposición del detrito (por tick): materia → nutriente (CONSERVA), energía residual → calor (DISIPA).
@@ -119,10 +128,11 @@ export class World {
       }
     }
   }
-  diffuseStep() { this._diffuse(this.nutrient, this.P.diffuseN); this._diffuse(this.detritusM, this.P.diffuseDet); this._diffuse(this.detritusE, this.P.diffuseDet); }
+  diffuseStep() { this._diffuse(this.nutrient, this.P.diffuseN); this._diffuse(this.veg, this.P.vegDiffuse); this._diffuse(this.detritusM, this.P.diffuseDet); this._diffuse(this.detritusE, this.P.diffuseDet); }
 
   // --- Totales del libro mayor (para invariantes) ---
   totalNutrient() { let s = 0; for (let i = 0; i < this.nutrient.length; i++) s += this.nutrient[i]; return s; }
+  totalVeg() { let s = 0; for (let i = 0; i < this.veg.length; i++) s += this.veg[i]; return s; }   // biomasa vegetal (materia); su energía = ·vegEcoef
   totalDetritusM() { let s = 0; for (let i = 0; i < this.detritusM.length; i++) s += this.detritusM[i]; return s; }
   totalDetritusE() { let s = 0; for (let i = 0; i < this.detritusE.length; i++) s += this.detritusE[i]; return s; }
 }

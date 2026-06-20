@@ -13,6 +13,7 @@ export const START = {
   cap: 12000,          // NO UI — tope del pool (nº máx. de agentes)
   lightBase: 2.5,      // NO UI — irradiancia OPERATIVA del mundo (la UI "Luz solar" ajusta el MULTIPLICADOR, no esto). Sustituye a WORLD_P.lightBase al crear el mundo.
   nutrientInit: 1.5,   // NO UI — nutriente inicial por celda
+  vegInit: 1.0,        // NO UI — biomasa vegetal inicial por celda (la base productora arranca sembrada)
 };
 
 // ===================== RENDER / VISUAL (cliente; NO afecta a la simulación) =====================
@@ -46,11 +47,17 @@ export const WORLD_P = {
   lightFlowEvery: 5,    // NO UI — cada cuántos ticks se re-hornea el campo de luz al derivar (la luz cambia despacio → throttle barato)
   dayNightAmp: 0.0,     // NO UI — amplitud del ciclo día/noche (0 = sin ciclo)
   dayNightPeriod: 2000, // NO UI — periodo del ciclo (ticks)
-  shadeCoef: 0.6,       // NO UI — sombra: la ocupación reduce la luz (competencia por luz)
-  occRef: 4,            // NO UI — ocupación de referencia para normalizar la sombra
   diffuseN: 0.12,       // NO UI — difusión del nutriente (conservativa)
   diffuseDet: 0.05,     // NO UI — difusión del detrito (conservativa)
   decompose: 0.02,      // NO UI — descomposición del detrito/tick: materia → nutriente, energía → calor
+  // --- VEGETACIÓN (productor PARAMETRIZADO, no genético): la base trófica. Capta LUZ (energía) creciendo logísticamente y
+  // consumiendo NUTRIENTE (materia). Los ANIMALES la pastan. Conserva: nutriente↔veg↔detrito (materia); luz→veg→animal/calor (energía). ---
+  vegGrowth: 0.12,      // NO UI — ritmo de crecimiento logístico de la vegetación/tick
+  vegKcoef: 6.0,        // NO UI — capacidad de carga por celda = vegKcoef · luz local (biomasa máx donde hay luz)
+  vegEcoef: 1.0,        // NO UI — energía embebida por unidad de biomasa vegetal (lo que el pastador obtiene al comerla)
+  vegDecay: 0.02,       // NO UI — senescencia vegetal/tick: biomasa → detrito (materia), energía → calor
+  vegSeed: 0.05,        // NO UI — colonización: brote mínimo para que las celdas vacías con luz recolonicen (semilla logística)
+  vegDiffuse: 0.04,     // NO UI — difusión espacial de la vegetación (conservativa) → se extiende a celdas vecinas
 };
 
 // ===================== GENOMA / DESARROLLO / MUTACIÓN =====================
@@ -67,7 +74,6 @@ export const PHENO_P = {
   massCoef: 0.04,      // NO UI — masa estructural ∝ área de las partes
   dragBase: 1.0, dragCoef: 0.3, streamline: 0.4,   // NO UI — arrastre (forma); elongado arrastra menos
   thrustGain: 1.2,     // NO UI — ganancia de empuje (MUSCLE)
-  photoGain: 1.0,      // NO UI — ganancia de captación de luz (PHOTO)
   mouthGain: 1.0,      // NO UI — ganancia de ingesta (MOUTH)
   vGain: 3.0, vMax: 4.0,   // NO UI — velocidad emergente = vGain·empuje/arrastre, acotada
 };
@@ -76,21 +82,13 @@ export const PHENO_P = {
 export const SIM_P = {
   // --- expuestos en el LABORATORIO (en vivo) ---
   baseCost: 0.015,     // UI: Metabolismo basal — coste metabólico basal/tick
-  reproE: 16,          // UI: Umbral de cría — energía mínima para reproducirse
-  photoEff: 0.05,      // UI: Eficiencia fotosíntesis — share de la luz captada ∝ photoCap/(photoCap+photoHalf)
-  photoMotionK: 2,     // UI: Quietud fotosíntesis — captación × 1/(1+k·velocidad). >0 → autótrofos sésiles, el movimiento se concentra en heterótrofos (medido 25k). 0 = comportamiento anterior.
+  reproE: 16,          // UI: Umbral de cría — energía mínima para reproducirse (palanca viva, slider hasta 40)
+  grazeRate: 0.5,      // UI: Pastoreo — biomasa vegetal que una boca puede pastar por tick ∝ mouthCap. La MISMA boca pasta veg,
+                       // caza presa y rebaña carroña → el eje herbívoro↔carnívoro EMERGE de a qué dedica su esfuerzo el animal.
   reproMode: 'both',   // UI: Reproducción — 'both' (sexual si hay pareja + respaldo asexual) · 'asexual' · 'sexual' (obligada, sin respaldo)
   // --- resto (NO UI) ---
-  huntCloseMin: 0,     // NO UI (prototipo) — CAPTURA EXIGE ACERCARSE: la presa viva solo se captura si la velocidad de ACERCAMIENTO
-                       // del depredador (su velocidad proyectada hacia la presa) ≥ este umbral. 0 = comportamiento anterior (byte-idéntico,
-                       // una boca quieta caza al contacto). >0 → la trampa pasiva deja de rendir → para cazar hay que PERSEGUIR → cazador móvil.
-  scavRate: 0.5,       // UI: Carroñeo — energía de detrito (detritusE) ingerible por tick ∝ mouthCap. 0 = apagado. >0 → la MISMA
-                       // boca que caza presa viva también rebaña carroña → emerge carroñeo FACULTATIVO (heterótrofos suplementan
-                       // ~15-18% de su dieta con carroña; el carroñero OBLIGADO es marginal — carroña = recurso fino a escala pecera).
-  photoHalf: 4,        // NO UI — saturación de la captación de luz (photoCap/(photoCap+photoHalf)). BAJO a propósito: a 40 los
-                       // organismos SOBREINVERTÍAN en foto (photoCap 80-130) y se quedaban TODOS sésiles (la foto subsidia estar
-                       // quieto). A ~4 la foto satura con poca inversión → libera presupuesto de partes → muchos más con BOCA y
-                       // MÚSCULO, el mundo pasa de ~86% quieto a ~37% (medido 3 seeds, robusto) → inmovilismo heterótrofo residual.
+  scavRate: 0.5,       // UI: Carroñeo — energía de detrito (detritusE de animales muertos) ingerible por tick ∝ mouthCap. 0 = apagado.
+                       // La MISMA boca que pasta y caza también rebaña carroña → carroñeo facultativo emergente.
   massCost: 0.004,     // NO UI — coste metabólico ∝ masa^massCostExp
   massCostExp: 1.2,    // NO UI — exponente del coste de masa (super-lineal). Frena el BLOAT: sin él los cuerpos se inflaban
                        // (masa ×4, generalistas "lo tienen todo" 1%→~40% a 30k, pop a la mitad). Medido (spikes/trophic-balance):

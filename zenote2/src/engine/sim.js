@@ -1,13 +1,8 @@
-// M5.3 — SIM INTEGRADO. Código KEEPER: el organismo REAL (genoma→develop→fenotipo) viviendo sobre las leyes del
-// mundo M4, vía las transacciones de 2.1 (fotosíntesis · ingesta · metabolismo · muerte · descomposición) +
-// reproducción ASEXUAL con mutación del genoma de reglas (la morfología EVOLUCIONA). Conducta = placeholder genérico
-// (M6 la reemplaza por el controlador neuronal). Materia/energía contabilizadas en cada transacción → los invariantes
-// de 2.1 §8 deben SEGUIR pasando con organismos reales (el check crítico de M5.3).
-//
-// Separación limpia de monedas (como M4): masa estructural = MATERIA pura (sin energía) · reservas E = ENERGÍA pura
-// (sin materia). Sin crecimiento/tripa (eso es M6): el cuerpo nace a su tamaño desarrollado. Eje estructura-vs-reservas
-// y energía-en-biomasa (presa magra) son de M6 → en M5.3 el heterótrofo vive de las RESERVAS de la presa (puede ser
-// flojo; lo arregla M6). El foco de M5.3 es: organismo real + invariantes + morfología evoluciona.
+// SIM INTEGRADO. Código KEEPER: el ANIMAL REAL (genoma→develop→fenotipo) viviendo sobre las leyes del mundo, vía las
+// transacciones (pastoreo de vegetación · caza · carroñeo · metabolismo · muerte) + reproducción con mutación/recombinación
+// del genoma de reglas (la morfología EVOLUCIONA). TODOS los organismos son ANIMALES (no fotosintetizan): la energía entra al
+// ecosistema por la VEGETACIÓN (world.vegStep) y el animal la obtiene COMIENDO. Materia/energía contabilizadas en cada
+// transacción → los invariantes (materia cerrada + energía luz→calor, con la vegetación en el libro mayor) deben SEGUIR pasando.
 
 import { develop, mutate, makeFounder, recombine, seedBrain, BRAIN, BRAIN_W } from './genome.js';
 import { computePhenotype, phenoDistance } from './phenotype.js';
@@ -31,7 +26,7 @@ export class Sim {
     this.genome = new Array(cap).fill(null);
     this.body = new Array(cap).fill(null);   // cuerpo desarrollado (partes) cacheado al nacer → lo lee el render (M5.5)
     // fenotipo cacheado (de develop+computePhenotype al nacer)
-    this.mass = new Float32Array(cap); this.photoCap = new Float32Array(cap); this.vmax = new Float32Array(cap);
+    this.mass = new Float32Array(cap); this.vmax = new Float32Array(cap);
     this.drag = new Float32Array(cap); this.mouthCap = new Float32Array(cap); this.maxMouthR = new Float32Array(cap);
     this.thrust = new Float32Array(cap);   // empuje cacheado (solo para el oficio trófico del render; no entra en la sim)
     this.free = new Int32Array(cap); for (let i = 0; i < cap; i++) this.free[i] = cap - 1 - i; this.freeTop = cap;
@@ -41,10 +36,10 @@ export class Sim {
     // nunca falla en silencio. Hoy mateRadius=50 < 60 → celda 60 (igual que antes).
     this.hash = new SpatialHash(world.size, Math.max(60, SIM_P.mateRadius)); this.hash.setCapacity(cap);
     this.kills = 0; this.sexBirths = 0; this.asexBirths = 0; this.starved = 0;   // instrumentación: depredación · vía reproductiva · muertes por inanición (causas de muerte = kills + starved)
-    this.scavenged = 0;   // instrumentación: energía total rebañada del detrito (carroñeo, #4) — para medir el flujo del nicho
-    // INGRESO POR AGENTE (acumulativo): de dónde saca la energía cada organismo → luz / caza / carroña. Solo ESCRITURA
-    // (la dinámica no lo lee) → byte-idéntico. Revela el OFICIO real emergente (autótrofo/cazador/carroñero) para medir y para el inspector.
-    this.photoIn = new Float32Array(cap); this.preyIn = new Float32Array(cap); this.scavIn = new Float32Array(cap);
+    this.scavenged = 0;   // instrumentación: energía total rebañada del detrito (carroñeo) — para medir el flujo del nicho
+    // INGRESO POR AGENTE (acumulativo): de dónde saca la energía cada animal → pasto (veg) / caza / carroña. Solo ESCRITURA
+    // (la dinámica no lo lee) → byte-idéntico. Revela el OFICIO real emergente (herbívoro/carnívoro/carroñero) para medir y para el inspector.
+    this.vegIn = new Float32Array(cap); this.preyIn = new Float32Array(cap); this.scavIn = new Float32Array(cap);
     // CADÁVERES (#3): buffer CIRCULAR acotado de muertes recientes (forma + posición + linaje + rumbo + tick de muerte) →
     // el render dibuja cuerpos que se desvanecen con su carroña ("muerte visible"). Solo lo ESCRIBE el motor / lo LEE el
     // snapshot; la dinámica no lo lee → byte-idéntico. Preasignado (sin asignaciones en el bucle caliente).
@@ -59,7 +54,7 @@ export class Sim {
 
   // cachea el cuerpo desarrollado + su fenotipo en la SoA del slot i (lo leen el render y las transacciones)
   _setBody(i, parts, ph) { this.body[i] = parts;
-    this.mass[i] = ph.mass; this.photoCap[i] = ph.photoCap; this.vmax[i] = ph.vmax; this.drag[i] = ph.drag;
+    this.mass[i] = ph.mass; this.vmax[i] = ph.vmax; this.drag[i] = ph.drag;
     this.mouthCap[i] = ph.mouthCap; this.maxMouthR[i] = ph.maxMouthR; this.thrust[i] = ph.thrust; }
   _expr(i) { const parts = develop(this.genome[i]); this._setBody(i, parts, computePhenotype(parts)); }
 
@@ -77,7 +72,7 @@ export class Sim {
     this.alive[i] = 1; this.serial[i] = ++this._serial; this.genome[i] = genome;
     if (this.freezeBrain && genome.brain) genome.brain.set(this._seedBrain);   // control: anula la herencia/mutación del cerebro → todos usan el seedBrain canónico
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
-    this.photoIn[i] = 0; this.preyIn[i] = 0; this.scavIn[i] = 0;   // ingreso por agente: a cero al nacer
+    this.vegIn[i] = 0; this.preyIn[i] = 0; this.scavIn[i] = 0;   // ingreso por agente: a cero al nacer
     this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0;
     if (parts) this._setBody(i, parts, ph); else this._expr(i);   // M2: reusa el cuerpo ya desarrollado en el gate (evita doble develop)
     // cerebro de trabajo = cerebro de NACIMIENTO (genoma); memoria a cero (la plasticidad parte de aquí; Baldwin)
@@ -117,8 +112,8 @@ export class Sim {
       while (j !== -1) { if (j !== i && this.alive[j]) {
         let dx = this.x[j] - this.x[i], dy = this.y[j] - this.y[i]; if (dx > size * 0.5) dx -= size; else if (dx < -size * 0.5) dx += size; if (dy > size * 0.5) dy -= size; else if (dy < -size * 0.5) dy += size;
         const d2 = dx * dx + dy * dy;
-        if (d2 < bestD &&   // compatibilidad fenotípica (masa/luz/boca normalizadas) < umbral
-            phenoDistance(this.mass[i], this.photoCap[i], this.mouthCap[i], this.mass[j], this.photoCap[j], this.mouthCap[j]) < P.mateCompat) { bestD = d2; best = j; }
+        if (d2 < bestD &&   // compatibilidad fenotípica (masa/boca/presa-manejable normalizadas) < umbral
+            phenoDistance(this.mass[i], this.mouthCap[i], this.maxMouthR[i], this.mass[j], this.mouthCap[j], this.maxMouthR[j]) < P.mateCompat) { bestD = d2; best = j; }
       } j = this.hash.next[j]; }
     }
     return best;
@@ -128,8 +123,8 @@ export class Sim {
     const W = this.world, rng = this.rng, size = W.size, P = SIM_P;
     W.setDayNight(this.tick); W.stepLight(this.tick);   // corriente del abismo: el campo de luz puede derivar en el tiempo
     let na = 0; for (let i = 0; i < this.cap; i++) if (this.alive[i]) this.active[na++] = i; this.nA = na;
-    W.occ.fill(0); this.hash.clear();
-    for (let a = 0; a < na; a++) { const i = this.active[a]; this.hash.insert(i, this.x[i], this.y[i]); W.occ[W.cellAt(this.x[i], this.y[i])] += 1; }
+    this.hash.clear();
+    for (let a = 0; a < na; a++) { const i = this.active[a]; this.hash.insert(i, this.x[i], this.y[i]); }
 
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
     const born = [];   // nacimientos diferidos (6 entradas/cría: genoma, x, y, E, cuerpo, fenotipo) → spawn al final del tick
@@ -137,22 +132,14 @@ export class Sim {
       const i = this.active[a]; if (!this.alive[i]) continue;   // pudo morir antes en ESTE tick (depredación)
       const cell = W.cellAt(x[i], y[i]);
       const E0 = E[i];   // M6.3: reservas al inicio del tick → recompensa de plasticidad = ΔE
+      // (Los animales NO fotosintetizan: la luz la capta la VEGETACIÓN del mundo. El animal obtiene energía PASTÁNDOLA, cazando o carroñeando, abajo.)
 
-      // FOTOSÍNTESIS: capta una porción de la luz de la celda ∝ photoCap (compite por sombra/ocupación). Energía ENTRA.
-      // Premia la QUIETUD (photoMotionK): moverse reduce la captación → la sesilidad emerge en los autótrofos (la
-      // velocidad es la del tick previo; ínfimo desfase). Frontera genotipo→física: el programador define el coste de
-      // moverse para un fotosintetizador, no qué oficio es "bueno".
-      if (this.photoCap[i] > 0) { const still = P.photoMotionK > 0 ? 1 / (1 + P.photoMotionK * Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i])) : 1;
-        const dE = P.photoEff * W.lightAt(cell) * (this.photoCap[i] / (this.photoCap[i] + P.photoHalf)) / Math.max(1, W.occ[cell]) * still;
-        if (dE > 0) { E[i] += dE; W.lightCaptured += dE; this.photoIn[i] += dE; } }
-
-      // ---- SENSADO: ∇luz + presa/amenaza más cercanas (un barrido del hash) ----
+      // ---- SENSADO: ∇vegetación (olor a comida) + ∇detrito + presa/amenaza más cercanas (un barrido del hash) ----
       const cols = W.cols, rows = W.rows, cx = cell % cols, cy = (cell / cols) | 0;
-      // B2: vecinos TOROIDALES (el mundo envuelve) → ∇luz coherente también en las celdas de borde (antes clampaba a
-      // `cell` allí → banda de artefacto). Índices envueltos: izq/der en x, arriba/abajo en y.
+      // Vecinos TOROIDALES (el mundo envuelve) → gradientes coherentes también en las celdas de borde. Índices envueltos.
       const xl = cx > 0 ? cell - 1 : cell + (cols - 1), xr = cx < cols - 1 ? cell + 1 : cell - (cols - 1);
       const yt = cy > 0 ? cell - cols : cell + (rows - 1) * cols, yb = cy < rows - 1 ? cell + cols : cell - (rows - 1) * cols;
-      const lgx = (W.light0[xr] - W.light0[xl]) * 8, lgy = (W.light0[yb] - W.light0[yt]) * 8;
+      const lgx = (W.veg[xr] - W.veg[xl]) * 2, lgy = (W.veg[yb] - W.veg[yt]) * 2;   // ∇vegetación: hacia dónde hay más comida (pasto)
       // #4 — ∇detritusE (olor a carroña): gradiente de energía residual hacia celdas vecinas. K=20 mapea un gradiente
       // típico (stock ~0.02/celda) a un rango útil para tanh; se acota a [-1,1] como ∇luz. Permite que la conducta
       // carroñera EVOLUCIONE a rastrear carroña (no solo rebañar la celda donde se está).
@@ -189,15 +176,21 @@ export class Sim {
       let nx = x[i] + vx[i], ny = y[i] + vy[i]; if (nx < 0) nx += size; else if (nx >= size) nx -= size; if (ny < 0) ny += size; else if (ny >= size) ny -= size; x[i] = nx; y[i] = ny;
       const v2 = vx[i] * vx[i] + vy[i] * vy[i];
 
-      // ---- INGESTA: el cerebro DECIDE atacar (out[3]); en contacto con la presa, la come (CONSERVA) ----
+      // ---- INGESTA: el cerebro DECIDE comer (out[3] = abrir boca). La MISMA boca PASTA vegetación · CAZA presa viva ·
+      // REBAÑA carroña → el eje herbívoro↔carnívoro EMERGE de a qué dedica su esfuerzo (y de qué hay donde está). CONSERVA. ----
       const attack = (out[3] + 1) * 0.5;
       const Gmax = P.gutBase + P.gutPerMass * this.mass[i];   // capacidad de tripa ∝ masa
-      if (preyJ >= 0 && myMouth > 0 && attack > 0.5 && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
-        // CAPTURA EXIGE ACERCARSE (prototipo, huntCloseMin>0): solo captura si la velocidad de ACERCAMIENTO del depredador
-        // (su velocidad proyectada sobre la dirección a la presa, preyDX/DY = vector unitario) ≥ umbral. Boca QUIETA → no caza
-        // → la trampa pasiva muere → para comer presa hay que PERSEGUIR → especialización a cazador MÓVIL (física, no cableado).
-        const closing = P.huntCloseMin > 0 ? (vx[i] * preyDX + vy[i] * preyDY) : 1;
-        if (preyD < reach * reach && closing >= P.huntCloseMin) { const pc = W.cellAt(x[preyJ], y[preyJ]);
+      const eating = attack > 0.5 && myMouth > 0;
+      // PASTOREO: la boca consume biomasa vegetal de la celda → energía a la tripa (∝ vegEcoef·eficiencia) · la materia
+      // vegetal vuelve al nutriente (excreción). CONSERVA: veg→nutriente (materia); veg·vegEcoef → tripa(ηene) + calor(resto).
+      if (eating && this.gut[i] < Gmax) { const vAvail = W.veg[cell];
+        if (vAvail > 0) { const room = Gmax - this.gut[i], ec = W.P.vegEcoef;
+          let gb = P.grazeRate * myMouth; if (gb > vAvail) gb = vAvail;
+          let eGain = gb * ec * P.ηene; if (eGain > room) { eGain = room; gb = room / (ec * P.ηene); }
+          if (gb > 0) { W.veg[cell] -= gb; W.nutrient[cell] += gb; const eRaw = gb * ec;
+            this.gut[i] += eGain; W.heat += eRaw - eGain; this.vegIn[i] += eGain; } } }
+      if (preyJ >= 0 && eating && this.gut[i] < Gmax && this.alive[preyJ]) { const reach = this.maxMouthR[i] + P.eatReach;   // SACIEDAD: tripa llena no caza
+        if (preyD < reach * reach) { const pc = W.cellAt(x[preyJ], y[preyJ]);
           const preyEnergy = E[preyJ] + this.gut[preyJ] + this.mass[preyJ] * this.eD;   // reservas + tripa + cuerpo de la presa
           const ge = P.ηene * preyEnergy, room = Gmax - this.gut[i], intoGut = ge < room ? ge : room;
           this.gut[i] += intoGut; this.preyIn[i] += intoGut; W.detritusE[pc] += preyEnergy - intoGut;   // lo asimilable → TRIPA; el resto → detrito (CONSERVA)
@@ -261,7 +254,7 @@ export class Sim {
       if (bx < 0) bx += size; else if (bx >= size) bx -= size; if (by < 0) by += size; else if (by >= size) by -= size;
       this.spawn(born[k], bx, by, born[k + 3], born[k + 4], born[k + 5]); }
 
-    W.decomposeStep(); W.diffuseStep(); this.tick++;
+    W.vegStep(); W.decomposeStep(); W.diffuseStep(); this.tick++;   // la vegetación crece (capta luz) tras el pastoreo del tick
   }
 
   pop() { let p = 0; for (let i = 0; i < this.cap; i++) if (this.alive[i]) p++; return p; }

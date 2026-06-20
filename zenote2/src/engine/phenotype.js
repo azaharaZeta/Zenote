@@ -1,8 +1,7 @@
-// M5.2 — FORMA = FUNCIÓN (2.2 §4). Código KEEPER: la frontera cuerpo→física. Del cuerpo desarrollado (partes,
-// genome.js) calcula las CAPACIDADES que alimentan las transacciones del mundo M4 — SIN escalares libres de dieta/
-// velocidad. De aquí EMERGE el eje autótrofo↔heterótrofo (un cuerpo de tejido PHOTO capta luz; uno de MUSCLE+MOUTH
-// caza) y la incompatibilidad física que hace al generalista mediocre (sin omniPenalty). Se computa al nacer y se
-// cachea. Frontera auditable: aquí solo se TRADUCE forma→capacidad; quién gana lo dicta la selección.
+// M5.2 — FORMA = FUNCIÓN (2.2 §4). Código KEEPER: la frontera cuerpo→física. Del cuerpo desarrollado (partes, genome.js)
+// calcula las CAPACIDADES que alimentan las transacciones del mundo — SIN escalares libres de dieta/velocidad. TODOS los
+// organismos son ANIMALES (no hay PHOTO): de la inversión MOUTH/MUSCLE emerge el eje herbívoro (boca chica, pasta)↔carnívoro
+// (boca grande que maneja presa). Se computa al nacer y se cachea. Aquí solo se TRADUCE forma→capacidad; quién gana lo dicta la selección.
 
 import { TISSUE } from './genome.js';
 import { PHENO_P } from '../config.js';   // parámetros forma→función: fuente única en config.js
@@ -11,15 +10,13 @@ export { PHENO_P };
 // Devuelve el fenotipo físico cacheado de un cuerpo (lista de partes de develop()).
 export function computePhenotype(parts) {
   const P = PHENO_P;
-  let mass = 0, drag = P.dragBase, photoCap = 0, mouthCap = 0, maxMouthR = 0;
+  let mass = 0, drag = P.dragBase, mouthCap = 0, maxMouthR = 0;
   let re = 0, im = 0, brake = 0;   // empuje coherente (fasores) − frenado
   for (const p of parts) {
     const area = p.r * p.r;
     mass += area * P.massCoef;                                   // MATERIA estructural (toda parte)
     drag += area * P.dragCoef * (1 - P.streamline * p.aspect);  // ARRASTRE (toda parte; elongada menos)
-    if (p.tissue === TISSUE.PHOTO) {
-      photoCap += area * (1 + 0.5 * p.aspect) * P.photoGain;     // LUZ ∝ superficie expuesta (ancha/plana capta más)
-    } else if (p.tissue === TISSUE.MUSCLE) {
+    if (p.tissue === TISSUE.MUSCLE) {
       const gait = -Math.cos(p.dir);                            // atrás (π)→+1 propulsa · frente (0)→−1 frena
       const contrib = p.oscAmp * area * gait * P.thrustGain;
       if (contrib > 0) { re += contrib * Math.cos(p.phase); im += contrib * Math.sin(p.phase); } // coherencia de fase
@@ -33,26 +30,27 @@ export function computePhenotype(parts) {
   let vmax = P.vGain * thrust / drag;                           // VELOCIDAD emerge de empuje/arrastre
   if (vmax > P.vMax) vmax = P.vMax;
   return {
-    mass,                       // materia estructural (ledger, metabolismo, objetivo de crecimiento)
+    mass,                       // materia estructural (ledger, metabolismo)
     drag, thrust, vmax,         // locomoción (coste de nado ∝ drag·v²; velocidad emergente)
-    photoCap,                   // fotosíntesis: capta luz ∝ esto
-    mouthCap, maxMouthR,        // ingesta: capacidad y tamaño de presa manejable
+    mouthCap, maxMouthR,        // ingesta: capacidad (pasta veg/carroña) y tamaño de presa manejable (caza)
   };
 }
 
-// Lectura del "oficio" (NO afecta a la sim; para color/diagnóstico). Emerge de la inversión de tejido del cuerpo.
-// autótrofo si la captación de luz domina sobre la capacidad heterótrofa (caza+ingesta); si no, heterótrofo/mixto.
-// ÚNICA definición (M3): la comparten el worker/inspector (vía código) y los tests/scorecard (vía string) → clasifican igual.
-const ROLE_NAMES = ['autotrofo', 'heterotrofo', 'mixotrofo'];
-export function trophicCode(photoCap, thrust, mouthCap) {   // 0 autótrofo · 1 heterótrofo · 2 mixótrofo
-  const hetero = thrust + mouthCap * 2;
-  return photoCap > hetero * 1.5 ? 0 : hetero > photoCap * 1.5 ? 1 : 2;
+// Lectura del "oficio" MORFOLÓGICO (NO afecta a la sim; para color/diagnóstico/fallback). Todos animales → el eje es
+// herbívoro↔carnívoro. Proxy: cuánta presa ANIMAL puede manejar su boca relativa a su propia masa (maxMouthR·preyMassMax/masa,
+// preyMassMax≈1.6 como en sim). Boca grande relativa = carnívoro; chica = herbívoro (pastador); intermedio = omnívoro. El oficio
+// REALIZADO (dieta veg/caza/carroña) lo mide el inspector aparte. ÚNICA definición: la comparten worker/inspector y tests.
+const ROLE_NAMES = ['herbivoro', 'carnivoro', 'omnivoro'];
+export function trophicCode(mouthCap, maxMouthR, mass) {   // 0 herbívoro · 1 carnívoro · 2 omnívoro
+  if (mouthCap <= 1e-6) return 0;                          // sin boca útil → pastador por defecto
+  const predScore = maxMouthR * 1.6 / (mass > 1e-6 ? mass : 1e-6);   // ¿puede comer animales de su talla?
+  return predScore > 0.8 ? 1 : predScore < 0.35 ? 0 : 2;
 }
-export function trophicRole(ph) { return ROLE_NAMES[trophicCode(ph.photoCap, ph.thrust, ph.mouthCap)]; }
+export function trophicRole(ph) { return ROLE_NAMES[trophicCode(ph.mouthCap, ph.maxMouthR, ph.mass)]; }
 
-// Distancia FENOTÍPICA normalizada (masa/luz/boca). Escala del aislamiento reproductivo (mateCompat) y de la
-// especiación (D14). ÚNICA definición (B1): la comparten sim._findMate y test/m7-speciation (antes duplicada).
-export function phenoDistance(m1, p1, mo1, m2, p2, mo2) {
-  const dm = (m1 - m2) / 2, dp = (p1 - p2) / 40, dmo = (mo1 - mo2) / 10;
-  return Math.sqrt(dm * dm + dp * dp + dmo * dmo);
+// Distancia FENOTÍPICA normalizada (masa / capacidad de boca / tamaño de presa manejable). Escala del aislamiento reproductivo
+// (mateCompat) y de la especiación. ÚNICA definición: la comparten sim._findMate y test/m7-speciation.
+export function phenoDistance(m1, mo1, r1, m2, mo2, r2) {
+  const dm = (m1 - m2) / 2, dmo = (mo1 - mo2) / 10, dr = (r1 - r2) / 4;
+  return Math.sqrt(dm * dm + dmo * dmo + dr * dr);
 }

@@ -5,8 +5,12 @@
 import { World, WORLD_P } from './world.js';
 import { Sim, SIM_P } from './sim.js';
 import { GENOME_P } from './genome.js';   // para el ritmo de mutación (parámetro de UI en vivo)
-import { trophicCode } from './phenotype.js';   // M3: única definición del oficio trófico (compartida con tests/scorecard)
 import { START, RENDER_P } from '../config.js';   // defaults de arranque y velocidad inicial (fuente única)
+
+// OFICIO REALIZADO desde la DIETA (veg/caza/carroña acumuladas): el rol EMERGE de lo que el animal COME, no de su morfología
+// (un herbívoro y un carnívoro tienen ambos boca → solo la dieta los distingue). 0 herbívoro · 1 carnívoro · 2 omnívoro.
+function roleFromDiet(veg, prey, scav) { const tot = veg + prey + scav; if (tot < 0.5) return 0;   // recién nacido sin dieta → herbívoro por defecto
+  const carn = (prey + scav) / tot; return carn > 0.6 ? 1 : carn < 0.25 ? 0 : 2; }
 
 let worldSize = START.worldSize, seedCount = START.seedCount, spawnSpread = START.spawnSpread, diversity = START.diversity;   // parámetros de ARRANQUE (necesitan reinicio); se actualizan en init()
 let world, sim, running = true, tps = RENDER_P.tps, maxSpeed = false;
@@ -14,7 +18,7 @@ let selectedId = -1;   // serial del agente inspeccionado (-1 = ninguno); su det
 const CORPSE_LIFE = 240;   // #3 — vida visual del cadáver (ticks): ≈ lo que tarda su carroña en mineralizarse (decompose 0.02 → ~99% en ~230 ticks)
 // historiales para las gráficas (muestreados por ticks; ventana acotada). Población = valor absoluto. Nacimientos y
 // muertes = DELTA por ventana (un ritmo), de contadores ACUMULADOS del motor → guardamos su último valor para restar.
-const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histAuto = [], histHet = []; let lastHist = -1e9;
+const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histHerb = [], histCarn = []; let lastHist = -1e9;
 const histSexB = [], histAsexB = [], histPred = [], histStarv = [];   // nacimientos sexual/asexual · muertes predación/inanición (por ventana)
 let lastSexB = 0, lastAsexB = 0, lastKills = 0, lastStarved = 0;
 
@@ -29,13 +33,14 @@ function init({ seed, worldSize: ws, seedCount: sc, spawnSpread: sp, diversity: 
   const sd = (seed == null || !Number.isFinite(+seed)) ? (Math.random() * 1e9) | 0 : (+seed | 0);
   world = new World(worldSize, sd, { ...WORLD_P, lightBase: START.lightBase });
   world.nutrient.fill(START.nutrientInit);
+  world.veg.fill(START.vegInit);   // la base productora arranca sembrada
   sim = new Sim(world, { seed: sd, cap: START.cap });
   sim.seed(seedCount, spawnSpread, diversity);
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
-  histPop.length = 0; histAuto.length = 0; histHet.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
+  histPop.length = 0; histHerb.length = 0; histCarn.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
   histSexB.length = 0; histAsexB.length = 0; histPred.length = 0; histStarv.length = 0; lastSexB = lastAsexB = lastKills = lastStarved = 0;
-  // campos ESTÁTICOS del mundo (cambian solo al reset) → se envían aparte. seed: la usada (para mostrarla en la UI).
-  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: worldSize, lightBase: world.P.lightBase, light0: world.light0.slice(), seed: sd });
+  // dims del mundo (cambian solo al reset). vegRef = veg máx aprox (para normalizar el color del fondo de vegetación). seed: la usada.
+  postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: worldSize, vegRef: world.P.vegKcoef * world.P.lightBase, seed: sd });
 }
 
 // Foto por frame: solo vivos, cuerpos aplanados (offset + [lx,ly,r,tissue] por parte). Transferible (cero copia).
@@ -45,33 +50,34 @@ function snapshot() {
   const n = idx.length;
   // partData = [lx, ly, r, tissue, phase, aspect, dir] por nodo (stride 7): aspect+dir → siluetas orientadas en el render.
   // aE = energía normalizada [0,1] por agente (E/reproE) → el render atenúa a los hambrientos ("la muerte se ve venir").
-  // aHunt = "lo cazador que es" [0,1] por agente (capacidad de boca vs fotosíntesis) → el render le pone OJOS más grandes/agresivos.
+  // aHunt = fracción CARNÍVORA de la dieta [0,1] por agente → el render le pone OJOS (los que comen animales miran a su presa).
   const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), aHunt = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
-  let po = 0, nAuto = 0, nHet = 0, detail = null;
+  let po = 0, nHerb = 0, nCarn = 0, detail = null;
   for (let a = 0; a < n; a++) {
     const i = idx[a]; ax[a] = s.x[i]; ay[a] = s.y[i]; ahue[a] = s.genome[i].hue; aid[a] = s.serial[i];
     aE[a] = Math.min(1, Math.max(0, s.E[i] / SIM_P.reproE));   // vitalidad para el render (atenúa hambrientos)
     const vx = s.vx[i], vy = s.vy[i], sp = Math.sqrt(vx * vx + vy * vy); ah[a] = sp > 1e-3 ? Math.atan2(vy, vx) : 0;
     aspd[a] = sp / 3 > 1 ? 1 : sp / 3;   // velocidad normalizada → amplitud de ondulación del render
-    // oficio trófico per-agente (para colorear por rol): 0 autótrofo · 1 heterótrofo · 2 mixótrofo
-    const photo = s.photoCap[i];
-    arole[a] = trophicCode(photo, s.thrust[i], s.mouthCap[i]);
-    const mc3 = s.mouthCap[i] * 3; aHunt[a] = mc3 / (mc3 + photo + 1e-3);   // "cazador" ∝ boca vs fotosíntesis (0 autótrofo .. ~1 cazador)
-    if (arole[a] === 0) nAuto++; else nHet++;
+    // oficio REALIZADO desde la dieta (herbívoro/carnívoro/omnívoro) + fracción carnívora (para ojos)
+    const dv = s.vegIn[i], dp = s.preyIn[i], ds = s.scavIn[i], dt = dv + dp + ds;
+    arole[a] = roleFromDiet(dv, dp, ds);
+    aHunt[a] = dt > 0.5 ? (dp + ds) / dt : 0;   // qué fracción de su energía viene de comer animales/carroña → ojos
+    if (arole[a] === 0) nHerb++; else nCarn++;
     partOff[a] = po; const body = s.body[i];
     let rad = 0;
     for (let k = 0; k < body.length; k++) { const p = body[k]; const o = po * 7; partData[o] = p.x; partData[o + 1] = p.y; partData[o + 2] = p.r; partData[o + 3] = p.tissue; partData[o + 4] = p.phase; partData[o + 5] = p.aspect; partData[o + 6] = p.dir; po++;
       const d = Math.hypot(p.x, p.y) + p.r; if (d > rad) rad = d; }
     // detalle EN VIVO del agente inspeccionado (si sigue vivo): stats fisiológicos + morfológicos para el inspector
     if (s.serial[i] === selectedId) detail = { id: selectedId, role: arole[a], E: s.E[i], reproE: SIM_P.reproE, gut: s.gut[i],
-      mass: s.mass[i], photoCap: photo, mouthCap: s.mouthCap[i], vmax: s.vmax[i], age: s.age[i], nParts: body.length, hue: s.genome[i].hue, x: s.x[i], y: s.y[i], rad };
+      mass: s.mass[i], mouthCap: s.mouthCap[i], maxMouthR: s.maxMouthR[i], vmax: s.vmax[i], age: s.age[i], nParts: body.length, hue: s.genome[i].hue, x: s.x[i], y: s.y[i], rad,
+      dietV: s.vegIn[i], dietP: s.preyIn[i], dietS: s.scavIn[i] };   // dieta acumulada en vida (pasto/caza/carroña) → oficio EMERGENTE real en el inspector
   }
   partOff[n] = po;
-  if (s.tick - lastHist >= HIST_EVERY) { lastHist = s.tick; histPop.push(n); histAuto.push(nAuto); histHet.push(nHet);
+  if (s.tick - lastHist >= HIST_EVERY) { lastHist = s.tick; histPop.push(n); histHerb.push(nHerb); histCarn.push(nCarn);
     // ritmos por ventana: delta de los contadores acumulados desde el último muestreo
     histSexB.push(s.sexBirths - lastSexB); histAsexB.push(s.asexBirths - lastAsexB); histPred.push(s.kills - lastKills); histStarv.push(s.starved - lastStarved);
     lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
-    if (histPop.length > HIST_W) { histPop.shift(); histAuto.shift(); histHet.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
+    if (histPop.length > HIST_W) { histPop.shift(); histHerb.shift(); histCarn.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
   // CADÁVERES (#3): los recientes (edad < CORPSE_LIFE) con su forma → el render los desvanece con su carroña. Acotado por
   // el ring del motor; aplanado como los organismos (offset + [lx,ly,r,aspect,dir] por parte, stride 5). dcfade = edad/vida.
   const cidx = []; let ctp = 0;
@@ -83,14 +89,14 @@ function snapshot() {
     dcOff[a] = cpo; const nn = s.ccn[k]; let o = k * s.CORPSE_MAXP * 5;
     for (let j = 0; j < nn; j++) { const d = cpo * 5; dcData[d] = s.ccData[o]; dcData[d + 1] = s.ccData[o + 1]; dcData[d + 2] = s.ccData[o + 2]; dcData[d + 3] = s.ccData[o + 3]; dcData[d + 4] = s.ccData[o + 4]; o += 5; cpo++; } }
   dcOff[dcm] = cpo;
+  // VEGETACIÓN: el campo veg actual → el render lo pinta como fondo verde (la base de comida). Cambia cada tick (pastoreo/
+  // crecimiento) y FLUYE si lightFlow>0 (su K sigue a la luz). Transferible (cero copia).
+  const veg = world.veg.slice();
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
   postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, aid, partOff, partData,
-      dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, histPop, histAuto, histHet, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
+      dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, veg, histPop, histHerb, histCarn, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
     [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer,
-     dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer]);
-  // CORRIENTE DEL ABISMO: si el campo de luz deriva, manda el light0 actual (throttleado al ritmo de fotograma) → el render
-  // re-hornea la nebulosa y se ve FLUIR. Solo cuando lightFlow>0 (si no, el fondo es estático y se horneó al iniciar).
-  if (world.P.lightFlow > 0) { const l0 = world.light0.slice(); postMessage({ type: 'light', light0: l0 }, [l0.buffer]); }
+     dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer, veg.buffer]);
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción

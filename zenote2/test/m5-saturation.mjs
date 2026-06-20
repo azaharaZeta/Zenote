@@ -8,15 +8,15 @@
 import { World, WORLD_P } from '../src/engine/world.js';
 import { Sim } from '../src/engine/sim.js';
 
-function totalMatter(s) { return s.world.totalNutrient() + s.world.totalDetritusM() + s.totalMass(); }
-function totalStored(s) { let g = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) g += s.gut[i] + s.mass[i] * s.eD; return s.totalE() + g + s.world.totalDetritusE(); }
+function totalMatter(s) { return s.world.totalNutrient() + s.world.totalVeg() + s.world.totalDetritusM() + s.totalMass(); }
+function totalStored(s) { let g = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) g += s.gut[i] + s.mass[i] * s.eD; return s.totalE() + g + s.world.totalVeg() * WORLD_P.vegEcoef + s.world.totalDetritusE(); }
 
 console.log('=== A1 — conservación bajo SATURACIÓN del pool ===\n');
 
-const CAP = 600, TICKS = 4000;   // cap << pop energía-limitada (~1160) → el pool se satura y se mantiene lleno
+const CAP = 250, TICKS = 4000;   // cap << capacidad de carga (~750) → el pool se satura y se mantiene lleno
 const w = new World(1500, 1, { ...WORLD_P, lightBase: 2.5 });
-w.nutrient.fill(1.5);
-const s = new Sim(w, { seed: 1, cap: CAP }); s.seed(400);
+w.nutrient.fill(1.5); w.veg.fill(1.0);
+const s = new Sim(w, { seed: 1, cap: CAP }); s.seed(300);   // seed > cap → arranca lleno
 
 const budget = totalMatter(s);
 let prevStored = totalStored(s), prevHeat = w.heat, prevCap = w.lightCaptured;

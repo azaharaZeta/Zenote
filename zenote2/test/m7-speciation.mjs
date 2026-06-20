@@ -11,8 +11,8 @@ import { develop, GENOME_P } from '../src/engine/genome.js';
 import { computePhenotype, phenoDistance } from '../src/engine/phenotype.js';
 
 const eD = SIM_P.eDensity, TICKS = +(process.argv[2] || 15000), SEEDS = [1, 2, 3];
-const matter = (s) => s.world.totalNutrient() + s.world.totalDetritusM() + s.totalMass();
-const stored = (s) => { let e = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) e += s.E[i] + s.gut[i] + s.mass[i] * eD; return e + s.world.totalDetritusE(); };
+const matter = (s) => s.world.totalNutrient() + s.world.totalVeg() + s.world.totalDetritusM() + s.totalMass();
+const stored = (s) => { let e = 0; for (let i = 0; i < s.cap; i++) if (s.alive[i]) e += s.E[i] + s.gut[i] + s.mass[i] * eD; return e + s.world.totalVeg() * WORLD_P.vegEcoef + s.world.totalDetritusE(); };
 
 // Estructura reproductiva de la población, sobre una muestra (≤300). Devuelve DOS métricas distintas:
 //  · components = nº de COMPONENTES CONEXOS del grafo de compatibilidad (arista si phenoDistance < mateCompat). Es el
@@ -26,7 +26,7 @@ function speciesStructure(s) {
   if (!idx.length) return { components: 0, morphs: 0 };
   const pick = idx.length <= 300 ? idx : Array.from({ length: 300 }, () => idx[(Math.random() * idx.length) | 0]);
   const n = pick.length;
-  const dist = (a, b) => phenoDistance(s.mass[pick[a]], s.photoCap[pick[a]], s.mouthCap[pick[a]], s.mass[pick[b]], s.photoCap[pick[b]], s.mouthCap[pick[b]]);
+  const dist = (a, b) => phenoDistance(s.mass[pick[a]], s.mouthCap[pick[a]], s.maxMouthR[pick[a]], s.mass[pick[b]], s.mouthCap[pick[b]], s.maxMouthR[pick[b]]);
   // componentes conexos vía union-find
   const parent = new Array(n); for (let a = 0; a < n; a++) parent[a] = a;
   const find = (a) => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
@@ -50,7 +50,7 @@ function invalidBodies(s) { let bad = 0, n = 0; for (let i = 0; i < s.cap; i++) 
 console.log(`=== M7 — recombinación + especiación emergente · ${SEEDS.length} seeds × ${TICKS} ticks ===\n`);
 let okInv = true, okValid = true, sexHappens = true; const specs = [];
 for (const seed of SEEDS) {
-  const w = new World(1500, seed, { ...WORLD_P, lightBase: 2.5 }); w.nutrient.fill(1.5);
+  const w = new World(1500, seed, { ...WORLD_P, lightBase: 2.5 }); w.nutrient.fill(1.5); w.veg.fill(1.0);
   const s = new Sim(w, { seed, cap: 14000 }); s.seed(800);
   const budget = matter(s); let prevStored = stored(s), prevHeat = w.heat, prevCap = w.lightCaptured, mDrift = 0, eRes = 0, heatMono = true, lastHeat = w.heat;
   for (let t = 0; t < TICKS; t++) {
