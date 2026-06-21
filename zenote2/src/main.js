@@ -289,7 +289,7 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
     // TEXTURA — SEGMENTACIÓN: nº de COSTILLAS/bandas transversales derivado de `hue` (heredado) → familias comparten patrón
     // (lectura fiel del linaje, honesto). Sustituye a las antiguas "motas" (3 puntos gordos): leían como pegatina, no anatomía.
     const bandN = !halo ? 3 + ((ahue[a] * 7919) | 0) % 4 : 0;   // 3..6 segmentos por nodo
-    let bodyR = 0, frontExt = 0;   // OJOS: extensión total + alcance FRONTAL (proyección sobre el rumbo) → ojos sobre la parte delantera
+    let bodyR = 0, headX = bx, headY = by, headR = 0, headScore = -1e9;   // OJOS: extensión del cuerpo (LOD) + parte-CABEZA donde ANCLAR los ojos (nodo más adelantado, leve preferencia BOCA = la "cara")
     // CONTORNO unificado (solo !halo, reemplaza el borde DURO por-nodo): silueta DILATADA de todos los nodos en UN solo path →
     // un único fill oscuro → solo asoma el REBORDE exterior (los cuerpos lo tapan por dentro) = contorno suave, sin líneas internas
     // (VISUAL.md "nada de bordes duros"). Color = tinte oscuro del linaje. LOD: solo nodos visibles. Barato (sin gradiente, 1 fill).
@@ -310,7 +310,7 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
       const uy = ly + (0.35 + spd * RENDER_P.undulation) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
       if (!halo) { const dx = px - bx, dy = py - by, ext = Math.hypot(dx, dy) + pr; if (ext > bodyR) bodyR = ext;
-        const fp = dx * chh + dy * shh + pr; if (fp > frontExt) frontExt = fp; }   // alcance del cuerpo + cuán adelante llega (eje rumbo)
+        const hs = dx * chh + dy * shh + (tissue === TISSUE.MOUTH ? pr : 0); if (hs > headScore) { headScore = hs; headX = px; headY = py; headR = pr; } }   // cabeza = nodo más adelantado (la "cara") donde se anclan los ojos
       // #2 — SILUETA bézier: gota/aleta/tentáculo (afila hacia afuera según `aspect`; eje = rumbo + dir). LOD: diminuta → punto.
       const rL = pr * (1 + aspect * 1.4), wB = pr * (1 + aspect * 0.15), wT = pr * (1 - aspect * 0.85);
       if (rL > 1.6) silPath(c, px, py, h + dir, rL, wB, wT);
@@ -342,31 +342,32 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
         c.strokeStyle = RENDER_P.border; c.lineWidth = RENDER_P.borderW;   // restaurar el estilo del borde para el próximo nodo
       }
     }
-    // OJOS (solo render; no toca la sim). TODOS los organismos sensan → TODOS tienen ojos. Se ORIENTAN y se avivan según la
-    // PERCEPCIÓN real (estímulo más saliente —amenaza>presa— que el sim calcula en su sensado): la pupila MIRA al estímulo y
-    // la mirada se enciende (alert ∝ cercanía); sin nada que sensar, mira al RUMBO, en calma. LOD por tamaño en pantalla.
-    if (!halo) {
-      const amt = Math.min(1, Math.max(0, (bodyR - 4) / 14));   // 0 (≤4px) → 1 (≥18px): fundido al acercar (no en vista de mundo)
-      if (amt > 0.015) {
-        const v = (ahue[a] * 41.7) % 1;                         // variedad determinista por linaje
-        const alert = aAlert ? aAlert[a] : 0;                   // 0 en calma .. 1 estímulo en contacto
-        const er = bodyR * (0.06 + 0.022 * alert) * (0.8 + 0.5 * v) * amt;   // ojo base (todos) + se agranda algo al alertarse
-        const fwd = frontExt * (0.5 + 0.12 * v), sep = er * (1.9 + 0.8 * v);   // sobre el frente; separación ∝ tamaño del ojo (nunca "flotando")
-        const fx = bx + chh * fwd, fy = by + shh * fwd;
-        const e1x = fx - shh * sep, e1y = fy + chh * sep, e2x = fx + shh * sep, e2y = fy - chh * sep;
-        const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt) * (0.5 + 0.5 * alert);   // en calma media tinta; alerta = pleno
-        // esclera = TONO del linaje, se aviva (más clara/saturada) con la alerta. CADA ojo en su PROPIO path → el stroke NO los une ("gafas" 🤓).
-        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(55 + 25 * alert) | 0}%,${(78 - 10 * alert) | 0}%)`;
-        c.lineWidth = Math.max(0.5, er * 0.28);   // borde del ojo (fino, ∝ tamaño)
-        c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.fill(); c.stroke();
-        c.beginPath(); c.arc(e2x, e2y, er, 0, 6.283); c.fill(); c.stroke();
-        c.lineWidth = RENDER_P.borderW;   // restaura para el borde del cuerpo
-        // pupila: mira al ESTÍMULO (gaze en mundo) si hay alerta; si no, al RUMBO ("mira hacia donde va"). Se adelanta con la alerta (dentro del ojo).
-        let gx = chh, gy = shh; if (alert > 0.01 && aGazeX) { gx = aGazeX[a]; gy = aGazeY[a]; }
-        const pf = er * (0.15 + 0.30 * alert);
-        c.fillStyle = 'rgba(8,6,10,0.94)';
-        c.beginPath(); c.arc(e1x + gx * pf, e1y + gy * pf, er * 0.5, 0, 6.283); c.fill();
-        c.beginPath(); c.arc(e2x + gx * pf, e2y + gy * pf, er * 0.5, 0, 6.283); c.fill();
+    // OJOS (solo render): ANCLADOS a la parte-CABEZA (se acabó el flotar) y dibujados como EYESPOT orgánico — mancha de
+    // pigmento + iris del linaje + GLINT especular hacia la luz de la escena (sin esclera blanca = sin pegatina), dentro de la
+    // silueta. Nº y disposición por LINAJE (no siempre 2). La pupila MIRA al estímulo (percepción real, amenaza>presa) o al
+    // rumbo en calma, y se aviva/dilata con la cercanía (alert). LOD: se funden al acercar; nada en vista de mundo.
+    if (!halo && headR > 1.2) {
+      const amt = Math.min(1, Math.max(0, (bodyR - 4) / 14));
+      if (amt > 0.02) {
+        const alert = aAlert ? aAlert[a] : 0, lh = (ahue[a] * 360) | 0, vv = (ahue[a] * 41.7) % 1;
+        const hr = (ahue[a] * 9301) % 1, nEye = hr < 0.18 ? 1 : hr < 0.85 ? 2 : 3;   // linaje → cíclope / par / tres (rompe "siempre 2")
+        const er = headR * (0.36 - 0.045 * nEye + 0.05 * alert) * (0.85 + 0.3 * vv);   // ∝ CABEZA; más ojos → algo menores; crece con la alerta
+        const fo = headR * 0.20, lo = headR * 0.44, latx = -shh, laty = chh;            // dentro de la silueta: adelante (fo) + apertura lateral (lo) en el eje transversal
+        let gx = chh, gy = shh; if (alert > 0.01 && aGazeX) { gx = aGazeX[a]; gy = aGazeY[a]; }   // mirada: al estímulo o, en calma, al rumbo
+        const ga0 = c.globalAlpha, baseA = ga0 * amt;
+        for (let e = 0; e < nEye; e++) {
+          const tt = nEye === 1 ? 0 : (e / (nEye - 1)) * 2 - 1;   // -1..1 repartidos a lo ancho de la cabeza
+          const ex = headX + chh * fo + latx * lo * tt, ey = headY + shh * fo + laty * lo * tt;
+          c.globalAlpha = baseA;
+          c.fillStyle = `hsl(${lh},${(42 + 28 * alert) | 0}%,${(19 + 10 * alert) | 0}%)`;   // mancha/iris OSCURO del linaje (no esclera blanca)
+          c.beginPath(); c.arc(ex, ey, er, 0, 6.283); c.fill();
+          const pf = er * (0.18 + 0.30 * alert);                                            // pupila desplazada hacia la MIRADA + dilatada con la alerta
+          c.fillStyle = 'rgba(6,5,9,0.95)';
+          c.beginPath(); c.arc(ex + gx * pf, ey + gy * pf, er * (0.5 + 0.12 * alert), 0, 6.283); c.fill();
+          c.globalAlpha = baseA * (0.65 + 0.35 * alert);                                    // GLINT especular: el toque húmedo/vivo, hacia la luz de la escena (coherente con el sombreado)
+          c.fillStyle = 'rgba(216,232,255,0.92)';
+          c.beginPath(); c.arc(ex + LIGHT_DX * er * 0.5, ey + LIGHT_DY * er * 0.5, er * 0.26, 0, 6.283); c.fill();
+        }
         c.globalAlpha = ga0;
       }
     }

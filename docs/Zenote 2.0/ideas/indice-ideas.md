@@ -9,7 +9,29 @@ Documentar los análisis, estados e histórico de cada idea en curso en sus resp
 Cuando una idea haya sido implementada o descartada, actualizar su fichero de idea y mover el fichero de idea a la carpeta `archivo` de la misma ruta que este fichero
 
 ## Ideas de usuario (pendientes de procesar)
-_(ninguna pendiente — todas procesadas; ver carpeta `archivo/`)_
+
+- Sembrado inicial, ajustes en como calcularlo. Analizar viabilidad o proponer alternativa a este criterio:
+    Slide de Diversidad Inicial:
+    - En diversidad 0: Todos los organismos iguales en cada  parámetros
+    - En diversidad creciente: Ir aceptando diferencias crecientes en parametrización por organismo
+    - En diversidad 1: Aceptar diferencias amplias por cada organismo
+    Como calcular los parámetros:
+        - Parámetros que necesitan ser ajustados para viabilidad mínima:
+            - ¿qué parámetros son?
+            - Estudiar si deben ir fijos, o se les puede meter algún random
+        Parámetros independientes de viabilidad mínima, como color:
+            - ¿qué parámetros son?
+            - Random total
+
+- Ventana de información de organismo:
+    - Dibujar el organismo en esa ventana.
+    - Siempre seguir con cámara. Eliminar botón de "seguir cámara"
+    - Si el organismo muere, dejar fijo el dibujo de su cadavercito en el visor, se puede olvidar el organismo muerto cuando el visor cierre o cambie a otro organismo
+- UI - "Colorear por". 
+    - Dejar por defecto "Natural + Tejido", llamarlo directamente "Natural". Y añadir en la ui un slide de "nivel de coloreado de tejido" (pensar un nombre mejor), que ahora este valor estará hardcodeado por algún sitio, o en algún parámetro no ui.
+    -Eliminar la opcíon "Natural (aspecto real)" y "Tejido + Aura"
+    -Renombrar la opción "Oficio + aura real" a "Oficio".
+
 
 ## Ideas DOCUMENTADAS con ficha (analizadas, no implementadas — futuras)
 - `vegetacion-de-zenote1-adaptar.md` — adaptar la vegetación de zenote1. Tier 1+2 HECHOS; **pendientes: Tier 3 cobertura + micro-flora**.
