@@ -1,7 +1,7 @@
 # Vegetación con genética propia (Escenario 2)
 
 **Estado: ANOTADA (no implementada).** Fase 2 posible sobre el modelo actual. Contexto completo en
-[analisis-vegetacion-aparte.md](analisis-vegetacion-aparte.md) (§4). Hoy la vegetación es parametrizada (Escenario 1, implementado).
+[analisis-vegetacion-aparte.md](archivo/analisis-vegetacion-aparte.md) (§4). Hoy la vegetación es parametrizada (Escenario 1, implementado).
 
 ## Idea
 Dar a la **vegetación su propio sistema genético**, separado del de los animales (dos pools que no se cruzan) → **coevolución

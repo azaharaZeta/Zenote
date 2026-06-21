@@ -1,6 +1,6 @@
 # Cobertura vegetal = refugio de presa (Tier 3 de la veg de zenote1)
 
-**Estado: ANOTADA (no implementada).** Parte del [análisis de adaptación de la vegetación de zenote1](vegetacion-de-zenote1-adaptar.md)
+**Estado: ANOTADA (no implementada).** Parte del [análisis de adaptación de la vegetación de zenote1](archivo/vegetacion-de-zenote1-adaptar.md)
 (§E / Tier 3). Tier 1 (parches migrantes + visual teal) y Tier 2 (reserva de rebrote + forrajeo por área∝talla) ya están hechos.
 
 ## Idea

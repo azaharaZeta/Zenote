@@ -1,7 +1,8 @@
 # Micro-flora / plancton (pulido visual de la vegetación, de zenote1)
 
-**Estado: ANOTADA (no implementada).** Pulido visual OPCIONAL del [análisis de adaptación de la vegetación de zenote1](vegetacion-de-zenote1-adaptar.md).
-Solo render — NO toca la simulación.
+**Estado: IMPLEMENTADO (2026-06-21).** Solo render — NO toca la simulación. En `main.js`: `initPlankton`/`drawPlankton` + `makeSparkSprite`
+esparcen motas glow (sprites teal/cian) por el mundo que FLORECEN donde hay vegetación local (umbral por mota → frondoso = casi todas
+encienden, pastado = casi ninguna), aditivas, con densidad ∝ área del mundo. Es exactamente la micro-flora de zenote1 descrita abajo. Archivado.
 
 ## Idea
 zenote1 esparcía **motas de plancton / micro-flora** por el mundo (`render.grassDensity` ≈ 6800 motas) sobre el sustrato de

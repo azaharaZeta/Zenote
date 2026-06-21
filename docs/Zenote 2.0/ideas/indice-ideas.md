@@ -1,61 +1,41 @@
-# Input de Ideas de usuario Zenote 2.0
+# Input de Ideas de usuario — Zenote 2.0
 
-## Instrucciones
-Este documento es el backlog de ideas de usuario sin procesar para Zenote 2.0
-Sólo un humano puede incluir aquí ideas.
-Al procesar este fichero, por cada idea listada aquí, crear su **fichero** `<idea>.md`  en la misma ruta que este fichero, y eliminar la entrada de esa idea de este listado. 
-Aquí NO van ideas en curso, estados, ni análisis, ni histórico.
-Documentar los análisis, estados e histórico de cada idea en curso en sus respectivos ficheros de idea.
-Cuando una idea haya sido implementada o descartada, actualizar su fichero de idea y mover el fichero de idea a la carpeta `archivo` de la misma ruta que este fichero
+## Cómo funciona este backlog (CICLO DE VIDA de una idea) — LEER ANTES DE EDITAR
+Este fichero es **solo el backlog de ideas SIN PROCESAR**. Reglas estrictas para no ensuciarlo:
+
+1. **El índice solo lista ideas sin procesar, en TEXTO BREVE** — una línea por idea, el enunciado y nada más:
+   sin análisis, sin estado, sin histórico, sin detalle. (Todo eso vive en la ficha de la idea, no aquí.)
+2. **Solo un HUMANO añade ideas en la sección "Ideas de usuario".** Claude puede sugerir en la sección de
+   "Ideas propuestas por Claude" (zona de staging para que el humano las suba; no es el backlog real).
+3. **Cuando una idea EMPIEZA a procesarse** (se analiza / se le da ficha): se **QUITA de este índice** y se crea su
+   fichero propio `<idea>.md` en **esta misma carpeta** (`docs/Zenote 2.0/ideas/`). El análisis, el estado y el
+   histórico van en ESE fichero, nunca aquí.
+4. **Cuando una idea se TERMINA (implementada) o se DESCARTA**: se actualiza su fichero con el estado final y se
+   **MUEVE a `archivo/`** (subcarpeta de esta misma ruta).
+5. **Al archivar, los temas pendientes que deja la idea** (su "siguiente acción"):
+   - si son **simples / sin analizar** → se añaden como idea(s) BREVE(s) en este índice (para procesar luego);
+   - si ya están **analizados / son complejos** → van directamente a su propio fichero `<idea>.md` (NO al índice).
+6. **Corolario:** una idea que YA tiene fichero (en esta carpeta o en `archivo/`) **NO aparece en este índice**.
+   Si la ves listada aquí y ya tiene fichero, es un error de mantenimiento → quítala.
+
+---
 
 ## Ideas de usuario (pendientes de procesar)
+> Solo un humano edita esta sección. Texto breve; el detalle se desarrolla al crear la ficha.
 
-- Sembrado inicial, ajustes en como calcularlo. Analizar viabilidad o proponer alternativa a este criterio:
-    Slide de Diversidad Inicial:
-    - En diversidad 0: Todos los organismos iguales en cada  parámetros
-    - En diversidad creciente: Ir aceptando diferencias crecientes en parametrización por organismo
-    - En diversidad 1: Aceptar diferencias amplias por cada organismo
-    Como calcular los parámetros:
-        - Parámetros que necesitan ser ajustados para viabilidad mínima:
-            - ¿qué parámetros son?
-            - Estudiar si deben ir fijos, o se les puede meter algún random
-        Parámetros independientes de viabilidad mínima, como color:
-            - ¿qué parámetros son?
-            - Random total
+- Sembrado inicial / slider de **Diversidad Inicial**: revisar cómo se calcula. En diversidad 0 todos los organismos
+  idénticos; creciente = diferencias crecientes por organismo; 1 = diferencias amplias. Analizar qué parámetros necesitan
+  un mínimo de viabilidad (¿fijos o con algo de random?) vs los independientes (color → random total). Proponer alternativa.
+- **Ventana de información de organismo**: dibujar el organismo dentro de la ventana; seguir SIEMPRE con cámara (eliminar el
+  botón "seguir cámara"); si el organismo muere, dejar fijo el dibujo de su cadáver hasta cerrar el visor o cambiar de organismo.
+- **UI "Colorear por"**: dejar por defecto "Natural + Tejido" y llamarlo solo "Natural", con un slider de "nivel de coloreado de
+  tejido" (hoy hardcodeado); eliminar "Natural (aspecto real)" y "Tejido + Aura"; renombrar "Oficio + aura real" → "Oficio".
 
-- Ventana de información de organismo:
-    - Dibujar el organismo en esa ventana.
-    - Siempre seguir con cámara. Eliminar botón de "seguir cámara"
-    - Si el organismo muere, dejar fijo el dibujo de su cadavercito en el visor, se puede olvidar el organismo muerto cuando el visor cierre o cambie a otro organismo
-- UI - "Colorear por". 
-    - Dejar por defecto "Natural + Tejido", llamarlo directamente "Natural". Y añadir en la ui un slide de "nivel de coloreado de tejido" (pensar un nombre mejor), que ahora este valor estará hardcodeado por algún sitio, o en algún parámetro no ui.
-    -Eliminar la opcíon "Natural (aspecto real)" y "Tejido + Aura"
-    -Renombrar la opción "Oficio + aura real" a "Oficio".
+---
 
-
-## Ideas DOCUMENTADAS con ficha (analizadas, no implementadas — futuras)
-- `vegetacion-de-zenote1-adaptar.md` — adaptar la vegetación de zenote1. Tier 1+2 HECHOS; **pendientes: Tier 3 cobertura + micro-flora**.
-- `cobertura-vegetal-refugio.md` — la presa se esconde en vegetación densa (estabilizador depredador-presa).
-- `micro-flora-plancton.md` — motas de plancton sobre el sustrato (pulido visual).
-- `vegetacion-con-genetica.md` — Escenario 2: dar genética a la vegetación (coevolución). Grande, opcional.
-- `analisis-vegetacion-aparte.md` — análisis del cambio de cimientos (solo animales + veg parametrizada), ya IMPLEMENTADO.
-
-
-## Ideas propuestas por Claude (para revisar por el humano; mover arriba las que aceptes)
+## Ideas propuestas por Claude (staging — el humano las sube arriba si las acepta)
 Emergencia / realismo:
-- r/K evolvable: hacer `reproE`/`investE` genes (cuánto acumular antes de criar y cuánto invertir por cría) → que el eje r/K (muchas crías baratas vs pocas caras) EMERJA (lo prometía el diseño 2.4; hoy son constantes).
-- Barrera post-cigótica: cruzar linajes muy divergentes da crías menos viables (hoy el aislamiento es solo pre-cigótico; daría especiación más real).
-- Homología compartida entre fundadores + preservar paralogía al duplicar módulos (hoy cada fundador/duplicado estrena marca → la recombinación entre linajes degenera).
-- Día/noche activable como slider (ya existe `dayNightAmp`, a 0) → ritmos de actividad, ventaja para acumular reservas.
-
-Fascinación / observación:
-
-- Histograma en vivo de un gen seleccionable (size, mouthCap, masa…): ver la distribución derivar = prueba visual de la selección.
-- Resaltar a los PARIENTES del organismo inspeccionado (mismo linaje/hue) → ver familias.
-- Botón "capturar PNG" del lienzo (compartir el ecosistema).
-- Gráfica de masa/talla media en el tiempo (con el bloat ya controlado, ver la talla evolucionar).
+- Día/noche activable como slider (ya existe `dayNightAmp`, a 0) → ritmos de actividad, ventaja por acumular reservas.
 
 Técnico / robustez:
-- CI real (GitHub Action) que corra `npm run test:zenote2` en cada push (hoy el gate se corre a mano).
-- Promover spikes valiosos a tests de regresión del gate: uno "anti-bloat" (que falle si los generalistas grandes se disparan) y uno de balance trófico.
 - Validar rendimiento en MÓVIL real (o viewport estrecho) con la población al tope; si hace falta, toggle de calidad (Baja: sin bloom/halos).
