@@ -57,10 +57,9 @@ el tiempo evolutivo** — que se ha **corregido en esta misma pasada** (escape-p
 
 **Debilidades / afirmaciones a re-calibrar**
 - 🔴→✅ **La locomoción decaía** (el hallazgo nuevo). Ver §3 — **corregido**.
-- ⚠️ **`mouthCap` infla casi neutra:** la economía es **digestión-limitada** (`digestRate=0.6/tick`, tripa ∝ masa), no
-  forrajeo-limitada → la boca por encima de un mínimo bajo es decorativa y deriva hacia arriba con el cuerpo. Implica que
-  las palancas de forrajeo tienen poco agarre sobre un animal bien alimentado. **No corregido** (es una característica, no un
-  error que degrade el objetivo; tocar la digestión desestabiliza la pob). Documentado como siguiente paso opcional.
+- ⚠️→✅ **`mouthCap` inflaba casi neutra** (~50×: la economía es digestión-limitada → la boca era redundante y derivaba al
+  alza con el cuerpo). **CORREGIDO** con un coste de mantenimiento de la boca (`SIM_P.mouthCost`) → la ingesta pasa a
+  selección. Ver §6.
 - ⚠️ **D16 (selección sexual con carga): no se cumple.** `mateCompat`/`phenoDistance` es métrica fija de 3 ejes
   (masa/mouthCap/maxMouthR), sin señal↔preferencia evolvable ni runaway de Fisher. (Carry-over, vigente.)
 - ⚠️ **D14: especiación clinal, no discreta** (núcleo interfértil + clústeres + singletons). (Carry-over, ya reformulado en m7.)
@@ -95,8 +94,7 @@ incluso un poco MENOS bloat). `fleeSpeed=1.0` elegido por equilibrio locomoción
 
 ## 4. Siguientes pasos (por orden de impacto)
 1. ~~**r/K evolvable**~~ → **HECHO (genes) + HALLAZGO NULO de divergencia.** Ver §5.
-2. **Boca bajo selección, no deriva:** encarecer la boca o volver evolvable la digestión, para que la morfología de ingesta
-   pague su precio (hoy infla casi neutra por el cuello de botella de digestión).
+2. ~~**Boca bajo selección, no deriva**~~ → **HECHO** (coste de boca `mouthCost=0.001`). Ver §6.
 3. **D16 real** (señal↔preferencia evolvables) o seguir con la afirmación rebajada (asortativo por forma, clinal).
 4. ~~**CI** que corra el gate en cada push~~ → **HECHO** (`.github/workflows/zenote2-gate.yml`: corre `npm run test:zenote2` en push/PR que toquen `zenote2/**`).
 5. ~~**Promover spikes a tests de regresión** (anti-bloat + balance trófico)~~ → **HECHO** (`test/m9-ecology.mjs`, en el gate: ancla coexistencia trófica + anti-bloat + conservación a escala de ecosistema, con umbrales generosos y seeds fijos → determinista, no flaky; cubre el hueco que el dorado m8 no ve).
@@ -122,3 +120,43 @@ proyecto "no añadir complejidad sin beneficio medible" (precedente M6.4 / eDens
 **Decisión:** se **mantienen los genes** (dial→gen, lo pedía la auditoría biológica; conserva; sustrato correcto para una futura
 dinámica abierta/perturbada donde r/K SÍ podría expresarse) y se documenta el resultado nulo. **NO perseguir r/K** sin abandonar
 la premisa de pecera-cerrada-en-equilibrio (lo cual choca con la conservación, que es el alma del proyecto). Resultado honesto.
+
+## 6. Boca bajo selección — HECHO (coste de boca) (2026-06-20)
+
+**Problema (medido):** `mouthCap` (capacidad de ingesta) **inflaba ~50×** sobre lo funcional (mouthCap **55±48**, 95% > 5; la
+boca funcional ≈ 1.2) porque la economía está **limitada por DIGESTIÓN** (`digestRate=0.6/tick`), no por ingestión → una boca
+grande es redundante y, costando lo mismo que cualquier tejido (vía masa), **derivaba al alza** con el cuerpo. La morfología de
+ingesta no estaba bajo selección.
+
+**Fix:** `SIM_P.mouthCost` = coste metabólico de mantenimiento ∝ mouthCap (energía → calor, CONSERVA). El aparato de ingesta
+**paga su precio** → selección hacia el tamaño funcional (el mínimo que mantiene alimentado al animal, dependiente del alimento).
+
+**Resultado (medido, spikes/mouth-cost, 30k):** con `mouthCost=0.001` la boca **deja de inflar**: mouthCap 55→**~9** (6× menos),
+distribución ABIERTA (no 95% saturada). **Coexistencia intacta** (cazador 26-37, herbívoros y pob ↑, menos bloat, conserva).
+0.004 ya exprime al cazador (→7). **Diferenciación de nicho EMERGENTE (lo mejor):** a 0.001 el **carnívoro mantiene boca ~2× la
+del herbívoro** (carn ~18-20 vs herb ~9-10; a 0 ambos inflados sin señal) → la morfología de ingesta ahora **refleja el oficio**
+(la boca grande del depredador paga su coste manejando presa; el pastador la recorta). Eso es "boca bajo selección".
+
+**Cambios:** `sim.js` (término `+mouthCost·mouthCap` en el metabolismo) · `config.js` (`SIM_P.mouthCost=0.001`) · `m8` dorado
+re-fijado `0xebd987f9 → 0xf5375391` (física intencionada). Gate **9/9 verde** (m9 confirma coexistencia + anti-bloat). Spikes:
+`zenote2/spikes/mouth-cost/` (`run.mjs` barrido, `role.mjs` diferenciación de nicho).
+
+## 7. Especiación: homología compartida (#4) HECHO · barrera post-cigótica (#3) NULA → revertida (2026-06-20)
+
+Objetivo: cerrar **D14** (la estructura reproductiva es CLINAL, no especies discretas) añadiendo aislamiento POST-cigótico (híbridos
+de padres divergentes menos viables → selección disruptiva contra intermedios → ¿morfos discretos?). Plan #4→#3.
+
+**#4 — Homología compartida (HECHO, KEEPER):** el módulo del fundador (par de aletas) tenía marca de homología ÚNICA por fundador
+(`HOM++`) → al recombinar dos linajes ese módulo NO alineaba → se heredaba como "presente en uno solo" (prob 0.6) → un hijo podía
+salir con **0, 1 o 2 pares de aletas al azar** (recombinación entre linajes = ruido, no homóloga). Fix: marca **FIJA compartida**
+(`FOUNDER_HOM=1`) → todos los fundadores la comparten → la recombinación entre linajes alinea el módulo ancestral (hereda UNO, como
+los padres). Corrección real (no cosmética). `genome.js`. Dorado `0xf5375391 → 0xe8984a53`.
+
+**#3 — Barrera post-cigótica (PROBADA → REVERTIDA, resultado NULO + contraproducente):** `SIM_P.postZygotic` penalizaba la energía
+del híbrido ∝ distancia fenotípica parental (Dobzhansky–Muller; conserva, la parte malograda → calor). Barrido `postZygotic{0,2,4} ×
+mateCompat{0.5,1.5}`, 30k, 2 seeds (`spikes/postzygotic`): **(a)** el morfo INTERMEDIO (omnívoro morfológico) NO baja (~50-66% en
+todos los casos) → **no discretiza**; **(b)** erosiona al **cazador** (dieta carnívora 58→24 a mateCompat 0.5; 81→14 a 1.5) — la
+penalización golpea al EXTREMO RARO (la pareja de un carnívoro suele ser menos carnívora → distancia alta → cría penalizada), no al
+centro. **Causa:** sin **preferencia de apareamiento EVOLVABLE (D16)** no hay **refuerzo**; y seleccionar contra híbridos en una
+pecera cerrada/saturada adelgaza la minoría extrema en vez de partir el grueso. Revertido (sim.js + config). Patrón r/K / boom-bust:
+resultado nulo honesto. **D14 sigue clinal.** Cerrarlo de verdad exigiría D16 (preferencia evolvable) — mecánica nueva, no elegida.

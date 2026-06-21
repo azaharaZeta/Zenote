@@ -37,6 +37,10 @@
         <label>Diversidad inicial <output id="diversityVal"></output></label>
         <input id="diversity" type="range" min="0" max="1" step="0.05" value="1" title="Variación entre los fundadores: 100% = como ahora (tono/fase/cerebro varían); 0% = todos idénticos (la diversidad emergerá sola por mutación).">
       </div>
+      <div class="ctrl">
+        <label>Semilla <output id="seedVal"></output></label>
+        <input id="seed" class="seed-in" type="text" inputmode="numeric" placeholder="aleatoria" title="Semilla del generador: la MISMA semilla reproduce el MISMO mundo (determinista). Vacío = aleatoria. Tras reiniciar, aquí arriba se muestra la semilla usada — cópiala para repetir ese mundo.">
+      </div>
     </details>
 
     <div class="ctrl">
@@ -85,6 +89,25 @@
     <div class="ctrl">
       <label>Muertes <span class="cl-pred">depredación</span> · <span class="cl-starv">inanición</span></label>
       <canvas id="deathChart" class="chart" width="226" height="44"></canvas>
+    </div>
+
+    <div class="ctrl">
+      <label>Talla media <span class="cl-auto">herbívoro</span> · <span class="cl-het">carnívoro</span></label>
+      <canvas id="massChart" class="chart" width="226" height="44" title="Masa media por oficio en el tiempo → ver la talla evolucionar y divergir entre nichos."></canvas>
+    </div>
+
+    <div class="ctrl">
+      <label>Histograma <span class="cl-auto">herbívoro</span> · <span class="cl-het">carnívoro</span></label>
+      <select id="geneTrait" title="Rasgo a distribuir: mira cómo deriva en el tiempo (prueba visual de la selección) y cómo difiere por oficio.">
+        <option value="mass">masa (talla)</option>
+        <option value="mouthCap">boca (ingesta)</option>
+        <option value="vmax">velocidad máx</option>
+        <option value="nParts">nº de partes</option>
+        <option value="reproK">umbral de cría (r/K)</option>
+        <option value="investFrac">inversión por cría</option>
+        <option value="hue">linaje (color)</option>
+      </select>
+      <canvas id="geneChart" class="chart" width="226" height="56"></canvas>
     </div>
 
     <details class="lab">

@@ -21,6 +21,14 @@ const CORPSE_LIFE = 240;   // #3 — vida visual del cadáver (ticks): ≈ lo qu
 const HIST_W = 160, HIST_EVERY = 60; const histPop = [], histHerb = [], histCarn = []; let lastHist = -1e9;
 const histSexB = [], histAsexB = [], histPred = [], histStarv = [];   // nacimientos sexual/asexual · muertes predación/inanición (por ventana)
 let lastSexB = 0, lastAsexB = 0, lastKills = 0, lastStarved = 0;
+const histMassH = [], histMassC = [];   // MASA media por oficio (herbívoro/carnívoro) en el tiempo → ver la TALLA evolucionar (#12): complementa el histograma (distribución ahora) con la trayectoria.
+// HISTOGRAMA de un rasgo seleccionable: se computa AQUÍ (donde están los datos SoA) y al cliente solo viajan los bins.
+// Por bin se separa por oficio (herbívoro vs resto, como la gráfica de población) → se VE la diferenciación de nicho (p.ej. boca:
+// herbívoros bajos, carnívoros altos) y la (no) deriva de un gen (p.ej. reproK/investFrac agrupados = r/K near-neutral). Rango FIJO
+// por rasgo → la distribución deriva sobre un eje estable = prueba VISUAL de la selección. (Sin coste relevante: bins de ~500 agentes.)
+const HBINS = 28;
+const HIST_TRAITS = { mass: [0, 16], mouthCap: [0, 40], vmax: [0, 2], nParts: [1, 32], reproK: [0.5, 2], investFrac: [0.2, 0.8], hue: [0, 1] };
+let histTrait = 'mass';   // rasgo mostrado (lo fija la UI vía mensaje 'histTrait')
 
 function init({ seed, worldSize: ws, seedCount: sc, spawnSpread: sp, diversity: dv } = {}) {
   // Parámetros de ARRANQUE (necesitan reinicio). Se conservan entre resets.
@@ -39,6 +47,7 @@ function init({ seed, worldSize: ws, seedCount: sc, spawnSpread: sp, diversity: 
   selectedId = -1;   // el mundo nuevo no tiene al agente inspeccionado
   histPop.length = 0; histHerb.length = 0; histCarn.length = 0; lastHist = -1e9;   // historiales limpios al (re)iniciar
   histSexB.length = 0; histAsexB.length = 0; histPred.length = 0; histStarv.length = 0; lastSexB = lastAsexB = lastKills = lastStarved = 0;
+  histMassH.length = 0; histMassC.length = 0;
   // dims del mundo (cambian solo al reset). vegRef = veg máx aprox (para normalizar el color del fondo de vegetación). seed: la usada.
   postMessage({ type: 'world', cols: world.cols, rows: world.rows, cellW: world.cellW, size: worldSize, vegRef: world.P.vegKcoef * world.P.lightBase, seed: sd });
 }
@@ -50,20 +59,27 @@ function snapshot() {
   const n = idx.length;
   // partData = [lx, ly, r, tissue, phase, aspect, dir] por nodo (stride 7): aspect+dir → siluetas orientadas en el render.
   // aE = energía normalizada [0,1] por agente (E/reproE) → el render atenúa a los hambrientos ("la muerte se ve venir").
-  // aHunt = fracción CARNÍVORA de la dieta [0,1] por agente → el render le pone OJOS (los que comen animales miran a su presa).
-  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), aHunt = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
-  let po = 0, nHerb = 0, nCarn = 0, detail = null;
+  // aGazeX/Y = dirección al estímulo más saliente (mundo) · aAlert = intensidad [0,1] → el render ORIENTA y aviva los OJOS (todos sensan → todos tienen ojos).
+  const ax = new Float32Array(n), ay = new Float32Array(n), ah = new Float32Array(n), aspd = new Float32Array(n), ahue = new Float32Array(n), aE = new Float32Array(n), aGazeX = new Float32Array(n), aGazeY = new Float32Array(n), aAlert = new Float32Array(n), arole = new Uint8Array(n), aid = new Int32Array(n), partOff = new Int32Array(n + 1), partData = new Float32Array(totalParts * 7);
+  let po = 0, nHerb = 0, nCarn = 0, detail = null, massSumH = 0, massSumC = 0;   // massSum* → masa media por oficio (serie temporal #12)
+  // histograma del rasgo seleccionado (por bin, separado herbívoro/resto). Rango fijo + array SoA del rasgo (o caso especial nParts/hue).
+  const gh = new Float32Array(HBINS), gc = new Float32Array(HBINS);
+  const trng = HIST_TRAITS[histTrait] || HIST_TRAITS.mass, tlo = trng[0], tspan = (trng[1] - trng[0]) || 1;
+  const tArr = histTrait === 'mass' ? s.mass : histTrait === 'mouthCap' ? s.mouthCap : histTrait === 'vmax' ? s.vmax : histTrait === 'reproK' ? s.reproK : histTrait === 'investFrac' ? s.investFrac : null;
   for (let a = 0; a < n; a++) {
     const i = idx[a]; ax[a] = s.x[i]; ay[a] = s.y[i]; ahue[a] = s.genome[i].hue; aid[a] = s.serial[i];
     aE[a] = Math.min(1, Math.max(0, s.E[i] / (SIM_P.reproE * s.reproK[i])));   // vitalidad para el render (atenúa hambrientos); umbral PROPIO (r/K)
     const vx = s.vx[i], vy = s.vy[i], sp = Math.sqrt(vx * vx + vy * vy); ah[a] = sp > 1e-3 ? Math.atan2(vy, vx) : 0;
     aspd[a] = sp / 3 > 1 ? 1 : sp / 3;   // velocidad normalizada → amplitud de ondulación del render
-    // oficio REALIZADO desde la dieta (herbívoro/carnívoro/omnívoro) + fracción carnívora (para ojos)
+    // oficio REALIZADO desde la dieta (herbívoro/carnívoro/omnívoro) para color/gráfica + PERCEPCIÓN para los ojos
     const dv = s.vegIn[i], dp = s.preyIn[i], ds = s.scavIn[i], dt = dv + dp + ds;
     arole[a] = roleFromDiet(dv, dp, ds);
-    aHunt[a] = dt > 0.5 ? (dp + ds) / dt : 0;   // qué fracción de su energía viene de comer animales/carroña → ojos
-    if (arole[a] === 0) nHerb++; else nCarn++;
+    aGazeX[a] = s.senseX[i]; aGazeY[a] = s.senseY[i]; aAlert[a] = s.senseMag[i];   // estímulo saliente (dir mundo) + intensidad → ojos que miran/se avivan
+    if (arole[a] === 0) { nHerb++; massSumH += s.mass[i]; } else { nCarn++; massSumC += s.mass[i]; }   // masa por oficio → talla media en el tiempo
     partOff[a] = po; const body = s.body[i];
+    { const tv = tArr ? tArr[i] : (histTrait === 'nParts' ? body.length : s.genome[i].hue);   // bin del rasgo (caso especial: nParts/hue)
+      let hb = ((tv - tlo) / tspan * HBINS) | 0; if (hb < 0) hb = 0; else if (hb >= HBINS) hb = HBINS - 1;
+      if (arole[a] === 0) gh[hb]++; else gc[hb]++; }
     let rad = 0;
     for (let k = 0; k < body.length; k++) { const p = body[k]; const o = po * 7; partData[o] = p.x; partData[o + 1] = p.y; partData[o + 2] = p.r; partData[o + 3] = p.tissue; partData[o + 4] = p.phase; partData[o + 5] = p.aspect; partData[o + 6] = p.dir; po++;
       const d = Math.hypot(p.x, p.y) + p.r; if (d > rad) rad = d; }
@@ -78,7 +94,8 @@ function snapshot() {
     // ritmos por ventana: delta de los contadores acumulados desde el último muestreo
     histSexB.push(s.sexBirths - lastSexB); histAsexB.push(s.asexBirths - lastAsexB); histPred.push(s.kills - lastKills); histStarv.push(s.starved - lastStarved);
     lastSexB = s.sexBirths; lastAsexB = s.asexBirths; lastKills = s.kills; lastStarved = s.starved;
-    if (histPop.length > HIST_W) { histPop.shift(); histHerb.shift(); histCarn.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); } }
+    histMassH.push(nHerb ? massSumH / nHerb : 0); histMassC.push(nCarn ? massSumC / nCarn : 0);   // talla media por oficio (#12)
+    if (histPop.length > HIST_W) { histPop.shift(); histHerb.shift(); histCarn.shift(); histSexB.shift(); histAsexB.shift(); histPred.shift(); histStarv.shift(); histMassH.shift(); histMassC.shift(); } }
   // CADÁVERES (#3): los recientes (edad < CORPSE_LIFE) con su forma → el render los desvanece con su carroña. Acotado por
   // el ring del motor; aplanado como los organismos (offset + [lx,ly,r,aspect,dir] por parte, stride 5). dcfade = edad/vida.
   const cidx = []; let ctp = 0;
@@ -94,10 +111,11 @@ function snapshot() {
   // crecimiento) y FLUYE si lightFlow>0 (su K sigue a la luz). Transferible (cero copia).
   const veg = world.veg.slice();
   // detail = null si no hay selección O si el agente seleccionado ya murió (el cliente lo detecta: selectedId set pero detail null)
-  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, aid, partOff, partData,
-      dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, veg, histPop, histHerb, histCarn, histSexB, histAsexB, histPred, histStarv, sel: selectedId, detail },
-    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aHunt.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer,
-     dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer, veg.buffer]);
+  postMessage({ type: 'frame', tick: s.tick, pop: n, n, ax, ay, ah, aspd, ahue, aE, aGazeX, aGazeY, aAlert, arole, aid, partOff, partData,
+      dcm, dcx, dcy, dch, dchue, dcfade, dcOff, dcData, veg, histPop, histHerb, histCarn, histSexB, histAsexB, histPred, histStarv, histMassH, histMassC,
+      geneTrait: histTrait, geneLo: trng[0], geneHi: trng[1], geneH: gh, geneC: gc, sel: selectedId, detail },
+    [ax.buffer, ay.buffer, ah.buffer, aspd.buffer, ahue.buffer, aE.buffer, aGazeX.buffer, aGazeY.buffer, aAlert.buffer, arole.buffer, aid.buffer, partOff.buffer, partData.buffer,
+     dcx.buffer, dcy.buffer, dch.buffer, dchue.buffer, dcfade.buffer, dcOff.buffer, dcData.buffer, veg.buffer, gh.buffer, gc.buffer]);
 }
 
 // Ritmo de simulación por ACUMULADOR temporal: cada loop ejecuta `tps × tiempo transcurrido` pasos (con la fracción
@@ -139,6 +157,7 @@ onmessage = (e) => {
   // LABORATORIO (en vivo): ajusta una ley del mundo o del metabolismo sin reiniciar. lightMul vive en el mundo; mutRate
   // en GENOME_P; el resto son campos de SIM_P (step()/mutate() los leen por referencia → el cambio surte efecto al instante).
   else if (m.type === 'set') { if (m.key === 'lightMul') world.lightMul = m.value; else if (m.key === 'mutRate') GENOME_P.mutRate = m.value; else if (m.key in SIM_P) SIM_P[m.key] = m.value; else if (m.key in world.P) world.P[m.key] = m.value; }   // world.P: lightFlow, vegGrowth, patchiness… (vegStep los lee por ref)
+  else if (m.type === 'histTrait') { if (m.key in HIST_TRAITS) histTrait = m.key; }   // histograma: rasgo a mostrar (la UI lo elige)
   else if (m.type === 'inspect') selectedId = m.id;     // inspector: fijar agente a seguir en vivo
   else if (m.type === 'deselect') selectedId = -1;
   else if (m.type === 'burst') { for (let k = 0; k < (m.n || 0); k++) sim.step(); snapshot(); }   // avance forzado (depuración/preview)

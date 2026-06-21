@@ -4,7 +4,7 @@
 // marcador de fallo (`FALLO` / `✗`). Pensado como gate de pre-commit/CI.  uso: node zenote2/test/run-all.mjs
 //   Agrega los tests de INVARIANTES/correctitud (deterministas) + m9 (regresión ECOLÓGICA: una medición PROMOVIDA a gate con
 //   umbrales generosos y seeds fijos → determinista, no flaky; ancla coexistencia/anti-bloat que el dorado no cubre).
-//   Los de MEDICIÓN/exploración (baseline, m5-evolution, m6_3-behavior, m6_5-scorecard) imprimen números y ✗ no-críticos → NO gatean; córrelos a mano.
+//   Los scripts de MEDICIÓN/exploración (no deterministas, imprimen números y ✗ no-críticos) NO gatean; viven en zenote2/spikes/ y se corren a mano.
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

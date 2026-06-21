@@ -36,6 +36,7 @@ input[type=range].dim { opacity: .35; }   /* barra de velocidad "apagada" en pau
   border: 1px solid rgba(120,140,170,.2); font-family: inherit; font-size: 12px; }
 select { width: 100%; padding: 5px 7px; border-radius: 7px; background: #11161f; color: #c3cdda;
   border: 1px solid rgba(120,140,170,.2); font-family: inherit; font-size: 12px; }
+#geneTrait { margin-bottom: 6px; }   /* separa el selector de rasgo de su histograma */
 .row button, .ghost { padding: 5px 9px; border-radius: 7px; border: 1px solid rgba(120,140,170,.2);
   background: #161d28; color: #c3cdda; cursor: pointer; font-family: inherit; font-size: 12px; }
 .row button:hover, .ghost:hover { background: #202a39; }

@@ -20,8 +20,9 @@ const radOf = (size) => GENOME_P.radMin + (GENOME_P.radMax - GENOME_P.radMin) * 
 const tissueOf = (t) => Math.min(TISSUE_N - 1, (t * TISSUE_N) | 0);   // gen [0,1] → categoría
 
 // M6.3 — CEREBRO: RNN recurrente (Elman) pequeña; sus PESOS son genes (heredables, mutables). Motor de la conducta, que
-// arranca SEMBRADO (seedBrain, abajo) y evoluciona/aprende desde ahí — NO emerge de cero (medido en m6_3: el seedBrain
-// aporta la mayor parte de la caza; la evolución/plasticidad añade ~18%). Entradas (10): 0,1 ∇VEGETACIÓN (olor a comida) ·
+// arranca SEMBRADO (seedBrain, abajo) y evoluciona/aprende desde ahí — NO emerge de cero (el seedBrain aporta la mayor parte
+// de la caza; la evolución/plasticidad añade ~18% — ver docs/Zenote 2.0/ideas/auditoria-biologica-zenote2.md; el test de
+// medición m6_3-behavior no está versionado en el árbol). Entradas (10): 0,1 ∇VEGETACIÓN (olor a comida) ·
 // 2,3 dir-presa · 4,5 dir-amenaza · 6 hambre · 7 velocidad propia · 8,9 ∇detrito (rastrear carroña).
 // Salidas (4): 0,1 dirección de empuje · 2 esfuerzo (throttle) · 3 impulso de ataque. La plasticidad (sim) ajusta una
 // COPIA de trabajo en vida (no heredable: Baldwin, no lamarckismo); lo que evoluciona es el cerebro de NACIMIENTO.
@@ -49,7 +50,16 @@ export function seedBrain(rng, div = 1) {
   return b;
 }
 
-let HOM = 1;   // contador global de marcas de homología (para recombinación en M7)
+// Marcas de HOMOLOGÍA (alinean módulos en la recombinación, como genes Hox). La marca 1 está RESERVADA para el módulo del
+// FUNDADOR (par de aletas) → TODOS los fundadores la comparten → sus descendientes (de linajes distintos) recombinan ese módulo
+// de forma HOMÓLOGA (no como "presente en uno solo", que degeneraba a herencia/pérdida aleatoria — #4). Los módulos NUEVOS por
+// mutación estrenan marca (HOM++, desde 2). (Paralogía en la duplicación: pendiente — exigiría que recombine agrupe por marca.)
+let HOM = 2;   // contador de marcas de homología; 1 = reservada al módulo fundador (compartida)
+const FOUNDER_HOM = 1;
+// Reinicia el contador. Lo llama el constructor de Sim para que cada mundo arranque limpio (HOM=2) en vez de arrastrar un
+// global entre instancias/procesos (los tests crean varios Sim seguidos). Determinista: la recombinación compara `hom` por
+// IGUALDAD y el ancla del fundador es constante → el offset no afecta al resultado, y el primer mundo del proceso ya arrancaba en 2.
+export function resetHom() { HOM = 2; }
 
 function mkModule(rng) {
   return {
@@ -72,7 +82,7 @@ export function makeFounder(rng, div = 1) {
   return {
     root: { size: 0.42, aspect: 0.4, tissue: 0.8 /*MOUTH*/, oscAmp: 0.1, phase: dv(rng.next()) },
     modules: [{ angle: 2.8, size: 0.35, aspect: 0.6, tissue: 0.5 /*MUSCLE*/, oscAmp: 0.4, phase: dv(rng.next()),
-                recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: HOM++ }],   // par de aletas traseras propulsoras
+                recursive: false, recLimit: 1, symmetric: true, taper: 0.85, hom: FOUNDER_HOM }],   // par de aletas: marca COMPARTIDA → recombinación homóloga entre linajes
     brain: seedBrain(rng, div),   // bootstrap de conducta competente; div escala el ruido (div=0 → cerebro idéntico)
     hue: dv(rng.next()),          // marcador de LINAJE (neutro, heredable, deriva lenta); a div=0 todos el mismo tono
     // r/K: genes de historia de vida. TODOS los fundadores arrancan IDÉNTICOS (reproK=1, investFrac=0.4375 = defaults previos)

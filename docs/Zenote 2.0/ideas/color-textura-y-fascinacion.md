@@ -133,6 +133,36 @@ fascinantes que reflejan a los organismos reales" sin falsear emergencia. Solo B
 **Pendientes:** A5 (cadáveres con forma). El eje visual de fascinación está prácticamente completo: silueta + pigmento real
 + auto-glow + motas + bordes + bloom, todo fiel a lo que evoluciona y barato en móvil.
 
+## Pasada de belleza vs zenote1 (referencia) — 2026-06-21
+El usuario pidió acercar el aspecto a zenote1 (`../../../src/render/canvas.js`, "quedaron preciosos"). Análisis: zenote2 había
+hecho las versiones BARATAS (siluetas = elipses planas, sin volumen, borde duro, fondo solo veg). Lo que hacía bonito a v1 y
+faltaba: **volumen** (v1 sombrea cada nodo con gradiente radial, incluso en el tier barato `_drawNode`), **siluetas bézier**
+(`_silPath`), y un **abismo vivo** (nieve marina + plancton + nebulosa). Hechos (render puro → dorado INTACTO; medido 1.46 ms/draw @ 453 ag · zoom 6):
+- **#1 Sombreado volumétrico por nodo** — gradiente radial luz→medio→sombra con realce hacia una luz fija (arriba-izq, `LIGHT_DX/DY`)
+  → aspecto gelatinoso 3D en vez de stickers planos. LOD: solo nodos > 2.4 px (de lejos = plano, barato). `drawOrgs` + `TCOL_HSL`/`RCOL_HSL`.
+- **#5 Nieve marina** — detrito a la deriva que titila (mayoría azul-frío + ~6% con color), aditivo, bajo los organismos →
+  profundidad del abismo. Gateada por el slider de bioluminiscencia (0 = off, móvil). `initSnow`/`drawSnow`.
+- **#2 Siluetas bézier** — cada nodo pasa de elipse a una **curva bézier base↔punta** (`silPath`, como `_silPath` de v1) que
+  AFILA hacia afuera según `aspect` (gota/aleta/tentáculo). Derivado de `aspect`+`dir` SIN tocar el genoma → dorado intacto.
+  Es el salto de "racimo de óvalos" a **criatura** (flores/mariposas/anémonas luminosas). Verificado a zoom 7/4/2/1.
+- **TEXTURA — motas → SEGMENTACIÓN** (a petición: "puntos gordos, simplones"): las antiguas motas (3 puntos derivados del hue,
+  leían como pegatina) se reemplazaron por **costillas transversales curvas** (`drawOrgs`): bandas combadas hacia la punta,
+  color = SOMBRA del propio cuerpo (anatomía, no acento pegado), ajustadas al ancho LOCAL de la silueta (sin clip → barato),
+  nº (3-6) derivado del linaje. Lee como cuerpo SEGMENTADO (larva/copépodo)/nervios de aleta. Como `_drawNode` de v1 pero sin clip. LOD: nodos > 5 px.
+- **Verificado en preview:** criaturas con forma+volumen+segmentación + abismo vivo, sin errores. **Perf:** el `createRadialGradient`
+  por nodo era caro a vista de mundo → **gateado a pr>4 px** (volumen solo al ACERCAR; a zoom-mundo plano, imperceptible a 2-3 px).
+  Medido: zoom1 ~15-20 ms/draw @ 489 ag · zoom4 ~10 ms @ 443 ag (dentro del presupuesto de 20 fps). Móvil/Baja protegido (nieve+bloom OFF por el slider; gradiente/costillas size-gated).
+- **#3 Borde DURO → CONTORNO suave unificado** (VISUAL.md "nada de bordes duros"): se quitó el `stroke` por-nodo (creaba líneas
+  internas entre lóbulos) y se dibuja UNA silueta dilatada de todos los nodos en un solo path/fill ANTES del cuerpo (como el outline
+  pass de v1, pero sin pasada doble: `silPath(...,append)` acumula) → solo asoma el reborde exterior = contorno suave, sin líneas internas. `drawOrgs`.
+- **Plancton / micro-flora**: chispas glow FIJAS (`initPlankton`/`drawPlankton`, sprites teal pre-renderizados) que FLORECEN donde
+  la veg local es alta (densidad por cantidad: frondoso→casi todas, pastado→casi ninguna), aditivas. Gateadas por `bloomStrength`.
+- **Nebulosa de profundidad**: campo grande frío↔cálido (senos toroidales, estático) FUNDIDO en el bake de la veg (`bakeVeg` + `depthField`)
+  → el abismo deja de ser un teal plano (azul casi negro ↔ índigo/violeta sutil bajo/entre la vegetación).
+- **Perf con todas las capas:** zoom1 ~16-21 ms/draw @ 458 ag (dentro de 20 fps; el contorno duplica el trabajo de paths bézier).
+  Móvil/Baja protegido: plancton+nieve OFF por el slider, gradiente/costillas size-gated. **La pasada de belleza vs v1 está completa**
+  (forma bézier + volumen + segmentación + contorno suave + abismo vivo: nieve + plancton + nebulosa).
+
 ## Próximos pasos sugeridos
 1. ~~A1 (siluetas) + A2 (color en capas) + modo "Natural (real)" default~~ ✅ HECHO 2026-06-19.
 2. ~~A3 (textura procedural, motas por linaje, LOD)~~ ✅ HECHO 2026-06-19 (perf medida, sin caché necesaria).

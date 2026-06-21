@@ -6,7 +6,7 @@ import { RENDER_P, START, SIM_P, GENOME_P, WORLD_P } from './config.js';   // fu
 
 const worker = new Worker(new URL('./engine/worker.js', import.meta.url), { type: 'module' });
 let WORLD = null, frame = null;
-worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); } else if (m.type === 'frame') { frame = m; if (m.veg) bakeVeg(m.veg); } };   // el fondo = campo de VEGETACIÓN (llega cada frame; fluye con la luz)
+worker.onmessage = (e) => { const m = e.data; if (m.type === 'world') { WORLD = m; resetCamera(); const sv = document.getElementById('seedVal'); if (sv) sv.textContent = m.seed; } else if (m.type === 'frame') { frame = m; if (m.veg) bakeVeg(m.veg); } };   // el fondo = campo de VEGETACIÓN (llega cada frame; fluye con la luz); 'world' trae la semilla usada → readout
 
 const canvas = document.getElementById('world'), ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
@@ -21,6 +21,7 @@ let bloomStrength = RENDER_P.bloom; const BLOOM_DIV = RENDER_P.bloomDiv;
 // reescala SUAVIZADA → nebulosa VERDE (pasto/algas) sobre abismo. Donde hay más vegetación, más verde = ahí está la comida.
 // Fluye con la luz (su K sigue al campo de luz, que puede derivar — "Corriente del abismo").
 const vegCv = document.createElement('canvas');
+let depthField = null;   // NEBULOSA DE PROFUNDIDAD: campo grande frío↔cálido (toroidal, estático) fundido en el bake de la veg → el abismo no es un teal plano
 function bakeVeg(veg) {
   if (!WORLD) return;
   // normaliza por la veg en pie TÍPICA (≈ ref·0.25), no por el máximo teórico — el pastoreo la mantiene bien por debajo de K,
@@ -28,11 +29,21 @@ function bakeVeg(veg) {
   const cols = WORLD.cols, rows = WORLD.rows, ref = (WORLD.vegRef || 10) * 0.25;
   vegCv.width = cols; vegCv.height = rows;
   const lc = vegCv.getContext('2d'), img = lc.createImageData(cols, rows), d = img.data;
+  // campo de profundidad frío↔cálido (estático, una vez por tamaño): sumas de senos con ciclos ENTEROS → tesela sin costura en el toro.
+  if (!depthField || depthField.length !== cols * rows) {
+    depthField = new Float32Array(cols * rows);
+    for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < cols; xx++) {
+      const u = xx / cols, w = yy / rows;
+      let dd = Math.sin(u * 12.566 + 1.3) * 0.5 + Math.sin(w * 6.283 + 2.1) * 0.35 + Math.sin((u + w) * 18.85 + 0.7) * 0.15;
+      depthField[yy * cols + xx] = 0.5 + 0.5 * (dd < -1 ? -1 : dd > 1 ? 1 : dd);   // 0 frío (azul casi negro) .. 1 cálido (índigo/violeta)
+    }
+  }
   for (let i = 0; i < cols * rows; i++) {
     // realce del pasto tenue: exponente bajo (^0.45) sube los mids → hasta el pasto ralo brilla (como zenote1). Incremento TEAL
     // (verde-azulado) sobre abismo azul oscuro, no verde puro → la estética acuática que tenía zenote1.
-    const v = Math.pow(Math.max(0, Math.min(1, veg[i] / ref)), 0.45), o = i * 4;
-    d[o] = 6 + v * 12; d[o + 1] = 13 + v * 86; d[o + 2] = 18 + v * 82; d[o + 3] = 255;
+    const v = Math.pow(Math.max(0, Math.min(1, veg[i] / ref)), 0.45), o = i * 4, dep = depthField[i];
+    // base del abismo MODULADA por profundidad (frío=azul casi negro · cálido=índigo/violeta, sutil) + incremento TEAL por vegetación.
+    d[o] = 4 + dep * 8 + v * 12; d[o + 1] = 9 + dep * 3 + v * 86; d[o + 2] = 15 + dep * 12 + v * 82; d[o + 3] = 255;
   }
   lc.putImageData(img, 0, 0);
 }
@@ -55,7 +66,90 @@ function wrap(v) { const S = WORLD.size; return ((v % S) + S) % S; }
 
 const TCOL = [ '#5a6b7a', '#e0664d', '#e0a84a' ];   // STRUCTURE, MUSCLE, MOUTH (índice = tissue)
 const RCOL = [ '#3fb98f', '#e0664d', '#e0a84a' ];   // rol (por dieta): 0 herbívoro · 1 carnívoro · 2 omnívoro
+// Equivalentes HSL [h,s,l] de TCOL/RCOL → para el SOMBREADO VOLUMÉTRICO (necesita el color numérico para derivar luz/sombra).
+const TCOL_HSL = [ [208, 15, 42], [10, 70, 59], [38, 71, 58] ];
+const RCOL_HSL = [ [159, 49, 49], [10, 70, 59], [38, 71, 58] ];
 const ROLE_TXT = [ 'herbívoro', 'carnívoro', 'omnívoro' ];
+const LIGHT_DX = -0.42, LIGHT_DY = -0.5;   // dirección de luz (pantalla, arriba-izq) → el realce del gradiente cae hacia ahí en TODOS los nodos = escena coherente
+const cl = (v) => v < 0 ? 0 : v > 100 ? 100 : v;   // clamp 0..100 para s/l
+// NIEVE MARINA (#5): detrito a la deriva que titila, mayoría azul-frío + algunas con color → profundidad del abismo. Render puro.
+const SNOW_PAL = [ 190, 200, 285, 45, 330 ];   // cian · azul · violeta · oro · rosa (chispa rara con color)
+let snow = null;
+function initSnow(size) {
+  const n = 680, p = new Float32Array(n * 4), hue = new Float32Array(n);
+  for (let k = 0; k < n; k++) { p[k * 4] = Math.random() * size; p[k * 4 + 1] = Math.random() * size; p[k * 4 + 2] = Math.random() * 6.283; p[k * 4 + 3] = 0.5 + Math.random() * Math.random() * 1.6;
+    hue[k] = Math.random() < 0.06 ? SNOW_PAL[(Math.random() * SNOW_PAL.length) | 0] : -1; }   // ~6% con color
+  snow = { p, hue, n, size };
+}
+// Dibuja la nieve marina de un tile (pantalla oX,oY + escala sc). Tamaño en PÍXELES (constante en pantalla → specks limpios a
+// cualquier zoom); la posición va en MUNDO (parallax al panear). Aditiva ('lighter') → destellos que brillan sobre el abismo.
+function drawSnow(oX, oY, sc, t) {
+  if (!snow || snow.size !== WORLD.size) initSnow(WORLD.size);
+  const { p, hue, n } = snow, S = WORLD.size, tt = t * 0.9;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < n; k++) {
+    const ph = p[k * 4 + 2], sz = p[k * 4 + 3];
+    const wx = p[k * 4] + Math.sin(tt * 0.8 + ph) * 7 + Math.sin(tt * 0.26 + ph * 2.1) * 4;   // deriva lateral suave (2 frecuencias)
+    let wy = (p[k * 4 + 1] + tt * 5 + Math.cos(tt * 0.6 + ph) * 4) % S; if (wy < 0) wy += S;   // descenso lento + wrap toroidal
+    const px = oX + wx * sc, py = oY + wy * sc;
+    if (px < -4 || px > cw + 4 || py < -4 || py > ch + 4) continue;
+    let tw = Math.sin(tt * 3.1 + ph * 3.1); tw = tw > 0 ? tw * tw : 0;   // titileo con destellos puntuales
+    const a = 0.04 + tw * 0.5, hh = hue[k];
+    ctx.fillStyle = hh < 0 ? `rgba(200,224,255,${a})` : `hsla(${hh},80%,64%,${a})`;
+    ctx.beginPath(); ctx.arc(px, py, sz * (0.6 + tw * 1.2), 0, 6.283); ctx.fill();   // la mota crece al destellar = chispa
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+// PLANCTON / micro-flora: chispas glow FIJAS que FLORECEN donde hay vegetación (algas) → vida y textura del sustrato (como v1).
+// Densidad "por cantidad": zona frondosa = casi todas encienden; pastada = casi ninguna (umbral por mota). Aditivo. Render puro.
+let plankton = null, sparkSprites = null;
+function makeSparkSprite(hue) {
+  const S = 20, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d'), r = S / 2;
+  const g = x.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, `hsla(${hue},70%,80%,0.95)`); g.addColorStop(0.35, `hsla(${hue},75%,60%,0.40)`); g.addColorStop(1, `hsla(${hue},75%,50%,0)`);
+  x.fillStyle = g; x.beginPath(); x.arc(r, r, r, 0, 6.283); x.fill(); return c;
+}
+function initPlankton(size) {
+  if (!sparkSprites) sparkSprites = [158, 172, 186, 200].map(makeSparkSprite);   // tonos teal/cian/verde (algas), distintos de los bichos
+  const n = Math.max(200, Math.round(700 * (size / 1500) * (size / 1500)));   // ∝ área → densidad ~constante a cualquier tamaño de mundo
+  const px = new Float32Array(n), py = new Float32Array(n), ps = new Uint8Array(n), pscale = new Float32Array(n), pseed = new Float32Array(n);
+  for (let i = 0; i < n; i++) { px[i] = Math.random() * size; py[i] = Math.random() * size; ps[i] = (Math.random() * sparkSprites.length) | 0; pscale[i] = 0.7 + Math.random() * 0.9; pseed[i] = Math.random(); }
+  plankton = { px, py, ps, pscale, pseed, n, size };
+}
+// Dibuja el plancton de un tile: cada mota enciende ∝ vegetación local (lee el campo veg de la foto). Aditivo → en zonas densas se acumula = floración.
+function drawPlankton(oX, oY, sc) {
+  if (!frame || !frame.veg || !WORLD) return;
+  if (!plankton || plankton.size !== WORLD.size) initPlankton(WORLD.size);
+  const { px, py, ps, pscale, pseed, n } = plankton, veg = frame.veg, cols = WORLD.cols, cw2 = WORLD.cellW, ref = (WORLD.vegRef || 10) * 0.25;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const x = px[i], y = py[i];
+    let cx = (x / cw2) | 0, cy = (y / cw2) | 0; if (cx >= cols) cx = cols - 1; if (cy >= cols) cy = cols - 1;
+    const food = veg[cy * cols + cx] / ref;
+    if (food < 0.08 + pseed[i] * 0.7) continue;   // densidad por CANTIDAD: frondoso → casi todas, pastado → casi ninguna
+    const sx = oX + x * sc, sy = oY + y * sc;
+    if (sx < -12 || sx > cw + 12 || sy < -12 || sy > ch + 12) continue;
+    const a = Math.min(0.6, 0.12 + food * 0.5) * pscale[i];
+    let sz = (4 + food * 5) * pscale[i] * sc; if (sz < 2) sz = 2; else if (sz > 16) sz = 16;
+    ctx.globalAlpha = a;
+    ctx.drawImage(sparkSprites[ps[i]], sx - sz / 2, sy - sz / 2, sz, sz);
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+// SILUETA del nodo (#2): curva bézier cerrada base↔punta (como el `_silPath` de zenote1) en vez de elipse → gota/aleta/
+// tentáculo. Eje local = rumbo+dir del nodo; la PUNTA (+L) mira hacia afuera (dir de emisión) → los apéndices afilan hacia
+// fuera del cuerpo. wB = medio-ancho base (interior, junto al padre) · wT = medio-ancho punta (exterior). Construye el path
+// (lo rellena/perfila el llamador, reusando gradiente/borde/tinte). cx,cy en píxeles; rot en rad.
+function silPath(c, cx, cy, rot, L, wB, wT, append) {
+  const cr = Math.cos(rot), sr = Math.sin(rot);
+  const X = (lx, ly) => cx + lx * cr - ly * sr, Y = (lx, ly) => cy + lx * sr + ly * cr;
+  if (!append) c.beginPath();   // append=true → acumula como subpath (para el CONTORNO unificado: muchos nodos en un solo path/fill)
+  c.moveTo(X(-L, 0), Y(-L, 0));
+  c.bezierCurveTo(X(-L * 0.5, wB), Y(-L * 0.5, wB), X(L * 0.5, wT), Y(L * 0.5, wT), X(L, 0), Y(L, 0));
+  c.bezierCurveTo(X(L * 0.5, -wT), Y(L * 0.5, -wT), X(-L * 0.5, -wB), Y(-L * 0.5, -wB), X(-L, 0), Y(-L, 0));
+  c.closePath();
+}
 let colorMode = RENDER_P.colorMode;
 
 function draw() {
@@ -80,6 +174,12 @@ function draw() {
     ctx.stroke();
   }
   ctx.globalCompositeOperation = 'source-over';
+
+  // PLANCTON / micro-flora: chispas que florecen donde hay vegetación, sobre el sustrato (bajo la nieve y los organismos).
+  if (bloomStrength > 0) for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawPlankton((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
+  // NIEVE MARINA (#5): detrito a la deriva que titila, bajo los organismos → profundidad y vida del abismo. Gateada por el
+  // slider de bioluminiscencia (0 = apagado, móvil/Baja, coherente con "sin nieve en calidad baja" de VISUAL.md).
+  if (bloomStrength > 0) for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawSnow((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc, t);
 
   // CADÁVERES (#3): bajo los organismos, siluetas oscuras del linaje que se DESVANECEN con su carroña (muerte visible).
   for (let tx = txMin; tx <= txMax; tx++) for (let ty = tyMin; ty <= tyMax; ty++) drawCorpses((tx * size - camX) * sc + cw / 2, (ty * size - camY) * sc + ch / 2, sc);
@@ -159,7 +259,7 @@ function drawCorpses(oX, oY, sc) {
 }
 
 function drawOrgs(c, oX, oY, sc, t, halo) {
-  const { n, ax, ay, ah, aspd, ahue, aE, aHunt, arole, partOff, partData } = frame;
+  const { n, ax, ay, ah, aspd, ahue, aE, aGazeX, aGazeY, aAlert, arole, partOff, partData } = frame;
   const mul = halo ? RENDER_P.auraMul : 1, baseA = halo ? RENDER_P.auraAlpha * bloomStrength : 1;   // AURA (=bioluminiscencia): escalada por el slider
   if (!halo) { c.strokeStyle = RENDER_P.border; c.lineWidth = RENDER_P.borderW; }   // BORDE: trazo oscuro abisal fino; reaprovecha el path del relleno
   for (let a = 0; a < n; a++) {
@@ -182,58 +282,91 @@ function drawOrgs(c, oX, oY, sc, t, halo) {
       : colorMode === 'lineage' ? hcol(58, 58)
       : (natural || natMix) ? hcol(62, 54)               // cuerpo = pigmento real (natmix le superpone un % de tejido)
       : null;                                            // 'tissue' → TCOL por nodo
-    // A3 — TEXTURA procedural (Natural y Tejido+aura; solo núcleo): motas bioluminiscentes cuyo nº y color de acento
-    // DERIVAN de `hue` (heredado) → parientes comparten patrón (revela linaje, honesto). LOD: solo nodos grandes (coste 0 de lejos).
-    let accent = null, patN = 0, pSeed = 0;
-    if ((natural || natMix) && !halo) { const hh = ahue[a]; accent = `hsl(${((hh * 360 + 150) | 0) % 360},72%,74%)`; patN = 1 + ((hh * 9973) | 0) % RENDER_P.speckleMax; pSeed = hh * 6.283; }
+    // base HSL numérico del NÚCLEO para el SOMBREADO VOLUMÉTRICO (pasada !halo): natural/natmix/lineage = linaje · role = oficio · tissue = por nodo (abajo)
+    let bH = ahue[a] * 360, bS = 62, bL = 54;
+    if (colorMode === 'role') { const c0 = RCOL_HSL[arole[a]] || RCOL_HSL[0]; bH = c0[0]; bS = c0[1]; bL = c0[2]; }
+    else if (colorMode === 'lineage') { bS = 58; bL = 58; }
+    // TEXTURA — SEGMENTACIÓN: nº de COSTILLAS/bandas transversales derivado de `hue` (heredado) → familias comparten patrón
+    // (lectura fiel del linaje, honesto). Sustituye a las antiguas "motas" (3 puntos gordos): leían como pegatina, no anatomía.
+    const bandN = !halo ? 3 + ((ahue[a] * 7919) | 0) % 4 : 0;   // 3..6 segmentos por nodo
     let bodyR = 0, frontExt = 0;   // OJOS: extensión total + alcance FRONTAL (proyección sobre el rumbo) → ojos sobre la parte delantera
+    // CONTORNO unificado (solo !halo, reemplaza el borde DURO por-nodo): silueta DILATADA de todos los nodos en UN solo path →
+    // un único fill oscuro → solo asoma el REBORDE exterior (los cuerpos lo tapan por dentro) = contorno suave, sin líneas internas
+    // (VISUAL.md "nada de bordes duros"). Color = tinte oscuro del linaje. LOD: solo nodos visibles. Barato (sin gradiente, 1 fill).
+    if (!halo) {
+      c.beginPath();
+      for (let k = p1 - 1; k >= p0; k--) {
+        const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
+        const uy = ly + (0.35 + spd * RENDER_P.undulation) * Math.sin(t * 5 + lx * 0.16 + ph);
+        const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc);
+        const rL = pr * (1 + aspect * 1.4); if (rL <= 1.6) continue;   // diminutos: sin contorno (el bloom los define)
+        const ow = Math.max(0.8, pr * 0.16);   // grosor del reborde ∝ tamaño (suave)
+        silPath(c, px, py, h + dir, rL + ow, pr * (1 + aspect * 0.15) + ow, pr * (1 - aspect * 0.85) + ow, true);   // append → acumula
+      }
+      c.fillStyle = `hsl(${bH | 0},${cl(bS - 12)}%,${cl(bL - 40)}%)`; c.fill();   // tinte oscuro del linaje → reborde, no línea dura
+    }
     for (let k = p1 - 1; k >= p0; k--) {
       const o = k * 7, lx = partData[o], ly = partData[o + 1], r = partData[o + 2], tissue = partData[o + 3], ph = partData[o + 4], aspect = partData[o + 5], dir = partData[o + 6];
       const uy = ly + (0.35 + spd * RENDER_P.undulation) * Math.sin(t * 5 + lx * 0.16 + ph);
       const px = oX + (wx + (lx * chh - uy * shh)) * sc, py = oY + (wy + (lx * shh + uy * chh)) * sc, pr = Math.max(1, r * sc * mul);
       if (!halo) { const dx = px - bx, dy = py - by, ext = Math.hypot(dx, dy) + pr; if (ext > bodyR) bodyR = ext;
         const fp = dx * chh + dy * shh + pr; if (fp > frontExt) frontExt = fp; }   // alcance del cuerpo + cuán adelante llega (eje rumbo)
-      c.fillStyle = agentCol || TCOL[tissue] || '#5a6b7a';
-      // A1 — SILUETA: elipse orientada (eje = rumbo + dirección de emisión del nodo), elongada por `aspect` → aletas/
-      // tentáculos/cuerpos fusiformes en vez de bolitas. LOD: si es diminuta, punto barato.
-      const rL = pr * (1 + aspect * 1.4);
-      c.beginPath();
-      if (rL > 1.6) c.ellipse(px, py, rL, pr, h + dir, 0, 6.283); else c.arc(px, py, pr, 0, 6.283);
+      // #2 — SILUETA bézier: gota/aleta/tentáculo (afila hacia afuera según `aspect`; eje = rumbo + dir). LOD: diminuta → punto.
+      const rL = pr * (1 + aspect * 1.4), wB = pr * (1 + aspect * 0.15), wT = pr * (1 - aspect * 0.85);
+      if (rL > 1.6) silPath(c, px, py, h + dir, rL, wB, wT);
+      else { c.beginPath(); c.arc(px, py, pr, 0, 6.283); }
+      // color base del NÚCLEO (per-tejido en modo Tejido; si no, el del agente) → lo usan el relleno Y las costillas
+      let nh = bH, ns = bS, nl = bL;
+      if (!halo && colorMode === 'tissue') { const c0 = TCOL_HSL[tissue] || TCOL_HSL[0]; nh = c0[0]; ns = c0[1]; nl = c0[2]; }
+      if (halo) c.fillStyle = agentCol;   // aura: relleno plano (lo suaviza el bloom)
+      else if (pr > 4) {   // VOLUMEN: gradiente radial (caro, createRadialGradient) SOLO en nodos grandes = al acercar; a vista de mundo → plano (imperceptible) y barato
+        const lr = rL > pr ? rL : pr;
+        const g = c.createRadialGradient(px + LIGHT_DX * pr, py + LIGHT_DY * pr, pr * 0.15, px, py, lr * 1.03);
+        g.addColorStop(0, `hsl(${nh | 0},${cl(ns - 12)}%,${cl(nl + 20)}%)`);    // realce
+        g.addColorStop(0.55, `hsl(${nh | 0},${ns}%,${nl}%)`);                   // medio
+        g.addColorStop(1, `hsl(${nh | 0},${cl(ns + 10)}%,${cl(nl - 22)}%)`);    // sombra
+        c.fillStyle = g;
+      } else c.fillStyle = `hsl(${nh | 0},${ns}%,${nl}%)`;
       c.fill();
-      if (natMix && !halo) { const ga = c.globalAlpha; c.globalAlpha = ga * 0.32; c.fillStyle = TCOL[tissue] || '#5a6b7a'; c.fill(); c.globalAlpha = ga; }   // Natural+tejido: tinte SUTIL de la función sobre el pigmento
-      if (!halo && pr > 3.5) c.stroke();   // BORDE: trazo del path ya construido (LOD: solo nodos visibles; coste medido ~2 ms)
-      if (accent && pr > 3.5) {   // motas (LOD: solo nodos grandes en pantalla)
-        c.fillStyle = accent;
-        for (let s = 0; s < patN; s++) { const ang = h + dir + pSeed + ph + s * 2.39, dd = pr * 0.38;
-          c.beginPath(); c.arc(px + Math.cos(ang) * dd, py + Math.sin(ang) * dd, Math.max(0.8, pr * 0.2), 0, 6.283); c.fill(); }
+      if (natMix && !halo) { const ga = c.globalAlpha; c.globalAlpha = ga * 0.32; c.fillStyle = TCOL[tissue] || '#5a6b7a'; c.fill(); c.globalAlpha = ga; }   // Natural+tejido: tinte SUTIL de la función
+      // (el contorno duro por-nodo se sustituyó por el CONTORNO unificado dibujado ANTES del cuerpo → reborde suave)
+      // TEXTURA — COSTILLAS transversales (segmentación): curvas combadas hacia la punta, color = SOMBRA del propio cuerpo
+      // (anatomía, no motas pegadas), ajustadas al ancho LOCAL de la silueta (sin clip → barato). LOD: solo nodos grandes (al acercar).
+      if (bandN > 1 && pr > 5) {
+        c.strokeStyle = `hsla(${nh | 0},${cl(ns + 8)}%,${cl(nl - 20)}%,0.42)`; c.lineWidth = Math.max(0.6, pr * 0.12);
+        const rot = h + dir, cr = Math.cos(rot), sr = Math.sin(rot), txu = -sr, tyu = cr;   // eje (cr,sr) + transversal (txu,tyu)
+        for (let bI = 1; bI < bandN; bI++) {
+          const f = bI / bandN, lw = (wB + (wT - wB) * f) * 0.82, ax = (2 * f - 1) * rL, ccx = px + cr * ax, ccy = py + sr * ax, bow = lw * 0.4;
+          c.beginPath(); c.moveTo(ccx - txu * lw, ccy - tyu * lw); c.quadraticCurveTo(ccx + cr * bow, ccy + sr * bow, ccx + txu * lw, ccy + tyu * lw); c.stroke();
+        }
+        c.strokeStyle = RENDER_P.border; c.lineWidth = RENDER_P.borderW;   // restaurar el estilo del borde para el próximo nodo
       }
     }
-    // OJOS (solo render, lectura del rol depredador; no toca la sim). Aparecen GRADUALMENTE (sin pop): rampa por el tamaño
-    // en pantalla (LOD suave) y por lo CAZADOR. Pequeños, con variedad por linaje. La pupila MIRA hacia el rumbo del
-    // organismo (= hacia la presa/pareja/luz que persigue, ya que el cerebro lo orienta hacia su objetivo).
-    if (!halo && aHunt && aHunt[a] > RENDER_P.eyeThresh - 0.08) {   // empieza tenue algo antes del umbral nominal
-      const hunt = aHunt[a];
-      const sizeRamp = (bodyR - 4) / 14;                          // 0 (≤4px) → 1 (≥18px): fundido al acercar
-      const huntRamp = (hunt - 0.12) / 0.55;                      // tenue al empezar, pleno en cazadores claros
-      const amt = Math.min(1, Math.max(0, sizeRamp)) * Math.min(1, Math.max(0, huntRamp));
+    // OJOS (solo render; no toca la sim). TODOS los organismos sensan → TODOS tienen ojos. Se ORIENTAN y se avivan según la
+    // PERCEPCIÓN real (estímulo más saliente —amenaza>presa— que el sim calcula en su sensado): la pupila MIRA al estímulo y
+    // la mirada se enciende (alert ∝ cercanía); sin nada que sensar, mira al RUMBO, en calma. LOD por tamaño en pantalla.
+    if (!halo) {
+      const amt = Math.min(1, Math.max(0, (bodyR - 4) / 14));   // 0 (≤4px) → 1 (≥18px): fundido al acercar (no en vista de mundo)
       if (amt > 0.015) {
-        const v = (ahue[a] * 41.7) % 1;                           // variedad determinista por linaje
-        const er = bodyR * (0.05 + 0.045 * hunt) * (0.8 + 0.5 * v) * amt;   // más pequeños + variados + crecen con `amt`
-        const fwd = frontExt * (0.5 + 0.12 * v), sep = er * (1.9 + 0.8 * v);   // fwd = alcance FRONTAL real (no bodyR) → sobre el cuerpo; separación ∝ tamaño del ojo (nunca "flotando")
+        const v = (ahue[a] * 41.7) % 1;                         // variedad determinista por linaje
+        const alert = aAlert ? aAlert[a] : 0;                   // 0 en calma .. 1 estímulo en contacto
+        const er = bodyR * (0.06 + 0.022 * alert) * (0.8 + 0.5 * v) * amt;   // ojo base (todos) + se agranda algo al alertarse
+        const fwd = frontExt * (0.5 + 0.12 * v), sep = er * (1.9 + 0.8 * v);   // sobre el frente; separación ∝ tamaño del ojo (nunca "flotando")
         const fx = bx + chh * fwd, fy = by + shh * fwd;
         const e1x = fx - shh * sep, e1y = fy + chh * sep, e2x = fx + shh * sep, e2y = fy - chh * sep;
-        const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt * 1.6);   // fundido de opacidad (refuerza la aparición suave)
-        // esclera = TONO del color del organismo (más viva cuanto más cazador). CADA ojo en su PROPIO path → el stroke NO
-        // une los dos círculos con una línea (si no, salen "gafas" 🤓).
-        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(62 + 22 * hunt) | 0}%,${(80 - 12 * hunt) | 0}%)`;
+        const ga0 = c.globalAlpha; c.globalAlpha = ga0 * Math.min(1, amt) * (0.5 + 0.5 * alert);   // en calma media tinta; alerta = pleno
+        // esclera = TONO del linaje, se aviva (más clara/saturada) con la alerta. CADA ojo en su PROPIO path → el stroke NO los une ("gafas" 🤓).
+        c.fillStyle = `hsl(${(ahue[a] * 360) | 0},${(55 + 25 * alert) | 0}%,${(78 - 10 * alert) | 0}%)`;
         c.lineWidth = Math.max(0.5, er * 0.28);   // borde del ojo (fino, ∝ tamaño)
         c.beginPath(); c.arc(e1x, e1y, er, 0, 6.283); c.fill(); c.stroke();
         c.beginPath(); c.arc(e2x, e2y, er, 0, 6.283); c.fill(); c.stroke();
         c.lineWidth = RENDER_P.borderW;   // restaura para el borde del cuerpo
-        const pf = er * (0.3 + 0.55 * hunt);                      // pupila desplazada hacia el RUMBO → "mira hacia donde va"
+        // pupila: mira al ESTÍMULO (gaze en mundo) si hay alerta; si no, al RUMBO ("mira hacia donde va"). Se adelanta con la alerta (dentro del ojo).
+        let gx = chh, gy = shh; if (alert > 0.01 && aGazeX) { gx = aGazeX[a]; gy = aGazeY[a]; }
+        const pf = er * (0.15 + 0.30 * alert);
         c.fillStyle = 'rgba(8,6,10,0.94)';
-        c.beginPath(); c.arc(e1x + chh * pf, e1y + shh * pf, er * 0.52, 0, 6.283); c.fill();
-        c.beginPath(); c.arc(e2x + chh * pf, e2y + shh * pf, er * 0.52, 0, 6.283); c.fill();
+        c.beginPath(); c.arc(e1x + gx * pf, e1y + gy * pf, er * 0.5, 0, 6.283); c.fill();
+        c.beginPath(); c.arc(e2x + gx * pf, e2y + gy * pf, er * 0.5, 0, 6.283); c.fill();
         c.globalAlpha = ga0;
       }
     }
@@ -246,6 +379,9 @@ let lastT = performance.now(), lastTick = 0, frames = 0, fps = 0, tpsReal = 0;
 const pc = document.getElementById('popChart'), pctx = pc.getContext('2d');
 const bc = document.getElementById('birthChart'), bctx = bc && bc.getContext('2d');   // nacimientos por vía reproductiva
 const dc = document.getElementById('deathChart'), dctx = dc && dc.getContext('2d');   // muertes por causa
+const mcv = document.getElementById('massChart'), mctx = mcv && mcv.getContext('2d');   // talla (masa) media por oficio en el tiempo (#12)
+const gcv = document.getElementById('geneChart'), gctx = gcv && gcv.getContext('2d');   // histograma de un rasgo seleccionable (por oficio)
+const TRAIT_LABEL = { mass: 'masa', mouthCap: 'boca', vmax: 'v.máx', nParts: 'partes', reproK: 'umbral cría', investFrac: 'inversión/cría', hue: 'linaje' };
 function updateHud() {
   frames++; const now = performance.now(), dt = now - lastT;
   if (dt > 500 && frame) { fps = Math.round(frames * 1000 / dt); tpsReal = Math.round((frame.tick - lastTick) * 1000 / dt); frames = 0; lastT = now; lastTick = frame.tick; drawChart(); }
@@ -294,6 +430,36 @@ function drawChart() {
   drawStack(pc, pctx, frame.histHerb, frame.histCarn, 'rgba(63,185,143,.5)', 'rgba(224,102,77,.55)');           // población: herbívoro + carnívoro
   if (bctx) drawStack(bc, bctx, frame.histAsexB, frame.histSexB, 'rgba(111,174,90,.55)', 'rgba(201,138,224,.6)'); // nacimientos: asexual + sexual
   if (dctx) drawStack(dc, dctx, frame.histPred, frame.histStarv, 'rgba(224,102,77,.55)', 'rgba(120,134,150,.6)'); // muertes: depredación + inanición
+  if (mctx && frame.histMassH) drawLines(mcv, mctx, [frame.histMassH, frame.histMassC], ['rgba(63,185,143,.85)', 'rgba(224,102,77,.9)'], 12, 'masa');  // talla media por oficio (#12)
+  if (gctx && frame.geneH) drawGeneHist();                                                                       // histograma del rasgo seleccionado (por oficio)
+}
+// Gráfica de LÍNEAS (serie temporal) de N series sobre eje Y fijo [0, ymax] → ver una media evolucionar sobre escala estable.
+function drawLines(cv, c, series, cols, ymax, label) {
+  const w = cv.width, h = cv.height; c.clearRect(0, 0, w, h);
+  const s0 = series[0]; if (!s0 || s0.length < 2) return;
+  const n = s0.length, X = (i) => i / (n - 1) * w, Y = (v) => h - Math.min(1, v / ymax) * (h - 2) - 1;
+  c.lineWidth = 1.5;
+  for (let k = 0; k < series.length; k++) { const ser = series[k]; c.strokeStyle = cols[k]; c.beginPath();
+    for (let i = 0; i < n; i++) { const x = X(i), y = Y(ser[i]); i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+  c.fillStyle = 'rgba(195,205,218,.8)'; c.font = '10px ui-monospace,monospace'; c.textBaseline = 'top'; c.textAlign = 'left';
+  c.fillText(label, 3, 1); c.textAlign = 'right'; c.fillText(ymax.toFixed(0), w - 2, 1); c.textAlign = 'left';   // eje: rasgo + tope Y
+}
+// HISTOGRAMA del rasgo seleccionado: barras APILADAS por bin (herbívoro abajo + carnívoro encima) sobre un eje FIJO [lo,hi] →
+// ver la distribución derivar en el tiempo (prueba visual de la selección) y cómo difiere por oficio (p.ej. boca: herbívoros
+// bajos, carnívoros altos). Los bins (geneH/geneC) y el rango los computa el worker; aquí solo se pintan. Escala a la barra máxima.
+function drawGeneHist() {
+  const c = gctx, w = gcv.width, h = gcv.height, H = frame.geneH, C = frame.geneC, nb = H.length; c.clearRect(0, 0, w, h);
+  let mx = 1; for (let i = 0; i < nb; i++) { const t = H[i] + C[i]; if (t > mx) mx = t; }
+  const bw = w / nb, hh = h - 12;
+  for (let i = 0; i < nb; i++) { const x = i * bw, hHt = H[i] / mx * hh, cHt = C[i] / mx * hh;
+    if (hHt > 0) { c.fillStyle = 'rgba(63,185,143,.65)'; c.fillRect(x, h - hHt, bw - 0.6, hHt); }
+    if (cHt > 0) { c.fillStyle = 'rgba(224,102,77,.7)'; c.fillRect(x, h - hHt - cHt, bw - 0.6, cHt); }
+  }
+  c.fillStyle = 'rgba(195,205,218,.8)'; c.font = '10px ui-monospace,monospace';
+  c.textBaseline = 'top'; c.textAlign = 'left'; c.fillText(TRAIT_LABEL[frame.geneTrait] || frame.geneTrait, 3, 1);
+  const fmt = (v) => Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
+  c.textBaseline = 'bottom'; c.fillText(fmt(frame.geneLo), 2, h - 1);
+  c.textAlign = 'right'; c.fillText(fmt(frame.geneHi), w - 2, h - 1); c.textAlign = 'left';
 }
 
 // Limitador de FPS de RENDER (no afecta a la simulación: el motor corre en el worker a su propio t/s). rAF sigue
@@ -368,13 +534,17 @@ $('tps').addEventListener('input', (e) => {
 $('fps').addEventListener('input', (e) => { maxFps = +e.target.value; $('fpsVal').textContent = maxFps + ' fps'; });   // límite de FPS de render
 // B5: Reiniciar usa la semilla del panel (vacío → aleatoria; el worker devuelve la usada y la muestra). El mundo nuevo
 // nace con lightMul=1 → re-aplica el lab.
-function resetWorld() {   // semilla SIEMPRE aleatoria (seed:null → el worker la elige); el mundo nuevo nace con lightMul=1 → re-aplica el lab.
-  worker.postMessage({ type: 'reset', seed: null, worldSize: +$('worldSize').value, seedCount: +$('seedCount').value, spawnSpread: +$('spawnSpread').value, diversity: +$('diversity').value });
+function resetWorld() {   // semilla del input (vacío → aleatoria: el worker la elige y la devuelve en 'world' → seedVal). El mundo nuevo nace con lightMul=1 → re-aplica el lab.
+  const sv = $('seed').value.trim();   // texto no numérico → el worker lo trata como aleatoria (+sv = NaN → no finito)
+  worker.postMessage({ type: 'reset', seed: sv === '' ? null : sv, worldSize: +$('worldSize').value, seedCount: +$('seedCount').value, spawnSpread: +$('spawnSpread').value, diversity: +$('diversity').value });
   applyLab(); }
 $('reset').addEventListener('click', resetWorld);
 $('hide').addEventListener('click', () => document.body.classList.add('hidden-panel'));
 $('show').addEventListener('click', () => document.body.classList.remove('hidden-panel'));
 $('colorMode').addEventListener('change', (e) => { colorMode = e.target.value; buildLegend(); });
+// Histograma: la UI elige el rasgo a distribuir → el worker lo binnea por oficio en cada foto. Envía el inicial (por si el navegador restauró otra opción).
+$('geneTrait').addEventListener('change', (e) => worker.postMessage({ type: 'histTrait', key: e.target.value }));
+worker.postMessage({ type: 'histTrait', key: $('geneTrait').value });
 
 // LABORATORIO — sliders de leyes en vivo. Cada uno manda {set,key,value} al worker (mutación en caliente de SIM_P/mundo).
 const LAB_DEF = { lightMul: 1, lightFlow: WORLD_P.lightFlow, vegGrowth: WORLD_P.vegGrowth, patchiness: WORLD_P.patchiness, grazeRefuge: SIM_P.grazeRefuge, forageReach: SIM_P.forageReach, baseCost: SIM_P.baseCost, reproE: SIM_P.reproE, grazeRate: SIM_P.grazeRate, scavRate: SIM_P.scavRate, fleeSpeed: SIM_P.fleeSpeed, mutRate: GENOME_P.mutRate };   // defaults del lab = config (para "restaurar valores")
@@ -423,8 +593,8 @@ window.addEventListener('keydown', (e) => {
 function buildLegend() {
   const L = $('legend');
   const sets = {
-    natural: [['#7fb0d8', 'color = pigmento heredado (linaje)'], ['#e0a84a', 'motas = patrón de familia · brillo = energía']],
-    natmix: [['#7fb0d8', 'pigmento heredado'], ['#e0a84a', '+ tinte sutil de tejido (función)'], ['#e0a84a', 'motas · brillo = energía']],
+    natural: [['#7fb0d8', 'color = pigmento heredado (linaje)'], ['#e0a84a', 'segmentación = patrón de familia · brillo = energía']],
+    natmix: [['#7fb0d8', 'pigmento heredado'], ['#e0a84a', '+ tinte sutil de tejido (función)'], ['#e0a84a', 'segmentación · brillo = energía']],
     tissue: [['#5a6b7a', 'estructura'], ['#e0664d', 'músculo'], ['#e0a84a', 'boca'], ['#9a7bd0', 'aura = color real (linaje)']],
     role: [['#3fb98f', 'herbívoro'], ['#e0664d', 'carnívoro'], ['#e0a84a', 'omnívoro'], ['#9a7bd0', 'aura = color real (linaje)'], ['#3fb98f', '(oficio por DIETA real)']],
     lineage: [['#e0664d', 'tono = linaje (color heredado, deriva lenta)']],

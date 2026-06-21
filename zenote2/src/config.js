@@ -33,7 +33,6 @@ export const RENDER_P = {
   border: 'rgba(4,7,12,0.55)',  // NO UI — color del borde (nodos y ojos), trazo oscuro abisal
   borderW: 1.2,        // NO UI — grosor del borde de los nodos (px)
   speckleMax: 3,       // NO UI — máx. de motas de textura por nodo (1..speckleMax, según linaje)
-  eyeThresh: 0.2,      // NO UI — umbral de "lo cazador" (aHunt) a partir del cual aparecen ojos
 };
 
 // ===================== MUNDO (leyes físicas) =====================
@@ -111,8 +110,12 @@ export const SIM_P = {
                        // (masa ×4, generalistas "lo tienen todo" 1%→~40% a 30k, pop a la mitad). Medido (spikes/trophic-balance):
                        // 1.2 → pop ×2, masa a la mitad, generalistas ~6%, mantiene diversidad de talla. (1 = lineal/antiguo.)
   moveCost: 0.004,     // NO UI — coste de nado ∝ drag·v² (energía → calor)
-  investE: 7,          // NO UI — energía que el progenitor pone en la cría. SOLO de referencia del fundador: la inversión REAL es
-                       // genética (investFrac · umbral_i, ver GENOME_P); 7 = 0.4375·16 reproduce el valor del fundador. Ya no se lee en el bucle.
+  mouthCost: 0.001,    // NO UI — COSTE DE MANTENIMIENTO de la boca/tracto digestivo ∝ mouthCap (energía → calor). A 0 la boca solo
+                       // paga vía masa (igual que cualquier tejido) y como la economía está limitada por DIGESTIÓN (no ingestión) una boca
+                       // > ~1.2 es redundante → INFLABA casi-neutra ~50× (medido: mouthCap 55±48, 95% > 5). Con coste, el aparato de ingesta
+                       // paga su precio → la boca pasa a SELECCIÓN (no deriva). Medido (spikes/mouth-cost, 30k): 0.001 → mouthCap 55→~9 (6×
+                       // menos, distribución abierta no saturada) SIN romper coexistencia (cazador 26-37 sano, herbívoros y pop ↑, menos bloat,
+                       // conserva). 0.004 ya exprime al cazador (→7). 1.2 = boca funcional mínima (grazeRate·1.2 ≈ digestRate, mantiene la tripa).
   cooldown: 50,        // NO UI — enfriamiento reproductivo (ticks)
   eDensity: 0,         // NO UI — energía-en-biomasa (M6.1). 0 = separación limpia materia/energía. Se probó eD=4 para el nicho
                        // carroñero (#4) pero AGRAVABA el inmovilismo: a eD>0 la masa es cara al nacer (eCost+=masa·eD) → el músculo
@@ -132,5 +135,8 @@ export const SIM_P = {
   ηene: 0.85,          // NO UI — eficiencia energética de la ingesta
   initE: 10,           // NO UI — reservas iniciales de los fundadores
   mateRadius: 50,      // NO UI — radio de búsqueda de pareja (u)
-  mateCompat: 0.5,     // NO UI — umbral de compatibilidad reproductiva = distancia FENOTÍPICA (masa/luz/boca) normalizada. Clinal, no especies discretas (ver m7).
+  mateCompat: 0.5,     // NO UI — aislamiento PRE-cigótico: umbral de compatibilidad = distancia FENOTÍPICA (masa/boca/presa-manejable) normalizada.
+                       // Solo esto → estructura CLINAL (ver m7). Se probó una BARRERA POST-CIGÓTICA (híbrido débil ∝ distancia parental, #3) para
+                       // discretizar especies: NULA + contraproducente (no vacía el morfo intermedio; erosiona al cazador, el extremo raro; sin
+                       // preferencia evolvable no hay refuerzo) → revertida. Ver auditoría 2026-06-20 §7 / spikes/postzygotic.
 };

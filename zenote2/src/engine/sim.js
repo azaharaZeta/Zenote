@@ -4,7 +4,7 @@
 // ecosistema por la VEGETACIÓN (world.vegStep) y el animal la obtiene COMIENDO. Materia/energía contabilizadas en cada
 // transacción → los invariantes (materia cerrada + energía luz→calor, con la vegetación en el libro mayor) deben SEGUIR pasando.
 
-import { develop, mutate, makeFounder, recombine, seedBrain, BRAIN, BRAIN_W } from './genome.js';
+import { develop, mutate, makeFounder, recombine, seedBrain, resetHom, BRAIN, BRAIN_W } from './genome.js';
 import { computePhenotype, phenoDistance } from './phenotype.js';
 import { SpatialHash } from './hash.js';
 import { makeRng } from '../util/rng.js';
@@ -12,8 +12,12 @@ import { makeRng } from '../util/rng.js';
 import { SIM_P } from '../config.js';   // parámetros de simulación: fuente única en config.js
 export { SIM_P };
 
+const SENSE_R = 120;   // alcance (u) para la INTENSIDAD visual de la PERCEPCIÓN (ojos del render): un estímulo a <SENSE_R aviva la
+                       // mirada (1 en contacto · 0 a SENSE_R). Solo afecta a la representación; la dinámica no lo lee → byte-idéntico.
+
 export class Sim {
   constructor(world, { seed = 1, cap = 8000, eDensity = SIM_P.eDensity, randomBehavior = false, freezeBrain = false } = {}) {
+    resetHom();   // marcas de homología limpias por mundo (no arrastrar el contador entre instancias/procesos; ver genome.js)
     this.world = world; this.cap = cap; this.rng = makeRng(seed); this.tick = 0; this.eD = eDensity;
     this.randomBehavior = randomBehavior;   // control: salidas aleatorias (ignora el cerebro) → mide si la conducta neuronal es ADAPTATIVA
     // control M6.3: cerebro CONGELADO a un seedBrain canónico (sin mutación, recombinación ni plasticidad del cerebro;
@@ -42,6 +46,10 @@ export class Sim {
     // INGRESO POR AGENTE (acumulativo): de dónde saca la energía cada animal → pasto (veg) / caza / carroña. Solo ESCRITURA
     // (la dinámica no lo lee) → byte-idéntico. Revela el OFICIO real emergente (herbívoro/carnívoro/carroñero) para medir y para el inspector.
     this.vegIn = new Float32Array(cap); this.preyIn = new Float32Array(cap); this.scavIn = new Float32Array(cap);
+    // PERCEPCIÓN POR AGENTE (solo ESCRITURA, como vegIn → byte-idéntico): dirección unitaria al estímulo más saliente
+    // (senseX/Y, mundo) + intensidad [0,1] (senseMag). Lo escribe el sensado del cerebro; lo lee el render para ORIENTAR y
+    // AVIVAR los ojos (todos los organismos sensan → todos tienen ojos; miran a su presa/amenaza). La dinámica nunca lo lee.
+    this.senseX = new Float32Array(cap); this.senseY = new Float32Array(cap); this.senseMag = new Float32Array(cap);
     // CADÁVERES (#3): buffer CIRCULAR acotado de muertes recientes (forma + posición + linaje + rumbo + tick de muerte) →
     // el render dibuja cuerpos que se desvanecen con su carroña ("muerte visible"). Solo lo ESCRIBE el motor / lo LEE el
     // snapshot; la dinámica no lo lee → byte-idéntico. Preasignado (sin asignaciones en el bucle caliente).
@@ -52,6 +60,12 @@ export class Sim {
     // M6.3 — cerebro: COPIA DE TRABAJO de pesos por agente (aprendida en vida; NO heredable) + estado oculto recurrente.
     this.wbrain = new Float32Array(cap * BRAIN_W); this.hidden = new Float32Array(cap * BRAIN.H);
     this._in = new Float32Array(BRAIN.I); this._hid = new Float32Array(BRAIN.H); this._out = new Float32Array(BRAIN.O);
+    // NACIMIENTOS DIFERIDOS del tick (preasignados → sin asignar en el bucle caliente, regla §2). Cada cría: refs a genoma/
+    // cuerpo/fenotipo + x/y/E. Tope = cap (un agente cría ≤1 vez/tick y los recién nacidos no están activos este tick).
+    // x/y/E en Array (DOBLE), no Float32Array: la coord de cría se compara contra el wrap toroidal ANTES de almacenarse en
+    // this.x (f32); truncarla a f32 aquí cambiaría decisiones de wrap en el borde → deriva del checksum. Doble = byte-idéntico.
+    this._bornG = new Array(cap); this._bornBody = new Array(cap); this._bornPh = new Array(cap);
+    this._bornX = new Array(cap); this._bornY = new Array(cap); this._bornE = new Array(cap);
   }
 
   // cachea el cuerpo desarrollado + su fenotipo en la SoA del slot i (lo leen el render y las transacciones)
@@ -75,7 +89,7 @@ export class Sim {
     this.reproK[i] = genome.reproK != null ? genome.reproK : 1.0; this.investFrac[i] = genome.investFrac != null ? genome.investFrac : 0.4375;   // r/K: cachea los genes de historia de vida al nacer
     if (this.freezeBrain && genome.brain) genome.brain.set(this._seedBrain);   // control: anula la herencia/mutación del cerebro → todos usan el seedBrain canónico
     this.x[i] = x; this.y[i] = y; this.vx[i] = 0; this.vy[i] = 0; this.E[i] = E; this.gut[i] = 0; this.age[i] = 0;
-    this.vegIn[i] = 0; this.preyIn[i] = 0; this.scavIn[i] = 0;   // ingreso por agente: a cero al nacer
+    this.vegIn[i] = 0; this.preyIn[i] = 0; this.scavIn[i] = 0; this.senseMag[i] = 0;   // ingreso + percepción por agente: a cero al nacer
     this.cd[i] = (this.rng.next() * SIM_P.cooldown) | 0;
     if (parts) this._setBody(i, parts, ph); else this._expr(i);   // M2: reusa el cuerpo ya desarrollado en el gate (evita doble develop)
     // cerebro de trabajo = cerebro de NACIMIENTO (genoma); memoria a cero (la plasticidad parte de aquí; Baldwin)
@@ -130,7 +144,8 @@ export class Sim {
     for (let a = 0; a < na; a++) { const i = this.active[a]; this.hash.insert(i, this.x[i], this.y[i]); }
 
     const x = this.x, y = this.y, vx = this.vx, vy = this.vy, E = this.E;
-    const born = [];   // nacimientos diferidos (6 entradas/cría: genoma, x, y, E, cuerpo, fenotipo) → spawn al final del tick
+    const bG = this._bornG, bBody = this._bornBody, bPh = this._bornPh, bX = this._bornX, bY = this._bornY, bE = this._bornE;
+    let nBorn = 0;   // nacimientos diferidos de este tick → índice en los buffers preasignados (spawn al final del tick)
     for (let a = 0; a < na; a++) {
       const i = this.active[a]; if (!this.alive[i]) continue;   // pudo morir antes en ESTE tick (depredación)
       const cell = W.cellAt(x[i], y[i]);
@@ -162,6 +177,11 @@ export class Sim {
       }
       if (preyJ >= 0) { const m = Math.sqrt(preyD) || 1; preyDX /= m; preyDY /= m; }
       if (thD < 1e9) { const m = Math.sqrt(thD) || 1; thDX /= m; thDY /= m; }
+      // PERCEPCIÓN para el render (write-only): el ojo mira al estímulo más saliente — AMENAZA antes que presa (vigilancia) —
+      // y se aviva con su cercanía; sin nada que sensar, mag=0 (el render hará que mire al rumbo, en calma). No toca la dinámica.
+      if (thD < 1e9) { this.senseX[i] = thDX; this.senseY[i] = thDY; this.senseMag[i] = 1 - Math.min(1, Math.sqrt(thD) / SENSE_R); }
+      else if (preyJ >= 0) { this.senseX[i] = preyDX; this.senseY[i] = preyDY; this.senseMag[i] = 1 - Math.min(1, Math.sqrt(preyD) / SENSE_R); }
+      else this.senseMag[i] = 0;
 
       // ---- CEREBRO (forward Elman; pesos = copia de trabajo aprendida). Motor de la conducta; arranca SEMBRADO (seedBrain) y evoluciona/aprende. ----
       const I = BRAIN.I, H = BRAIN.H, O = BRAIN.O, inp = this._in, hid = this._hid, out = this._out, wb = i * BRAIN_W, hb = i * H, Wt = this.wbrain, PH = this.hidden;
@@ -232,7 +252,7 @@ export class Sim {
 
       // METABOLISMO: reservas → calor (basal + ∝masa + nado). Muerte si se agotan → cuerpo a detrito.
       const mC = P.massCostExp === 1 ? this.mass[i] : Math.pow(this.mass[i], P.massCostExp);   // BALANCE: coste de masa super-lineal (exp>1 frena el bloat)
-      const cost = P.baseCost + P.massCost * mC + P.moveCost * v2 * this.drag[i];
+      const cost = P.baseCost + P.massCost * mC + P.moveCost * v2 * this.drag[i] + P.mouthCost * this.mouthCap[i];   // +mantenimiento de la boca (∝mouthCap) → boca bajo selección
       const spend = Math.min(E[i], cost); E[i] -= spend; W.heat += spend;
       if (E[i] <= 1e-6) { W.detritusM[cell] += this.mass[i]; W.detritusE[cell] += (E[i] > 0 ? E[i] : 0) + this.gut[i] + this.mass[i] * this.eD; this._recordCorpse(i); this.alive[i] = 0; this.free[this.freeTop++] = i; this.genome[i] = null; this.starved++; continue; }
 
@@ -264,19 +284,19 @@ export class Sim {
         // final del tick; si el pool estuviera lleno spawn devolvería -1 y la materia/energía YA cobradas aquí se
         // perderían (fuga de conservación). `freeTop - cunas ya comprometidas este tick` es el hueco disponible;
         // freeTop sólo CRECE con las muertes posteriores del bucle → exigirlo aquí es conservador y garantiza que
-        // todo cobro nazca. (`born.length / 6` = nacimientos ya en cola, 6 entradas c/u.)
-        if (E[i] >= eCost && this.freeTop - (born.length / 6 | 0) > 0 && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
+        // todo cobro nazca. (`nBorn` = nacimientos ya en cola este tick.)
+        if (E[i] >= eCost && this.freeTop - nBorn > 0 && this._nutrientAround(cell, P.birthR) >= childPh.mass) {
           this._takeNutrientAround(cell, P.birthR, childPh.mass);   // MATERIA: nutriente → cuerpo de la cría
           E[i] -= eCost; this.cd[i] = P.cooldown;                   // el progenitor paga reservas + cuerpo de la cría
           if (mate >= 0) this.sexBirths++; else this.asexBirths++;
-          born.push(childG, x[i] + (rng.next() - 0.5) * 6, y[i] + (rng.next() - 0.5) * 6, investEi, childBody, childPh);   // r/K: la cría nace con la inversión del progenitor
+          bG[nBorn] = childG; bX[nBorn] = x[i] + (rng.next() - 0.5) * 6; bY[nBorn] = y[i] + (rng.next() - 0.5) * 6; bE[nBorn] = investEi; bBody[nBorn] = childBody; bPh[nBorn] = childPh; nBorn++;   // r/K: la cría nace con la inversión del progenitor
         }
         }
       }
     }
-    for (let k = 0; k < born.length; k += 6) { let bx = born[k + 1], by = born[k + 2];
+    for (let k = 0; k < nBorn; k++) { let bx = bX[k], by = bY[k];
       if (bx < 0) bx += size; else if (bx >= size) bx -= size; if (by < 0) by += size; else if (by >= size) by -= size;
-      this.spawn(born[k], bx, by, born[k + 3], born[k + 4], born[k + 5]); }
+      this.spawn(bG[k], bx, by, bE[k], bBody[k], bPh[k]); bG[k] = bBody[k] = bPh[k] = null; }   // libera las refs tras materializar (no retener entre ticks)
 
     W.vegStep(); W.decomposeStep(); W.diffuseStep(); this.tick++;   // la vegetación crece (capta luz) tras el pastoreo del tick
   }

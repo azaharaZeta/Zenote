@@ -44,13 +44,24 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
 - Arranque (reinicio): Tamaño de mundo, Sembrado inicial, Extensión, Diversidad, + `vegInit` (NO UI).
 - El worker `set` acepta claves de SIM_P, GENOME_P (mutRate), `world.lightMul` y cualquier clave de `world.P` (lightFlow/vegGrowth/patchiness…) → afectan en vivo.
 
-## Render
+## Render y observación
 - Fondo = **campo de VEGETACIÓN** (nebulosa TEAL con parches; más brillo = más comida; realce del pasto tenue; fluye/migra). Sustituye a la antigua nebulosa de luz.
-- Organismos: siluetas por nodo, color por modo (Natural=linaje · Tejido · **Oficio**=herbívoro/carnívoro/omnívoro por dieta · Linaje).
-  Ojos = fracción carnívora de la dieta. Cadáveres con forma que se desvanecen. Inspector: dieta "pasto/caza/carroña" + linaje.
+- Organismos: **siluetas bézier por nodo** (gota/aleta/tentáculo que afila hacia afuera según `aspect` → criaturas, no óvalos)
+  con **sombreado volumétrico** (gradiente radial luz→sombra al acercar → gelatina 3D; LOD: plano a vista de mundo), **costillas
+  transversales** (segmentación, color = sombra del cuerpo → anatomía) y **contorno suave unificado** (reborde, sin líneas duras).
+  Color por modo (Natural=linaje · Tejido · **Oficio**=herbívoro/carnívoro/omnívoro por dieta · Linaje). Ojos = fracción carnívora
+  de la dieta. Cadáveres con forma que se desvanecen. Inspector: dieta "pasto/caza/carroña" + linaje + r/K (umbral·inversión).
+- **Abismo vivo:** nebulosa de vegetación TEAL con **profundidad** (campo frío↔cálido fundido en el bake) + **plancton/micro-flora**
+  (chispas que florecen donde hay veg) + **nieve marina** (detrito a la deriva que titila) bajo los organismos → profundidad y vida.
+  Bloom/aura (bioluminiscencia, gatea plancton+nieve en móvil/Baja) + viñeta. (Referencia estética: el render de zenote1, `src/render/canvas.js`.)
+- Gráficas en vivo: población / nacimientos (sex·asex) / muertes (predación·inanición) / **talla (masa) media por oficio en el
+  tiempo** (ver la talla evolucionar + divergir entre nichos) + **HISTOGRAMA de un rasgo seleccionable**
+  (masa · boca · v.máx · nº partes · umbral de cría r/K · inversión por cría · linaje), apilado por oficio (herbívoro/resto) sobre eje
+  fijo → ver la distribución DERIVAR (prueba visual de la selección) y la diferenciación de nicho (p.ej. boca: herbívoros bajos,
+  carnívoros altos). Se computa en el worker (solo viajan los bins). Mensaje `histTrait`.
 
 ## Resultados medidos (headless, 3-5 semillas, 30-50k ticks)
-- **Conserva** materia (deriva ~0.004% = ruido f32) + energía (luz→calor): gate **8/8 verde** (`npm run test:zenote2`).
+- **Conserva** materia (deriva ~0.004% = ruido f32) + energía (luz→calor): gate **9/9 verde** (`npm run test:zenote2`; incluye m9 = regresión ecológica + CI en `.github/`).
 - **Estructura trófica robusta y persistente:** herbívoros + carnívoros + carroñeros coexisten a 30-50k en TODAS las semillas
   (≈65%/15%/20% por dieta); el **cazador NO se extingue** (el baseline de v1 lo perdía en 5/5 a mundo pequeño). Mortalidad
   **depredación-dominante** (~2:1 frente a inanición). Diversidad de talla emerge incluso desde clones (σ≈2.0).
@@ -59,7 +70,10 @@ El diseño original hacía EMERGER el eje autótrofo↔heterótrofo del genoma (
   siembra** (t≈500, dirigido por el seedBrain). Sin `fleeSpeed` la velocidad **decaía a paso de tortuga** con la evolución
   (spMean 1.66→0.18, vmax→0.27 a 50k; el músculo se podaba). Con `fleeSpeed=1.0` se **ESTABILIZA en meseta** (spMean ~0.30,
   vmax ~0.41, +52-64% vs sin él) → el movimiento ya no se apaga con el tiempo. El equilibrio real es **~60% móvil a paso vivo**, no 94%.
-- El **dorado vivo** está en `zenote2/test/m8-determinism.mjs` (hoy `0xe5d3f569`; cámbialo solo con cambios de física INTENCIONADOS).
+- **Boca bajo selección** (coste de boca `mouthCost`): antes la `mouthCap` inflaba ~50× (economía limitada por digestión → boca
+  redundante que derivaba). Con coste, deja de inflar (mouthCap 55→~9) y **emerge diferenciación de nicho**: el carnívoro mantiene
+  boca ~2× la del herbívoro (la boca del depredador paga su coste manejando presa; el pastador la recorta). Sin romper coexistencia.
+- El **dorado vivo** está en `zenote2/test/m8-determinism.mjs` (hoy `0xf5375391`; cámbialo solo con cambios de física INTENCIONADOS).
 - Memoria: `zenote2-animals-only-vegetation`.
 
 ## Historia (memorias SUPERADAS por el cambio de cimientos — no aplicarlas como vigentes)

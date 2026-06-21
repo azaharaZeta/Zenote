@@ -28,10 +28,10 @@ function run(ticks) {
   return { c: checksum(s), pop: s.pop(), tick: s.tick };
 }
 
-const GOLDEN = 0xebd987f9;   // re-fijado 2026-06-20: r/K EVOLVABLE — el umbral de cría (gen reproK) y la inversión por cría (gen
-                             // investFrac) son ahora GENES por organismo (antes constantes SIM_P.reproE/investE). Cambio INTENCIONADO
-                             // (el eje r↔K emerge de la selección). Previos: 0xe5d3f569 (escape por velocidad fleeSpeed), 0x5a8fb59e
-                             // (productividad vegetal ∝ luz). seed 1, cap 4000, 800 fundadores, 2000 ticks.
+const GOLDEN = 0xe8984a53;   // re-fijado 2026-06-20: HOMOLOGÍA COMPARTIDA del módulo fundador (#4) → la recombinación entre linajes
+                             // alinea el par de aletas (antes marca única/founder → se heredaba 0/1/2 al azar). Cambio INTENCIONADO de
+                             // recombinación. (La barrera post-cigótica #3 se probó y se REVIRTIÓ: nula+contraproducente.) Previos: 0xf5375391
+                             // (coste de boca), 0xebd987f9 (r/K dial→gen), 0xe5d3f569 (fleeSpeed). seed 1, cap 4000, 800 fundadores, 2000 ticks.
 const TICKS = 2000;
 console.log('=== Checksum dorado — determinismo + deriva ===\n');
 const a = run(TICKS), b = run(TICKS);

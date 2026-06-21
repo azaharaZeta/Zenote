@@ -168,8 +168,10 @@ mensaje al worker. Verificada en navegador (escritorio + móvil 375px).
   ahorra CPU/batería) · **zoom** (slider + rueda con zoom-al-cursor) · **paneo** (arrastrar, envuelve mod tamaño) ·
   **visión toroidal infinita** (render en mosaico de tiles, sin costura) · **reinicio** · HUD (pob · tick · t/s · fps).
 - **P2 — Observación** ✅: **gráficas apiladas** (población herbívoro/carnívoro · nacimientos sexual/asexual · muertes
-  depredación/inanición, historia del worker) · **modos de color** (natural/tejido/oficio por dieta/linaje) con leyenda
-  dinámica. Gen de linaje `hue` heredable (deriva lenta).
+  depredación/inanición · **talla media por oficio en el tiempo**, historia del worker) · **histograma en vivo de un rasgo
+  seleccionable** (masa/boca/v.máx/partes/r·K/inversión/linaje, apilado por oficio → ver la distribución derivar = prueba visual
+  de la selección + diferenciación de nicho) ·
+  **modos de color** (natural/tejido/oficio por dieta/linaje) con leyenda dinámica. Gen de linaje `hue` heredable (deriva lenta).
 - **P3 — Laboratorio** ✅ (sliders de leyes EN VIVO, agrupados): **Luz y vegetación** (luz solar `world.lightMul` · corriente
   del abismo · productividad · parches · reserva de rebrote) · **Alimentación** (pastoreo · alcance de forrajeo · carroñeo ·
   escape por velocidad) · **Metabolismo y cría** (basal · umbral de cría · modo de reproducción) · **Evolución** (ritmo de
