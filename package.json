@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/smoke.mjs",
-    "test:zenote2": "node zenote2/test/run-all.mjs"
+    "test": "node test/smoke.mjs"
   },
   "description": "Simulador de evolución emergente (estáticos; el type:module permite ejecutar el motor headless en Node para barridos de parámetros)."
 }
